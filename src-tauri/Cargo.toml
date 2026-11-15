@@ -5,7 +5,7 @@ description = "Pawchive Viewer"
 authors = ["nsmr0604"]
 license = "MIT"
 repository = ""
-edition = "2026"
+edition = "2024"
 rust-version = "1.90"
 
 [lib]
