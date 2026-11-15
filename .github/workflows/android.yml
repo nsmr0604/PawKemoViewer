@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  build-android:
+  build:
 
     runs-on: ubuntu-24.04
 
@@ -36,11 +36,13 @@ jobs:
           java-version: 17
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
-      - name: Install Android SDK Components
+      - name: Install Android SDK Packages
         run: |
-          sdkmanager --install \
+          yes | sdkmanager --licenses
+
+          sdkmanager \
             "platform-tools" \
             "platforms;android-35" \
             "build-tools;35.0.0"
@@ -51,11 +53,11 @@ jobs:
       - name: Build Frontend
         run: npm run build
 
-      - name: Initialize Tauri Android
+      - name: Initialize Android
         run: |
           npx tauri android init
 
-      - name: Build Android APK
+      - name: Build APK
         run: |
           npx tauri android build
 
