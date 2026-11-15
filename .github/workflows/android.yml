@@ -7,6 +7,9 @@ on:
 
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build-android:
 
@@ -14,34 +17,51 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - run: npm ci
+      - name: Install Android SDK Components
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
-      - run: npm run build
+      - name: Install Dependencies
+        run: npm ci
 
-      - run: |
-          npm run tauri android init
+      - name: Build Frontend
+        run: npm run build
 
-      - run: |
-          npm run tauri android build
+      - name: Initialize Tauri Android
+        run: |
+          npx tauri android init
 
-      - uses: actions/upload-artifact@v4
+      - name: Build Android APK
+        run: |
+          npx tauri android build
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: android-apk
+          name: pawchive-android
           path: |
             src-tauri/gen/android/app/build/outputs/**/*.apk
