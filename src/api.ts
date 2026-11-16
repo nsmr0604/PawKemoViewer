@@ -335,35 +335,60 @@ export function postUrl(service: string, userId: string, postId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// リファラーチェック回避プロキシ
+// リファラーチェック回避プロキシ (paw:// プロトコル)
+//
+// Tauri の WebView からは Referer を設定できないため、リファラーチェックで
+// ブロックされる URL は Rust 側 (paw:// プロトコルハンドラ) 経由にする。
 // ---------------------------------------------------------------------------
 
 /** ホットリンク対策 (Referer チェック) をしている可能性のあるホスト */
-/*
 const HOTLINK_HOSTS = ["fanbox.cc", "patreon.com", "patreonusercontent.com", "pximg.net"]
 
-function isHotlinkHost(
-  _hostname: string
-): boolean {
-  return false
-}
-*/
-/** リファラーチェックでブロックされる URL を同一オリジンプロキシ経由に変換する。
- *  対象外の URL (n1.pawchive.pw のミラー等) はそのまま返す。 */
-export function proxyFileUrl(
-  url: string
-): string {
-  return url
+function isHotlinkHost(hostname: string): boolean {
+  return HOTLINK_HOSTS.some((d) => hostname === d || hostname.endsWith("." + d))
 }
 
-/** 投稿本文から張られた外部リンクをプロキシ経由に変換する。
+/** paw プロトコル経由 URL (Rust 側でリファラーを偽装して中継) */
+function pawProxyUrl(url: string, referer: string): string {
+  return `http://paw.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}`
+}
+
+/** リファラーチェックでブロックされる可能性のあるファイル URL を paw 経由に変換する。
+ *  pawchive 自身のミラー (n1 / img) はそのまま。 */
+export function proxyFileUrl(url: string): string {
+  if (!url) return url
+  let h: URL
+  try {
+    h = new URL(url)
+  } catch {
+    return url
+  }
+  if (h.protocol !== "https:" && h.protocol !== "http:") return url
+  if (!isHotlinkHost(h.hostname)) return url
+  const referer =
+    h.hostname.endsWith("patreon.com") || h.hostname.endsWith("patreonusercontent.com")
+      ? "https://www.patreon.com/"
+      : "https://www.fanbox.cc/"
+  return pawProxyUrl(h.toString(), referer)
+}
+
+/** 投稿本文から張られた外部リンクを paw 経由に変換する。
  *  リンク先がリファラー (元サイト = fanbox / patreon) を検証してブロックする
- *  ケースに対応。fanbox / patreon / pawchive 自体へのリンクはそのまま。 */
-export function proxyLinkUrl(
-  url: string,
-  _service?: string
-): string {
-  return url
+ *  ケースに対応。fanbox / patreon / pawchive 自体へのリンクはそのまま開く。 */
+export function proxyLinkUrl(url: string, service?: string): string {
+  if (!url) return url
+  let h: URL
+  try {
+    h = new URL(url)
+  } catch {
+    return url
+  }
+  if (h.protocol !== "https:" && h.protocol !== "http:") return url
+  if (h.origin === location.origin) return url
+  // fanbox / patreon 自体は SPA のためそのまま (リファラーチェックが無い・実測)
+  if (h.hostname.endsWith("pawchive.pw") || isHotlinkHost(h.hostname)) return url
+  const referer = service === "patreon" ? "https://www.patreon.com/" : "https://www.fanbox.cc/"
+  return pawProxyUrl(h.toString(), referer)
 }
 
 export function creatorUrl(service: string, userId: string) {

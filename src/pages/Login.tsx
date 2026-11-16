@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { invoke } from "@tauri-apps/api/core"
 import { updateSettings, getSettings, api } from "../api"
 import { navigate, useRoute } from "../router"
 
@@ -19,13 +20,14 @@ export function LoginPage() {
     setBusy(true)
     setResult(null)
     try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      })
-      const j = (await res.json()) as { ok?: boolean; session?: string; error?: string }
-      if (res.ok && j.ok) {
+      // Rust 側で pawchive.pw /account/login に POST し、
+      // session cookie を検証してから返す
+      const j = await invoke<{
+        ok: boolean
+        session?: string
+        error?: string
+      }>("login_request", { username, password })
+      if (j.ok) {
         if (j.session) {
           updateSettings({ sessionKey: j.session })
           // 取得確認 (ベストエフォート)
@@ -37,7 +39,7 @@ export function LoginPage() {
           setResult({ ok: true, msg: "ログインしました" })
           setTimeout(() => navigate(next.startsWith("/") ? next : "/", true), 800)
         } else {
-          // リダイレクトは確認できたが cookie が取得できない環境
+          // 認証は成功したが cookie が取得できなかった
           setResult({
             ok: true,
             msg: "認証に成功しましたが、セッションキーを取得できませんでした。設定画面から手動で貼り付けてください。",
@@ -45,7 +47,7 @@ export function LoginPage() {
           setTimeout(() => navigate("/settings", true), 2500)
         }
       } else {
-        setResult({ ok: false, msg: j.error || `ログインに失敗しました (${res.status})` })
+        setResult({ ok: false, msg: j.error || "ログインに失敗しました" })
       }
     } catch (e) {
       setResult({ ok: false, msg: `通信エラー: ${e instanceof Error ? e.message : e}` })
