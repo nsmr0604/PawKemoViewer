@@ -4,19 +4,11 @@ use reqwest::header::{
     HeaderValue,
     ACCEPT,
     ACCEPT_LANGUAGE,
-    CACHE_CONTROL,
     COOKIE,
-    CONTENT_DISPOSITION,
-    CONTENT_LENGTH,
-    CONTENT_RANGE,
-    CONTENT_TYPE,
-    ETAG,
-    LAST_MODIFIED,
     ORIGIN,
     REFERER,
     SET_COOKIE,
     USER_AGENT,
-    ACCEPT_RANGES,
 };
 
 #[tauri::command]
@@ -365,7 +357,7 @@ fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> Stri
     let base_href = target
         .join(".")
         .map(|u| u.to_string())
-        .unwrap_or_else(|| target.to_string());
+        .unwrap_or_else(|_| target.to_string());
 
     // <head ...> 直後に <base> を注入
     let lower = html.to_ascii_lowercase();
@@ -561,7 +553,7 @@ fn paw_proxy_fetch(
         header::ETAG,
         header::LAST_MODIFIED,
     ] {
-        if let Some(v) = resp.headers().get(h).and_then(|v| v.to_str().ok()) {
+        if let Some(v) = resp.headers().get(&h).and_then(|v| v.to_str().ok()) {
             b = b.header(h, v);
         }
     }
