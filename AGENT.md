@@ -25,6 +25,12 @@
 - 会話コンテキストが長くなったら、内容を **`notes/` 以下に Markdown で落とし込み、以後そちらを参照**する
 - `notes/` は gitignore で除外済み(ローカル限定、コミットしない)
 - **開発上の発見・バグ・仕様・ノウハウは、気づいた時点で `notes/` にすべて記録する**
+- **記法は OKF (Open Knowledge Format) v0.2 の軽量サブセット**:
+  - 各 `.md` に YAML frontmatter 必須 (`type` 必須、`title`/`description`/`tags`/`status`/`generated{by,at}`/`verified{by,at}`/`stale_after`)
+  - `index.md`(目次)・`log.md`(更新履歴)はリザーブドファイル名
+  - コンセプト間リンクはバンドル相対パス (`/pawchive-api.md` 形式)
+  - 人間が確認した項目は `verified: { by: human:..., at: ... }` を付与
+  - スキーマ詳細: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md
   - `notes/knowledge.md`: 永続的なナレッジ(仕様・バグ・回避策・実測値)— セッションをまたいで維持
   - `notes/YYYY-MM-DD-session.md`: セッション単位の進捗・未解決事項
 - コード修正時は、原因が分かった時点で knowledge.md に先に記録してから修正する
