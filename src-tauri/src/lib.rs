@@ -113,9 +113,6 @@ async fn api_request(
 
     let status = response.status();
 
-    let response_headers =
-        response.headers().clone();
-
     let text = response
         .text()
         .await
@@ -124,14 +121,8 @@ async fn api_request(
     println!("STATUS => {}", status);
 
     if !status.is_success() {
-        return Err(
-            format!(
-                "STATUS={}\nHEADERS={:#?}\nBODY={}",
-                status,
-                response_headers,
-                text
-            )
-        );
+        // デバッグ用にステータスと本文だけ返す (ヘッダー全文は長大なので省略)
+        return Err(format!("STATUS={} BODY={}", status, text));
     }
 
     Ok(text)

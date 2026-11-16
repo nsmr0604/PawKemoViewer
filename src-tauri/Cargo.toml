@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.2"
+version = "0.1.3"
 description = "Pawchive Viewer"
 authors = ["nsmr0604"]
 license = "MIT"

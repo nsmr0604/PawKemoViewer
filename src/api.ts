@@ -158,12 +158,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   const exec = scheduled(async () => {
     try {
+      // 注意: Tauri v2 のコマンド引数は Rust 側 snake_case を camelCase で渡す
+      // (session_key ではなく sessionKey。snake_case だとバインドされず
+      //  常にセッション無しになり認証系 API が 401 になる)
       const result = await invoke<string>(
         "api_request",
         {
           path,
           method,
-          session_key:
+          sessionKey:
             settings.sessionKey || null,
         }
       )
