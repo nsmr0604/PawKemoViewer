@@ -55,21 +55,29 @@ export interface CreatorRow {
   /** URL slug (fanbox: tateha 等)。索引 v1 には存在しない (再構築で付与) */
   publicId?: string
   publicIdLower?: string
+  /** お気に入り数 (人気度タイブレーク用)。パック v2 から保存 */
+  favorited?: number
 }
 
 /**
  * クリエイター索引のバージョン。
- * v1: name + id のみ。v2: publicId (URL slug) を追加。
- * 古い索引はクリエイター tab 初回表示時にバックグラウンドで自動再構築する。
+ * v1: per-row + name/id のみ / v2: per-row + publicId /
+ * **pack v2: 単一パック文字列 (name + id + slug + favorited)** — 現行
+ *
+ * パック形式: 1 行 = service\u001fid\u001fname\u001fnameLower\u001fslug\u001ffavorited、
+ * 行区切り \u001e、nameLower 順ソート済み。99,231 行を 1 レコード (約 6MB) で保存し、
+ * put × 99k / getAll × 99k オブジェクト復元を 1 put / 1 get + 文字列 split に置き換える。
+ * 旧 per-row ストアは移行元としてのみ使用し、パック保存後に clear する。
  */
 export const SEARCH_INDEX_VERSION = 2
 
-// ---------------------------------------------------------------------------
-// メモリ内検索索引: getAll を 1 回だけ読んで再利用する。
-// 旧実装 (カーソル全走査) は 1 検索に数秒かかり、古いクエリの結果が表示され続ける
-// レースを起こしていたため、メモリ索引 + スコアリングで即時化した
-// ---------------------------------------------------------------------------
+const PACK_META_KEY = "creatorsPack"
+const ROW_SEP = "\u001e"
+const FIELD_SEP = "\u001f"
 
+// ---------------------------------------------------------------------------
+// メモリ内検索索引: パックを 1 回だけ読んで再利用する。
+// ---------------------------------------------------------------------------
 let indexRows: CreatorRow[] | null = null
 let indexPromise: Promise<CreatorRow[]> | null = null
 
@@ -79,21 +87,93 @@ export function invalidateCreatorIndex() {
   indexPromise = null
 }
 
+function sanitizeField(s: string): string {
+  return s.replace(/[\u001e\u001f]/g, " ")
+}
+
+/** パック文字列 → 行配列 (nameLower 頂順 = パック保存順) */
+function decodePack(pack: string): CreatorRow[] {
+  const out: CreatorRow[] = []
+  for (const line of pack.split(ROW_SEP)) {
+    if (!line) continue
+    const f = line.split(FIELD_SEP)
+    const service = f[0]
+    const id = f[1]
+    if (!service || !id) continue
+    const row: CreatorRow = {
+      key: `${service}:${id}`,
+      id,
+      service,
+      name: f[2] || id,
+      nameLower: f[3] || (f[2] || id).toLowerCase(),
+    }
+    if (f[4]) {
+      row.publicId = f[4]
+      row.publicIdLower = f[4]
+    }
+    const fav = Number(f[5]) || 0
+    if (fav > 0) row.favorited = fav
+    out.push(row)
+  }
+  return out
+}
+
+/** 行配列 → パック文字列 (nameLower / id 順にソートして固定順を保証) */
+function encodePack(rows: CreatorRow[]): string {
+  const sorted = [...rows].sort((a, b) => {
+    if (a.nameLower !== b.nameLower) return a.nameLower < b.nameLower ? -1 : 1
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+  })
+  return sorted
+    .map((r) =>
+      [
+        sanitizeField(r.service),
+        sanitizeField(r.id),
+        sanitizeField(r.name),
+        sanitizeField(r.nameLower),
+        sanitizeField(r.publicIdLower || ""),
+        String(r.favorited || 0),
+      ].join(FIELD_SEP),
+    )
+    .join(ROW_SEP)
+}
+
+/** 旧 per-row ストアの全行 (移行元) */
+export async function getAllCreatorRows(): Promise<CreatorRow[]> {
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const req = db.transaction("creators", "readonly").objectStore("creators").getAll()
+    req.onsuccess = () => resolve((req.result as CreatorRow[]).filter(Boolean))
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function clearCreatorRows(): Promise<void> {
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction("creators", "readwrite")
+    t.objectStore("creators").clear()
+    t.oncomplete = () => resolve()
+    t.onerror = () => reject(t.error)
+  })
+}
+
 function loadIndex(): Promise<CreatorRow[]> {
   if (indexRows) return Promise.resolve(indexRows)
   if (!indexPromise) {
-    indexPromise = openDb()
-      .then(
-        (db) =>
-          new Promise<CreatorRow[]>((resolve, reject) => {
-            const req = db.transaction("creators", "readonly").objectStore("creators").getAll()
-            req.onsuccess = () => resolve(req.result as CreatorRow[])
-            req.onerror = () => reject(req.error)
-          }),
-      )
+    indexPromise = (async () => {
+      // パック (単一レコード) を優先。無ければ旧 per-row ストア (移行元)
+      const pack = await getMeta<string>(PACK_META_KEY)
+      if (pack) return decodePack(pack)
+      return getAllCreatorRows()
+    })()
       .then((rows) => {
         indexRows = rows
         return rows
+      })
+      .catch((e) => {
+        indexPromise = null
+        throw e
       })
   }
   return indexPromise
@@ -130,70 +210,58 @@ function rankRow(row: CreatorRow, q: string, ql: string, service?: string): numb
 /** 名前/ID/slug で検索。完全一致 > 前方一致 > 部分一致 の順で返す */
 export async function searchCreators(qRaw: string, limit = 60): Promise<CreatorRow[]> {
   const { q, service } = normalizeCreatorQuery(qRaw)
-  if (!q) {
-    const rows = await loadIndex()
-    return rows.slice(0, limit)
-  }
+  const rows = await loadIndex()
+  if (!q) return rows.slice(0, limit)
   const ql = q.toLowerCase()
-  let rows: CreatorRow[]
-  try {
-    rows = await loadIndex()
-  } catch {
-    // メモリ索引が作れない環境 (ストア巨大等) はカーソル走査にフォールバック
-    return searchCreatorsByCursor(q, ql, service, limit)
-  }
-  const scored: { row: CreatorRow; score: number }[] = []
+  const scored: { row: CreatorRow; score: number; fav: number }[] = []
   for (const row of rows) {
     const score = rankRow(row, q, ql, service)
-    if (score >= 0) scored.push({ row, score })
+    if (score >= 0) scored.push({ row, score, fav: row.favorited || 0 })
   }
-  scored.sort((a, b) => a.score - b.score)
+  scored.sort((a, b) => {
+    if (a.score !== b.score) return a.score - b.score
+    if (a.fav !== b.fav) return b.fav - a.fav // 同スコアは人気度順
+    return a.row.nameLower < b.row.nameLower ? -1 : 1
+  })
   return scored.slice(0, limit).map((s) => s.row)
 }
 
-/** フォールバック: IndexedDB カーソルで全走査 (旧実装) */
-async function searchCreatorsByCursor(
-  q: string,
-  ql: string,
-  service: string | undefined,
-  limit: number,
-): Promise<CreatorRow[]> {
-  const db = await openDb()
-  return new Promise((resolve, reject) => {
-    const t = db.transaction("creators", "readonly")
-    const out: CreatorRow[] = []
-    const cursorReq = t.objectStore("creators").openCursor()
-    cursorReq.onsuccess = () => {
-      const c = cursorReq.result
-      if (!c || out.length >= limit) return resolve(out)
-      const row = c.value as CreatorRow
-      if (rankRow(row, q, ql, service) >= 0) out.push(row)
-      c.continue()
-    }
-    cursorReq.onerror = () => reject(cursorReq.error)
-  })
-}
-
+/**
+ * 索引をパック (単一レコード) として保存。
+ * 旧 per-row ストア (99k put) と比べ、1 put / 1 文字列で済み高速・小容量。
+ */
 export async function saveCreators(rows: CreatorRow[]) {
-  const db = await openDb()
-  await new Promise<void>((resolve, reject) => {
-    const t = db.transaction("creators", "readwrite")
-    const s = t.objectStore("creators")
-    for (const r of rows) s.put(r)
-    t.oncomplete = () => resolve()
-    t.onerror = () => reject(t.error)
-  })
-  await setMeta("creatorsFetchedAt", Date.now())
+  await setMeta(PACK_META_KEY, encodePack(rows))
+  await setMeta("creatorsCount", rows.length)
   await setMeta("creatorsIndexVersion", SEARCH_INDEX_VERSION)
-  // 次回検索でメモリ索引を作り直させる (v1 行から v2 行への混在を防ぐ)
+  await setMeta("creatorsFetchedAt", Date.now())
+  // 旧 per-row ストアは移行元としてのみ使用。パック保存済みなら空にして容量解放
+  try {
+    await clearCreatorRows()
+  } catch {
+    /* clear 失敗は無害 (次回再構築で上書き) */
+  }
   invalidateCreatorIndex()
 }
 
 export async function creatorsCount(): Promise<number> {
+  const packed = await getMeta<string>(PACK_META_KEY)
+  if (packed !== undefined) {
+    const n = await getMeta<number>("creatorsCount")
+    if (typeof n === "number") return n
+    return decodePack(packed).length // メタが無い場合の保険 (通常到達しない)
+  }
   return tx("creators", "readonly", (s) => s.count())
 }
 
 export async function getCreatorRow(key: string): Promise<CreatorRow | undefined> {
+  try {
+    const rows = await loadIndex()
+    const hit = rows.find((r) => r.key === key)
+    if (hit) return hit
+  } catch {
+    /* fallthrough: 旧ストア直接参照 */
+  }
   return tx("creators", "readonly", (s) => s.get(key))
 }
 

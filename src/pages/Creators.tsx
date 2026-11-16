@@ -4,6 +4,7 @@ import {
   searchCreators,
   saveCreators,
   creatorsCount,
+  getAllCreatorRows,
   getMeta,
   invalidateCreatorIndex,
   SEARCH_INDEX_VERSION,
@@ -13,7 +14,7 @@ import type { PawCreator } from "../types"
 import { Spinner, ErrorBox, Empty, fmtDate } from "../components"
 import { navigate } from "../router"
 
-/** API レスポンス → 索引行 (v2: public_id / slug を保持) */
+/** API レスポンス → 索引行 (パック v2: slug / favorited を保持) */
 function toRow(c: PawCreator): CreatorRow {
   const slug = (c.public_id || "").toLowerCase()
   return {
@@ -23,6 +24,7 @@ function toRow(c: PawCreator): CreatorRow {
     name: c.name,
     nameLower: (c.name || "").toLowerCase(),
     ...(slug ? { publicId: c.public_id, publicIdLower: slug } : {}),
+    ...(c.favorited ? { favorited: c.favorited } : {}),
   }
 }
 
@@ -51,32 +53,36 @@ export function CreatorsPage() {
       setBuilt(count > 0 ? count : null)
       await runSearch("")
       if (alive) setReady(true)
-      // キャッシュ未構築 or 旧バージョン索引 (slug 無し) ならバックグラウンドで再構築
+      // パック索引が現行バージョンなら何もしない
       const version = count > 0 ? await getMeta<number>("creatorsIndexVersion") : null
-      if (count === 0 || version !== SEARCH_INDEX_VERSION) {
-        setBuilding(true)
-        setError(null)
-        try {
+      if (version === SEARCH_INDEX_VERSION) return
+      setBuilding(true)
+      setError(null)
+      try {
+        // 移行: slug 付き per-row 索引 (v2 で構築済み) があれば API 不要でパック化。
+        // 無ければ (未構築 or v1) API から取得して構築
+        const legacy = count > 0 ? await getAllCreatorRows() : []
+        const hasSlug = legacy.length > 0 && legacy[0].publicIdLower !== undefined
+        let total: number
+        if (hasSlug) {
+          invalidateCreatorIndex()
+          await saveCreators(legacy)
+          total = legacy.length
+        } else {
           const all = await api.creators()
           if (!alive) return
-          invalidateCreatorIndex()
           const mapped = all.map(toRow)
-          let saved = 0
-          for (let i = 0; i < mapped.length; i += 5000) {
-            await saveCreators(mapped.slice(i, i + 5000))
-            saved = Math.min(i + 5000, mapped.length)
-            if (alive) setBuilt(saved)
-          }
-          if (alive) {
-            setBuilt(mapped.length)
-            // 構築完了で現在の検索をやり直す (フルデータで)
-            await runSearch(qRef.current)
-          }
-        } catch (e) {
-          if (alive) setError(e)
-        } finally {
-          if (alive) setBuilding(false)
+          await saveCreators(mapped)
+          total = mapped.length
         }
+        if (!alive) return
+        setBuilt(total)
+        // 構築完了で現在の検索をやり直す (フルデータで)
+        await runSearch(qRef.current)
+      } catch (e) {
+        if (alive) setError(e)
+      } finally {
+        if (alive) setBuilding(false)
       }
     })()
     return () => {
@@ -126,12 +132,7 @@ export function CreatorsPage() {
               try {
                 const all = await api.creators()
                 const mapped = all.map(toRow)
-                let saved = 0
-                for (let i = 0; i < mapped.length; i += 5000) {
-                  await saveCreators(mapped.slice(i, i + 5000))
-                  saved = Math.min(i + 5000, mapped.length)
-                  setBuilt(saved)
-                }
+                await saveCreators(mapped)
                 setBuilt(mapped.length)
                 await runSearch(q)
               } catch (e) {
