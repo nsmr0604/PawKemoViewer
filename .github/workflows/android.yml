@@ -80,8 +80,8 @@ jobs:
             "$BT/zipalign" -f -p 4 "$apk" "$out.aligned"
             "$BT/apksigner" sign \
               --ks "$KS" \
-              --ks-pass pass:pawchive-dev \
-              --key-pass pass:pawchive-dev \
+              --ks-pass 'pass:PA$$wd' \
+              --key-pass 'pass:PA$$wd' \
               --out "$out" "$out.aligned"
             "$BT/apksigner" verify "$out"
             rm -f "$out.aligned"
