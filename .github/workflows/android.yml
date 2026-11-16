@@ -8,9 +8,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+
   build:
 
     runs-on: ubuntu-24.04
@@ -61,9 +62,46 @@ jobs:
         run: |
           npx tauri android build
 
-      - name: Upload APK
+      - name: Sign APKs (dev keystore / 仮署名)
+        run: |
+          set -e
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          KS="$GITHUB_WORKSPACE/src-tauri/android-dev.keystore"
+          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          mkdir -p dist-apk
+
+          for apk in $(find src-tauri/gen/android/app/build/outputs -type f -name "*.apk"); do
+            base=$(basename "$apk")
+            # app-{abi}-release.apk / app-{abi}-unsigned-release.apk から abi を抽出
+            abi=$(echo "$base" | sed -n 's/^app-\([a-z0-9_]*\)-\(unsigned-\)\{0,1\}release\.apk$/\1/p')
+            if [ -z "$abi" ]; then abi="universal"; fi
+            out="dist-apk/Pawchive.Viewer_${VER}_${abi}.apk"
+
+            "$BT/zipalign" -f -p 4 "$apk" "$out.aligned"
+            "$BT/apksigner" sign \
+              --ks "$KS" \
+              --ks-pass pass:pawchive-dev \
+              --key-pass pass:pawchive-dev \
+              --out "$out" "$out.aligned"
+            "$BT/apksigner" verify "$out"
+            rm -f "$out.aligned"
+            echo "signed: $out"
+          done
+
+          ls -la dist-apk
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: pawchive-android
-          path: |
-            src-tauri/gen/android/app/build/outputs/**/*.apk
+          path: dist-apk/*.apk
+
+      - name: Attach APK to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          gh release upload "pawchive-v${VER}" dist-apk/*.apk --clobber \
+            || gh release create "pawchive-v${VER}" dist-apk/*.apk \
+                 --title "Pawchive Viewer v${VER}" \
+                 --notes "Automated build (APK: dev-signed for testing)."
