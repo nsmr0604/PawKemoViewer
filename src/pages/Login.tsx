@@ -1,5 +1,6 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
+import { getVersion } from "@tauri-apps/api/app"
 import { updateSettings, getSettings, api } from "../api"
 import { navigate, useRoute } from "../router"
 
@@ -10,6 +11,13 @@ export function LoginPage() {
   const [password, setPassword] = useState("")
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [appVersion, setAppVersion] = useState("")
+
+  useEffect(() => {
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => setAppVersion(""))
+  }, [])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -119,6 +127,9 @@ export function LoginPage() {
             セッションキーを手動入力する →
           </span>
         </div>
+        {appVersion && (
+          <div className="login-version small">Pawchive Viewer v{appVersion}</div>
+        )}
       </div>
     </div>
   )

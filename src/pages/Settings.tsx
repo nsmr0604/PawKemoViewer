@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { getVersion } from "@tauri-apps/api/app"
 import { getSettings, updateSettings, api } from "../api"
 import { setMeta } from "../db"
 import { navigate } from "../router"
@@ -17,6 +18,16 @@ export function SettingsPage() {
 
   const [version, setVersion] =
     useState<string>("")
+
+  const [appVersion, setAppVersion] =
+    useState<string>("")
+
+  useEffect(() => {
+    // アプリ自身のバージョン (tauri.conf.json / Cargo.toml と共通)
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => setAppVersion("取得失敗"))
+  }, [])
 
   const save = () => {
     updateSettings({
@@ -229,6 +240,11 @@ export function SettingsPage() {
         Pawchive Viewer は
         pawchive.pw の
         非公式クライアントです。
+      </p>
+
+      <p className="small">
+        アプリバージョン:{" "}
+        <code>{appVersion || "…"}</code>
       </p>
 
     </div>

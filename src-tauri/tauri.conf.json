@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Pawchive Viewer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "identifier": "jp.geek.nsmr0604.pawchive",
 
   "build": {
@@ -40,6 +40,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+
+    "windows": {
+      "nsis": {
+        "installerHooks": "./nsis-hooks.nsh"
+      }
+    },
 
     "android": {
       "debugApplicationIdSuffix": ".debug"
