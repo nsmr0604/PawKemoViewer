@@ -1,8 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api, clearApiCache, creatorIconUrl, creatorBannerUrl } from "../api"
-import { searchCreators, saveCreators, creatorsCount, type CreatorRow } from "../db"
+import {
+  searchCreators,
+  saveCreators,
+  creatorsCount,
+  getMeta,
+  invalidateCreatorIndex,
+  SEARCH_INDEX_VERSION,
+  type CreatorRow,
+} from "../db"
+import type { PawCreator } from "../types"
 import { Spinner, ErrorBox, Empty, fmtDate } from "../components"
 import { navigate } from "../router"
+
+/** API レスポンス → 索引行 (v2: public_id / slug を保持) */
+function toRow(c: PawCreator): CreatorRow {
+  const slug = (c.public_id || "").toLowerCase()
+  return {
+    key: `${c.service}:${c.id}`,
+    id: c.id,
+    service: c.service,
+    name: c.name,
+    nameLower: (c.name || "").toLowerCase(),
+    ...(slug ? { publicId: c.public_id, publicIdLower: slug } : {}),
+  }
+}
 
 export function CreatorsPage() {
   const [q, setQ] = useState("")
@@ -14,7 +36,7 @@ export function CreatorsPage() {
   const qRef = useRef(q)
   qRef.current = q
 
-  // 即座にキャッシュから検索 (構築途中でも部分結果を表示)
+  // メモリ索引から即時検索 (構築途中でも部分結果を表示)
   const runSearch = useCallback(async (value: string) => {
     const res = await searchCreators(value)
     setRows(res)
@@ -29,20 +51,16 @@ export function CreatorsPage() {
       setBuilt(count > 0 ? count : null)
       await runSearch("")
       if (alive) setReady(true)
-      // キャッシュ未構築ならバックグラウンドで構築 (検索を妨げない)
-      if (count === 0) {
+      // キャッシュ未構築 or 旧バージョン索引 (slug 無し) ならバックグラウンドで再構築
+      const version = count > 0 ? await getMeta<number>("creatorsIndexVersion") : null
+      if (count === 0 || version !== SEARCH_INDEX_VERSION) {
         setBuilding(true)
         setError(null)
         try {
           const all = await api.creators()
           if (!alive) return
-          const mapped = all.map((c) => ({
-            key: `${c.service}:${c.id}`,
-            id: c.id,
-            service: c.service,
-            name: c.name,
-            nameLower: (c.name || "").toLowerCase(),
-          }))
+          invalidateCreatorIndex()
+          const mapped = all.map(toRow)
           let saved = 0
           for (let i = 0; i < mapped.length; i += 5000) {
             await saveCreators(mapped.slice(i, i + 5000))
@@ -79,7 +97,7 @@ export function CreatorsPage() {
       <form className="search-bar" onSubmit={(e) => e.preventDefault()}>
         <input
           type="search"
-          placeholder="クリエイター名 / ID で検索"
+          placeholder="クリエイター名 / ID / URL で検索"
           value={q}
           onChange={(e) => onSearch(e.target.value)}
         />
@@ -103,16 +121,11 @@ export function CreatorsPage() {
             onClick={async () => {
               if (!window.confirm("クリエイター一覧 (約10万件) を再取得します。よろしいですか?")) return
               clearApiCache()
+              invalidateCreatorIndex()
               setBuilding(true)
               try {
                 const all = await api.creators()
-                const mapped = all.map((c) => ({
-                  key: `${c.service}:${c.id}`,
-                  id: c.id,
-                  service: c.service,
-                  name: c.name,
-                  nameLower: (c.name || "").toLowerCase(),
-                }))
+                const mapped = all.map(toRow)
                 let saved = 0
                 for (let i = 0; i < mapped.length; i += 5000) {
                   await saveCreators(mapped.slice(i, i + 5000))
@@ -147,6 +160,7 @@ export function CreatorsPage() {
               <div className="creator-name">{r.name}</div>
               <div className="creator-sub">
                 {r.service} · {r.id}
+                {r.publicId ? ` · ${r.publicId}` : ""}
               </div>
             </div>
           </div>

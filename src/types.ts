@@ -43,6 +43,8 @@ export interface PawCreator {
   id: string
   indexed: number | string
   name: string
+  /** URL slug (fanbox: tateha 等) */
+  public_id?: string
   service: string
   updated: number | string
 }
