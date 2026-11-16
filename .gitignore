@@ -38,6 +38,9 @@ Desktop.ini
 .env
 .env.*
 
+# 作業コンテキスト (エージェントのセッションメモ・ローカル限定)
+/notes/
+
 # OS
 Thumbs.db
 Desktop.ini

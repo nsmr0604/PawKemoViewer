@@ -20,6 +20,11 @@
 - Tauri v2 の引数は **camelCase**(Rust 側 snake_case → JS からは `sessionKey` 等)
 - snake_case で渡すとバインドされず Option 引数が常に None になる(実害発生済み)
 
+## コンテキスト管理
+
+- 会話コンテキストが長くなったら、内容を **`notes/` 以下に Markdown で落とし込み、以後そちらを参照**する
+- `notes/` は gitignore で除外済み(ローカル限定、コミットしない)
+
 ## API 規約
 
 - pawchive API は `pawchive.pw/api/v1` 直アクセス。エンドポイントは Swagger スキーマに準拠
