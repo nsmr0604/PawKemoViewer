@@ -166,9 +166,12 @@ async fn login_request(username: String, password: String) -> Result<LoginResult
         });
     }
 
+    // リダイレクトを追従しない (pawchive は 302 応答に Set-Cookie を付けるため。
+    // 追従すると最終応答のヘッダーしか見えず session を取り逃す)
     let client = reqwest::Client::builder()
         .brotli(true)
         .gzip(true)
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|e| e.to_string())?;
 
