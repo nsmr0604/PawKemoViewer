@@ -5,7 +5,7 @@ import { CreatorPage } from "./pages/CreatorPage"
 import { PostPage } from "./pages/PostPage"
 import { FavoritesPage } from "./pages/Favorites"
 import { SettingsPage } from "./pages/Settings"
-import { loadFollows } from "./follows"
+import { loadFollows, syncFollowsWithAccount } from "./follows"
 import { useEffect, useState, useCallback } from "react"
 import { LoginPage } from "./pages/Login"
 import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
@@ -34,6 +34,11 @@ export default function App() {
   }, [])
 
   const settings = getSettings()
+  useEffect(() => {
+    if (settings.sessionKey) syncFollowsWithAccount().catch(() => {
+      // オフライン時は次回起動またはフォロー画面表示時に再試行する。
+    })
+  }, [settings.sessionKey])
   const layout: ResolvedLayout = resolveLayout(settings.layoutMode, winWidth)
 
   useEffect(() => {
