@@ -85,8 +85,9 @@ export function PostPage({
           return bTime - aTime
         })
         setRevisions(ordered)
-        setSelectedRevisionId(ordered[0]?.revision_id ?? null)
-        logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${ordered.length} latest=${ordered[0]?.revision_id ?? "none"}`)
+        // 投稿詳細APIが現在の最新版。改訂履歴APIの内容は切替用の旧版として保持する。
+        setSelectedRevisionId(null)
+        logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${ordered.length}`)
       } catch (e) {
         setRevisions([])
         setRevisionsError(e)
@@ -244,7 +245,7 @@ export function PostPage({
           {" · "}
           公開 {fmtDate(displayPost.published)}
           {displayPost.edited && displayPost.edited !== displayPost.published && ` · 編集 ${fmtDate(displayPost.edited)}`}
-          {revisions && revisions.length > 0 && ` · 改訂 ${revisions.findIndex((r) => r.revision_id === activeRevision?.revision_id) + 1}/${revisions.length}`}
+          {revisions && revisions.length > 0 && (activeRevision ? ` · 旧版 ${revisions.findIndex((r) => r.revision_id === activeRevision.revision_id) + 1}/${revisions.length}` : " · 最新版")}
         </div>
         <div className="creator-actions">
           <FollowButton service={postContext.service} id={postContext.creatorId} />
@@ -405,16 +406,17 @@ export function PostPage({
               <span className="small">表示する版</span>
               <select
                 className="revision-selector"
-                value={String(activeRevision?.revision_id ?? "")}
+                value={String(activeRevision?.revision_id ?? "latest")}
                 onChange={(e) => {
-                  const nextId = Number(e.target.value)
+                  const nextId = e.target.value === "latest" ? null : Number(e.target.value)
                   setSelectedRevisionId(Number.isFinite(nextId) ? nextId : null)
                   setLightboxIndex(null)
                 }}
               >
+                <option value="latest">最新版（現在の投稿）</option>
                 {revisions.map((r, index) => (
                   <option key={r.revision_id} value={String(r.revision_id)}>
-                    {index === 0 ? "最新" : `旧版 ${index}`} · {fmtDate(r.added)} · {r.title || "(無題)"}
+                    旧版 {index + 1} · {fmtDate(r.added)} · {r.title || "(無題)"}
                   </option>
                 ))}
               </select>
@@ -427,7 +429,7 @@ export function PostPage({
           <Empty text="改訂履歴はありません" />
         )}
         {revisions && revisions.length > 0 && (
-          <p className="small revision-hint">最新の版を初期表示しています。プルダウンから過去の版へ切り替えられます。</p>
+          <p className="small revision-hint">現在の投稿（最新版）を初期表示しています。プルダウンから過去の版へ切り替えられます。</p>
         )}
       </div>
 
