@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import type { PawFile, PawPost } from "./types"
 import { fileUrl, thumbUrl, proxyFileUrl, proxyLinkUrl, getSettings } from "./api"
 import { navigate } from "./router"
+import { logWarn } from "./log"
 
 // ---------------------------------------------------------------------------
 // 汎用
@@ -164,9 +165,26 @@ export function Thumb({ file, className }: { file: PawFile | undefined; classNam
 // 投稿グリッド & リスト
 // ---------------------------------------------------------------------------
 
+/** 不完全な投稿データから壊れた投稿URLを生成しない */
+function postPath(post: PawPost): string | null {
+  const validService = post.service === "fanbox" || post.service === "patreon"
+  const validIds = [post.user, post.id].every(
+    (value) => typeof value === "string" && !!value.trim() &&
+      value !== "undefined" && value !== "null" && !value.includes("/"),
+  )
+  if (!validService || !validIds) {
+    logWarn(
+      `投稿遷移を中止: 不正な識別子 service=${String(post.service)} creatorId=${String(post.user)} postId=${String(post.id)}`,
+    )
+    return null
+  }
+  return `/post/${post.service}/${encodeURIComponent(post.user)}/${encodeURIComponent(post.id)}`
+}
+
 export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
   const onClick = useCallback(() => {
-    navigate(`/post/${post.service}/${post.user}/${post.id}`)
+    const path = postPath(post)
+    if (path) navigate(path)
   }, [post])
   // 画像枚数バッジ (EhViewer のページ数バッジ相当): 本体 + 添付の合計
   const imageCount =
@@ -191,7 +209,8 @@ export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
 /** リスト表示用の行カード (EhViewer / FANBOX Viewer の行型レイアウト参考) */
 export function PostRow({ post, isNew }: { post: PawPost; isNew?: boolean }) {
   const onClick = useCallback(() => {
-    navigate(`/post/${post.service}/${post.user}/${post.id}`)
+    const path = postPath(post)
+    if (path) navigate(path)
   }, [post])
   const imageCount =
     (post.file?.path ? 1 : 0) + (post.attachments?.length || 0)
