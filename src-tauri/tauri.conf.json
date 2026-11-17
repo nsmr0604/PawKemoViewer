@@ -1,16 +1,14 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Pawchive Viewer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "jp.geek.nsmr0604.pawchive",
-
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
-
   "app": {
     "windows": [
       {
@@ -23,16 +21,13 @@
         "fullscreen": false
       }
     ],
-
     "security": {
       "csp": null
     }
   },
-
   "bundle": {
     "active": true,
     "targets": "all",
-
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -40,13 +35,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-
     "windows": {
       "nsis": {
         "installerHooks": "./nsis-hooks.nsh"
       }
     },
-
     "android": {
       "debugApplicationIdSuffix": ".debug"
     }

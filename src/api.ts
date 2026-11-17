@@ -315,10 +315,23 @@ export const api = {
   post: (service: string, creatorId: string, postId: string) =>
     request<PawPost>(`/${service}/user/${creatorId}/post/${postId}`),
 
-  postRevisions: (service: string, creatorId: string, postId: string) =>
-    request<PawRevision[]>(
-      `/${service}/user/${creatorId}/post/${postId}/revisions`,
-    ),
+  postRevisions: (service: string, creatorId: string, postId: string) => {
+    // 投稿詳細と同じ識別子を使い、URL segment ごとに encode して要求する。
+    // 不正な識別子は /undefined/... のような API URL に変換しない。
+    const validService = service === "fanbox" || service === "patreon"
+    const validIds = [creatorId, postId].every(
+      (value) => typeof value === "string" && !!value.trim() &&
+        value !== "undefined" && value !== "null" && !value.includes("/"),
+    )
+    if (!validService || !validIds) {
+      return Promise.reject(new Error(
+        `Invalid post revision context: service=${String(service)} creatorId=${String(creatorId)} postId=${String(postId)}`,
+      ))
+    }
+    return request<PawRevision[]>(
+      `/${encodeURIComponent(service)}/user/${encodeURIComponent(creatorId)}/post/${encodeURIComponent(postId)}/revisions`,
+    )
+  },
 
   postComments: (service: string, creatorId: string, postId: string) =>
     request<PawComment[]>(

@@ -7,7 +7,6 @@ import {
   Empty,
   fmtDate,
   sanitizeContent,
-  Thumb,
   PostCard,
 } from "../components"
 import { navigate } from "../router"
@@ -35,6 +34,8 @@ export function PostPage({
   const [post, setPost] = useState<PawPost | null>(null)
   const [comments, setComments] = useState<PawComment[] | null>(null)
   const [revisions, setRevisions] = useState<PawRevision[] | null>(null)
+  const [revisionsError, setRevisionsError] = useState<unknown>(null)
+  const [selectedRevisionId, setSelectedRevisionId] = useState<number | null>(null)
   const [hashResult, setHashResult] = useState<HashLookupResult | null>(null)
   const [showHash, setShowHash] = useState(false)
   const [flagged, setFlagged] = useState<"none" | "busy" | "ok" | "dup" | "err">("none")
@@ -54,6 +55,8 @@ export function PostPage({
     setError(null)
     setComments(null)
     setRevisions(null)
+    setRevisionsError(null)
+    setSelectedRevisionId(null)
     setHashResult(null)
     setShowHash(false)
     try {
@@ -70,12 +73,28 @@ export function PostPage({
       }
       const fileCount = (p.file?.path ? 1 : 0) + (p.attachments?.length || 0)
       logInfo(`投稿詳細取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} files=${fileCount}`)
+      // 改訂履歴を確定してから投稿本文を表示し、旧版が一瞬先に表示されるのを防ぐ。
+      try {
+        const r = await api.postRevisions(postContext.service, postContext.creatorId, postContext.postId)
+        const ordered = (Array.isArray(r) ? r : []).slice().sort((a, b) => {
+          const aTime = Date.parse(a.added || "")
+          const bTime = Date.parse(b.added || "")
+          if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0
+          if (Number.isNaN(aTime)) return 1
+          if (Number.isNaN(bTime)) return -1
+          return bTime - aTime
+        })
+        setRevisions(ordered)
+        // 投稿詳細APIが現在の最新版。改訂履歴APIの内容は切替用の旧版として保持する。
+        setSelectedRevisionId(null)
+        logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${ordered.length}`)
+      } catch (e) {
+        setRevisions([])
+        setRevisionsError(e)
+        logError(`投稿改訂履歴取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
+      }
       setPost(p)
       api.postComments(postContext.service, postContext.creatorId, postContext.postId).then(setComments).catch(() => setComments([]))
-      api
-        .postRevisions(postContext.service, postContext.creatorId, postContext.postId)
-        .then((r) => setRevisions(r.length ? r : []))
-        .catch(() => setRevisions([]))
     } catch (e) {
       setError(e)
     }
@@ -188,7 +207,12 @@ export function PostPage({
     const name = path.split("/").pop() || ""
     return name.replace(/\.[^.]+$/, "")
   }
-  const mainHash = post.file?.path ? hashFromPath(post.file.path) : ""
+  const activeRevision =
+    selectedRevisionId !== null && revisions
+      ? (revisions.find((r) => r.revision_id === selectedRevisionId) || null)
+      : null
+  const displayPost: PawPost = activeRevision || post
+  const mainHash = displayPost.file?.path ? hashFromPath(displayPost.file.path) : ""
 
   const onFlag = async () => {
     setFlagged("busy")
@@ -205,21 +229,23 @@ export function PostPage({
   }
 
   const allFiles: PawFile[] = [
-    ...(post.file?.path ? [post.file] : []),
-    ...(post.attachments || []),
+    ...(displayPost.file?.path ? [displayPost.file] : []),
+    ...(displayPost.attachments || []),
   ]
+  filesCountRef.current = allFiles.length
 
   return (
     <div className="page post-page" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="post-title-wrap">
-        <h1 className="post-title">{post.title || "(無題)"}</h1>
+        <h1 className="post-title">{displayPost.title || "(無題)"}</h1>
         <div className="post-meta">
           <span className="link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
             {postContext.service} / {postContext.creatorId}
           </span>
           {" · "}
-          公開 {fmtDate(post.published)}
-          {post.edited && post.edited !== post.published && ` · 編集 ${fmtDate(post.edited)}`}
+          公開 {fmtDate(displayPost.published)}
+          {displayPost.edited && displayPost.edited !== displayPost.published && ` · 編集 ${fmtDate(displayPost.edited)}`}
+          {revisions && revisions.length > 0 && (activeRevision ? ` · 旧版 ${revisions.findIndex((r) => r.revision_id === activeRevision.revision_id) + 1}/${revisions.length}` : " · 最新版")}
         </div>
         <div className="creator-actions">
           <FollowButton service={postContext.service} id={postContext.creatorId} />
@@ -268,7 +294,7 @@ export function PostPage({
               ) : (
                 <img
                   loading="lazy"
-                  src={f === post.file ? thumbUrl(f) : fileUrl(f)}
+                  src={f === displayPost.file ? thumbUrl(f) : fileUrl(f)}
                   alt={f.name}
                   onClick={() => setLightboxIndex(i)}
                   onError={(e) => {
@@ -294,12 +320,12 @@ export function PostPage({
         </div>
       )}
 
-      {post.content && (
-        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(post.content, postContext.service) }} />
+      {displayPost.content && (
+        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service) }} />
       )}
 
-      {Object.keys(post.embed || {}).length > 0 && (
-        <pre className="post-embed">{JSON.stringify(post.embed, null, 2)}</pre>
+      {Object.keys(displayPost.embed || {}).length > 0 && (
+        <pre className="post-embed">{JSON.stringify(displayPost.embed, null, 2)}</pre>
       )}
 
       <div className="post-nav">
@@ -372,25 +398,40 @@ export function PostPage({
         )}
       </div>
 
-      {revisions && revisions.length > 0 && (
-        <div className="section">
-          <h3>改訂履歴 ({revisions.length})</h3>
-          <ul className="revision-list">
-            {revisions.map((r) => (
-              <li key={r.revision_id} className="revision">
-                <div className="comment-head">
-                  rev {r.revision_id} · 追加 {fmtDate(r.added)} · ファイル {r.file?.name || "-"}
-                </div>
-                <div className="revision-files">
-                  {[...(r.file?.path ? [r.file] : []), ...(r.attachments || [])].map((f, i) => (
-                    <Thumb key={i} file={f} className="revision-thumb" />
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
+      <div className="section">
+        <div className="section-row">
+          <h3>改訂履歴{revisions && revisions.length > 0 ? ` (${revisions.length})` : ""}</h3>
+          {revisions && revisions.length > 0 && (
+            <label className="revision-selector-label">
+              <span className="small">表示する版</span>
+              <select
+                className="revision-selector"
+                value={String(activeRevision?.revision_id ?? "latest")}
+                onChange={(e) => {
+                  const nextId = e.target.value === "latest" ? null : Number(e.target.value)
+                  setSelectedRevisionId(nextId === null || !Number.isFinite(nextId) ? null : nextId)
+                  setLightboxIndex(null)
+                }}
+              >
+                <option value="latest">最新版（現在の投稿）</option>
+                {revisions.map((r, index) => (
+                  <option key={r.revision_id} value={String(r.revision_id)}>
+                    旧版 {index + 1} · {fmtDate(r.added)} · {r.title || "(無題)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
-      )}
+        {revisions === null && <Spinner label="改訂履歴…" />}
+        {revisionsError && <ErrorBox error={revisionsError} />}
+        {revisions && revisions.length === 0 && !revisionsError && (
+          <Empty text="改訂履歴はありません" />
+        )}
+        {revisions && revisions.length > 0 && (
+          <p className="small revision-hint">現在の投稿（最新版）を初期表示しています。プルダウンから過去の版へ切り替えられます。</p>
+        )}
+      </div>
 
       {lightboxIndex !== null && allFiles[lightboxIndex] && (() => {
         const lightbox = allFiles[lightboxIndex]
