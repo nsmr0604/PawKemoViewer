@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
 import { getAllSeen, setSeen, getSeen } from "../db"
-import { loadFollows, unfollow } from "../follows"
+import { loadFollows, unfollow, mergeFollows } from "../follows"
 import { ErrorBox, Empty, fmtDate } from "../components"
 import { navigate } from "../router"
 
@@ -34,6 +34,7 @@ export function FavoritesPage() {
   const [follows, setFollows] = useState<FollowState[]>([])
   const [accountFavs, setAccountFavs] = useState<AccountFavorite[] | null>(null)
   const [accountErr, setAccountErr] = useState<unknown>(null)
+  const [syncResult, setSyncResult] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
 
   const refresh = useCallback(async () => {
@@ -155,6 +156,23 @@ export function FavoritesPage() {
         api.accountFavorites("post").catch(() => [] as AccountFavorite[]),
       ])
       setAccountFavs([...artists, ...posts])
+      // アカウントのお気に入りクリエイターをローカルフォローへ保存する。
+      // 投稿のお気に入りはクリエイターフォローとは別データなので一覧表示のみ。
+      const imported = mergeFollows(
+        artists
+          .filter((f) => f.service && f.id)
+          .map((f) => ({
+            service: f.service!,
+            id: f.id,
+            name: f.name || f.id,
+          })),
+      )
+      await refresh()
+      setSyncResult(
+        imported > 0
+          ? `ローカルに ${imported} 件追加しました (既存フォローは保持)`
+          : "同期済みです。ローカルフォローに追加する項目はありません",
+      )
     } catch (e) {
       setAccountErr(e)
     }
@@ -268,7 +286,7 @@ export function FavoritesPage() {
             </span>
             {sessionKey ? (
               <button className="btn" onClick={loadAccount}>
-                取得
+                同期してローカルに保存
               </button>
             ) : (
               <button className="btn btn-primary" onClick={() => navigate("/login?next=/favorites")}>
@@ -276,6 +294,7 @@ export function FavoritesPage() {
               </button>
             )}
           </div>
+          {syncResult && <div className="hint-row">{syncResult}</div>}
           {accountErr !== null && <ErrorBox error={accountErr} onRetry={loadAccount} />}
           {accountErr instanceof ApiError && apiStatus(accountErr) === 401 && (
             <div className="error-box">
