@@ -30,18 +30,37 @@
 - **開発上の発見・バグ・仕様・ノウハウは、気づいた時点で `notes/` にすべて記録する**
 - **記法は OKF (Open Knowledge Format) v0.2 の軽量サブセット**(仕様詳細: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
 
-### notes/ バンドル構成(固定)
+### notes/ バンドル構成
 
 ```
 notes/
-├─ index.md          # バンドル目次 (frontmatter は okf_version のみ許可)
-├─ log.md            # 更新履歴 (日付降順、YYYY-MM-DD 見出し)
-├─ pawchive-api.md   # type: Reference   — pawchive 実測仕様
-├─ tauri2.md         # type: Reference   — Tauri 2 の罠集
-├─ bugs.md           # type: Incident Log — バグ履歴
-├─ env.md            # type: Reference   — 開発マシン環境
-└─ sessions.md       # type: Session Note — 進捗・未解決事項
+├─ index.md            # バンドル目次 (frontmatter は okf_version のみ許可)
+├─ log.md              # 更新履歴 (日付降順、YYYY-MM-DD 見出し)
+├─ pawchive-api.md     # type: Reference   — pawchive 実測仕様
+├─ tauri2.md           # type: Reference   — Tauri 2 の罠集
+├─ github.md           # type: Reference   — GitHub / Actions 運用
+├─ bugs.md             # type: Incident Log — バグ履歴
+├─ env.md              # type: Reference   — 開発マシン環境
+├─ sessions.md         # type: Session Note — 進捗・未解決事項
+├─ android-testing.md  # type: Reference   — Android 実機テスト
+├─ windows-testing.md  # type: Reference   — Windows テストマニュアル
+├─ ui-reference.md     # type: Reference   — Android アプリ UI 参考
+└─ jhentai.md          # type: Reference   — JHenTai 実機確認知見
 ```
+
+### 新規 concept ファイルの追加規約
+
+- **既存 concept の枠に収まらない知見 (新規プラットフォーム・新規ライブラリ・
+  新規外部サービス等) は、既存ファイルに無理に混ぜず、
+  新たな OKF 形式 markdown を作成して管理する** (例: GitHub 関連 → `github.md`)
+- 判断基準: 既存ファイルの `title` / `description` / `tags` に自然に収まるか。
+  「〜も含めました」的な寄せ集め (雑多ノート化) はしない
+- 新規 concept 作成時は必ず:
+  1. frontmatter (type / title / description / tags / generated) を付与
+  2. `index.md` の目次に追記
+  3. `log.md` に追記
+- 既存 concept の内容が他ファイルへ移動する場合は、移動元に
+  「〜は 〇〇.md に移動」のポインタを 1 行残す
 
 - concept ファイル追加時は `index.md` の目次と `log.md` に必ず追記する
 
@@ -78,10 +97,8 @@ notes/
 - `Attested Computation` 型(`runtime`/`parameters`/`executor`/`attester`)
 - `references/` ディレクトリ規約
 - バンドル配布(git リポジトリ/tarball としての交換)
-  - `notes/knowledge.md`: 永続的なナレッジ(仕様・バグ・回避策・実測値)— セッションをまたいで維持
-  - `notes/YYYY-MM-DD-session.md`: セッション単位の進捗・未解決事項
-- コード修正時は、原因が分かった時点で knowledge.md に先に記録してから修正する
-- コード修正時は、原因が分かった時点で該当ノート (`bugs.md` や各 concept) に先に記録してから修正する
+
+(旧 `knowledge.md` / `YYYY-MM-DD-session.md` 構成は concept 分割方式へ移行済み)
 
 ## API 規約
 
