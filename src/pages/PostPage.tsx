@@ -208,8 +208,8 @@ export function PostPage({
     return name.replace(/\.[^.]+$/, "")
   }
   const activeRevision =
-    revisions && revisions.length > 0
-      ? (revisions.find((r) => r.revision_id === selectedRevisionId) || revisions[0])
+    selectedRevisionId !== null && revisions
+      ? (revisions.find((r) => r.revision_id === selectedRevisionId) || null)
       : null
   const displayPost: PawPost = activeRevision || post
   const mainHash = displayPost.file?.path ? hashFromPath(displayPost.file.path) : ""
