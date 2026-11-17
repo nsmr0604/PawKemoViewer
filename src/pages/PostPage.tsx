@@ -7,7 +7,6 @@ import {
   Empty,
   fmtDate,
   sanitizeContent,
-  Thumb,
   PostCard,
 } from "../components"
 import { navigate } from "../router"
@@ -233,6 +232,7 @@ export function PostPage({
     ...(displayPost.file?.path ? [displayPost.file] : []),
     ...(displayPost.attachments || []),
   ]
+  filesCountRef.current = allFiles.length
 
   return (
     <div className="page post-page" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -294,7 +294,7 @@ export function PostPage({
               ) : (
                 <img
                   loading="lazy"
-                  src={f === post.file ? thumbUrl(f) : fileUrl(f)}
+                  src={f === displayPost.file ? thumbUrl(f) : fileUrl(f)}
                   alt={f.name}
                   onClick={() => setLightboxIndex(i)}
                   onError={(e) => {
