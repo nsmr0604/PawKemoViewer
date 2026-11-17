@@ -130,7 +130,8 @@ export function SettingsPage() {
   const testSession = async () => {
     setTestResult("テスト中…")
     try {
-      await api.accountFavorites("artist")
+      // 保存前の入力値をそのまま検証する (保存済み設定とは分離)。
+      await api.accountFavorites("artist", sessionKey.trim())
       setTestResult("✅ お気に入りを取得できました (セッション有効)")
     } catch (e) {
       const st = apiStatus(e)
