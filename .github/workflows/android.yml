@@ -74,17 +74,11 @@ jobs:
           npx tauri android build
 
       - name: Sign APKs (debug keystore / 開発用仮署名)
-        # 標準手順で作成した debug.keystore (パスワードは公開定数 "android") を使用。
-        # 値は GitHub Secrets (ANDROID_KEYSTORE_PASSWORD) から渡す (yml への直書き禁止)。
-        # ローカルの値・再作成手順は secret.md (gitignore 済み) を参照
-        env:
-          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        # 標準手順の debug.keystore を使用。パスワード "android" は Android SDK の
+        # 公開定数 (debug.keystore は開発環境共通) のため直書きしてよい (ユーザー確定)。
+        # 正式リリース用の鍵では GitHub Secrets を使うこと
         run: |
           set -e
-          if [ -z "$KS_PASS" ]; then
-            echo "ERROR: Secret ANDROID_KEYSTORE_PASSWORD が未設定です (標準 debug.keystore の値: Settings > Secrets and variables > Actions)" >&2
-            exit 1
-          fi
           BT="$ANDROID_HOME/build-tools/35.0.0"
           KS="$GITHUB_WORKSPACE/src-tauri/android-debug.keystore"
           VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
@@ -100,8 +94,8 @@ jobs:
             "$BT/zipalign" -f -p 4 "$apk" "$out.aligned"
             "$BT/apksigner" sign \
               --ks "$KS" \
-              --ks-pass "pass:$KS_PASS" \
-              --key-pass "pass:$KS_PASS" \
+              --ks-pass 'pass:android' \
+              --key-pass 'pass:android' \
               --ks-key-alias androiddebugkey \
               --out "$out" "$out.aligned"
             "$BT/apksigner" verify "$out"
