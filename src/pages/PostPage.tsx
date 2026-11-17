@@ -409,7 +409,7 @@ export function PostPage({
                 value={String(activeRevision?.revision_id ?? "latest")}
                 onChange={(e) => {
                   const nextId = e.target.value === "latest" ? null : Number(e.target.value)
-                  setSelectedRevisionId(Number.isFinite(nextId) ? nextId : null)
+                  setSelectedRevisionId(nextId === null || !Number.isFinite(nextId) ? null : nextId)
                   setLightboxIndex(null)
                 }}
               >
