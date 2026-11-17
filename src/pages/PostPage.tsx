@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { api, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import type { PawComment, PawPost, PawRevision, HashLookupResult, PawFile } from "../types"
 import {
@@ -28,7 +28,8 @@ export function PostPage({
   const [hashResult, setHashResult] = useState<HashLookupResult | null>(null)
   const [showHash, setShowHash] = useState(false)
   const [flagged, setFlagged] = useState<"none" | "busy" | "ok" | "dup" | "err">("none")
-  const [lightbox, setLightbox] = useState<PawFile | null>(null)
+  /** ライトボックスで開いているファイルの allFiles 内インデックス (null=閉じている) */
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [error, setError] = useState<unknown>(null)
 
   const load = useCallback(async () => {
@@ -56,6 +57,32 @@ export function PostPage({
     setFlagged("none")
     window.scrollTo(0, 0)
   }, [load])
+
+  // ライトボックス: 投稿変更時に閉じる
+  useEffect(() => {
+    setLightboxIndex(null)
+  }, [service, creatorId, postId])
+
+  // ライトボックスのキーボード操作 (JHenTai の Keyboard Shortcuts 相当:
+  // Esc=閉じる / ←→=前後の画像)
+  const filesCountRef = useRef(0)
+  filesCountRef.current =
+    (post ? (post.file?.path ? 1 : 0) : 0) + (post?.attachments?.length || 0)
+
+  useEffect(() => {
+    if (lightboxIndex === null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setLightboxIndex(null)
+      } else if (e.key === "ArrowRight") {
+        setLightboxIndex((i) => (i === null ? null : Math.min(i + 1, filesCountRef.current - 1)))
+      } else if (e.key === "ArrowLeft") {
+        setLightboxIndex((i) => (i === null ? null : Math.max(i - 1, 0)))
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [lightboxIndex !== null])
 
   if (error) {
     return (
@@ -142,7 +169,7 @@ export function PostPage({
                   loading="lazy"
                   src={f === post.file ? thumbUrl(f) : fileUrl(f)}
                   alt={f.name}
-                  onClick={() => setLightbox(f)}
+                  onClick={() => setLightboxIndex(i)}
                   onError={(e) => {
                     const el = e.currentTarget
                     const full = fileUrl(f)
@@ -259,29 +286,45 @@ export function PostPage({
         </div>
       )}
 
-      {lightbox && (
-        <div className="lightbox" onClick={() => setLightbox(null)}>
-          {isVideo(lightbox) ? (
-            <video
-              src={fileUrl(lightbox)}
-              controls
-              autoPlay
-              playsInline
-              onClick={(e) => e.stopPropagation()}
-            />
-          ) : (
-            <img src={fileUrl(lightbox)} alt={lightbox.name} onClick={(e) => e.stopPropagation()} />
-          )}
-          <div className="lightbox-caption">
-            <a href={fileUrl(lightbox)} target="_blank" rel="noreferrer" download>
-              {lightbox.name} をダウンロード
-            </a>
-            <button className="btn" onClick={() => setLightbox(null)}>
-              閉じる
-            </button>
+      {lightboxIndex !== null && allFiles[lightboxIndex] && (() => {
+        const lightbox = allFiles[lightboxIndex]
+        const hasPrev = lightboxIndex > 0
+        const hasNext = lightboxIndex < allFiles.length - 1
+        return (
+          <div className="lightbox" onClick={() => setLightboxIndex(null)}>
+            {isVideo(lightbox) ? (
+              <video
+                src={fileUrl(lightbox)}
+                controls
+                autoPlay
+                playsInline
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <img src={fileUrl(lightbox)} alt={lightbox.name} onClick={(e) => e.stopPropagation()} />
+            )}
+            <div className="lightbox-caption" onClick={(e) => e.stopPropagation()}>
+              {allFiles.length > 1 && (
+                <span className="lightbox-pos">
+                  {lightboxIndex + 1} / {allFiles.length}
+                </span>
+              )}
+              <button className="btn" onClick={() => hasPrev && setLightboxIndex(lightboxIndex - 1)} disabled={!hasPrev}>
+                ←
+              </button>
+              <a href={fileUrl(lightbox)} target="_blank" rel="noreferrer" download>
+                {lightbox.name}
+              </a>
+              <button className="btn" onClick={() => hasNext && setLightboxIndex(lightboxIndex + 1)} disabled={!hasNext}>
+                →
+              </button>
+              <button className="btn" onClick={() => setLightboxIndex(null)}>
+                閉じる
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

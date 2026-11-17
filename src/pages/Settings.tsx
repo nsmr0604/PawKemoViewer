@@ -1,252 +1,255 @@
 import { useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
-import { getSettings, updateSettings, api } from "../api"
-import { setMeta } from "../db"
+import { invoke } from "@tauri-apps/api/core"
+import { getSettings, updateSettings, api, apiStatus } from "../api"
+import { clearCreatorCache, creatorCacheInfo, CreatorCacheInfo } from "../db"
+import {
+  getLogEntries,
+  clearLog,
+  formatLog,
+  logInfo,
+} from "../log"
 import { navigate } from "../router"
+
+function fmtBytes(n: number): string {
+  if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
+  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${n} B`
+}
+
+function fmtTs(ms: number | undefined): string {
+  if (!ms) return "-"
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes(),
+  ).padStart(2, "0")}`
+}
 
 export function SettingsPage() {
   const s = getSettings()
 
-  const [sessionKey, setSessionKey] =
-    useState(s.sessionKey)
-
-  const [saved, setSaved] =
-    useState(false)
-
-  const [testResult, setTestResult] =
-    useState<string | null>(null)
-
-  const [version, setVersion] =
-    useState<string>("")
-
-  const [appVersion, setAppVersion] =
-    useState<string>("")
+  const [sessionKey, setSessionKey] = useState(s.sessionKey)
+  const [theme, setTheme] = useState<"dark" | "light">(s.theme)
+  const [saved, setSaved] = useState(false)
+  const [testResult, setTestResult] = useState<string | null>(null)
+  const [version, setVersion] = useState<string>("")
+  const [appVersion, setAppVersion] = useState<string>("")
+  const [cache, setCache] = useState<CreatorCacheInfo | null>(null)
+  const [logText, setLogText] = useState<string | null>(null)
+  const [logResult, setLogResult] = useState<string | null>(null)
 
   useEffect(() => {
-    // アプリ自身のバージョン (tauri.conf.json / Cargo.toml と共通)
-    getVersion()
-      .then(setAppVersion)
-      .catch(() => setAppVersion("取得失敗"))
+    getVersion().then(setAppVersion).catch(() => setAppVersion("取得失敗"))
+    creatorCacheInfo().then(setCache).catch(() => setCache(null))
   }, [])
 
   const save = () => {
-    updateSettings({
-      sessionKey: sessionKey.trim(),
-    })
-
+    updateSettings({ sessionKey: sessionKey.trim() })
     setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
 
-    setTimeout(
-      () => setSaved(false),
-      2000
-    )
+  const applyTheme = (t: "dark" | "light") => {
+    setTheme(t)
+    updateSettings({ theme: t })
+    document.documentElement.dataset.theme = t
   }
 
   const testSession = async () => {
     setTestResult("テスト中…")
-
     try {
       await api.accountFavorites("artist")
-
-      setTestResult(
-        "✅ お気に入りを取得できました (セッション有効)"
-      )
-
+      setTestResult("✅ お気に入りを取得できました (セッション有効)")
     } catch (e) {
+      const st = apiStatus(e)
       setTestResult(
-        `❌ 失敗: ${
-          e instanceof Error
-            ? e.message
-            : e
-        }`
+        st === 401
+          ? "❌ セッションキーが無効または期限切れです"
+          : `❌ 失敗${st !== null ? ` (HTTP ${st})` : ""}: ${e instanceof Error ? e.message : e}`,
       )
     }
   }
 
-  const clearCreatorCache =
-    async () => {
+  const doClearCache = async () => {
+    await clearCreatorCache()
+    setCache({ count: 0, bytes: 0, fetchedAt: undefined })
+    logInfo("クリエイターキャッシュを消去しました")
+  }
 
-      const req =
-        indexedDB.open(
-          "pawchive-viewer"
-        )
+  const showLog = () => setLogText(formatLog() || "(ログはまだありません)")
 
-      req.onsuccess = () => {
-
-        const db = req.result
-
-        const t =
-          db.transaction(
-            "creators",
-            "readwrite"
-          )
-
-        t.objectStore(
-          "creators"
-        ).clear()
-
-        t.oncomplete =
-          async () => {
-
-            await setMeta(
-              "creatorsFetchedAt",
-              undefined
-            )
-
-            setTestResult(
-              "クリエイターキャッシュを消去しました"
-            )
-          }
-      }
+  const exportLog = async () => {
+    try {
+      const path = await invoke<string>("export_log", { text: formatLog() })
+      setLogResult(`書き出しました: ${path}`)
+    } catch (e) {
+      setLogResult(`失敗: ${e instanceof Error ? e.message : String(e)}`)
     }
+  }
 
-  const showVersion =
-    async () => {
-
-      try {
-        setVersion(
-          await api.version()
-        )
-
-      } catch {
-
-        setVersion(
-          "取得失敗"
-        )
-      }
+  const showVersion = async () => {
+    try {
+      setVersion(await api.version())
+    } catch {
+      setVersion("取得失敗")
     }
+  }
+
+  const logCount = getLogEntries().length
 
   return (
     <div className="page settings">
-
       <h2>設定</h2>
 
-      <h2>ログイン</h2>
+      {/* ------------------------------------------------ アカウント */}
+      <div className="settings-section">
+        <div className="section-label">アカウント</div>
 
-      <div className="settings-actions">
+        <div className="settings-actions">
+          <button className="btn btn-primary" onClick={() => navigate("/login?next=/settings")}>
+            ID / パスワードでログイン
+          </button>
+          <small className="small">ログインするとセッションキーが自動設定されます。</small>
+        </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={() =>
-            navigate(
-              "/login?next=/settings"
-            )
-          }
-        >
-          ID / パスワードでログイン
-        </button>
+        <label className="field">
+          <span>pawchive セッションキー (お気に入り同期に使用)</span>
+          <input
+            type="password"
+            value={sessionKey}
+            onChange={(e) => setSessionKey(e.target.value)}
+            placeholder="pawchive.pw の session 値"
+          />
+          <small>pawchive.pw にログイン → Cookie → session の値を入力してください。</small>
+          <button className="btn" onClick={testSession}>
+            セッションをテスト
+          </button>
+          {testResult && <span className="small">{testResult}</span>}
+        </label>
 
-        <small className="small">
-          ログインするとセッションキーが自動設定されます。
-        </small>
-
+        <div className="settings-actions">
+          <button className="btn btn-primary" onClick={save}>
+            保存
+          </button>
+          {saved && <span className="ok">保存しました</span>}
+        </div>
       </div>
 
-      <label className="field">
+      {/* ------------------------------------------------ 表示 */}
+      <div className="settings-section">
+        <div className="section-label">表示</div>
 
-        <span>
-          pawchive セッションキー
-          (お気に入り同期に使用)
-        </span>
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>テーマ</span>
+            <small>アプリの外観を切り替えます (即時反映)</small>
+          </div>
+          <div className="segmented">
+            <button
+              className={`seg ${theme === "dark" ? "seg-active" : ""}`}
+              onClick={() => applyTheme("dark")}
+            >
+              🌙 ダーク
+            </button>
+            <button
+              className={`seg ${theme === "light" ? "seg-active" : ""}`}
+              onClick={() => applyTheme("light")}
+            >
+              ☀️ ライト
+            </button>
+          </div>
+        </div>
+      </div>
 
-        <input
-          type="password"
-          value={sessionKey}
-          onChange={(e) =>
-            setSessionKey(
-              e.target.value
-            )
-          }
-          placeholder="pawchive.pw の session 値"
-        />
+      {/* ------------------------------------------------ キャッシュ */}
+      <div className="settings-section">
+        <div className="section-label">キャッシュ</div>
 
-        <small>
-          pawchive.pw にログイン →
-          Cookie →
-          session の値を入力してください。
-        </small>
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>クリエイター索引</span>
+            <small>
+              {cache
+                ? `${cache.count.toLocaleString()} 件 · ${fmtBytes(cache.bytes)} · 最終取得 ${fmtTs(cache.fetchedAt)}`
+                : "読み込み中…"}
+            </small>
+          </div>
+          <button className="btn" onClick={doClearCache}>
+            消去
+          </button>
+        </div>
+      </div>
 
-        <button
-          className="btn"
-          onClick={testSession}
-        >
-          セッションをテスト
-        </button>
+      {/* ------------------------------------------------ 診断 */}
+      <div className="settings-section">
+        <div className="section-label">診断</div>
 
-        {testResult && (
-          <span className="small">
-            {testResult}
-          </span>
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>ログ</span>
+            <small>
+              通信エラー・未処理エラーを記録しています (最大 400 件、{logCount} 件保持)。
+              接続できない・ログインに失敗する際の切り分けに使えます。
+            </small>
+          </div>
+          <div className="settings-actions">
+            <button className="btn" onClick={showLog}>
+              表示
+            </button>
+            <button className="btn" onClick={exportLog}>
+              書き出す
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                clearLog()
+                setLogText(null)
+                setLogResult("ログを消去しました")
+              }}
+            >
+              消去
+            </button>
+          </div>
+        </div>
+
+        {logResult && <span className="small">{logResult}</span>}
+
+        {logText !== null && (
+          <pre className="log-view mono">
+            {logText}
+          </pre>
         )}
-
-      </label>
-
-      <div className="settings-actions">
-
-        <button
-          className="btn btn-primary"
-          onClick={save}
-        >
-          保存
-        </button>
-
-        {saved && (
-          <span className="ok">
-            保存しました
-          </span>
-        )}
-
       </div>
 
-      <h2>キャッシュ</h2>
+      {/* ------------------------------------------------ 情報 */}
+      <div className="settings-section">
+        <div className="section-label">情報</div>
 
-      <div className="settings-actions">
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>サーバーバージョン</span>
+          </div>
+          <div className="settings-actions">
+            <button className="btn" onClick={showVersion}>
+              確認
+            </button>
+            {version && <code className="small">{version}</code>}
+          </div>
+        </div>
 
-        <button
-          className="btn"
-          onClick={
-            clearCreatorCache
-          }
-        >
-          クリエイターキャッシュを消去
-        </button>
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>アプリバージョン</span>
+          </div>
+          <code className="small">{appVersion || "…"}</code>
+        </div>
 
+        <p className="small">
+          Pawchive Viewer は pawchive.pw の非公式クライアントです。
+        </p>
       </div>
-
-      <h2>情報</h2>
-
-      <div className="settings-actions">
-
-        <button
-          className="btn"
-          onClick={showVersion}
-        >
-          サーバーバージョン
-        </button>
-
-        {version && (
-          <code className="small">
-            {version}
-          </code>
-        )}
-
-      </div>
-
-      <h2>
-        このアプリについて
-      </h2>
-
-      <p className="small">
-        Pawchive Viewer は
-        pawchive.pw の
-        非公式クライアントです。
-      </p>
-
-      <p className="small">
-        アプリバージョン:{" "}
-        <code>{appVersion || "…"}</code>
-      </p>
-
     </div>
   )
 }

@@ -323,7 +323,10 @@ export async function searchCreators(qRaw: string, limit = 60): Promise<CreatorR
  * 旧 per-row ストア (99k put) と比べ、1 put / 1 文字列で済み高速・小容量。
  */
 export async function saveCreators(rows: CreatorRow[]) {
-  await setMeta(PACK_META_KEY, encodePack(rows))
+  const pack = encodePack(rows)
+  await setMeta(PACK_META_KEY, pack)
+  // パック文字列の実サイズ (設定 → キャッシュ に表示)
+  await setMeta("creatorsPackBytes", new Blob([pack]).size)
   await setMeta("creatorsCount", rows.length)
   await setMeta("creatorsIndexVersion", SEARCH_INDEX_VERSION)
   await setMeta("creatorsFetchedAt", Date.now())
@@ -355,6 +358,36 @@ export async function getCreatorRow(key: string): Promise<CreatorRow | undefined
     /* fallthrough: 旧ストア直接参照 */
   }
   return tx("creators", "readonly", (s) => s.get(key))
+}
+
+/** キャッシュ情報 (設定 → キャッシュ にサイズ表示) */
+export interface CreatorCacheInfo {
+  count: number
+  bytes: number
+  fetchedAt?: number
+}
+
+export async function creatorCacheInfo(): Promise<CreatorCacheInfo> {
+  const count = await creatorsCount()
+  let bytes = await getMeta<number>("creatorsPackBytes")
+  if (typeof bytes !== "number") {
+    // 旧データ (サイズメタが無い) はパック文字列から算出
+    const packed = await getMeta<string>(PACK_META_KEY)
+    bytes = packed ? new Blob([packed]).size : 0
+  }
+  const fetchedAt = await getMeta<number>("creatorsFetchedAt")
+  return { count, bytes: bytes || 0, fetchedAt }
+}
+
+/** クリエイターキャッシュを全消去 (パック索引 + 旧 per-row ストア + メタ) */
+export async function clearCreatorCache() {
+  await setMeta(PACK_META_KEY, undefined)
+  await setMeta("creatorsPackBytes", undefined)
+  await setMeta("creatorsCount", undefined)
+  await setMeta("creatorsIndexVersion", undefined)
+  await setMeta("creatorsFetchedAt", undefined)
+  await clearCreatorRows()
+  invalidateCreatorIndex()
 }
 
 // ---------------------------------------------------------------------------

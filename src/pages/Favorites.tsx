@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { api, getSettings, clearApiCache, ApiError } from "../api"
+import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
 import { getAllSeen, setSeen, getSeen } from "../db"
 import { loadFollows, unfollow } from "../follows"
@@ -22,7 +22,15 @@ interface FollowState {
 
 export function FavoritesPage() {
   const { sessionKey } = getSettings()
-  const [tab, setTab] = useState<"follows" | "account">(sessionKey ? "follows" : "follows")
+  // 選択タブを保存しておき、次回起動時に復元する (FANBOX Viewer「ホーム既定タブ」型)
+  const [tab, setTabState] = useState<"follows" | "account">(() => {
+    const t = localStorage.getItem("pawchive-fav-tab")
+    return t === "account" ? "account" : "follows"
+  })
+  const setTab = (t: "follows" | "account") => {
+    setTabState(t)
+    localStorage.setItem("pawchive-fav-tab", t)
+  }
   const [follows, setFollows] = useState<FollowState[]>([])
   const [accountFavs, setAccountFavs] = useState<AccountFavorite[] | null>(null)
   const [accountErr, setAccountErr] = useState<unknown>(null)
@@ -269,7 +277,7 @@ export function FavoritesPage() {
             )}
           </div>
           {accountErr !== null && <ErrorBox error={accountErr} onRetry={loadAccount} />}
-          {accountErr instanceof ApiError && accountErr.status === 401 && (
+          {accountErr instanceof ApiError && apiStatus(accountErr) === 401 && (
             <div className="error-box">
               <p>セッションキーが無効です。pawchive.pw にログインして、cookie の session 値を設定欄に貼り付けてください。</p>
             </div>

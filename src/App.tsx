@@ -8,6 +8,7 @@ import { SettingsPage } from "./pages/Settings"
 import { loadFollows } from "./follows"
 import { useEffect, useState } from "react"
 import { LoginPage } from "./pages/Login"
+import { getSettings } from "./api"
 
 export default function App() {
   const route = useRoute()
@@ -16,6 +17,11 @@ export default function App() {
   useEffect(() => {
     // ページ遷移のたびにフォロー数を同期
     setFollowCount(loadFollows().length)
+  }, [route])
+
+  // テーマをルート要素に反映 (設定 → 表示 で切替、即時反映)
+  useEffect(() => {
+    document.documentElement.dataset.theme = getSettings().theme
   }, [route])
 
   useEffect(() => {

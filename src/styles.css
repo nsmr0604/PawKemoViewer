@@ -11,6 +11,19 @@
   color-scheme: dark;
 }
 
+/* ライトテーマ (設定 → 表示 で切替) */
+:root[data-theme="light"] {
+  --bg: #f2f3f6;
+  --bg2: #ffffff;
+  --bg3: #dfe3ea;
+  --fg: #1c1f26;
+  --fg2: #5b6270;
+  --accent: #e05577;
+  --accent2: #8f4fc4;
+  --danger: #d63b3b;
+  color-scheme: light;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -191,6 +204,32 @@ input:not([type]) {
   padding: 12px 14px;
   font-size: 13px;
 }
+.error-title {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+.error-hint {
+  margin: 0 0 6px;
+  color: var(--fg2);
+  line-height: 1.6;
+}
+.error-detail {
+  margin-bottom: 8px;
+}
+.error-detail summary {
+  cursor: pointer;
+  color: var(--fg2);
+  font-size: 11px;
+}
+.error-detail pre {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow: auto;
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 8px;
+}
 .empty {
   color: var(--fg2);
   text-align: center;
@@ -286,6 +325,19 @@ input:not([type]) {
   font-weight: 800;
   border-radius: 999px;
   padding: 2px 7px;
+}
+/* 画像枚数バッジ (EhViewer のページ数バッジ相当) */
+.badge-count {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: color-mix(in srgb, #000 65%, transparent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 7px;
+  backdrop-filter: blur(4px);
 }
 .post-card-info {
   padding: 8px 10px 10px;
@@ -629,6 +681,11 @@ input:not([type]) {
   gap: 10px;
   font-size: 12px;
 }
+.lightbox-pos {
+  color: #9aa3b2;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ------------------------------------------------------------------ */
 /* ログイン                                                            */
@@ -747,4 +804,74 @@ input:not([type]) {
 .ok {
   color: #6fe08b;
   font-size: 13px;
+}
+
+/* FANBOX Viewer 型の設定セクション: アクセント色の小見出し + 2 行項目 */
+.settings-section {
+  background: var(--bg2);
+  border: 1px solid var(--bg3);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.section-label {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.setting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 160px;
+  flex: 1;
+}
+.setting-text small {
+  color: var(--fg2);
+  line-height: 1.5;
+}
+
+/* セグメントボタン (テーマ切替等) */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--bg3);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.seg {
+  padding: 7px 14px;
+  border: none;
+  background: var(--bg3);
+  color: var(--fg2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.seg-active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #14161a;
+  font-weight: 700;
+}
+
+/* ログビューア */
+.log-view {
+  max-height: 260px;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--bg3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

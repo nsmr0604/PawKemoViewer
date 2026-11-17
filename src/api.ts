@@ -13,6 +13,7 @@ import type {
   AccountFavorite,
   PawFile,
 } from "./types"
+import { logApiFailure } from "./log"
 
 // ---------------------------------------------------------------------------
 // 設定
@@ -23,6 +24,8 @@ const SETTINGS_KEY = "pawchive-settings"
 export interface Settings {
   /** pawchive.pw の session cookie の値 (お気に入り同期に使用) */
   sessionKey: string
+  /** テーマ: dark (既定) / light */
+  theme: "dark" | "light"
 }
 
 export function loadSettings(): Settings {
@@ -36,7 +39,7 @@ export function loadSettings(): Settings {
 }
 
 function defaultSettings(): Settings {
-  return { sessionKey: "" }
+  return { sessionKey: "", theme: "dark" }
 }
 
 export function saveSettings(s: Settings) {
@@ -69,6 +72,17 @@ export class ApiError extends Error {
     super(message)
     this.status = status
   }
+}
+
+/**
+ * エラーメッセージから実 HTTP ステータスを復元する。
+ * Rust 側は失敗時に "STATUS=401 BODY=..." 形式の文字列を返すため
+ * ApiError.status は常に 500 になる。ここで実値を取り出す。
+ */
+export function apiStatus(err: unknown): number | null {
+  const msg = err instanceof Error ? err.message : String(err)
+  const m = msg.match(/STATUS=(\d+)/)
+  return m ? Number(m[1]) : null
 }
 
 // ---------------------------------------------------------------------------
@@ -183,6 +197,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         err instanceof Error
           ? err.message
           : String(err)
+
+      // 診断ログに残す (エラー source chain: パス/メソッド/ステータス/本文抜粋)
+      logApiFailure(url, method, message)
 
       throw new ApiError(
         500,

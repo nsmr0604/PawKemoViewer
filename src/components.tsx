@@ -17,10 +17,45 @@ export function Spinner({ label = "読み込み中…" }: { label?: string }) {
 }
 
 export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const msg = error instanceof Error ? error.message : String(error)
+  const raw = error instanceof Error ? error.message : String(error)
+  // Rust 側は "STATUS=401 BODY=..." 形式で返す。実ステータスと本文を取り出す
+  const sm = raw.match(/STATUS=(\d+) BODY=([\s\S]*)/)
+  const status = sm ? Number(sm[1]) : null
+  const body = sm ? sm[2].trim() : raw
+
+  // 状況に応じた説明 (JHenTai の Sad Panda 型: 固有名詞 + 対処を伝える)
+  let title = "読み込みに失敗しました"
+  let hint = ""
+  if (raw.includes("Fake site")) {
+    title = "サイトにブロックされた可能性 (Fake site)"
+    hint = "pawchive 側が中継を検出し偽ページを返しています。しばらく時間を置いてから再試行してください。"
+  } else if (status === 401) {
+    title = "セッションキーが無効または期限切れです"
+    hint = "設定 → アカウント からセッションキーを再設定するか、ID/パスワードでログインし直してください。"
+  } else if (status === 429) {
+    title = "リクエストが集中しています (429)"
+    hint = "サーバー側の制限です。少し待ってから再試行してください。"
+  } else if (status === 403) {
+    title = "アクセスが拒否されました (403)"
+    hint = "サーバー側の制限または中継検出の可能性があります。時間を置いて再試行してください。"
+  } else if (status === 404) {
+    title = "見つかりません (404)"
+    hint = "投稿またはクリエイターが削除されたか、URL が正しくない可能性があります。"
+  } else if (status === 502 || /upstream|network|timed?\s?out/i.test(raw)) {
+    title = "サーバーに接続できません"
+    hint = "ネットワーク状態を確認するか、時間を置いて再試行してください。"
+  }
+
   return (
     <div className="error-box">
-      <p>エラー: {msg}</p>
+      <p className="error-title">⚠️ {title}</p>
+      {hint && <p className="error-hint">{hint}</p>}
+      {body && (
+        <details className="error-detail">
+          <summary>詳細 ({status !== null ? `HTTP ${status}` : "理由不明"})</summary>
+          <pre className="mono small">{body.slice(0, 2000)}{body.length > 2000 ? "…" : ""}</pre>
+        </details>
+      )}
       {onRetry && (
         <button className="btn" onClick={onRetry}>
           再試行
@@ -119,17 +154,20 @@ export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
   const onClick = useCallback(() => {
     navigate(`/post/${post.service}/${post.user}/${post.id}`)
   }, [post])
+  // 画像枚数バッジ (EhViewer のページ数バッジ相当): 本体 + 添付の合計
+  const imageCount =
+    (post.file?.path ? 1 : 0) + (post.attachments?.length || 0)
   return (
     <div className="post-card" onClick={onClick}>
       <div className="post-card-thumb">
         <Thumb file={post.file?.path ? post.file : post.attachments?.[0]} />
         {isNew && <span className="badge-new">NEW</span>}
+        {imageCount > 1 && <span className="badge-count">🖼{imageCount}</span>}
       </div>
       <div className="post-card-info">
         <div className="post-card-title">{post.title || "(無題)"}</div>
         <div className="post-card-meta">
           {post.service} · {fmtDate(post.published || post.added)}
-          {post.attachments?.length > 0 && ` · 📎${post.attachments.length}`}
         </div>
       </div>
     </div>
