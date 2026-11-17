@@ -4,17 +4,17 @@ on:
   push:
     branches:
       - main
-      # ビルド関連ファイルの変更時のみ発火 (ドキュメントのみのコミットではスキップ)
-      paths:
-        - "src/**"
-        - "src-tauri/**"
-        - "public/**"
-        - "index.html"
-        - "vite.config.ts"
-        - "tsconfig.json"
-        - "package.json"
-        - "package-lock.json"
-        - ".github/workflows/android.yml"
+    # ビルド関連ファイルの変更時のみ発火 (ドキュメントのみのコミットではスキップ)
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "public/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android.yml"
 
   workflow_dispatch:
 
