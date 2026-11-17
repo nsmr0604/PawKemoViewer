@@ -74,8 +74,16 @@ jobs:
           npx tauri android build
 
       - name: Sign APKs (dev keystore / 仮署名)
+        # パスワードは GitHub Secrets (ANDROID_KEYSTORE_PASSWORD) から。
+        # ローカルの値は secret.md (gitignore 済み) のみに置く。yml への直書きは禁止
+        env:
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           set -e
+          if [ -z "$KS_PASS" ]; then
+            echo "ERROR: Secret ANDROID_KEYSTORE_PASSWORD が未設定です (Settings > Secrets and variables > Actions)" >&2
+            exit 1
+          fi
           BT="$ANDROID_HOME/build-tools/35.0.0"
           KS="$GITHUB_WORKSPACE/src-tauri/android-dev.keystore"
           VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
@@ -91,8 +99,9 @@ jobs:
             "$BT/zipalign" -f -p 4 "$apk" "$out.aligned"
             "$BT/apksigner" sign \
               --ks "$KS" \
-              --ks-pass 'pass:PA$$wd' \
-              --key-pass 'pass:PA$$wd' \
+              --ks-pass "pass:$KS_PASS" \
+              --key-pass "pass:$KS_PASS" \
+              --ks-key-alias android-dev \
               --out "$out" "$out.aligned"
             "$BT/apksigner" verify "$out"
             rm -f "$out.aligned"

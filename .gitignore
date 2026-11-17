@@ -41,6 +41,9 @@ Desktop.ini
 # 作業コンテキスト (エージェントのセッションメモ・ローカル限定)
 /notes/
 
+# 秘密情報 (パスワード等・ローカル限定・コミット禁止)
+/secret.md
+
 # OS
 Thumbs.db
 Desktop.ini
