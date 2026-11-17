@@ -36,6 +36,7 @@ export function PostPage({
   const [comments, setComments] = useState<PawComment[] | null>(null)
   const [revisions, setRevisions] = useState<PawRevision[] | null>(null)
   const [revisionsError, setRevisionsError] = useState<unknown>(null)
+  const [selectedRevisionId, setSelectedRevisionId] = useState<number | null>(null)
   const [hashResult, setHashResult] = useState<HashLookupResult | null>(null)
   const [showHash, setShowHash] = useState(false)
   const [flagged, setFlagged] = useState<"none" | "busy" | "ok" | "dup" | "err">("none")
@@ -56,6 +57,7 @@ export function PostPage({
     setComments(null)
     setRevisions(null)
     setRevisionsError(null)
+    setSelectedRevisionId(null)
     setHashResult(null)
     setShowHash(false)
     try {
@@ -77,8 +79,18 @@ export function PostPage({
       api
         .postRevisions(postContext.service, postContext.creatorId, postContext.postId)
         .then((r) => {
-          setRevisions(Array.isArray(r) ? r : [])
-          logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${Array.isArray(r) ? r.length : 0}`)
+          // added の新しい順に並べ、最も新しい改訂を初期表示にする。
+          const ordered = (Array.isArray(r) ? r : []).slice().sort((a, b) => {
+            const aTime = Date.parse(a.added || "")
+            const bTime = Date.parse(b.added || "")
+            if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0
+            if (Number.isNaN(aTime)) return 1
+            if (Number.isNaN(bTime)) return -1
+            return bTime - aTime
+          })
+          setRevisions(ordered)
+          setSelectedRevisionId(ordered[0]?.revision_id ?? null)
+          logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${ordered.length} latest=${ordered[0]?.revision_id ?? "none"}`)
         })
         .catch((e) => {
           setRevisions([])
@@ -197,7 +209,11 @@ export function PostPage({
     const name = path.split("/").pop() || ""
     return name.replace(/\.[^.]+$/, "")
   }
-  const mainHash = post.file?.path ? hashFromPath(post.file.path) : ""
+  const displayPost: PawPost =
+    revisions && revisions.length > 0
+      ? (revisions.find((r) => r.revision_id === selectedRevisionId) || revisions[0])
+      : post
+  const mainHash = displayPost.file?.path ? hashFromPath(displayPost.file.path) : ""
 
   const onFlag = async () => {
     setFlagged("busy")
@@ -214,21 +230,22 @@ export function PostPage({
   }
 
   const allFiles: PawFile[] = [
-    ...(post.file?.path ? [post.file] : []),
-    ...(post.attachments || []),
+    ...(displayPost.file?.path ? [displayPost.file] : []),
+    ...(displayPost.attachments || []),
   ]
 
   return (
     <div className="page post-page" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="post-title-wrap">
-        <h1 className="post-title">{post.title || "(無題)"}</h1>
+        <h1 className="post-title">{displayPost.title || "(無題)"}</h1>
         <div className="post-meta">
           <span className="link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
             {postContext.service} / {postContext.creatorId}
           </span>
           {" · "}
-          公開 {fmtDate(post.published)}
-          {post.edited && post.edited !== post.published && ` · 編集 ${fmtDate(post.edited)}`}
+          公開 {fmtDate(displayPost.published)}
+          {displayPost.edited && displayPost.edited !== displayPost.published && ` · 編集 ${fmtDate(displayPost.edited)}`}
+          {revisions && revisions.length > 0 && ` · 改訂 ${revisions.findIndex((r) => r.revision_id === displayPost.revision_id) + 1}/${revisions.length}`}
         </div>
         <div className="creator-actions">
           <FollowButton service={postContext.service} id={postContext.creatorId} />
@@ -303,12 +320,12 @@ export function PostPage({
         </div>
       )}
 
-      {post.content && (
-        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(post.content, postContext.service) }} />
+      {displayPost.content && (
+        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service) }} />
       )}
 
-      {Object.keys(post.embed || {}).length > 0 && (
-        <pre className="post-embed">{JSON.stringify(post.embed, null, 2)}</pre>
+      {Object.keys(displayPost.embed || {}).length > 0 && (
+        <pre className="post-embed">{JSON.stringify(displayPost.embed, null, 2)}</pre>
       )}
 
       <div className="post-nav">
@@ -382,27 +399,36 @@ export function PostPage({
       </div>
 
       <div className="section">
-        <h3>改訂履歴{revisions && revisions.length > 0 ? ` (${revisions.length})` : ""}</h3>
+        <div className="section-row">
+          <h3>改訂履歴{revisions && revisions.length > 0 ? ` (${revisions.length})` : ""}</h3>
+          {revisions && revisions.length > 0 && (
+            <label className="revision-selector-label">
+              <span className="small">表示する版</span>
+              <select
+                className="revision-selector"
+                value={String(displayPost.revision_id)}
+                onChange={(e) => {
+                  const nextId = Number(e.target.value)
+                  setSelectedRevisionId(Number.isFinite(nextId) ? nextId : null)
+                  setLightboxIndex(null)
+                }}
+              >
+                {revisions.map((r, index) => (
+                  <option key={r.revision_id} value={String(r.revision_id)}>
+                    {index === 0 ? "最新" : `旧版 ${index}`} · {fmtDate(r.added)} · {r.title || "(無題)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
         {revisions === null && <Spinner label="改訂履歴…" />}
         {revisionsError && <ErrorBox error={revisionsError} />}
         {revisions && revisions.length === 0 && !revisionsError && (
           <Empty text="改訂履歴はありません" />
         )}
         {revisions && revisions.length > 0 && (
-          <ul className="revision-list">
-            {revisions.map((r) => (
-              <li key={r.revision_id} className="revision">
-                <div className="comment-head">
-                  rev {r.revision_id} · 追加 {fmtDate(r.added)} · ファイル {r.file?.name || "-"}
-                </div>
-                <div className="revision-files">
-                  {[...(r.file?.path ? [r.file] : []), ...(r.attachments || [])].map((f, i) => (
-                    <Thumb key={i} file={f} className="revision-thumb" />
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <p className="small revision-hint">最新の版を初期表示しています。プルダウンから過去の版へ切り替えられます。</p>
         )}
       </div>
 
