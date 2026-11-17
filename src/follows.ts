@@ -56,3 +56,22 @@ export function toggleFollow(f: FollowEntry): boolean {
   follow(f)
   return true
 }
+
+
+/** pawchive のお気に入りクリエイターをローカルフォローへ統合する。
+ * 既存ローカル項目は削除せず、service + id で重複を避ける。 */
+export function mergeFollows(entries: FollowEntry[]): number {
+  const current = loadFollows()
+  const keys = new Set(current.map((f) => `${f.service}:${f.id}`))
+  const additions = entries.filter(
+    (f) =>
+      f &&
+      typeof f.service === "string" &&
+      f.service.length > 0 &&
+      typeof f.id === "string" &&
+      f.id.length > 0 &&
+      !keys.has(`${f.service}:${f.id}`),
+  )
+  if (additions.length > 0) save([...additions, ...current])
+  return additions.length
+}
