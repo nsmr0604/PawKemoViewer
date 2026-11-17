@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { getVersion } from "@tauri-apps/api/app"
-import { updateSettings, getSettings, api } from "../api"
+import { updateSettings, getSettings } from "../api"
+import { syncFollowsWithAccount } from "../follows"
 import { navigate, useRoute } from "../router"
 
 export function LoginPage() {
@@ -43,12 +44,8 @@ export function LoginPage() {
       if (j.ok) {
         if (j.session) {
           updateSettings({ sessionKey: j.session })
-          // 取得確認 (ベストエフォート)
-          try {
-            await api.accountFavorites("artist")
-          } catch {
-            /* まだ反映されていない場合は無視 */
-          }
+          // ログイン直後にローカルフォローをアカウントと同期する。
+          await syncFollowsWithAccount()
           setResult({ ok: true, msg: "ログインしました" })
           setTimeout(() => navigate(next.startsWith("/") ? next : "/", true), 800)
         } else {
