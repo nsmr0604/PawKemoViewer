@@ -4,6 +4,7 @@ import type { PawPost } from "../types"
 import { PostGrid, ErrorBox } from "../components"
 import { useNavigate } from "../router"
 import { useScrollMemory } from "../hooks"
+import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../history"
 
 const PAGE = 50
 const MIN_QUERY = 3
@@ -18,6 +19,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   const [error, setError] = useState<unknown>(null)
   const [input, setInput] = useState(q)
   const [viewMode, setViewMode] = useState<"grid" | "list">(getSettings().postViewMode)
+  const [history, setHistory] = useState<string[]>(getSearchHistory)
   const reqSeq = useRef(0)
   const tooShort = q.length > 0 && q.length < MIN_QUERY
   const scrollKey = `home:${q}`
@@ -66,7 +68,18 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     if (input.trim() && input.trim().length < MIN_QUERY) return
-    nav(input.trim() ? `/search?q=${encodeURIComponent(input.trim())}` : "/", true)
+    const t = input.trim()
+    if (t) {
+      addSearchHistory(t)
+      setHistory(getSearchHistory())
+    }
+    nav(t ? `/search?q=${encodeURIComponent(t)}` : "/", true)
+  }
+
+  const submitHistory = (h: string) => {
+    addSearchHistory(h)
+    setHistory(getSearchHistory())
+    nav(`/search?q=${encodeURIComponent(h)}`, true)
   }
 
   return (
@@ -82,6 +95,25 @@ export function HomePage({ query }: { query: URLSearchParams }) {
           検索
         </button>
       </form>
+      {!q && history.length > 0 && (
+        <div className="history-chips">
+          {history.map((h) => (
+            <button key={h} className="chip" onClick={() => submitHistory(h)}>
+              {h}
+            </button>
+          ))}
+          <button
+            className="chip chip-more"
+            title="検索履歴を消去"
+            onClick={() => {
+              clearSearchHistory()
+              setHistory([])
+            }}
+          >
+            履歴消去 ×
+          </button>
+        </div>
+      )}
       <div className="view-mode-bar">
         {tooShort && <div className="hint-row">検索ワードは3文字以上入力してください</div>}
         {q && !tooShort && (

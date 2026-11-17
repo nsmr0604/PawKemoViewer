@@ -8,7 +8,7 @@ import { SettingsPage } from "./pages/Settings"
 import { loadFollows } from "./follows"
 import { useEffect, useState, useCallback } from "react"
 import { LoginPage } from "./pages/Login"
-import { getSettings } from "./api"
+import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
 import { resolveLayout, type ResolvedLayout } from "./platform"
 import { NavigationRail } from "./components/NavigationRail"
 
@@ -16,6 +16,9 @@ export default function App() {
   const route = useRoute()
   const [followCount, setFollowCount] = useState(loadFollows().length)
   const [winWidth, setWinWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
+  // 設定変更を検知して再レンダリングする (getSettings() はモジュール変数なので
+  // これが無いとレイアウトモード等の変更が次の遷移まで反映されない)
+  const [settingsRev, setSettingsRev] = useState(0)
 
   // 画面幅リスナー
   useEffect(() => {
@@ -24,7 +27,14 @@ export default function App() {
     return () => window.removeEventListener("resize", onResize)
   }, [])
 
-  const layout: ResolvedLayout = resolveLayout(getSettings().layoutMode, winWidth)
+  useEffect(() => {
+    const onSettings = () => setSettingsRev((n) => n + 1)
+    window.addEventListener(SETTINGS_CHANGED_EVENT, onSettings)
+    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, onSettings)
+  }, [])
+
+  const settings = getSettings()
+  const layout: ResolvedLayout = resolveLayout(settings.layoutMode, winWidth)
 
   useEffect(() => {
     // ページ遷移のたびにフォロー数を同期
@@ -33,8 +43,8 @@ export default function App() {
 
   // テーマをルート要素に反映 (設定 → 表示 で切替、即時反映)
   useEffect(() => {
-    document.documentElement.dataset.theme = getSettings().theme
-  }, [route])
+    document.documentElement.dataset.theme = settings.theme
+  }, [route, settingsRev, settings.theme])
 
   useEffect(() => {
     window.scrollTo(0, 0)

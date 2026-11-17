@@ -26,7 +26,7 @@ export function parseHash(): Route {
   } else {
     path = segs[0] || "home"
   }
-  if (queryPart) path = path // query は route キーに含めない
+  // query は route キーに含めない (path のみ)
   return { path, params, query }
 }
 

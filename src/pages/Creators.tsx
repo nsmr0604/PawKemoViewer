@@ -14,6 +14,7 @@ import type { PawCreator } from "../types"
 import { Spinner, ErrorBox, Empty, fmtDate } from "../components"
 import { navigate } from "../router"
 import { readClipboardTextSafe, extractCreatorFromText, type ExtractedCreator } from "../platform"
+import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../history"
 
 /** API レスポンス → 索引行 (パック v2: slug / favorited を保持) */
 function toRow(c: PawCreator): CreatorRow {
@@ -37,6 +38,7 @@ export function CreatorsPage() {
   const [built, setBuilt] = useState<number | null>(null) // 構築済み件数 (進捗表示)
   const [error, setError] = useState<unknown>(null)
   const [clipCreator, setClipCreator] = useState<ExtractedCreator | null>(null)
+  const [history, setHistory] = useState<string[]>(getSearchHistory)
   const qRef = useRef(q)
   qRef.current = q
 
@@ -117,6 +119,16 @@ export function CreatorsPage() {
     [runSearch],
   )
 
+  /** Enter で確定した場合のみ履歴に追加 (キー入力ごとの追加を避ける) */
+  const onSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const t = qRef.current.trim()
+    if (t) {
+      addSearchHistory(t)
+      setHistory(getSearchHistory())
+    }
+  }
+
   return (
     <div className="page">
       {clipCreator && (
@@ -144,7 +156,7 @@ export function CreatorsPage() {
         </div>
       )}
 
-      <form className="search-bar" onSubmit={(e) => e.preventDefault()}>
+      <form className="search-bar" onSubmit={onSearchSubmit}>
         <input
           type="search"
           placeholder="クリエイター名 / ID / URL で検索"
@@ -157,6 +169,25 @@ export function CreatorsPage() {
           </button>
         )}
       </form>
+      {!q && history.length > 0 && (
+        <div className="history-chips">
+          {history.map((h) => (
+            <button key={h} className="chip" onClick={() => onSearch(h)}>
+              {h}
+            </button>
+          ))}
+          <button
+            className="chip chip-more"
+            title="検索履歴を消去"
+            onClick={() => {
+              clearSearchHistory()
+              setHistory([])
+            }}
+          >
+            履歴消去 ×
+          </button>
+        </div>
+      )}
       <div className="hint-row">
         <span>
           {building && built !== null

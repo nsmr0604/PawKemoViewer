@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
 import { getAllSeen, setSeen, getSeen } from "../db"
@@ -307,32 +307,4 @@ export function FavoritesPage() {
       )}
     </div>
   )
-}
-
-/** 指定フォローの新着投稿ID集合 (Home の NEW バッジ等に使える) */
-export function useNewPostIds(): Set<string> {
-  const [set, setSet] = useState<Set<string>>(new Set())
-  useEffect(() => {
-    ;(async () => {
-      const seenAll = await getAllSeen()
-      const seenMap = new Map(seenAll.map((s) => [s.key, s.lastSeenPostId]))
-      const out = new Set<string>()
-      for (const f of loadFollows()) {
-        try {
-          const posts = await api.creatorPosts(f.service, f.id, { o: 0 })
-          const latest = posts.slice(0, 5)
-          const seenId = seenMap.get(`${f.service}:${f.id}`)
-          if (!seenId) continue // 1回も既読化していない場合は全件は出さない
-          for (const p of latest) {
-            if (p.id !== seenId) out.add(p.id)
-            else break
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-      setSet(out)
-    })()
-  }, [])
-  return useMemo(() => set, [set])
 }

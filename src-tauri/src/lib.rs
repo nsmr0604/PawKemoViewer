@@ -17,6 +17,7 @@ async fn api_request(
     path: String,
     method: String,
     session_key: Option<String>,
+    timeout_secs: Option<u64>,
 ) -> Result<String, String> {
     let path = path.trim_start_matches('/');
 
@@ -26,6 +27,9 @@ async fn api_request(
     );
 
     println!("REQUEST => {}", url);
+
+    // タイムアウトはユーザー設定 (Settings → 接続)。1〜300 秒にクランプ
+    let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(30).clamp(1, 300));
 
     let client = reqwest::Client::builder()
         .brotli(true)
@@ -90,6 +94,7 @@ async fn api_request(
             client
                 .post(&url)
                 .headers(headers)
+                .timeout(timeout)
                 .send()
                 .await
         }
@@ -98,6 +103,7 @@ async fn api_request(
             client
                 .delete(&url)
                 .headers(headers)
+                .timeout(timeout)
                 .send()
                 .await
         }
@@ -106,6 +112,7 @@ async fn api_request(
             client
                 .get(&url)
                 .headers(headers)
+                .timeout(timeout)
                 .send()
                 .await
         }
@@ -141,7 +148,7 @@ pub struct LoginResult {
 }
 
 #[tauri::command]
-async fn login_request(username: String, password: String) -> Result<LoginResult, String> {
+async fn login_request(username: String, password: String, timeout_secs: Option<u64>) -> Result<LoginResult, String> {
     if username.is_empty() || password.is_empty() {
         return Ok(LoginResult {
             ok: false,
@@ -149,6 +156,9 @@ async fn login_request(username: String, password: String) -> Result<LoginResult
             error: Some("ユーザー名とパスワードを入力してください".into()),
         });
     }
+
+    // タイムアウトはユーザー設定 (api_request と同じクランプ)
+    let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(30).clamp(1, 300));
 
     // リダイレクトを追従しない (pawchive は 302 応答に Set-Cookie を付けるため。
     // 追従すると最終応答のヘッダーしか見えず session を取り逃す)
@@ -180,6 +190,7 @@ async fn login_request(username: String, password: String) -> Result<LoginResult
         .post("https://pawchive.pw/account/login")
         .headers(headers)
         .form(&form)
+        .timeout(timeout)
         .send()
         .await
         .map_err(|e| e.to_string())?;
@@ -205,6 +216,7 @@ async fn login_request(username: String, password: String) -> Result<LoginResult
             if let Ok(v) = client
                 .get("https://pawchive.pw/api/v1/account/favorites?type=artist")
                 .headers(vh)
+                .timeout(timeout)
                 .send()
                 .await
             {
@@ -576,6 +588,42 @@ fn export_log(
     Ok(path.to_string_lossy().to_string())
 }
 
+/// 汎用テキストファイル書き出し (バックアップ等)。
+/// %APPDATA%/backup/ に保存する。ファイル名は安全な文字のみ許可
+#[tauri::command]
+fn export_file(
+    app: tauri::AppHandle,
+    file_name: String,
+    text: String,
+) -> Result<String, String> {
+    use std::io::Write;
+
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("backup");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    // ファイル名のサニタイズ (パス区切り・予約文字を除去)
+    let safe: String = file_name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+
+    let name = format!("{}_{}", chrono_free_name(), safe);
+    let path = dir.join(&name);
+    let mut f = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+    f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// ファイル名用タイムスタンプ (追加依存を入れずに生成)
 fn chrono_free_name() -> String {
     // エポック秒 → UTC 表記 (デバッグ用途のため秒精度で十分)
@@ -642,7 +690,8 @@ pub fn run() {
             tauri::generate_handler![
                 api_request,
                 login_request,
-                export_log
+                export_log,
+                export_file
             ]
         )
         .run(

@@ -34,7 +34,12 @@ export function LoginPage() {
         ok: boolean
         session?: string
         error?: string
-      }>("login_request", { username, password })
+      }>("login_request", {
+        username,
+        password,
+        // Tauri v2 の引数は camelCase (timeout_secs → timeoutSecs)
+        timeoutSecs: getSettings().timeoutSecs || null,
+      })
       if (j.ok) {
         if (j.session) {
           updateSettings({ sessionKey: j.session })

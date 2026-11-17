@@ -32,7 +32,14 @@ export interface Settings {
   noImageMode: boolean
   /** 投稿一覧の表示形式 (FANBOX Viewer 参考): grid (既定) / list */
   postViewMode: "grid" | "list"
+  /** 通信タイムアウト秒 (JHenTai の Connect/Receive Timeout 参考)。既定 30 秒 */
+  timeoutSecs: number
 }
+
+/** 設定変更を上位コンポーネント (App) に通知するイベント名。
+ *  モジュール変数 settings を読むだけのコンポーネントは再レンダリングされないため、
+ *  変更をイベントで通知する (レイアウトモード即時反映バグの再発防止) */
+export const SETTINGS_CHANGED_EVENT = "pawchive-settings-changed"
 
 export function loadSettings(): Settings {
   try {
@@ -51,6 +58,7 @@ function defaultSettings(): Settings {
     layoutMode: "auto",
     noImageMode: false,
     postViewMode: "grid",
+    timeoutSecs: 30,
   }
 }
 
@@ -67,6 +75,10 @@ export function getSettings(): Settings {
 export function updateSettings(patch: Partial<Settings>) {
   settings = { ...settings, ...patch }
   saveSettings(settings)
+  // App 等の上位コンポーネントに変更を通知 (即時反映)
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(SETTINGS_CHANGED_EVENT))
+  }
 }
 
 /** GET レスポンスキャッシュを全消去 (手動更新時などに使用) */
@@ -194,6 +206,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
           method,
           sessionKey:
             settings.sessionKey || null,
+          timeoutSecs:
+            settings.timeoutSecs || null,
         }
       )
 

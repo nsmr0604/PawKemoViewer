@@ -63,6 +63,26 @@ export function PostPage({
     setLightboxIndex(null)
   }, [service, creatorId, postId])
 
+  // タッチスワイプによる前後投稿遷移 (FANBOX Viewer「左右スワイプで投稿を見る」型)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.changedTouches[0]
+    if (t) touchStartRef.current = { x: t.clientX, y: t.clientY }
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartRef.current
+    touchStartRef.current = null
+    if (!start || lightboxIndex !== null) return
+    const t = e.changedTouches[0]
+    if (!t) return
+    const dx = t.clientX - start.x
+    const dy = t.clientY - start.y
+    // 横方向優位のスワイプのみ (縦スクロールを妨害しない)
+    if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 2) return
+    if (dx > 0) navPost(post?.prev)
+    else navPost(post?.next)
+  }
+
   // キーボード操作 (JHenTai の Keyboard Shortcuts 相当:
   // ライトボックス表示中: Esc=閉じる / ←→=前後の画像
   // 通常表示中: ←→=前後の投稿へ遷移 / Esc=戻る)
@@ -141,10 +161,8 @@ export function PostPage({
     ...(post.attachments || []),
   ]
 
-  const isVideo = isVideoFile
-
   return (
-    <div className="page post-page">
+    <div className="page post-page" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="post-title-wrap">
         <h1 className="post-title">{post.title || "(無題)"}</h1>
         <div className="post-meta">
@@ -191,7 +209,7 @@ export function PostPage({
         <div className="post-files">
           {allFiles.map((f, i) => (
             <figure key={i} className="post-file">
-              {isVideo(f) ? (
+              {isVideoFile(f) ? (
                 <video
                   src={fileUrl(f)}
                   controls
@@ -327,7 +345,7 @@ export function PostPage({
         const hasNext = lightboxIndex < allFiles.length - 1
         return (
           <div className="lightbox" onClick={() => setLightboxIndex(null)}>
-            {isVideo(lightbox) ? (
+            {isVideoFile(lightbox) ? (
               <video
                 src={fileUrl(lightbox)}
                 controls

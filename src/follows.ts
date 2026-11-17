@@ -39,6 +39,15 @@ export function unfollow(service: string, id: string) {
   save(loadFollows().filter((f) => !(f.service === service && f.id === id)))
 }
 
+/** 一括差し替え (バックアップからの復元用) */
+export function replaceFollows(list: FollowEntry[]) {
+  save(
+    list.filter(
+      (f) => f && typeof f.service === "string" && typeof f.id === "string",
+    ),
+  )
+}
+
 export function toggleFollow(f: FollowEntry): boolean {
   if (isFollowed(f.service, f.id)) {
     unfollow(f.service, f.id)

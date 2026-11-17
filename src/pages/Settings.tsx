@@ -10,7 +10,8 @@ import {
   logInfo,
 } from "../log"
 import { navigate } from "../router"
-import { getPlatformName, type LayoutMode } from "../platform"
+import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
+import { exportBackup, applyBackup, buildBackup } from "../backup"
 
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
@@ -43,6 +44,10 @@ export function SettingsPage() {
   const [cache, setCache] = useState<CreatorCacheInfo | null>(null)
   const [logText, setLogText] = useState<string | null>(null)
   const [logResult, setLogResult] = useState<string | null>(null)
+  const [timeoutSecs, setTimeoutSecsState] = useState<number>(s.timeoutSecs || 30)
+  const [backupResult, setBackupResult] = useState<string | null>(null)
+  const [backupPaste, setBackupPaste] = useState("")
+  const [showBackupPaste, setShowBackupPaste] = useState(false)
 
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => setAppVersion("取得失敗"))
@@ -74,6 +79,52 @@ export function SettingsPage() {
   const toggleNoImageMode = (val: boolean) => {
     setNoImageModeState(val)
     updateSettings({ noImageMode: val })
+  }
+
+  const applyTimeoutSecs = (v: number) => {
+    setTimeoutSecsState(v)
+    updateSettings({ timeoutSecs: v })
+  }
+
+  const doExportBackup = async () => {
+    try {
+      const path = await exportBackup()
+      let clip = ""
+      try {
+        await navigator.clipboard.writeText(buildBackup())
+        clip = " (クリップボードにもコピー済み)"
+      } catch {
+        /* クリップボード失敗は無視 (ファイル保存で十分) */
+      }
+      setBackupResult(`書き出しました: ${path}${clip}`)
+      logInfo("バックアップを書き出しました")
+    } catch (e) {
+      setBackupResult(`書き出し失敗: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  const doImportFromClipboard = async () => {
+    const text = await readClipboardTextSafe()
+    if (!text) {
+      setBackupResult("クリップボードが空か読み取れません")
+      return
+    }
+    await doImport(text)
+  }
+
+  const doImport = async (text: string) => {
+    if (!window.confirm("バックアップを読み込むと、現在のフォロー・既読・設定を上書きします。よろしいですか?")) return
+    try {
+      const r = await applyBackup(text)
+      setBackupResult(
+        `読み込みました: フォロー ${r.follows} 件 · 既読 ${r.seen} 件 · 設定 ${r.settings ? "反映" : "変更なし"}`,
+      )
+      logInfo("バックアップを読み込みました")
+      // フォロー数表示を即反映させるため再読み込み
+      setTimeout(() => window.location.reload(), 900)
+    } catch (e) {
+      setBackupResult(`読み込み失敗: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   const testSession = async () => {
@@ -243,6 +294,94 @@ export function SettingsPage() {
             {noImageMode ? "有効 (画像オフ)" : "無効 (通常)"}
           </button>
         </div>
+      </div>
+
+      {/* ------------------------------------------------ 接続 */}
+      <div className="settings-section">
+        <div className="section-label">接続</div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>通信タイムアウト</span>
+            <small>
+              応答が遅い・失敗する環境では長めに設定します (既定 30 秒)。
+              ログインにも同じ値を使用します
+            </small>
+          </div>
+          <div className="segmented">
+            {[10, 30, 60, 120].map((v) => (
+              <button
+                key={v}
+                className={`seg ${timeoutSecs === v ? "seg-active" : ""}`}
+                onClick={() => applyTimeoutSecs(v)}
+              >
+                {v}秒
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------ データ (バックアップ) */}
+      <div className="settings-section">
+        <div className="section-label">データ</div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>バックアップ (書き出し)</span>
+            <small>
+              フォロー・既読・設定を JSON ファイルに保存します
+              (端末移行・初期化前に使用)
+            </small>
+          </div>
+          <button className="btn" onClick={doExportBackup}>
+            書き出す
+          </button>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>バックアップ (読み込み)</span>
+            <small>
+              書き出した JSON を読み込み、フォロー・既読・設定を復元します
+              (現在の内容を上書きします)
+            </small>
+          </div>
+          <div className="settings-actions">
+            <button className="btn" onClick={doImportFromClipboard}>
+              クリップボードから
+            </button>
+            <button className="btn" onClick={() => setShowBackupPaste((v) => !v)}>
+              貼り付ける
+            </button>
+          </div>
+        </div>
+
+        {showBackupPaste && (
+          <label className="field">
+            <span>バックアップ JSON</span>
+            <textarea
+              rows={5}
+              value={backupPaste}
+              onChange={(e) => setBackupPaste(e.target.value)}
+              placeholder='{"type":"pawchive-backup",...} を貼り付け'
+              className="mono"
+            />
+            <button
+              className="btn"
+              disabled={!backupPaste.trim()}
+              onClick={() => {
+                doImport(backupPaste)
+                setShowBackupPaste(false)
+                setBackupPaste("")
+              }}
+            >
+              この内容を読み込む
+            </button>
+          </label>
+        )}
+
+        {backupResult && <span className="small">{backupResult}</span>}
       </div>
 
       {/* ------------------------------------------------ キャッシュ */}
