@@ -20,11 +20,13 @@
 - Tauri v2 の引数は **camelCase**(Rust 側 snake_case → JS からは `sessionKey` 等)
 - snake_case で渡すとバインドされず Option 引数が常に None になる(実害発生済み)
 
-## コンテキスト管理
+## コンテキスト管理 (常時読み込み・常時書き込み原則)
 
+- **常時読み込み (作業着手前)**: セッション開始時・タスク着手時は、必ず `notes/` 配下のナレッジ (`index.md`, `sessions.md`, 関連 concept) を最初にすべて読み込み、現在の進捗・仕様・既知の罠・未解決事項を同期してから作業する
+- **常時書き込み (気づいた時点)**: 開発上の発見・バグ・仕様変更・作業進捗・ノウハウは、作業中・作業完了時に**気づいた時点で `notes/` にすべて記録・追記する** (後回しにしない)
+- コード修正時は、原因が分かった時点で該当ノート (`bugs.md` や各 concept) に先に記録してから修正に着手する
 - 会話コンテキストが長くなったら、内容を **`notes/` 以下に Markdown で落とし込み、以後そちらを参照**する
 - `notes/` は gitignore で除外済み(ローカル限定、コミットしない)
-- **開発上の発見・バグ・仕様・ノウハウは、気づいた時点で `notes/` にすべて記録する**
 - **記法は OKF (Open Knowledge Format) v0.2 の軽量サブセット**(仕様詳細: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
 
 ### notes/ バンドル構成(固定)
@@ -75,9 +77,7 @@ notes/
 - `Attested Computation` 型(`runtime`/`parameters`/`executor`/`attester`)
 - `references/` ディレクトリ規約
 - バンドル配布(git リポジトリ/tarball としての交換)
-  - `notes/knowledge.md`: 永続的なナレッジ(仕様・バグ・回避策・実測値)— セッションをまたいで維持
-  - `notes/YYYY-MM-DD-session.md`: セッション単位の進捗・未解決事項
-- コード修正時は、原因が分かった時点で knowledge.md に先に記録してから修正する
+- コード修正時は、原因が分かった時点で該当ノート (`bugs.md` や各 concept) に先に記録してから修正する
 
 ## API 規約
 
