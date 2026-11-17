@@ -35,6 +35,7 @@ export function PostPage({
   const [post, setPost] = useState<PawPost | null>(null)
   const [comments, setComments] = useState<PawComment[] | null>(null)
   const [revisions, setRevisions] = useState<PawRevision[] | null>(null)
+  const [revisionsError, setRevisionsError] = useState<unknown>(null)
   const [hashResult, setHashResult] = useState<HashLookupResult | null>(null)
   const [showHash, setShowHash] = useState(false)
   const [flagged, setFlagged] = useState<"none" | "busy" | "ok" | "dup" | "err">("none")
@@ -54,6 +55,7 @@ export function PostPage({
     setError(null)
     setComments(null)
     setRevisions(null)
+    setRevisionsError(null)
     setHashResult(null)
     setShowHash(false)
     try {
@@ -74,8 +76,15 @@ export function PostPage({
       api.postComments(postContext.service, postContext.creatorId, postContext.postId).then(setComments).catch(() => setComments([]))
       api
         .postRevisions(postContext.service, postContext.creatorId, postContext.postId)
-        .then((r) => setRevisions(r.length ? r : []))
-        .catch(() => setRevisions([]))
+        .then((r) => {
+          setRevisions(Array.isArray(r) ? r : [])
+          logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${Array.isArray(r) ? r.length : 0}`)
+        })
+        .catch((e) => {
+          setRevisions([])
+          setRevisionsError(e)
+          logError(`投稿改訂履歴取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
+        })
     } catch (e) {
       setError(e)
     }
@@ -372,9 +381,14 @@ export function PostPage({
         )}
       </div>
 
-      {revisions && revisions.length > 0 && (
-        <div className="section">
-          <h3>改訂履歴 ({revisions.length})</h3>
+      <div className="section">
+        <h3>改訂履歴{revisions && revisions.length > 0 ? ` (${revisions.length})` : ""}</h3>
+        {revisions === null && <Spinner label="改訂履歴…" />}
+        {revisionsError && <ErrorBox error={revisionsError} />}
+        {revisions && revisions.length === 0 && !revisionsError && (
+          <Empty text="改訂履歴はありません" />
+        )}
+        {revisions && revisions.length > 0 && (
           <ul className="revision-list">
             {revisions.map((r) => (
               <li key={r.revision_id} className="revision">
@@ -389,8 +403,8 @@ export function PostPage({
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </div>
 
       {lightboxIndex !== null && allFiles[lightboxIndex] && (() => {
         const lightbox = allFiles[lightboxIndex]
