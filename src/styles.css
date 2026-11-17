@@ -812,6 +812,27 @@ input:not([type]) {
   object-fit: cover;
 }
 
+.revision-selector-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--fg2);
+}
+.revision-selector {
+  max-width: min(62vw, 360px);
+  min-width: 180px;
+  padding: 8px 10px;
+  border: 1px solid var(--bg3);
+  border-radius: var(--radius);
+  background: var(--bg2);
+  color: var(--fg);
+  font-size: 13px;
+}
+.revision-hint {
+  color: var(--fg2);
+  margin: 8px 0 0;
+}
+
 .lightbox {
   position: fixed;
   inset: 0;
