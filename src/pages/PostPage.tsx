@@ -208,10 +208,11 @@ export function PostPage({
     const name = path.split("/").pop() || ""
     return name.replace(/\.[^.]+$/, "")
   }
-  const displayPost: PawPost =
+  const activeRevision =
     revisions && revisions.length > 0
       ? (revisions.find((r) => r.revision_id === selectedRevisionId) || revisions[0])
-      : post
+      : null
+  const displayPost: PawPost = activeRevision || post
   const mainHash = displayPost.file?.path ? hashFromPath(displayPost.file.path) : ""
 
   const onFlag = async () => {
@@ -245,7 +246,7 @@ export function PostPage({
           {" · "}
           公開 {fmtDate(displayPost.published)}
           {displayPost.edited && displayPost.edited !== displayPost.published && ` · 編集 ${fmtDate(displayPost.edited)}`}
-          {revisions && revisions.length > 0 && ` · 改訂 ${revisions.findIndex((r) => r.revision_id === displayPost.revision_id) + 1}/${revisions.length}`}
+          {revisions && revisions.length > 0 && ` · 改訂 ${revisions.findIndex((r) => r.revision_id === activeRevision?.revision_id) + 1}/${revisions.length}`}
         </div>
         <div className="creator-actions">
           <FollowButton service={postContext.service} id={postContext.creatorId} />
@@ -406,7 +407,7 @@ export function PostPage({
               <span className="small">表示する版</span>
               <select
                 className="revision-selector"
-                value={String(displayPost.revision_id)}
+                value={String(activeRevision?.revision_id ?? "")}
                 onChange={(e) => {
                   const nextId = Number(e.target.value)
                   setSelectedRevisionId(Number.isFinite(nextId) ? nextId : null)
