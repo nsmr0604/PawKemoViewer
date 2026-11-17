@@ -46,6 +46,12 @@ export default function App() {
     setFollowCount(loadFollows().length)
   }, [route])
 
+  useEffect(() => {
+    const onFollowsChanged = () => setFollowCount(loadFollows().length)
+    window.addEventListener("pawchive-follows-changed", onFollowsChanged)
+    return () => window.removeEventListener("pawchive-follows-changed", onFollowsChanged)
+  }, [])
+
   // テーマをルート要素に反映 (設定 → 表示 で切替、即時反映)
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme
