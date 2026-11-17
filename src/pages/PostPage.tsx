@@ -215,7 +215,7 @@ export function PostPage({
         <h1 className="post-title">{post.title || "(無題)"}</h1>
         <div className="post-meta">
           <span className="link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
-            {post.service} / {post.user}
+            {postContext.service} / {postContext.creatorId}
           </span>
           {" · "}
           公開 {fmtDate(post.published)}
