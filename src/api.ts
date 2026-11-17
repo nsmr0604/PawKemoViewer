@@ -73,7 +73,10 @@ export function getSettings(): Settings {
 }
 
 export function updateSettings(patch: Partial<Settings>) {
+  const sessionChanged =
+    patch.sessionKey !== undefined && patch.sessionKey !== settings.sessionKey
   settings = { ...settings, ...patch }
+  if (sessionChanged) clearApiCache()
   saveSettings(settings)
   // App 等の上位コンポーネントに変更を通知 (即時反映)
   if (typeof window !== "undefined") {
@@ -190,6 +193,7 @@ async function request<T>(
   path: string,
   init?: RequestInit,
   sessionKey = settings.sessionKey,
+  useCache = true,
 ): Promise<T> {
   const method = (init?.method || "GET").toUpperCase()
   const url = `${path}`
@@ -200,7 +204,7 @@ async function request<T>(
   const cacheKey = `${requestGeneration}:${url}`
 
   // GET はキャッシュ / 実行中リクエストの統合を行う
-  if (method === "GET") {
+  if (method === "GET" && useCache) {
     const cached = cacheGet(cacheKey)
     if (cached) {
       if (cached.promise) return cached.promise as Promise<T>
@@ -248,7 +252,7 @@ async function request<T>(
     }
   })
 
-  if (method === "GET") {
+  if (method === "GET" && useCache) {
     const entry: CacheEntry = { expires: Date.now() + CACHE_TTL_MS, promise: exec }
     cachePut(cacheKey, entry)
     try {
@@ -329,7 +333,12 @@ export const api = {
   /** アカウントのお気に入り一覧 type: "post" | "artist"
    *  sessionKey を指定すると、未保存の入力値を使った疎通確認もできる。 */
   accountFavorites: (type: "post" | "artist", sessionKey = settings.sessionKey) =>
-    request<AccountFavorite[]>(`/account/favorites?type=${type}`, undefined, sessionKey),
+    request<AccountFavorite[]>(
+      `/account/favorites?type=${type}`,
+      undefined,
+      sessionKey,
+      sessionKey === settings.sessionKey,
+    ),
 
   favPostAdd: (service: string, creatorId: string, postId: string) =>
     request<void>(`/favorites/post/${service}/${creatorId}/${postId}`, {
