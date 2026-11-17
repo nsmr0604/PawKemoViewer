@@ -6,13 +6,25 @@ import { PostPage } from "./pages/PostPage"
 import { FavoritesPage } from "./pages/Favorites"
 import { SettingsPage } from "./pages/Settings"
 import { loadFollows } from "./follows"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { LoginPage } from "./pages/Login"
 import { getSettings } from "./api"
+import { resolveLayout, type ResolvedLayout } from "./platform"
+import { NavigationRail } from "./components/NavigationRail"
 
 export default function App() {
   const route = useRoute()
   const [followCount, setFollowCount] = useState(loadFollows().length)
+  const [winWidth, setWinWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
+
+  // 画面幅リスナー
+  useEffect(() => {
+    const onResize = () => setWinWidth(window.innerWidth)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
+
+  const layout: ResolvedLayout = resolveLayout(getSettings().layoutMode, winWidth)
 
   useEffect(() => {
     // ページ遷移のたびにフォロー数を同期
@@ -27,6 +39,54 @@ export default function App() {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [route.path, route.params.id])
+
+  // デスクトップ向けキーボードショートカット (JHenTai 参考: H/C/F/S/Esc//)
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      // 入力フォーム操作中はスキップ
+      const target = e.target as HTMLElement | null
+      const isInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
+          target.isContentEditable)
+
+      if (e.key === "Escape") {
+        if (route.path === "post" || route.path === "login") {
+          e.preventDefault()
+          history.back()
+        }
+        return
+      }
+
+      if (isInput) return
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+
+      if (e.key === "/") {
+        const searchInput = document.querySelector<HTMLInputElement>("input[type='search']")
+        if (searchInput) {
+          e.preventDefault()
+          searchInput.focus()
+          searchInput.select()
+        }
+      } else if (e.key === "h" || e.key === "H") {
+        navigate("/", true)
+      } else if (e.key === "c" || e.key === "C") {
+        navigate("/creators")
+      } else if (e.key === "f" || e.key === "F") {
+        navigate("/favorites")
+      } else if (e.key === "s" || e.key === "S") {
+        navigate("/settings")
+      }
+    },
+    [route.path],
+  )
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleKeyDown])
 
   let content: React.ReactNode
   switch (route.path) {
@@ -64,41 +124,73 @@ export default function App() {
 
   const isDetail = route.path === "post"
   const isLogin = route.path === "login"
+  const isDesktopLayout = layout === "desktop"
 
   return (
-    <div className="app">
-      {!isDetail && !isLogin && (
-        <header className="top-bar">
-          <div className="logo" onClick={() => navigate("/", true)}>
-            🐾 Pawchive Viewer
-          </div>
-        </header>
+    <div className={`app ${isDesktopLayout ? "app-desktop" : "app-mobile"}`}>
+      {/* デスクトップ環境では左側ナビゲーションレール (JHenTai 型) */}
+      {isDesktopLayout && !isLogin && (
+        <NavigationRail currentPath={route.path} followCount={followCount} />
       )}
-      {(isDetail || isLogin) && (
-        <header className="top-bar detail-bar">
-          <button className="btn btn-ghost" onClick={() => history.back()}>
-            ← 戻る
-          </button>
-          <div className="logo small">🐾</div>
-        </header>
-      )}
-      <main className={`content ${isLogin ? "content-naked" : ""}`}>{content}</main>
-      {!isLogin && (
-        <nav className="bottom-nav">
-          <button className={route.path === "home" || route.path === "search" ? "nav-active" : ""} onClick={() => navigate("/", true)}>
-            🏠<span>ホーム</span>
-          </button>
-          <button className={route.path === "creators" || route.path === "creator" ? "nav-active" : ""} onClick={() => navigate("/creators")}>
-            👤<span>クリエイター</span>
-          </button>
-          <button className={route.path === "favorites" ? "nav-active" : ""} onClick={() => navigate("/favorites")}>
-            ⭐<span>フォロー{followCount > 0 ? ` (${followCount})` : ""}</span>
-          </button>
-          <button className={route.path === "settings" ? "nav-active" : ""} onClick={() => navigate("/settings")}>
-            ⚙️<span>設定</span>
-          </button>
-        </nav>
-      )}
+
+      <div className="app-main-wrapper">
+        {!isDetail && !isLogin && (
+          <header className="top-bar">
+            <div className="logo" onClick={() => navigate("/", true)}>
+              🐾 Pawchive Viewer
+            </div>
+            {isDesktopLayout && (
+              <div className="desktop-shortcuts-hint" title="キーボードショートカットが利用可能です">
+                <span className="kbd">/</span> 検索
+                <span className="kbd">H</span> ホーム
+                <span className="kbd">C</span> 作者
+                <span className="kbd">F</span> フォロー
+                <span className="kbd">S</span> 設定
+              </div>
+            )}
+          </header>
+        )}
+        {(isDetail || isLogin) && (
+          <header className="top-bar detail-bar">
+            <button className="btn btn-ghost" onClick={() => history.back()} title="戻る (Esc)">
+              ← 戻る <span className="kbd small">Esc</span>
+            </button>
+            <div className="logo small" onClick={() => navigate("/", true)}>🐾 Pawchive</div>
+          </header>
+        )}
+
+        <main className={`content ${isLogin ? "content-naked" : ""}`}>{content}</main>
+
+        {/* モバイル環境では下部ボトムナビ */}
+        {!isDesktopLayout && !isLogin && (
+          <nav className="bottom-nav">
+            <button
+              className={route.path === "home" || route.path === "search" ? "nav-active" : ""}
+              onClick={() => navigate("/", true)}
+            >
+              🏠<span>ホーム</span>
+            </button>
+            <button
+              className={route.path === "creators" || route.path === "creator" ? "nav-active" : ""}
+              onClick={() => navigate("/creators")}
+            >
+              👤<span>クリエイター</span>
+            </button>
+            <button
+              className={route.path === "favorites" ? "nav-active" : ""}
+              onClick={() => navigate("/favorites")}
+            >
+              ⭐<span>フォロー{followCount > 0 ? ` (${followCount})` : ""}</span>
+            </button>
+            <button
+              className={route.path === "settings" ? "nav-active" : ""}
+              onClick={() => navigate("/settings")}
+            >
+              ⚙️<span>設定</span>
+            </button>
+          </nav>
+        )}
+      </div>
     </div>
   )
 }

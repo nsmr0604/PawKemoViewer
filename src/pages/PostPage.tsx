@@ -63,26 +63,43 @@ export function PostPage({
     setLightboxIndex(null)
   }, [service, creatorId, postId])
 
-  // ライトボックスのキーボード操作 (JHenTai の Keyboard Shortcuts 相当:
-  // Esc=閉じる / ←→=前後の画像)
+  // キーボード操作 (JHenTai の Keyboard Shortcuts 相当:
+  // ライトボックス表示中: Esc=閉じる / ←→=前後の画像
+  // 通常表示中: ←→=前後の投稿へ遷移 / Esc=戻る)
   const filesCountRef = useRef(0)
   filesCountRef.current =
     (post ? (post.file?.path ? 1 : 0) : 0) + (post?.attachments?.length || 0)
 
   useEffect(() => {
-    if (lightboxIndex === null) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setLightboxIndex(null)
-      } else if (e.key === "ArrowRight") {
-        setLightboxIndex((i) => (i === null ? null : Math.min(i + 1, filesCountRef.current - 1)))
-      } else if (e.key === "ArrowLeft") {
-        setLightboxIndex((i) => (i === null ? null : Math.max(i - 1, 0)))
+      // フォーム入力中は除外
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return
+
+      if (lightboxIndex !== null) {
+        if (e.key === "Escape") {
+          e.stopPropagation()
+          setLightboxIndex(null)
+        } else if (e.key === "ArrowRight") {
+          e.preventDefault()
+          setLightboxIndex((i) => (i === null ? null : Math.min(i + 1, filesCountRef.current - 1)))
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault()
+          setLightboxIndex((i) => (i === null ? null : Math.max(i - 1, 0)))
+        }
+      } else {
+        if (e.key === "ArrowRight" && post?.next) {
+          e.preventDefault()
+          navPost(post.next)
+        } else if (e.key === "ArrowLeft" && post?.prev) {
+          e.preventDefault()
+          navPost(post.prev)
+        }
       }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [lightboxIndex !== null])
+  }, [lightboxIndex, post?.prev, post?.next])
 
   if (error) {
     return (
@@ -140,6 +157,24 @@ export function PostPage({
         </div>
         <div className="creator-actions">
           <FollowButton service={post.service} id={post.user} />
+          <div className="post-quick-nav">
+            <button
+              className="btn btn-sm"
+              disabled={!post.prev}
+              onClick={() => navPost(post.prev)}
+              title="前の投稿 (←)"
+            >
+              ← 前
+            </button>
+            <button
+              className="btn btn-sm"
+              disabled={!post.next}
+              onClick={() => navPost(post.next)}
+              title="次の投稿 (→)"
+            >
+              次 →
+            </button>
+          </div>
           <a
             className="btn btn-ghost"
             href={postUrl(post.service, post.user, post.id)}

@@ -26,6 +26,12 @@ export interface Settings {
   sessionKey: string
   /** テーマ: dark (既定) / light */
   theme: "dark" | "light"
+  /** レイアウトモード (JHenTai 参考): auto (既定) / desktop / mobile */
+  layoutMode: "auto" | "desktop" | "mobile"
+  /** 低通信モード (No Image Mode - JHenTai/EhViewer 参考): 画像を読み込まない */
+  noImageMode: boolean
+  /** 投稿一覧の表示形式 (FANBOX Viewer 参考): grid (既定) / list */
+  postViewMode: "grid" | "list"
 }
 
 export function loadSettings(): Settings {
@@ -39,7 +45,13 @@ export function loadSettings(): Settings {
 }
 
 function defaultSettings(): Settings {
-  return { sessionKey: "", theme: "dark" }
+  return {
+    sessionKey: "",
+    theme: "dark",
+    layoutMode: "auto",
+    noImageMode: false,
+    postViewMode: "grid",
+  }
 }
 
 export function saveSettings(s: Settings) {

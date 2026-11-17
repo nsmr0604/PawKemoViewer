@@ -13,6 +13,7 @@ import {
 import type { PawCreator } from "../types"
 import { Spinner, ErrorBox, Empty, fmtDate } from "../components"
 import { navigate } from "../router"
+import { readClipboardTextSafe, extractCreatorFromText, type ExtractedCreator } from "../platform"
 
 /** API レスポンス → 索引行 (パック v2: slug / favorited を保持) */
 function toRow(c: PawCreator): CreatorRow {
@@ -35,8 +36,26 @@ export function CreatorsPage() {
   const [building, setBuilding] = useState(false)
   const [built, setBuilt] = useState<number | null>(null) // 構築済み件数 (進捗表示)
   const [error, setError] = useState<unknown>(null)
+  const [clipCreator, setClipCreator] = useState<ExtractedCreator | null>(null)
   const qRef = useRef(q)
   qRef.current = q
+
+  // クリップボードの URL 検出 (JHenTai の Check Gallery URL in Clipboard 参考)
+  useEffect(() => {
+    let active = true
+    const checkClip = async () => {
+      const text = await readClipboardTextSafe()
+      if (!active || !text) return
+      const found = extractCreatorFromText(text)
+      if (found) setClipCreator(found)
+    }
+    checkClip()
+    window.addEventListener("focus", checkClip)
+    return () => {
+      active = false
+      window.removeEventListener("focus", checkClip)
+    }
+  }, [])
 
   // メモリ索引から即時検索 (構築途中でも部分結果を表示)
   const runSearch = useCallback(async (value: string) => {
@@ -100,6 +119,31 @@ export function CreatorsPage() {
 
   return (
     <div className="page">
+      {clipCreator && (
+        <div className="clipboard-banner">
+          <div className="clipboard-banner-info">
+            <span className="clipboard-badge">📋 クリップボード</span>
+            <span className="clipboard-text">
+              {clipCreator.service} / {clipCreator.idOrSlug}
+            </span>
+          </div>
+          <div className="clipboard-banner-actions">
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                onSearch(clipCreator.idOrSlug)
+                setClipCreator(null)
+              }}
+            >
+              検索に入力
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setClipCreator(null)}>
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       <form className="search-bar" onSubmit={(e) => e.preventDefault()}>
         <input
           type="search"

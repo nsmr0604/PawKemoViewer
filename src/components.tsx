@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import type { PawFile, PawPost } from "./types"
-import { fileUrl, thumbUrl, proxyFileUrl, proxyLinkUrl } from "./api"
+import { fileUrl, thumbUrl, proxyFileUrl, proxyLinkUrl, getSettings } from "./api"
 import { navigate } from "./router"
 
 // ---------------------------------------------------------------------------
@@ -71,10 +71,11 @@ export function Empty({ text = "何もありません" }: { text?: string }) {
 
 /** 無限スクロール用ローダー: scroll イベント + 幾何判定で確実に発火する
  *  (IntersectionObserver は環境によって再発火しないため不採用) */
-export function PostGrid({ posts, onEndReached, loading, done, newIds }: PostGridProps) {
+export function PostGrid({ posts, onEndReached, loading, done, newIds, viewMode }: PostGridProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const cbRef = useRef(onEndReached)
   cbRef.current = onEndReached
+  const currentView = viewMode || getSettings().postViewMode
 
   const check = useCallback(() => {
     const el = sentinelRef.current
@@ -113,11 +114,19 @@ export function PostGrid({ posts, onEndReached, loading, done, newIds }: PostGri
 
   return (
     <div className="post-grid-wrap">
-      <div className="post-grid">
-        {posts.map((p) => (
-          <PostCard key={`${p.service}:${p.id}`} post={p} isNew={newIds?.has(p.id)} />
-        ))}
-      </div>
+      {currentView === "list" ? (
+        <div className="post-list">
+          {posts.map((p) => (
+            <PostRow key={`${p.service}:${p.id}`} post={p} isNew={newIds?.has(p.id)} />
+          ))}
+        </div>
+      ) : (
+        <div className="post-grid">
+          {posts.map((p) => (
+            <PostCard key={`${p.service}:${p.id}`} post={p} isNew={newIds?.has(p.id)} />
+          ))}
+        </div>
+      )}
       <div ref={sentinelRef} style={{ height: 1 }} />
       {loading && <Spinner />}
       {done && posts.length > 0 && <div className="grid-end">終わり</div>}
@@ -131,9 +140,14 @@ export function PostGrid({ posts, onEndReached, loading, done, newIds }: PostGri
 
 export function Thumb({ file, className }: { file: PawFile | undefined; className?: string }) {
   const [stage, setStage] = useState<0 | 1 | 2>(0) // 0=thumb, 1=full, 2=giveup
+  const noImage = getSettings().noImageMode
+
   useEffect(() => setStage(0), [file?.path])
   if (!file?.path || stage === 2)
     return <div className={`thumb thumb-fallback ${className || ""}`}>🖼️</div>
+  if (noImage)
+    return <div className={`thumb thumb-noimage ${className || ""}`}>🖼️ (通信節約)</div>
+
   return (
     <img
       className={`thumb ${className || ""}`}
@@ -147,7 +161,7 @@ export function Thumb({ file, className }: { file: PawFile | undefined; classNam
 }
 
 // ---------------------------------------------------------------------------
-// 投稿グリッド
+// 投稿グリッド & リスト
 // ---------------------------------------------------------------------------
 
 export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
@@ -174,6 +188,34 @@ export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
   )
 }
 
+/** リスト表示用の行カード (EhViewer / FANBOX Viewer の行型レイアウト参考) */
+export function PostRow({ post, isNew }: { post: PawPost; isNew?: boolean }) {
+  const onClick = useCallback(() => {
+    navigate(`/post/${post.service}/${post.user}/${post.id}`)
+  }, [post])
+  const imageCount =
+    (post.file?.path ? 1 : 0) + (post.attachments?.length || 0)
+  return (
+    <div className="post-row-item" onClick={onClick}>
+      <div className="post-row-thumb">
+        <Thumb file={post.file?.path ? post.file : post.attachments?.[0]} />
+        {imageCount > 1 && <span className="badge-count-mini">🖼{imageCount}</span>}
+      </div>
+      <div className="post-row-content">
+        <div className="post-row-title">
+          {isNew && <span className="badge-new inline">NEW</span>}
+          {post.title || "(無題)"}
+        </div>
+        <div className="post-row-meta">
+          <span className="post-row-service">{post.service}</span>
+          <span className="post-row-user">{post.user}</span>
+          <span className="post-row-date">{fmtDate(post.published || post.added)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export interface PostGridProps {
   posts: PawPost[]
   /** 続きを読み込む (末尾に到達したら呼ばれる) */
@@ -181,6 +223,8 @@ export interface PostGridProps {
   loading?: boolean
   done?: boolean
   newIds?: Set<string>
+  /** 表示モード: grid (既定) / list */
+  viewMode?: "grid" | "list"
 }
 
 // ---------------------------------------------------------------------------

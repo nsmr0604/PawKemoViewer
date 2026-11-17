@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, creatorUrl,  ApiError } from "../api"
+import { api, creatorUrl, ApiError, getSettings, updateSettings } from "../api"
 import type { PawPost, PawTag } from "../types"
-import { Spinner,PostGrid, ErrorBox } from "../components"
+import { Spinner, PostGrid, ErrorBox } from "../components"
 import { CreatorHeader } from "./Creators"
 import { FollowButton } from "../components/FollowButton"
 import { useDebounced, useScrollMemory } from "../hooks"
@@ -20,7 +20,13 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
   const [done, setDone] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [showAllTags, setShowAllTags] = useState(false)
+  const [viewMode, setViewMode] = useState<"grid" | "list">(getSettings().postViewMode)
   const reqSeq = useRef(0)
+
+  const toggleViewMode = (mode: "grid" | "list") => {
+    setViewMode(mode)
+    updateSettings({ postViewMode: mode })
+  }
 
   const qValid = q.length >= MIN_QUERY
   const tagKey = selectedTags.join(",")
@@ -134,11 +140,34 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
         </div>
       )}
 
+      <div className="view-mode-bar">
+        <span className="small text-muted">投稿一覧</span>
+        <div className="view-mode-toggles">
+          <button
+            type="button"
+            className={`btn-icon ${viewMode === "grid" ? "active" : ""}`}
+            onClick={() => toggleViewMode("grid")}
+            title="グリッド表示"
+          >
+            🔲
+          </button>
+          <button
+            type="button"
+            className={`btn-icon ${viewMode === "list" ? "active" : ""}`}
+            onClick={() => toggleViewMode("list")}
+            title="リスト表示"
+          >
+            ☰
+          </button>
+        </div>
+      </div>
+
       {error !== null && <ErrorBox error={error} onRetry={() => load(offset, offset === 0)} />}
       <PostGrid
         posts={posts}
         loading={loading}
         done={done}
+        viewMode={viewMode}
         onEndReached={loading || done ? undefined : () => load(offset + PAGE, false)}
       />
       {!loading && !error && posts.length === 0 && done && <div className="empty">投稿がありません</div>}

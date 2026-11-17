@@ -10,6 +10,7 @@ import {
   logInfo,
 } from "../log"
 import { navigate } from "../router"
+import { getPlatformName, type LayoutMode } from "../platform"
 
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
@@ -32,6 +33,9 @@ export function SettingsPage() {
 
   const [sessionKey, setSessionKey] = useState(s.sessionKey)
   const [theme, setTheme] = useState<"dark" | "light">(s.theme)
+  const [layoutMode, setLayoutModeState] = useState<LayoutMode>(s.layoutMode || "auto")
+  const [noImageMode, setNoImageModeState] = useState<boolean>(s.noImageMode || false)
+  const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
   const [saved, setSaved] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [version, setVersion] = useState<string>("")
@@ -55,6 +59,21 @@ export function SettingsPage() {
     setTheme(t)
     updateSettings({ theme: t })
     document.documentElement.dataset.theme = t
+  }
+
+  const applyLayoutMode = (lm: LayoutMode) => {
+    setLayoutModeState(lm)
+    updateSettings({ layoutMode: lm })
+  }
+
+  const applyPostViewMode = (vm: "grid" | "list") => {
+    setPostViewModeState(vm)
+    updateSettings({ postViewMode: vm })
+  }
+
+  const toggleNoImageMode = (val: boolean) => {
+    setNoImageModeState(val)
+    updateSettings({ noImageMode: val })
   }
 
   const testSession = async () => {
@@ -161,6 +180,69 @@ export function SettingsPage() {
             </button>
           </div>
         </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>レイアウトモード</span>
+            <small>
+              デスクトップ (左アイコンレール) とモバイル (ボトムナビ) の表示を切り替えます
+            </small>
+          </div>
+          <div className="segmented">
+            <button
+              className={`seg ${layoutMode === "auto" ? "seg-active" : ""}`}
+              onClick={() => applyLayoutMode("auto")}
+            >
+              自動
+            </button>
+            <button
+              className={`seg ${layoutMode === "desktop" ? "seg-active" : ""}`}
+              onClick={() => applyLayoutMode("desktop")}
+            >
+              🖥️ デスクトップ
+            </button>
+            <button
+              className={`seg ${layoutMode === "mobile" ? "seg-active" : ""}`}
+              onClick={() => applyLayoutMode("mobile")}
+            >
+              📱 モバイル
+            </button>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>投稿一覧の表示形式</span>
+            <small>グリッド (カード配置) またはリスト (行型) を指定します</small>
+          </div>
+          <div className="segmented">
+            <button
+              className={`seg ${postViewMode === "grid" ? "seg-active" : ""}`}
+              onClick={() => applyPostViewMode("grid")}
+            >
+              🔲 グリッド
+            </button>
+            <button
+              className={`seg ${postViewMode === "list" ? "seg-active" : ""}`}
+              onClick={() => applyPostViewMode("list")}
+            >
+              ☰ リスト
+            </button>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>低通信モード (No Image Mode)</span>
+            <small>サムネイルやプレビュー画像を読み込まず、通信量を大幅に節約します</small>
+          </div>
+          <button
+            className={`btn ${noImageMode ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => toggleNoImageMode(!noImageMode)}
+          >
+            {noImageMode ? "有効 (画像オフ)" : "無効 (通常)"}
+          </button>
+        </div>
       </div>
 
       {/* ------------------------------------------------ キャッシュ */}
@@ -237,6 +319,13 @@ export function SettingsPage() {
             </button>
             {version && <code className="small">{version}</code>}
           </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>実行プラットフォーム</span>
+          </div>
+          <code className="small">{getPlatformName()}</code>
         </div>
 
         <div className="setting-item">
