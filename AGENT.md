@@ -27,6 +27,7 @@
 - コード修正時は、原因が分かった時点で該当ノート (`bugs.md` や各 concept) に先に記録してから修正に着手する
 - 会話コンテキストが長くなったら、内容を **`notes/` 以下に Markdown で落とし込み、以後そちらを参照**する
 - `notes/` は gitignore で除外済み(ローカル限定、コミットしない)
+- **開発上の発見・バグ・仕様・ノウハウは、気づいた時点で `notes/` にすべて記録する**
 - **記法は OKF (Open Knowledge Format) v0.2 の軽量サブセット**(仕様詳細: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md)
 
 ### notes/ バンドル構成(固定)
@@ -77,6 +78,9 @@ notes/
 - `Attested Computation` 型(`runtime`/`parameters`/`executor`/`attester`)
 - `references/` ディレクトリ規約
 - バンドル配布(git リポジトリ/tarball としての交換)
+  - `notes/knowledge.md`: 永続的なナレッジ(仕様・バグ・回避策・実測値)— セッションをまたいで維持
+  - `notes/YYYY-MM-DD-session.md`: セッション単位の進捗・未解決事項
+- コード修正時は、原因が分かった時点で knowledge.md に先に記録してから修正する
 - コード修正時は、原因が分かった時点で該当ノート (`bugs.md` や各 concept) に先に記録してから修正する
 
 ## API 規約
