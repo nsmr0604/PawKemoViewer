@@ -110,11 +110,13 @@ notes/
 
 - ビルドは GitHub Actions に委任(ローカルビルドは検証のみ)
 - Windows exe: 現在未署名(将来 eMudhra コード署名を予定)
-- Android APK: `src-tauri/android-dev.keystore`(仮・開発用、リポジトリ同梱可)で署名
-  - **パスワードは yml に直書き禁止**: GitHub Secrets `ANDROID_KEYSTORE_PASSWORD` を参照
-  - ローカルの値は `secret.md`(gitignore 済み・コミット禁止)に保存
-  - alias `android-dev` / PKCS12 / 有効期限 10000 日
-  - 正式配布時はリリース鍵を Secrets 化し、開発用 keystore もリポジトリから削除
+- Android APK: `src-tauri/android-debug.keystore`(**Android SDK 標準手順の debug.keystore**)で署名
+  - 標準手順: `%USERPROFILE%\.android\debug.keystore` に keytool で作成
+    (パスワード `android` / alias `androiddebugkey` / `CN=Android Debug,O=Android,C=US`)
+    をリポジトリへ同梱コピー(パスワードは公開定数のためコミット可)
+  - **パスワードは yml に直書き禁止**: GitHub Secrets `ANDROID_KEYSTORE_PASSWORD`
+    (値は標準の `android`)を参照。ローカルの値・再作成手順は `secret.md` に記録
+  - 正式配布時はリリース鍵を Secrets 化し、debug.keystore もリポジトリから削除
 
 ## 検証ツール
 
