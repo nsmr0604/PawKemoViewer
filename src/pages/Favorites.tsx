@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
 import { getAllSeen, setSeen, getSeen } from "../db"
-import { loadFollows, unfollow } from "../follows"
+import { loadFollows, removeFollow, syncFollowsWithAccount } from "../follows"
 import { ErrorBox, Empty, fmtDate } from "../components"
 import { navigate } from "../router"
 
@@ -34,6 +34,7 @@ export function FavoritesPage() {
   const [follows, setFollows] = useState<FollowState[]>([])
   const [accountFavs, setAccountFavs] = useState<AccountFavorite[] | null>(null)
   const [accountErr, setAccountErr] = useState<unknown>(null)
+  const [syncResult, setSyncResult] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
 
   const refresh = useCallback(async () => {
@@ -51,6 +52,17 @@ export function FavoritesPage() {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  // ログイン中は画面を開いた時点でアカウントとローカルを自動同期する。
+  useEffect(() => {
+    if (!sessionKey) return
+    syncFollowsWithAccount()
+      .then(async (count) => {
+        await refresh()
+        setSyncResult("pawchive と同期しました (" + count + " 件)")
+      })
+      .catch((e) => setAccountErr(e))
+  }, [sessionKey, refresh])
 
   /** 新着チェック: 各フォローの最新投稿を取得して既読IDと比較 (4並列)。
    *  force=false (自動) の場合はチェック済みのものをクールダウン中スキップして API 負荷を抑える */
@@ -150,11 +162,8 @@ export function FavoritesPage() {
     setAccountFavs(null)
     setAccountErr(null)
     try {
-      const [artists, posts] = await Promise.all([
-        api.accountFavorites("artist"),
-        api.accountFavorites("post").catch(() => [] as AccountFavorite[]),
-      ])
-      setAccountFavs([...artists, ...posts])
+      const posts = await api.accountFavorites("post")
+      setAccountFavs(posts)
     } catch (e) {
       setAccountErr(e)
     }
@@ -169,7 +178,7 @@ export function FavoritesPage() {
           フォロー {newCount > 0 && <span className="badge">{newCount}</span>}
         </button>
         <button className={`tab ${tab === "account" ? "tab-active" : ""}`} onClick={() => setTab("account")}>
-          アカウント同期
+          投稿お気に入り
         </button>
       </div>
 
@@ -237,16 +246,12 @@ export function FavoritesPage() {
                   <button
                     className="btn btn-ghost"
                     onClick={async () => {
-                      unfollow(f.service, f.id)
-                      const { sessionKey: sk } = getSettings()
-                      if (sk) {
-                        try {
-                          await api.favCreatorRemove(f.service, f.id)
-                        } catch {
-                          /* ignore */
-                        }
+                      try {
+                        await removeFollow(f.service, f.id)
+                        await refresh()
+                      } catch (e) {
+                        setSyncResult("解除に失敗しました: " + (e instanceof Error ? e.message : String(e)))
                       }
-                      refresh()
                     }}
                   >
                     解除
@@ -263,12 +268,12 @@ export function FavoritesPage() {
           <div className="hint-row">
             <span>
               {sessionKey
-                ? "pawchive アカウントのお気に入りを取得します"
+                ? "pawchive アカウントの投稿お気に入りを取得します"
                 : "ログインするとアカウントのお気に入りを取得できます"}
             </span>
             {sessionKey ? (
               <button className="btn" onClick={loadAccount}>
-                取得
+                投稿お気に入りを取得
               </button>
             ) : (
               <button className="btn btn-primary" onClick={() => navigate("/login?next=/favorites")}>
@@ -276,6 +281,7 @@ export function FavoritesPage() {
               </button>
             )}
           </div>
+          {syncResult && <div className="hint-row">{syncResult}</div>}
           {accountErr !== null && <ErrorBox error={accountErr} onRetry={loadAccount} />}
           {accountErr instanceof ApiError && apiStatus(accountErr) === 401 && (
             <div className="error-box">

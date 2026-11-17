@@ -73,7 +73,10 @@ export function getSettings(): Settings {
 }
 
 export function updateSettings(patch: Partial<Settings>) {
+  const sessionChanged =
+    patch.sessionKey !== undefined && patch.sessionKey !== settings.sessionKey
   settings = { ...settings, ...patch }
+  if (sessionChanged) clearApiCache()
   saveSettings(settings)
   // App 等の上位コンポーネントに変更を通知 (即時反映)
   if (typeof window !== "undefined") {
@@ -83,6 +86,7 @@ export function updateSettings(patch: Partial<Settings>) {
 
 /** GET レスポンスキャッシュを全消去 (手動更新時などに使用) */
 export function clearApiCache() {
+  cacheGeneration++
   getCache.clear()
 }
 
@@ -161,6 +165,10 @@ interface CacheEntry {
 
 const getCache = new Map<string, CacheEntry>()
 
+// セッション変更や手動更新より前に開始したリクエストが、
+// 古いアカウントの結果を新しいキャッシュへ戻さないための世代番号。
+let cacheGeneration = 0
+
 function cacheGet(key: string): CacheEntry | undefined {
   const e = getCache.get(key)
   if (!e) return undefined
@@ -181,13 +189,23 @@ function cachePut(key: string, entry: CacheEntry) {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  sessionKey = settings.sessionKey,
+  useCache = true,
+): Promise<T> {
   const method = (init?.method || "GET").toUpperCase()
   const url = `${path}`
+  // 呼び出し時点のセッションを固定し、キュー待機中にアカウントが
+  // 切り替わっても別アカウントの資格情報で送らない。
+  const requestSessionKey = sessionKey
+  const requestGeneration = cacheGeneration
+  const cacheKey = `${requestGeneration}:${url}`
 
   // GET はキャッシュ / 実行中リクエストの統合を行う
-  if (method === "GET") {
-    const cached = cacheGet(url)
+  if (method === "GET" && useCache) {
+    const cached = cacheGet(cacheKey)
     if (cached) {
       if (cached.promise) return cached.promise as Promise<T>
       if (cached.data !== undefined) return cached.data as T
@@ -205,7 +223,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
           path,
           method,
           sessionKey:
-            settings.sessionKey || null,
+            requestSessionKey || null,
           timeoutSecs:
             settings.timeoutSecs || null,
         }
@@ -234,9 +252,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
   })
 
-  if (method === "GET") {
+  if (method === "GET" && useCache) {
     const entry: CacheEntry = { expires: Date.now() + CACHE_TTL_MS, promise: exec }
-    cachePut(url, entry)
+    cachePut(cacheKey, entry)
     try {
       const data = await exec
       entry.data = data
@@ -244,7 +262,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       return data
     } catch (e) {
       // 失敗はキャッシュしない (再試行可能に)
-      getCache.delete(url)
+      getCache.delete(cacheKey)
       throw e
     }
   }
@@ -310,11 +328,17 @@ export const api = {
   /** ハッシュ (SHA-256) でファイルを検索 */
   searchHash: (hash: string) => request<HashLookupResult>(`/search_hash/${hash}`),
 
-  // ----- 認証必要 (session cookie を x-pawchive-session 経由で転送) -----
+  // ----- 認証必要 (session cookie を Cookie ヘッダーで転送) -----
 
-  /** アカウントのお気に入り一覧 type: "post" | "artist" */
-  accountFavorites: (type: "post" | "artist") =>
-    request<AccountFavorite[]>(`/account/favorites?type=${type}`),
+  /** アカウントのお気に入り一覧 type: "post" | "artist"
+   *  sessionKey を指定すると、未保存の入力値を使った疎通確認もできる。 */
+  accountFavorites: (type: "post" | "artist", sessionKey = settings.sessionKey) =>
+    request<AccountFavorite[]>(
+      `/account/favorites?type=${type}`,
+      undefined,
+      sessionKey,
+      sessionKey === settings.sessionKey,
+    ),
 
   favPostAdd: (service: string, creatorId: string, postId: string) =>
     request<void>(`/favorites/post/${service}/${creatorId}/${postId}`, {
