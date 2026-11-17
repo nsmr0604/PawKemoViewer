@@ -3,6 +3,8 @@ import { api, getSettings } from "./api"
 
 const KEY = "pawchive-follows"
 const CHANGED_EVENT = "pawchive-follows-changed"
+const MIGRATED_KEY = "pawchive-follows-migrated-to-account"
+let syncInFlight: Promise<number> | null = null
 
 export interface FollowEntry {
   service: string
@@ -60,26 +62,34 @@ export function replaceFollows(list: FollowEntry[]) {
 
 /** pawchive とローカルのフォローを同期する。
  * 初回は既存ローカル項目をアカウントへ移行し、その後サーバーの一覧をローカルへ反映する。 */
-export async function syncFollowsWithAccount(): Promise<number> {
+export function syncFollowsWithAccount(): Promise<number> {
+  if (syncInFlight) return syncInFlight
   const { sessionKey } = getSettings()
-  if (!sessionKey) return 0
+  if (!sessionKey) return Promise.resolve(0)
 
-  const local = loadFollows()
-  const remote = await api.accountFavorites("artist")
-  const remoteKeys = new Set(remote.filter((f) => f.service && f.id).map((f) => `${f.service}:${f.id}`))
-
-  for (const f of local) {
-    if (!remoteKeys.has(`${f.service}:${f.id}`)) {
-      await api.favCreatorAdd(f.service, f.id)
+  syncInFlight = (async () => {
+    const remote = await api.accountFavorites("artist")
+    // 既存ローカルデータの移行は初回だけ。以降はアカウント側を正として反映し、
+    // 別端末で解除されたフォローを古いローカルデータから復活させない。
+    if (localStorage.getItem(MIGRATED_KEY) !== "1") {
+      const remoteKeys = new Set(remote.filter((f) => f.service && f.id).map((f) => `${f.service}:${f.id}`))
+      for (const f of loadFollows()) {
+        if (!remoteKeys.has(`${f.service}:${f.id}`)) {
+          await api.favCreatorAdd(f.service, f.id)
+        }
+      }
     }
-  }
 
-  const latest = await api.accountFavorites("artist")
-  const synced = latest
-    .filter((f) => !!f.service && !!f.id)
-    .map((f) => ({ service: f.service!, id: f.id, name: f.name || f.id }))
-  replaceFollows(synced)
-  return synced.length
+    const latest = await api.accountFavorites("artist")
+    const synced = latest
+      .filter((f) => !!f.service && !!f.id)
+      .map((f) => ({ service: f.service!, id: f.id, name: f.name || f.id }))
+    replaceFollows(synced)
+    localStorage.setItem(MIGRATED_KEY, "1")
+    return synced.length
+  })()
+
+  return syncInFlight.finally(() => { syncInFlight = null })
 }
 
 /** ログイン中はサーバー更新成功後にローカルへ反映し、片側だけの更新を防ぐ。 */
