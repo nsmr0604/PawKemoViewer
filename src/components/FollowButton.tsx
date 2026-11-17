@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from "react"
-import { isFollowed, toggleFollow, loadFollows } from "../follows"
-import { getSettings, api } from "../api"
+import { isFollowed, addFollow, removeFollow, loadFollows } from "../follows"
 import { getCreatorRow } from "../db"
 
 export function FollowButton({ service, id }: { service: string; id: string }) {
   const [followed, setFollowed] = useState(() => isFollowed(service, id))
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    const update = () => setFollowed(isFollowed(service, id))
+    window.addEventListener("pawchive-follows-changed", update)
+    return () => window.removeEventListener("pawchive-follows-changed", update)
+  }, [service, id])
 
   // キャッシュ済みクリエイター名を補完 (フォローリスト表示用)
   useEffect(() => {
@@ -19,40 +25,42 @@ export function FollowButton({ service, id }: { service: string; id: string }) {
         localStorage.setItem("pawchive-follows", JSON.stringify(list))
       }
     })
-    return () => {
-      alive = false
-    }
+    return () => { alive = false }
   }, [service, id])
 
   const onToggle = useCallback(async () => {
     setBusy(true)
-    let name = id
-    const row = await getCreatorRow(`${service}:${id}`)
-    if (row?.name) name = row.name
-    const now = toggleFollow({ service, id, name })
-    setFollowed(now)
-    // sessionKey があればアカウント側にも同期 (失敗してもローカルは維持)
-    const { sessionKey } = getSettings()
-    if (sessionKey) {
-      try {
-        if (now) await api.favCreatorAdd(service, id)
-        else await api.favCreatorRemove(service, id)
-      } catch {
-        /* ベストエフォート */
+    setError("")
+    try {
+      let name = id
+      const row = await getCreatorRow(`${service}:${id}`)
+      if (row?.name) name = row.name
+      if (isFollowed(service, id)) {
+        await removeFollow(service, id)
+        setFollowed(false)
+      } else {
+        await addFollow({ service, id, name })
+        setFollowed(true)
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
     }
-    setBusy(false)
   }, [service, id])
 
   return (
-    <button
-      className={`btn ${followed ? "btn-primary" : ""}`}
-      disabled={busy}
-      onClick={onToggle}
-      title={followed ? "フォロー解除" : "フォロー"}
-    >
-      {followed ? "★ フォロー中" : "☆ フォロー"}
-    </button>
+    <span>
+      <button
+        className={`btn ${followed ? "btn-primary" : ""}`}
+        disabled={busy}
+        onClick={onToggle}
+        title={error || (followed ? "フォロー解除" : "フォロー")}
+      >
+        {busy ? "同期中…" : followed ? "★ フォロー中" : "☆ フォロー"}
+      </button>
+      {error && <span className="creator-sub">{error}</span>}
+    </span>
   )
 }
 
