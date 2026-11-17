@@ -52,8 +52,6 @@ export interface CreatorRow {
   service: string
   name: string
   nameLower: string
-  /** カタカナ→ひらがな正規化した名前 (かな入力での検索用)。パック v3 から */
-  kanaLower?: string
   /** URL slug (fanbox: tateha 等)。索引 v1 には存在しない (再構築で付与) */
   publicId?: string
   publicIdLower?: string
@@ -64,26 +62,29 @@ export interface CreatorRow {
 /**
  * クリエイター索引のバージョン。
  * v1: per-row + name/id のみ / v2: per-row + publicId /
- * pack v2: 単一パック文字列 + favorited / **pack v3: + kanaLower (かな正規化)** — 現行
+ * **pack v2: 単一パック文字列 (name + id + slug + favorited)** — 現行
  *
- * パック形式: 1 行 =
- * service\u001fid\u001fname\u001fnameLower\u001fkanaLower\u001fslug\u001ffavorited、
+ * パック形式: 1 行 = service\u001fid\u001fname\u001fnameLower\u001fslug\u001ffavorited、
  * 行区切り \u001e、nameLower 順ソート済み。99,231 行を 1 レコード (約 6MB) で保存し、
  * put × 99k / getAll × 99k オブジェクト復元を 1 put / 1 get + 文字列 split に置き換える。
  * 旧 per-row ストアは移行元としてのみ使用し、パック保存後に clear する。
+ *
+ * 注: 一時的に v3 (kanaLower 追加) を出したが、かな正規化は複雑すぎるため撤去。
+ * かな入力はクエリ側のローマ字変換 (kanaToRomaji) のみで slug にマッチさせる。
+ * decode は v3 レイアウト (7 フィールド) も自動判別して読める。
  */
-export const SEARCH_INDEX_VERSION = 3
+export const SEARCH_INDEX_VERSION = 2
 
 const PACK_META_KEY = "creatorsPack"
 const ROW_SEP = "\u001e"
 const FIELD_SEP = "\u001f"
 
 // ---------------------------------------------------------------------------
-// かな正規化 / かな→ローマ字 (検索クエリと索引の表記ゆれ吸収)
+// かな→ローマ字 (検索クエリの表記ゆれ吸収。索引側の正規化はしない)
 // ---------------------------------------------------------------------------
 
-/** カタカナ → ひらがな */
-export function kataToHira(s: string): string {
+/** カタカナ → ひらがな (kanaToRomaji 内部用) */
+function kataToHira(s: string): string {
   return s.replace(/[\u30A1-\u30F6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
 }
 
@@ -120,11 +121,10 @@ const ROMA_COMBO: Record<string, string> = {
   ぴゃ: "pya", ぴゅ: "pyu", ぴょ: "pyo",
   ふぁ: "fa", ふぃ: "fi", ふぇ: "fe", ふぉ: "fo",
   てぃ: "thi", でぃ: "dhi", とぅ: "tu", うぇ: "we", うぃ: "wi",
-  ヴぁ: "va", ヴぃ: "vi", ヴぇ: "ve", ヴぉ: "vo",
 }
 
 /** ひらがな/カタカナ混在文字列 → ローマ字 (検索クエリ変換用)。
- * かな入力「たては」→ "tateha" として slug (public_id) にマッチさせる */
+ * かな入力「たては」「タテハ」→ "tateha" として slug (public_id) にマッチさせる */
 export function kanaToRomaji(s: string): string {
   const hira = kataToHira(s)
   let out = ""
@@ -168,7 +168,8 @@ function sanitizeField(s: string): string {
 }
 
 /** パック文字列 → 行配列 (nameLower 順 = パック保存順)。
- * 旧 v2 レイアウト (kanaLower 無し・6 フィールド) も自動判別して読む */
+ * 一時リリースした v3 レイアウト (kanaLower を挟んだ 7 フィールド) も
+ * 自動判別で読み飛ばす (互換維持)。現行は 6 フィールド */
 function decodePack(pack: string): CreatorRow[] {
   const out: CreatorRow[] = []
   for (const line of pack.split(ROW_SEP)) {
@@ -180,17 +181,9 @@ function decodePack(pack: string): CreatorRow[] {
     const name = f[2] || id
     const nameLower = f[3] || name.toLowerCase()
     const row: CreatorRow = { key: `${service}:${id}`, id, service, name, nameLower }
-    let slug = ""
-    let fav = 0
-    if (f.length >= 7) {
-      row.kanaLower = f[4] || kataToHira(nameLower)
-      slug = f[5] || ""
-      fav = Number(f[6]) || 0
-    } else {
-      slug = f[4] || ""
-      fav = Number(f[5]) || 0
-      row.kanaLower = kataToHira(nameLower)
-    }
+    const v3 = f.length >= 7
+    const slug = (v3 ? f[5] : f[4]) || ""
+    const fav = Number((v3 ? f[6] : f[5]) || "") || 0
     if (slug) {
       row.publicId = slug
       row.publicIdLower = slug
@@ -208,18 +201,16 @@ function encodePack(rows: CreatorRow[]): string {
     return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
   })
   return sorted
-    .map((r) => {
-      const nameLower = r.nameLower || (r.name || "").toLowerCase()
-      return [
+    .map((r) =>
+      [
         sanitizeField(r.service),
         sanitizeField(r.id),
         sanitizeField(r.name),
-        sanitizeField(nameLower),
-        sanitizeField(r.kanaLower || kataToHira(nameLower)),
+        sanitizeField(r.nameLower),
         sanitizeField(r.publicIdLower || ""),
         String(r.favorited || 0),
-      ].join(FIELD_SEP)
-    })
+      ].join(FIELD_SEP),
+    )
     .join(ROW_SEP)
 }
 
@@ -284,35 +275,24 @@ export function normalizeCreatorQuery(raw: string): { q: string; service?: strin
 
 /**
  * マッチ度スコア: 0 = 完全一致, 1 = 前方一致, 2 = 部分一致, -1 = 対象外。
- * 名前は (入力値 / かな正規化)、ID・slug は (入力値 / かな→ローマ字) の
- * 両表記で判定する (「たては」→ tateha が slug 一致 → 立羽 がヒットする等)。
+ * ID・slug は (入力値 / かな→ローマ字) の両表記で判定する
+ * (「たては」→ tateha が slug 一致 → 立羽 がヒットする等)。
+ * 名前は nameLower のみ (かな正規化は索引側で行わない方針)。
  */
-function rankRow(
-  row: CreatorRow,
-  q: string,
-  qHira: string,
-  qRoma: string,
-  service?: string,
-): number {
+function rankRow(row: CreatorRow, q: string, qRoma: string, service?: string): number {
   if (service && row.service !== service) return -1
-  const ids = [row.id, row.publicIdLower].filter(Boolean) as string[]
-  const names = [row.nameLower, row.kanaLower].filter(Boolean) as string[]
-  const qsId = qRoma !== q ? [q, qRoma] : [q]
-  const qsName = qHira !== q ? [q, qHira] : [q]
+  const qs = qRoma !== q ? [q, qRoma] : [q]
   for (const tier of [0, 1, 2]) {
-    for (const x of ids) {
-      for (const v of qsId) {
+    for (const x of [row.id, row.publicIdLower].filter(Boolean) as string[]) {
+      for (const v of qs) {
         if ((tier === 0 && x === v) || (tier === 1 && x.startsWith(v)) || (tier === 2 && x.includes(v))) {
           return tier
         }
       }
     }
-    for (const x of names) {
-      for (const v of qsName) {
-        if ((tier === 0 && x === v) || (tier === 1 && x.startsWith(v)) || (tier === 2 && x.includes(v))) {
-          return tier
-        }
-      }
+    const n = row.nameLower
+    if ((tier === 0 && n === q) || (tier === 1 && n.startsWith(q)) || (tier === 2 && n.includes(q))) {
+      return tier
     }
   }
   return -1
@@ -324,11 +304,10 @@ export async function searchCreators(qRaw: string, limit = 60): Promise<CreatorR
   const q = rawQ.toLowerCase() // nameLower / slug は小文字統一で比較
   const rows = await loadIndex()
   if (!q) return rows.slice(0, limit)
-  const qHira = kataToHira(q)
   const qRoma = kanaToRomaji(q)
   const scored: { row: CreatorRow; score: number; fav: number }[] = []
   for (const row of rows) {
-    const score = rankRow(row, q, qHira, qRoma, service)
+    const score = rankRow(row, q, qRoma, service)
     if (score >= 0) scored.push({ row, score, fav: row.favorited || 0 })
   }
   scored.sort((a, b) => {
