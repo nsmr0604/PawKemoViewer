@@ -11,6 +11,7 @@ import { LoginPage } from "./pages/Login"
 import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
 import { resolveLayout, type ResolvedLayout } from "./platform"
 import { NavigationRail } from "./components/NavigationRail"
+import { ErrorBox } from "./components"
 
 export default function App() {
   const route = useRoute()
@@ -128,6 +129,13 @@ export default function App() {
           creatorId={route.params.creator}
           postId={route.params.id}
         />
+      )
+      break
+    case "invalid-post":
+      content = (
+        <div className="page">
+          <ErrorBox error="投稿URLが不正です。投稿一覧からもう一度開いてください。" />
+        </div>
       )
       break
     case "favorites":

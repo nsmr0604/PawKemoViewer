@@ -12,6 +12,7 @@ import {
 } from "../components"
 import { navigate } from "../router"
 import { FollowButton } from "../components/FollowButton"
+import { logError, logInfo, logWarn } from "../log"
 
 export function PostPage({
   service,
@@ -22,6 +23,15 @@ export function PostPage({
   creatorId: string
   postId: string
 }) {
+  // 投稿画面を開いた時点で識別子を確定し、詳細・関連API・画面遷移で共通利用する。
+  const postContext = { service, creatorId, postId }
+  const validContext =
+    (service === "fanbox" || service === "patreon") &&
+    [creatorId, postId].every(
+      (value) => typeof value === "string" && !!value.trim() &&
+        value !== "undefined" && value !== "null" && !value.includes("/"),
+    )
+
   const [post, setPost] = useState<PawPost | null>(null)
   const [comments, setComments] = useState<PawComment[] | null>(null)
   const [revisions, setRevisions] = useState<PawRevision[] | null>(null)
@@ -33,6 +43,13 @@ export function PostPage({
   const [error, setError] = useState<unknown>(null)
 
   const load = useCallback(async () => {
+    if (!validContext) {
+      const message = `投稿識別子が不正です: service=${String(service)} creatorId=${String(creatorId)} postId=${String(postId)}`
+      logError(message)
+      setPost(null)
+      setError(new Error(message))
+      return
+    }
     setPost(null)
     setError(null)
     setComments(null)
@@ -40,17 +57,48 @@ export function PostPage({
     setHashResult(null)
     setShowHash(false)
     try {
-      const p = await api.post(service, creatorId, postId)
+      logInfo(`投稿詳細取得開始 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}`)
+      const p = await api.post(postContext.service, postContext.creatorId, postContext.postId)
+      if (
+        String(p.service) !== postContext.service ||
+        String(p.user) !== postContext.creatorId ||
+        String(p.id) !== postContext.postId
+      ) {
+        logWarn(
+          `投稿API応答の識別子不一致 requested=${postContext.service}/${postContext.creatorId}/${postContext.postId} response=${String(p.service)}/${String(p.user)}/${String(p.id)}`,
+        )
+      }
+      const fileCount = (p.file?.path ? 1 : 0) + (p.attachments?.length || 0)
+      logInfo(`投稿詳細取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} files=${fileCount}`)
       setPost(p)
-      api.postComments(service, creatorId, postId).then(setComments).catch(() => setComments([]))
+      api.postComments(postContext.service, postContext.creatorId, postContext.postId).then(setComments).catch(() => setComments([]))
       api
-        .postRevisions(service, creatorId, postId)
+        .postRevisions(postContext.service, postContext.creatorId, postContext.postId)
         .then((r) => setRevisions(r.length ? r : []))
         .catch(() => setRevisions([]))
     } catch (e) {
       setError(e)
     }
-  }, [service, creatorId, postId])
+  }, [service, creatorId, postId, validContext])
+
+  useEffect(() => {
+    const contextRecord = {
+      service: postContext.service,
+      creatorId: postContext.creatorId,
+      postId: postContext.postId,
+      openedAt: new Date().toISOString(),
+    }
+    try {
+      sessionStorage.setItem("pawchive-current-post-context", JSON.stringify(contextRecord))
+    } catch {
+      // sessionStorage が利用できない環境でも画面表示は継続する。
+    }
+    if (validContext) {
+      logInfo(`投稿画面を開く service=${service} creatorId=${creatorId} postId=${postId}`)
+    } else {
+      logError(`不正な投稿URL service=${String(service)} creatorId=${String(creatorId)} postId=${String(postId)}`)
+    }
+  }, [service, creatorId, postId, validContext])
 
   useEffect(() => {
     load()
@@ -145,7 +193,7 @@ export function PostPage({
   const onFlag = async () => {
     setFlagged("busy")
     try {
-      await api.flagPost(service, creatorId, postId)
+      await api.flagPost(postContext.service, postContext.creatorId, postContext.postId)
       setFlagged("ok")
     } catch (e) {
       setFlagged(e instanceof Error && /409|already/i.test(e.message) ? "dup" : "err")
@@ -153,7 +201,7 @@ export function PostPage({
   }
 
   const navPost = (targetId: string | null | undefined) => {
-    if (targetId) navigate(`/post/${service}/${creatorId}/${targetId}`)
+    if (targetId && validContext) navigate(`/post/${postContext.service}/${encodeURIComponent(postContext.creatorId)}/${encodeURIComponent(targetId)}`)
   }
 
   const allFiles: PawFile[] = [
@@ -166,15 +214,15 @@ export function PostPage({
       <div className="post-title-wrap">
         <h1 className="post-title">{post.title || "(無題)"}</h1>
         <div className="post-meta">
-          <span className="link" onClick={() => navigate(`/creator/${post.service}/${post.user}`)}>
-            {post.service} / {post.user}
+          <span className="link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
+            {postContext.service} / {postContext.creatorId}
           </span>
           {" · "}
           公開 {fmtDate(post.published)}
           {post.edited && post.edited !== post.published && ` · 編集 ${fmtDate(post.edited)}`}
         </div>
         <div className="creator-actions">
-          <FollowButton service={post.service} id={post.user} />
+          <FollowButton service={postContext.service} id={postContext.creatorId} />
           <div className="post-quick-nav">
             <button
               className="btn btn-sm"
@@ -195,7 +243,7 @@ export function PostPage({
           </div>
           <a
             className="btn btn-ghost"
-            href={postUrl(post.service, post.user, post.id)}
+            href={postUrl(postContext.service, postContext.creatorId, postContext.postId)}
             target="_blank"
             rel="noreferrer"
             referrerPolicy="no-referrer"
@@ -226,8 +274,13 @@ export function PostPage({
                   onError={(e) => {
                     const el = e.currentTarget
                     const full = fileUrl(f)
-                    if (el.getAttribute("src") !== full) el.setAttribute("src", full)
-                    else el.style.display = "none"
+                    if (el.getAttribute("src") !== full) {
+                      logWarn(`投稿画像サムネイル取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}; full URL で再試行`)
+                      el.setAttribute("src", full)
+                    } else {
+                      logError(`投稿画像取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}`)
+                      el.style.display = "none"
+                    }
                   }}
                 />
               )}
@@ -242,7 +295,7 @@ export function PostPage({
       )}
 
       {post.content && (
-        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(post.content, post.service) }} />
+        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(post.content, postContext.service) }} />
       )}
 
       {Object.keys(post.embed || {}).length > 0 && (
@@ -312,7 +365,7 @@ export function PostPage({
                 <div className="comment-head">
                   <b>{c.commenter_name || c.commenter}</b> · {fmtDate(c.published)}
                 </div>
-                <div className="comment-body">{sanitizeContent(c.content, post.service)}</div>
+                <div className="comment-body">{sanitizeContent(c.content, postContext.service)}</div>
               </li>
             ))}
           </ul>

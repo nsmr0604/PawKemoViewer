@@ -18,11 +18,22 @@ export function parseHash(): Route {
     path = "creator"
     params.service = segs[1]
     params.id = segs[2]
-  } else if (segs[0] === "post" && segs.length >= 4) {
-    path = "post"
-    params.service = segs[1]
-    params.creator = segs[2]
-    params.id = segs[3]
+  } else if (segs[0] === "post") {
+    // 投稿URLは /post/{service}/{creatorId}/{postId} の4要素を厳密に要求する。
+    // 不完全なURLを PostPage に渡すと /undefined/user/undefined/post/... を生成する。
+    const [service, creatorId, postId] = segs.slice(1)
+    const validService = service === "fanbox" || service === "patreon"
+    const validIds = [creatorId, postId].every(
+      (value) => !!value && value !== "undefined" && value !== "null",
+    )
+    if (segs.length === 4 && validService && validIds) {
+      path = "post"
+      params.service = service
+      params.creator = creatorId
+      params.id = postId
+    } else {
+      path = "invalid-post"
+    }
   } else {
     path = segs[0] || "home"
   }
