@@ -73,29 +73,27 @@ export function PostPage({
       }
       const fileCount = (p.file?.path ? 1 : 0) + (p.attachments?.length || 0)
       logInfo(`投稿詳細取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} files=${fileCount}`)
+      // 改訂履歴を確定してから投稿本文を表示し、旧版が一瞬先に表示されるのを防ぐ。
+      try {
+        const r = await api.postRevisions(postContext.service, postContext.creatorId, postContext.postId)
+        const ordered = (Array.isArray(r) ? r : []).slice().sort((a, b) => {
+          const aTime = Date.parse(a.added || "")
+          const bTime = Date.parse(b.added || "")
+          if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0
+          if (Number.isNaN(aTime)) return 1
+          if (Number.isNaN(bTime)) return -1
+          return bTime - aTime
+        })
+        setRevisions(ordered)
+        setSelectedRevisionId(ordered[0]?.revision_id ?? null)
+        logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${ordered.length} latest=${ordered[0]?.revision_id ?? "none"}`)
+      } catch (e) {
+        setRevisions([])
+        setRevisionsError(e)
+        logError(`投稿改訂履歴取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
+      }
       setPost(p)
       api.postComments(postContext.service, postContext.creatorId, postContext.postId).then(setComments).catch(() => setComments([]))
-      api
-        .postRevisions(postContext.service, postContext.creatorId, postContext.postId)
-        .then((r) => {
-          // added の新しい順に並べ、最も新しい改訂を初期表示にする。
-          const ordered = (Array.isArray(r) ? r : []).slice().sort((a, b) => {
-            const aTime = Date.parse(a.added || "")
-            const bTime = Date.parse(b.added || "")
-            if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0
-            if (Number.isNaN(aTime)) return 1
-            if (Number.isNaN(bTime)) return -1
-            return bTime - aTime
-          })
-          setRevisions(ordered)
-          setSelectedRevisionId(ordered[0]?.revision_id ?? null)
-          logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${ordered.length} latest=${ordered[0]?.revision_id ?? "none"}`)
-        })
-        .catch((e) => {
-          setRevisions([])
-          setRevisionsError(e)
-          logError(`投稿改訂履歴取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
-        })
     } catch (e) {
       setError(e)
     }
