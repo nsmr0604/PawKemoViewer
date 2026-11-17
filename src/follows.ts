@@ -63,15 +63,20 @@ export function toggleFollow(f: FollowEntry): boolean {
 export function mergeFollows(entries: FollowEntry[]): number {
   const current = loadFollows()
   const keys = new Set(current.map((f) => `${f.service}:${f.id}`))
-  const additions = entries.filter(
-    (f) =>
-      f &&
-      typeof f.service === "string" &&
-      f.service.length > 0 &&
-      typeof f.id === "string" &&
-      f.id.length > 0 &&
-      !keys.has(`${f.service}:${f.id}`),
-  )
+  const additions: FollowEntry[] = []
+  for (const f of entries) {
+    if (
+      !f ||
+      typeof f.service !== "string" ||
+      !f.service ||
+      typeof f.id !== "string" ||
+      !f.id
+    ) continue
+    const key = `${f.service}:${f.id}`
+    if (keys.has(key)) continue
+    keys.add(key)
+    additions.push(f)
+  }
   if (additions.length > 0) save([...additions, ...current])
   return additions.length
 }
