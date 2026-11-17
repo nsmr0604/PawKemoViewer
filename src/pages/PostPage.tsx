@@ -424,7 +424,7 @@ export function PostPage({
           )}
         </div>
         {revisions === null && <Spinner label="改訂履歴…" />}
-        {revisionsError && <ErrorBox error={revisionsError} />}
+        {revisionsError !== null && revisionsError !== undefined && <ErrorBox error={revisionsError} />}
         {revisions && revisions.length === 0 && !revisionsError && (
           <Empty text="改訂履歴はありません" />
         )}
