@@ -380,11 +380,18 @@ fn derive_referer(hostname: &str) -> &'static str {
     }
 }
 
-/// プロキシ対象にできる URL か (http(s)・外部・SSRF でない)
+/// Pawchive 本体・API・画像配信サーバーは常に直接アクセスする。
+fn is_pawchive_host(hostname: &str) -> bool {
+    let h = hostname.to_ascii_lowercase();
+    h == "pawchive.pw" || h.ends_with(".pawchive.pw")
+}
+
+/// プロキシ対象にできる URL か (http(s)・外部・SSRF でない)。
+/// FANBOX / Patreon の画像ホストは Referer が必要なため、ここでは除外しない。
 fn is_proxyable(u: &reqwest::Url) -> bool {
     matches!(u.scheme(), "http" | "https")
         && !forbidden_host(u.host_str().unwrap_or(""))
-        && !is_direct_host(u.host_str().unwrap_or(""))
+        && !is_pawchive_host(u.host_str().unwrap_or(""))
 }
 
 fn percent_decode(s: &str) -> String {
@@ -553,13 +560,11 @@ fn pkv_proxy_fetch(
     let q = uri.split_once('?').map(|(_, q)| q).unwrap_or("");
     let mut u: Option<String> = None;
     let mut r: Option<String> = None;
-    let mut f = false;
     for pair in q.split('&') {
         let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
         match percent_decode(k).as_str() {
             "u" => u = Some(percent_decode(v)),
             "r" => r = Some(percent_decode(v)),
-            "f" => f = v == "1",
             _ => {}
         }
     }
@@ -571,15 +576,8 @@ fn pkv_proxy_fetch(
         Ok(t) => t,
         Err(_) => return bad(400, "bad url"),
     };
-    // f=1 (force) は pawchive 自身のホストを明示的に中継する。
-    // 通常は is_proxyable の direct host (pawchive.pw) 除外で弾くが、
-    // 端末 DNS が pawchive をブロックする環境 (AdGuard sinkhole 実測・bugs.md) で
-    // 画像を Rust (reqwest) 経由に迂回させるために使用する。SSRF 対策は維持。
-    let is_pawchive_host = {
-        let h = target.host_str().unwrap_or("").to_ascii_lowercase();
-        h == "pawchive.pw" || h.ends_with(".pawchive.pw")
-    };
-    if !is_proxyable(&target) && !(f && is_pawchive_host && !forbidden_host(target.host_str().unwrap_or(""))) {
+    // Pawchive 本体/API/画像サーバーは pkv 経由にしない。
+    if !is_proxyable(&target) {
         return bad(403, "forbidden host");
     }
 
