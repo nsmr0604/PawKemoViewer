@@ -1,6 +1,6 @@
 # Development Guide
 
-このドキュメントは Pawchive Viewer の開発者向け情報をまとめたものです。
+このドキュメントは PawKemoViewer の開発者向け情報をまとめたものです。
 
 対象読者:
 
@@ -13,7 +13,7 @@
 
 # 技術構成
 
-Pawchive Viewer は次の構成で実装されています。
+PawKemoViewer は次の構成で実装されています。
 
 ```text
 Frontend

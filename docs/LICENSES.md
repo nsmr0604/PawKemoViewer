@@ -1,12 +1,12 @@
 # Third Party Licenses
 
-Pawchive Viewer は複数のオープンソースソフトウェアを利用しています。
+PawKemoViewer は複数のオープンソースソフトウェアを利用しています。
 
 ---
 
 # Application
 
-## Pawchive Viewer
+## PawKemoViewer
 
 License:
 

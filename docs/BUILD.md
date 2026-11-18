@@ -1,6 +1,6 @@
 # Build Guide
 
-Pawchive Viewer のビルド、パッケージ生成、GitHub Actions 自動ビルドについて説明します。
+PawKemoViewer のビルド、パッケージ生成、GitHub Actions 自動ビルドについて説明します。
 
 ---
 
@@ -157,9 +157,9 @@ src-tauri/target/release/bundle/nsis/
 例:
 
 ```text
-Pawchive Viewer_x64_en-US.msi
+PawKemoViewer_x64_en-US.msi
 
-Pawchive Viewer_x64-setup.exe
+PawKemoViewer_x64-setup.exe
 ```
 
 ---
@@ -177,9 +177,9 @@ rpm
 例:
 
 ```text
-pawchive-viewer_0.1.0_amd64.deb
+pawkemoviewer_0.3.0_amd64.deb
 
-pawchive-viewer.AppImage
+pawkemoviewer.AppImage
 ```
 
 ---
@@ -196,9 +196,9 @@ DMG
 例:
 
 ```text
-Pawchive Viewer.dmg
+PawKemoViewer.dmg
 
-Pawchive Viewer.app
+PawKemoViewer.app
 ```
 
 ---
@@ -317,7 +317,7 @@ jobs:
 
         with:
           tagName: pawchive-v__VERSION__
-          releaseName: Pawchive Viewer v__VERSION__
+          releaseName: PawKemoViewer v__VERSION__
           releaseDraft: false
           prerelease: false
 ```
@@ -339,11 +339,11 @@ Releases
 公開例:
 
 ```text
-Pawchive Viewer_x64-setup.exe
+PawKemoViewer_x64-setup.exe
 
-pawchive-viewer.AppImage
+pawkemoviewer.AppImage
 
-Pawchive Viewer.dmg
+PawKemoViewer.dmg
 ```
 
 ---
@@ -458,4 +458,4 @@ macOS
 GitHub Releases
 ```
 
-これが Pawchive Viewer の正式なビルド手順です。
+これが PawKemoViewer の正式なビルド手順です。

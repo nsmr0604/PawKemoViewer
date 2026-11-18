@@ -1,12 +1,12 @@
 # API Documentation
 
-Pawchive Viewer API ドキュメント
+PawKemoViewer API ドキュメント
 
 ---
 
 # 概要
 
-Pawchive Viewer は pawchive の公開 API を利用してデータを取得します。
+PawKemoViewer は pawchive の公開 API を利用してデータを取得します。
 
 現在のアーキテクチャ:
 

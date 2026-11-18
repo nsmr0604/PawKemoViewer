@@ -175,7 +175,7 @@ export default function App() {
         {!isDetail && !isLogin && (
           <header className="top-bar">
             <div className="logo" onClick={() => navigate("/", true)}>
-              🐾 Pawchive Viewer
+              🐾 PawKemoViewer
             </div>
             {isDesktopLayout && (
               <div className="desktop-shortcuts-hint" title="キーボードショートカットが利用可能です">

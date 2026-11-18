@@ -8,9 +8,9 @@
 ; (管理者権限が無い場合は失敗するが無視され、インストール自体は続行する)
 
 !macro NSIS_HOOK_POSTINSTALL
-  nsExec::Exec 'netsh advfirewall firewall add rule name="Pawchive Viewer (outbound allow)" dir=out action=allow program="$INSTDIR\app.exe" enable=yes'
+  nsExec::Exec 'netsh advfirewall firewall add rule name="PawKemoViewer (outbound allow)" dir=out action=allow program="$INSTDIR\app.exe" enable=yes'
 !macroend
 
 !macro NSIS_HOOK_POSTUNINSTALL
-  nsExec::Exec 'netsh advfirewall firewall delete rule name="Pawchive Viewer (outbound allow)"'
+  nsExec::Exec 'netsh advfirewall firewall delete rule name="PawKemoViewer (outbound allow)"'
 !macroend

@@ -130,7 +130,7 @@ export function LoginPage() {
           </span>
         </div>
         {appVersion && (
-          <div className="login-version small">Pawchive Viewer v{appVersion}</div>
+          <div className="login-version small">PawKemoViewer v{appVersion}</div>
         )}
       </div>
     </div>

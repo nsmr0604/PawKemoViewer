@@ -1,6 +1,6 @@
-# Pawchive Viewer
+# PawKemoViewer
 
-Pawchive Viewer は
+PawKemoViewer は
 pawchive.pw の非公式クライアントです。
 
 ## 機能
@@ -26,3 +26,9 @@ GitHub Releases を参照
 - docs/BUILD.md
 - docs/API.md
 - docs/LICENSES.md
+
+## ライセンス
+
+MIT License — 詳細は [LICENSE](LICENSE) を参照してください。
+
+第三者ソフトウェアの帰属は [docs/LICENSES.md](docs/LICENSES.md) を参照してください。

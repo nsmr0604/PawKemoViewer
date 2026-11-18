@@ -1,4 +1,6 @@
 // IndexedDB ヘルパー: クリエイターキャッシュと未読管理
+// 注意: DB_NAME は旧名 (Pawchive Viewer 時代) のまま — リネームすると
+// 既存端末の IndexedDB (クリエイター索引・既読) が失われるため変更禁止
 
 const DB_NAME = "pawchive-viewer"
 const DB_VERSION = 1

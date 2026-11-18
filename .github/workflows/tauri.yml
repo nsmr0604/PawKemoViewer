@@ -133,7 +133,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ inputs.release == true && 'pawchive-v__VERSION__' || 'debug-latest' }}
-          releaseName: ${{ inputs.release == true && 'Pawchive Viewer v__VERSION__' || 'Pawchive Viewer debug build' }}
+          releaseName: ${{ inputs.release == true && 'PawKemoViewer v__VERSION__' || 'PawKemoViewer debug build' }}
           releaseBody: ${{ inputs.release == true && 'Automated release build.' || 'Automated debug build. デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式).' }}
           releaseDraft: false
           prerelease: ${{ inputs.release != true }}

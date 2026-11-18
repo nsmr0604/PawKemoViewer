@@ -153,7 +153,7 @@ jobs:
           if [ "${{ inputs.release }}" = "true" ]; then
             gh release upload "pawchive-v${VER}" dist-apk/*.apk --clobber \
               || gh release create "pawchive-v${VER}" dist-apk/*.apk \
-                   --title "Pawchive Viewer v${VER}" \
+                   --title "PawKemoViewer v${VER}" \
                    --notes "Automated build (APK: dev-signed for testing)."
             exit 0
           fi
@@ -175,5 +175,5 @@ jobs:
           gh release upload "$TAG" dist-apk/*.apk --clobber \
             || gh release create "$TAG" dist-apk/*.apk \
                  --prerelease \
-                 --title "Pawchive Viewer debug build" \
+                 --title "PawKemoViewer debug build" \
                  --notes "Automated debug build (${SHA}, v${VER}). デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式)."

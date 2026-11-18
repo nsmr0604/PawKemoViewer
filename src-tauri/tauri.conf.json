@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Pawchive Viewer",
-  "version": "0.2.3",
+  "productName": "PawKemoViewer",
+  "version": "0.3.0",
   "identifier": "jp.geek.nsmr0604.pawchive",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Pawchive Viewer",
+        "title": "PawKemoViewer",
         "width": 1280,
         "height": 900,
         "minWidth": 900,

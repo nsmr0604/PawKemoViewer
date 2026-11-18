@@ -18,7 +18,7 @@ export function NavigationRail({ currentPath, followCount }: NavigationRailProps
   return (
     <aside className="nav-rail">
       <div className="nav-rail-top">
-        <div className="nav-rail-logo" onClick={() => navigate("/", true)} title="Pawchive Viewer">
+        <div className="nav-rail-logo" onClick={() => navigate("/", true)} title="PawKemoViewer">
           🐾
         </div>
       </div>

@@ -57,7 +57,7 @@ export function parseBackup(text: string): BackupData {
   }
   const b = j as Partial<BackupData>
   if (!b || b.type !== BACKUP_TYPE) {
-    throw new Error("Pawchive Viewer のバックアップファイルではありません")
+    throw new Error("PawKemoViewer (旧 Pawchive Viewer) のバックアップファイルではありません")
   }
   return {
     type: BACKUP_TYPE,

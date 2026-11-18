@@ -557,7 +557,7 @@ export function SettingsPage() {
         </div>
 
         <p className="small">
-          Pawchive Viewer は pawchive.pw の非公式クライアントです。
+          PawKemoViewer は pawchive.pw の非公式クライアントです。
         </p>
       </div>
     </div>
