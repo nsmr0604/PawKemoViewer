@@ -237,6 +237,102 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
 }
 
 // ---------------------------------------------------------------------------
+// クリエイターアイコン (取得 + ディスクキャッシュ)
+//
+// pawchive.pw/icons/{service}/{userId} は webp (存在しない場合は 204)。
+// app_data/icons/{service}_{id}.webp にキャッシュし、2 回目以降は
+// ネットワークなしで data URL を返す。JS 側 (src/icons.ts) が
+// メモリ/IndexedDB キャッシュをさらに重ねる。
+// ---------------------------------------------------------------------------
+
+/// クリエイターアイコンを data URL で返す。アイコンが存在しない場合は None。
+/// 取得済みアイコンは app_data/icons/ から返す (通信しない)。
+#[tauri::command]
+async fn fetch_creator_icon(
+    app: tauri::AppHandle,
+    service: String,
+    id: String,
+) -> Result<Option<String>, String> {
+    use base64::Engine as _;
+
+    // 識別子の検証 (パスインジェクション防止)
+    if service.is_empty()
+        || id.is_empty()
+        || !service.chars().all(|c| c.is_ascii_alphanumeric())
+        || !id.chars().all(|c| c.is_ascii_alphanumeric())
+    {
+        return Err("invalid creator id".into());
+    }
+
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("icons");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let cache_path = dir.join(format!("{}_{}.webp", service, id));
+
+    let to_data_url = |bytes: Vec<u8>| -> String {
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        format!("data:image/webp;base64,{}", b64)
+    };
+
+    // ディスクキャッシュヒット → そのまま返す
+    if let Ok(bytes) = std::fs::read(&cache_path) {
+        return Ok(Some(to_data_url(bytes)));
+    }
+
+    let url = format!("https://pawchive.pw/icons/{}/{}", service, id);
+    println!("ICON REQUEST => {}", url);
+
+    let client = reqwest::Client::builder()
+        .brotli(true)
+        .gzip(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        USER_AGENT,
+        HeaderValue::from_static(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+        ),
+    );
+    headers.insert(REFERER, HeaderValue::from_static("https://pawchive.pw/"));
+    headers.insert(ORIGIN, HeaderValue::from_static("https://pawchive.pw"));
+
+    let resp = client
+        .get(&url)
+        .headers(headers)
+        .timeout(std::time::Duration::from_secs(15))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let status = resp.status();
+    // アイコンが存在しないクリエイターは 204 (実測)。
+    if status.as_u16() == 204 || !status.is_success() {
+        return Ok(None);
+    }
+    let ct = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    if !ct.starts_with("image/") {
+        return Ok(None);
+    }
+    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    if bytes.is_empty() {
+        return Ok(None);
+    }
+
+    // ディスクへ保存して data URL を返す
+    let _ = std::fs::write(&cache_path, &bytes);
+    Ok(Some(to_data_url(bytes.to_vec())))
+}
+
+// ---------------------------------------------------------------------------
 // paw:// プロトコル (リファラー偽装プロキシ)
 //
 // WebView (tauri://localhost) からは Referer を自由に設定できないため、
@@ -761,6 +857,7 @@ pub fn run() {
                 login_request,
                 export_log,
                 export_file,
+                fetch_creator_icon,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している
