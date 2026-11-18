@@ -520,14 +520,6 @@ function pkvProxyUrl(url: string, referer: string): string {
   return `http://pkv.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}`
 }
 
-/** pawchive 自身のホストを pkv:// 強制プロキシ経由に変換する (f=1)。
- *  端末 DNS が *.pawchive.pw をブロックする環境 (AdGuard sinkhole) の迂回用。
- *  pawchive 以外の URL はそのまま返す */
-export function pawchiveProxyUrl(url: string): string {
-  // Pawchive 本体/API/画像サーバーは pkv プロキシ対象外。
-  return url
-}
-
 /** リファラーチェックでブロックされる可能性のあるファイル URL を paw 経由に変換する。
  *  pawchive 自身のミラー (n1 / img) はそのまま。 */
 export function proxyFileUrl(url: string, service?: string, postId?: string): string {
