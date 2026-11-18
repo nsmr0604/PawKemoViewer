@@ -385,6 +385,46 @@ export const api = {
     }),
 
   version: () => request<string>("/app_version"),
+
+  /** 元サービス (fanbox / patreon) の投稿 URL。fanbox は slug サブドメイン (クリエイター
+   *  索引から取得・実測: https://{slug}.fanbox.cc/posts/{id} = 200)。patreon は bare ID で
+   *  実ブラウザが canonical URL へリダイレクト (実測 2026-11-18)。構成不可なら null */
+  originalPostUrl: async (
+    service: string,
+    creatorId: string,
+    postId: string,
+  ): Promise<string | null> => {
+    if (service === "fanbox") {
+      const slug = await fanboxSlug(creatorId)
+      if (!slug) return null
+      return `https://${slug}.fanbox.cc/posts/${encodeURIComponent(postId)}`
+    }
+    if (service === "patreon") return `https://www.patreon.com/posts/${encodeURIComponent(postId)}`
+    return null
+  },
+
+  /** 元サービスのクリエイターページ URL。
+   *  patreon は user?u={id} が creator name へリダイレクト (実測 307)。 */
+  originalCreatorUrl: async (service: string, creatorId: string): Promise<string | null> => {
+    if (service === "fanbox") {
+      const slug = await fanboxSlug(creatorId)
+      if (!slug) return null
+      return `https://${slug}.fanbox.cc`
+    }
+    if (service === "patreon") return `https://www.patreon.com/user?u=${encodeURIComponent(creatorId)}`
+    return null
+  },
+}
+
+/** fanbox の creator slug (public_id) をクリエイター索引から取得 */
+async function fanboxSlug(creatorId: string): Promise<string | null> {
+  try {
+    const { getCreatorRow } = await import("./db")
+    const row = await getCreatorRow(`fanbox:${creatorId}`)
+    return row?.publicId || null
+  } catch {
+    return null
+  }
 }
 
 /** 投稿の tags を正規化する。

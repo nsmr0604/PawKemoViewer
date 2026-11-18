@@ -45,6 +45,8 @@ export function PostPage({
   const [error, setError] = useState<unknown>(null)
   // お気に入り状態 (web の ☆ Favorite 相当)。セッションが無い場合は表示しない
   const [faved, setFaved] = useState<"none" | "checking" | "yes" | "no" | "busy" | "err">("none")
+  // 元サービス (fanbox / patreon) の投稿 URL。構成できない場合は表示しない
+  const [originalUrl, setOriginalUrl] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     if (!validContext) {
@@ -151,6 +153,23 @@ export function PostPage({
       alive = false
     }
   }, [postId])
+
+  // 元サービス投稿 URL の構成 (fanbox は索引の slug が必要)
+  useEffect(() => {
+    let alive = true
+    setOriginalUrl(null)
+    api
+      .originalPostUrl(postContext.service, postContext.creatorId, postContext.postId)
+      .then((u) => {
+        if (alive) setOriginalUrl(u)
+      })
+      .catch(() => {
+        if (alive) setOriginalUrl(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [service, creatorId, postId])
 
   useEffect(() => {
     load()
@@ -366,6 +385,18 @@ export function PostPage({
           >
             サイトで開く ↗
           </a>
+          {originalUrl && (
+            <a
+              className="btn"
+              href={originalUrl}
+              target="_blank"
+              rel="noreferrer"
+              referrerPolicy="no-referrer"
+              title="元の fanbox / patreon の投稿ページを開きます (リファラーは送信しません)"
+            >
+              {postContext.service === "fanbox" ? "fanbox で開く ↗" : "patreon で開く ↗"}
+            </a>
+          )}
         </div>
       </div>
 

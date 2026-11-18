@@ -12,6 +12,7 @@ const PAGE = 50
 
 export function CreatorPage({ service, id }: { service: string; id: string }) {
   const [posts, setPosts] = useState<PawPost[]>([])
+  const [originalUrl, setOriginalUrl] = useState<string | null>(null)
   const [tags, setTags] = useState<PawTag[] | null>(null)
   // 投稿詳細のタグチップからの深リンク (#creator/...?tag=xxx) を初期選択にする
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
@@ -83,6 +84,23 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
     }
   }, [service, id])
 
+  // 元サービス (fanbox / patreon) のクリエイターページ URL
+  useEffect(() => {
+    let alive = true
+    setOriginalUrl(null)
+    api
+      .originalCreatorUrl(service, id)
+      .then((u) => {
+        if (alive) setOriginalUrl(u)
+      })
+      .catch(() => {
+        if (alive) setOriginalUrl(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [service, id])
+
   useScrollMemory(scrollKey, posts.length > 0 || done)
 
   const toggleTag = (t: string) => {
@@ -107,6 +125,18 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
           >
             サイトで開く ↗
           </a>
+          {originalUrl && (
+            <a
+              className="btn"
+              href={originalUrl}
+              target="_blank"
+              rel="noreferrer"
+              referrerPolicy="no-referrer"
+              title="元の fanbox / patreon のクリエイターページを開きます (リファラーは送信しません)"
+            >
+              {service === "fanbox" ? "fanbox で開く ↗" : "patreon で開く ↗"}
+            </a>
+          )}
         </div>
       </div>
 
