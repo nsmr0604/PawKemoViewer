@@ -64,7 +64,7 @@ export function PostPage({
       let slug = ""
       if (originalUrl) {
         try {
-          slug = new URL(originalUrl).hostname.replace(/\\.fanbox\\.cc$/i, "")
+          slug = new URL(originalUrl).hostname.replace(/\.fanbox\.cc$/i, "")
         } catch {
           slug = ""
         }
