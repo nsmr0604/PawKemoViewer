@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, clearApiCache, creatorIconUrl, creatorBannerUrl } from "../api"
+import { api, clearApiCache, creatorBannerUrl } from "../api"
 import {
   searchCreators,
   saveCreators,
@@ -11,7 +11,7 @@ import {
   type CreatorRow,
 } from "../db"
 import type { PawCreator } from "../types"
-import { Spinner, ErrorBox, Empty, fmtDate } from "../components"
+import { Spinner, ErrorBox, Empty, fmtDate, CreatorAvatar } from "../components"
 import { navigate } from "../router"
 import { logError } from "../log"
 import { isFollowed } from "../follows"
@@ -260,7 +260,7 @@ export function CreatorsPage() {
             className={`creator-row${isFollowed(r.service, r.id) ? " is-followed" : ""}`}
             onClick={() => navigate(`/creator/${r.service}/${r.id}`)}
           >
-            <div className="creator-avatar">{r.name.slice(0, 1).toUpperCase()}</div>
+            <CreatorAvatar service={r.service} id={r.id} name={r.name} />
             <div className="creator-row-main">
               <div className="creator-name">
                 {isFollowed(r.service, r.id) && <span className="badge-new inline">★ フォロー中</span>}
@@ -281,13 +281,12 @@ export function CreatorsPage() {
 export function CreatorHeader({ service, id }: { service: string; id: string }) {
   const [profile, setProfile] = useState<Awaited<ReturnType<typeof api.creatorProfile>> | null>(null)
   const [error, setError] = useState<unknown>(null)
-  // アイコン/バナーは存在しない場合 204 が返るので、読み込み失敗時はフォールバック表示
-  const [iconOk, setIconOk] = useState(true)
+  // バナーは存在しない場合 204 が返るので、読み込み失敗時はフォールバック表示
+  // (アイコンは CreatorAvatar がキャッシュ付きで処理)
   const [bannerOk, setBannerOk] = useState(true)
   useEffect(() => {
     let alive = true
     setProfile(null)
-    setIconOk(true)
     setBannerOk(true)
     api
       .creatorProfile(service, id)
@@ -320,21 +319,8 @@ export function CreatorHeader({ service, id }: { service: string; id: string }) 
         />
       )}
       <div className="creator-head-row">
-        {iconOk ? (
-          <img
-            className="creator-avatar big"
-            src={creatorIconUrl(service, id)}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            onError={() => {
-              logError(`クリエイターアイコン取得失敗 service=${service} id=${id} url=${creatorIconUrl(service, id)}`)
-              setIconOk(false)
-            }}
-          />
-        ) : (
-          <div className="creator-avatar big">{(profile.name || "?").slice(0, 1).toUpperCase()}</div>
-        )}
+        {/* アイコンはキャッシュ (icons.ts + Rust ディスクキャッシュ) から表示 */}
+        <CreatorAvatar service={service} id={id} name={profile.name} className="big" />
         <div>
           <h2>{profile.name}</h2>
           <div className="creator-sub">

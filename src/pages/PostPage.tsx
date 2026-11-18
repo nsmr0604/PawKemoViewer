@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api, apiStatus, getSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile, pawchiveProxyUrl } from "../api"
 import { setFavPost } from "../favstate"
+import { CreatorAvatar } from "../components"
 import type { PawComment, PawPost, PawRevision, HashLookupResult, PawFile } from "../types"
 import {
   Spinner,
@@ -318,6 +319,8 @@ export function PostPage({
       <div className="post-title-wrap">
         <h1 className="post-title">{displayPost.title || "(無題)"}</h1>
         <div className="post-meta">
+          <CreatorAvatar service={postContext.service} id={postContext.creatorId} name={postContext.creatorId} className="small" />
+          {" "}
           <span className="link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
             {postContext.service} / {postContext.creatorId}
           </span>

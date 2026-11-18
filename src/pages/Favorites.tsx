@@ -3,7 +3,7 @@ import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
 import { getAllSeen, setSeen, getSeen } from "../db"
 import { loadFollows, removeFollow, syncFollowsWithAccount } from "../follows"
-import { ErrorBox, Empty, PostGrid, fmtDate } from "../components"
+import { ErrorBox, Empty, PostGrid, fmtDate, CreatorAvatar } from "../components"
 import { navigate } from "../router"
 
 /** 自動新着チェックのクールダウン (この間はネットワークを叩かない) */
@@ -237,7 +237,7 @@ export function FavoritesPage() {
                   className="creator-row-main"
                   onClick={() => navigate(`/creator/${f.service}/${f.id}`)}
                 >
-                  <div className="creator-avatar">{(f.name || f.id).slice(0, 1).toUpperCase()}</div>
+                  <CreatorAvatar service={f.service} id={f.id} name={f.name} />
                   <div>
                     <div className="creator-name">
                       {f.name || f.id}

@@ -5,6 +5,7 @@ import { navigate } from "./router"
 import { logWarn, logError } from "./log"
 import { isFollowed } from "./follows"
 import { isFavPost, loadFavPosts, FAVPOSTS_CHANGED_EVENT } from "./favstate"
+import { getCreatorIcon } from "./icons"
 
 /** 投稿カード用のマーク状態 (フォロー中クリエイター / お気に入り投稿)。
  *  favstate / follows の変更イベントを購読して全カードが同期する。
@@ -201,6 +202,42 @@ export function Thumb({ file, className }: { file: PawFile | undefined; classNam
       }}
     />
   )
+}
+
+// ---------------------------------------------------------------------------
+// クリエイターアイコン (キャッシュ付き)
+// ---------------------------------------------------------------------------
+
+/** クリエイターのアイコンを表示する。取得・キャッシュは src/icons.ts
+ *  (メモリ → IndexedDB → Rust ディスクキャッシュ)。
+ *  アイコンが無いクリエイターは先頭文字のフォールバック。
+ *  `big` はクリエイターページヘッダー用の大きいサイズ */
+export function CreatorAvatar({
+  service,
+  id,
+  name,
+  className = "",
+}: {
+  service: string
+  id: string
+  name?: string
+  className?: string
+}) {
+  const [icon, setIcon] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    getCreatorIcon(service, id).then((url) => {
+      if (alive) setIcon(url)
+    })
+    return () => {
+      alive = false
+    }
+  }, [service, id])
+  const letter = (name || id || "?").slice(0, 1).toUpperCase()
+  if (icon) {
+    return <img className={`creator-avatar ${className}`} src={icon} alt={name || id} loading="lazy" decoding="async" />
+  }
+  return <div className={`creator-avatar ${className}`}>{letter}</div>
 }
 
 // ---------------------------------------------------------------------------
