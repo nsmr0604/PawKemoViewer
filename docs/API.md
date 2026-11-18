@@ -24,7 +24,8 @@ interface Settings {
   noImageMode: boolean     // 低通信モード
   postViewMode: "grid" | "list"
   timeoutSecs: number      // 既定 30 (1〜300 にクランプ)
-  proxyImages: boolean     // 画像を paw:// 経由で読み込む (AdGuard sinkhole 対策)
+  proxyImages: boolean     // 画像を pkv:// 経由で読み込む (AdGuard sinkhole 対策)
+  postFileListMode: boolean     // 投稿内の画像を一覧表示 (省データ・自動読み込みしない)
 }
 ```
 
@@ -72,11 +73,11 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 
 ### URL 生成
 
-- `fileUrl(f)` — 本体ファイル URL (deferred は temp_download_url を paw:// 経由)
+- `fileUrl(f)` — 本体ファイル URL (deferred は temp_download_url を pkv:// 経由)
 - `thumbUrl(f)` — サムネイル (`img.pawchive.pw/thumbnail/data{path}`)
-- `proxyFileUrl(url)` — ホットリンク対策 (fanbox/patreon/pximg) を paw:// 経由に変換
-- `proxyLinkUrl(url, service)` — 本文中の外部リンクを paw:// 経由に変換
-- `pawchiveProxyUrl(url)` — pawchive ホストを paw:// (f=1 force) で中継 (AdGuard 対策)
+- `proxyFileUrl(url)` — ホットリンク対策 (fanbox/patreon/pximg) を pkv:// 経由に変換
+- `proxyLinkUrl(url, service)` — 本文中の外部リンクを pkv:// 経由に変換
+- `pawchiveProxyUrl(url)` — pawchive ホストを pkv:// (f=1 force) で中継 (AdGuard 対策)
 - `creatorIconUrl(service, id)` — `https://pawchive.pw/icons/{service}/{userId}`
 - `creatorBannerUrl(service, id)` — `https://pawchive.pw/banners/{service}/{userId}`
 - `postUrl(service, userId, postId)` — pawchive 投稿ページ
@@ -97,10 +98,12 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 | `export_log(text)` | ログを `%APPDATA%/logs/YYYY-MM-DD_HH-MM-SS_viewer.log` に書き出し |
 | `export_file(fileName, text)` | 任意テキストを `%APPDATA%/backup/` に書き出し |
 | `fetch_creator_icon(service, id)` | クリエイターアイコンを取得 + `app_data/icons/{service}_{id}.webp` にキャッシュ → data URL |
+| `creator_icon_cache_info()` | クリエイターアイコンのキャッシュ件数・合計バイト数 |
+| `clear_creator_icon_cache()` | アイコンのディスクキャッシュを消去 |
 | `debug_append_log(text)` | (debug-diag feature のみ) ログ行を `app_data/logs/debug-app.log` に追記 |
 | `debug_open_log_folder()` | (debug-diag feature のみ) ログフォルダをファイラで開く |
 
-### paw:// プロトコル
+### pkv:// プロトコル
 WebView から Referer を設定できないため、リファラーチェックがある外部 URL を Rust 側で中継する。
 - `/file?u=<対象URL>&r=<リファラー>` (+ `&f=1` で pawchive ホストの強制中継)
 - SSRF 対策 (内部アドレス拒否) / direct ホスト (fanbox/patreon/pawchive) の除外ロジックあり

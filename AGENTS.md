@@ -12,7 +12,7 @@
 - **Cloudflare 禁止**: Pages / Workers / Functions / Wrangler / Reverse Proxy は再提案しない
   (pawchive 側が Cloudflare 由来の中継を検出し `Fake site` を返す — 実測済み)
 - 正式構成は **React + Tauri 2 + Rust + reqwest** 直叩きのみ
-- リファラー偽装が必要な外部 URL は `paw://` カスタムプロトコル(`http://paw.localhost`)経由
+- リファラー偽装が必要な外部 URL は `pkv://` カスタムプロトコル(`http://pkv.localhost`)経由
 - reqwest は `default-features = false` + `rustls-tls`(OpenSSL 不使用、Android 対応)
 
 ## Tauri コマンド引数

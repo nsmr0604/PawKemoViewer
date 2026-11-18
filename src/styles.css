@@ -1368,4 +1368,58 @@ input:not([type]) {
   border-color: color-mix(in srgb, var(--accent2) 65%, var(--bg3));
 }
 
+/* 投稿内ファイル: 本文 (Content) の下に縦 1 列で表示 (2 列グリッドは使わない) */
+.post-files {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.post-files .post-file {
+  width: 100%;
+  margin: 0;
+}
+.post-files .post-file img,
+.post-files .post-file video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
 
+/* 省データ リスト表示 (投稿詳細のオプション) */
+.post-file-list-wrap {
+  margin-top: 16px;
+}
+.post-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.post-file-row {
+  background: var(--bg2);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+}
+.post-file-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.post-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.post-file-row img,
+.post-file-row video {
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  display: block;
+  border-radius: var(--radius);
+}

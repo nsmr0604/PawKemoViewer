@@ -173,7 +173,7 @@ export function PostGrid({ posts, onEndReached, loading, done, newIds, viewMode 
 // ---------------------------------------------------------------------------
 
 export function Thumb({ file, className }: { file: PawFile | undefined; className?: string }) {
-  // 0=thumb, 1=full, 2=paw:// プロキシ (DNS ブロック等の迂回), 3=giveup
+  // 0=thumb, 1=full, 2=pkv:// プロキシ (DNS ブロック等の迂回), 3=giveup
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(0)
   const noImage = getSettings().noImageMode
 

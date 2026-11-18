@@ -333,13 +333,13 @@ async fn fetch_creator_icon(
 }
 
 // ---------------------------------------------------------------------------
-// paw:// プロトコル (リファラー偽装プロキシ)
+// pkv:// プロトコル (リファラー偽装プロキシ)
 //
 // WebView (tauri://localhost) からは Referer を自由に設定できないため、
 // リファラーチェックでブロックされる fanbox / patreon / 外部サイトの
 // ファイル・ページを Rust 側で Referer/Origin を偽装して中継する。
 //
-// WebView 側の URL: http://paw.localhost/file?u=<対象URL>&r=<リファラー>
+// WebView 側の URL: http://pkv.localhost/file?u=<対象URL>&r=<リファラー>
 //  - GET  : ファイル/ページ取得
 //  - POST : 外部ページ内のフォーム送信を中継 (reCAPTCHA 付きフォーム等)
 // ---------------------------------------------------------------------------
@@ -416,9 +416,9 @@ fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
-/// paw プロトコルの URL を生成する
-fn paw_url(abs: &reqwest::Url, referer: &str) -> String {
-    let mut u = reqwest::Url::parse("http://paw.localhost/file").unwrap();
+/// pkv プロトコルの URL を生成する
+fn pkv_url(abs: &reqwest::Url, referer: &str) -> String {
+    let mut u = reqwest::Url::parse("http://pkv.localhost/file").unwrap();
     u.query_pairs_mut()
         .append_pair("u", abs.as_str())
         .append_pair("r", referer);
@@ -454,7 +454,7 @@ fn rewrite_attr(tag: &str, attr: &str, transform: &dyn Fn(&str) -> Option<String
 
 /// 外部ページの HTML 変換:
 /// - <base> 注入 (相対 URL を元サイト基準に)
-/// - img / form / a の URL を paw:// 経由に書き換え (リファラーを揃える)
+/// - img / form / a の URL を pkv:// 経由に書き換え (リファラーを揃える)
 fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> String {
     let base_href = target
         .join(".")
@@ -490,7 +490,7 @@ fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> Stri
                     .join(v)
                     .ok()
                     .filter(|u| is_proxyable(u))
-                    .map(|u| paw_url(&u, self_referer))
+                    .map(|u| pkv_url(&u, self_referer))
             })
         })
         .into_owned();
@@ -507,7 +507,7 @@ fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> Stri
                     target.join(v).ok()
                 };
                 abs.filter(|u| is_proxyable(u))
-                    .map(|u| paw_url(&u, self_referer))
+                    .map(|u| pkv_url(&u, self_referer))
             })
         })
         .into_owned();
@@ -525,7 +525,7 @@ fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> Stri
                     .join(v)
                     .ok()
                     .filter(|u| is_proxyable(u))
-                    .map(|u| paw_url(&u, self_referer))
+                    .map(|u| pkv_url(&u, self_referer))
             })
         })
         .into_owned();
@@ -533,8 +533,8 @@ fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> Stri
     html
 }
 
-/// paw:// ハンドラ本体 (GET / POST を中継)
-fn paw_proxy_fetch(
+/// pkv:// ハンドラ本体 (GET / POST を中継)
+fn pkv_proxy_fetch(
     method: &str,
     uri: &str,
     body: Option<Vec<u8>>,
@@ -824,6 +824,50 @@ fn debug_open_log_folder(app: tauri::AppHandle) -> Result<String, String> {
     Ok(dir.to_string_lossy().to_string())
 }
 
+/// クリエイターアイコンのディスクキャッシュ件数・合計バイト数
+#[derive(serde::Serialize)]
+pub struct IconCacheInfo {
+    count: u64,
+    bytes: u64,
+}
+
+fn icon_cache_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("icons"))
+}
+
+#[tauri::command]
+fn creator_icon_cache_info(app: tauri::AppHandle) -> Result<IconCacheInfo, String> {
+    let dir = icon_cache_dir(&app)?;
+    let mut info = IconCacheInfo { count: 0, bytes: 0 };
+    if let Ok(rd) = std::fs::read_dir(&dir) {
+        for e in rd.flatten() {
+            if let Ok(m) = e.metadata() {
+                if m.is_file() {
+                    info.count += 1;
+                    info.bytes += m.len();
+                }
+            }
+        }
+    }
+    Ok(info)
+}
+
+/// アイコンのディスクキャッシュを消去し、消した件数を返す
+#[tauri::command]
+fn clear_creator_icon_cache(app: tauri::AppHandle) -> Result<u64, String> {
+    let dir = icon_cache_dir(&app)?;
+    let mut n = 0u64;
+    if let Ok(rd) = std::fs::read_dir(&dir) {
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_file() && std::fs::remove_file(&p).is_ok() {
+                n += 1;
+            }
+        }
+    }
+    Ok(n)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -832,7 +876,7 @@ pub fn run() {
                 .level(log::LevelFilter::Info)
                 .build(),
         )
-        .register_asynchronous_uri_scheme_protocol("paw", |_ctx, request, responder| {
+        .register_asynchronous_uri_scheme_protocol("pkv", |_ctx, request, responder| {
             let method = request.method().as_str().to_string();
             let uri = request.uri().to_string();
             let range = request
@@ -847,7 +891,7 @@ pub fn run() {
             };
             // ブロッキング取得は別スレッドで行う (UI を止めない)
             std::thread::spawn(move || {
-                let response = paw_proxy_fetch(&method, &uri, body, range);
+                let response = pkv_proxy_fetch(&method, &uri, body, range);
                 responder.respond(response);
             });
         })
@@ -858,6 +902,8 @@ pub fn run() {
                 export_log,
                 export_file,
                 fetch_creator_icon,
+                creator_icon_cache_info,
+                clear_creator_icon_cache,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している

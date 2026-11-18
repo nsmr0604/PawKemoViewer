@@ -34,10 +34,12 @@ export interface Settings {
   postViewMode: "grid" | "list"
   /** 通信タイムアウト秒 (JHenTai の Connect/Receive Timeout 参考)。既定 30 秒 */
   timeoutSecs: number
-  /** 画像を paw:// プロキシ経由で読み込む。
+  /** 画像を pkv:// プロキシ経由で読み込む。
    *  実機の DNS フィルタリング (AdGuard sinkhole) で *.pawchive.pw が
    *  WebView 直読みできない環境向け (bugs.md 参照)。Rust (reqwest) 経路は実測正常 */
   proxyImages: boolean
+  /** 投稿内の画像・ファイルを一覧表示する (省データ・自動読み込みしない) */
+  postFileListMode: boolean
 }
 
 /** 設定変更を上位コンポーネント (App) に通知するイベント名。
@@ -64,6 +66,7 @@ function defaultSettings(): Settings {
     postViewMode: "grid",
     timeoutSecs: 30,
     proxyImages: false,
+    postFileListMode: false,
   }
 }
 
@@ -499,10 +502,10 @@ export function postUrl(service: string, userId: string, postId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// リファラーチェック回避プロキシ (paw:// プロトコル)
+// リファラーチェック回避プロキシ (pkv:// プロトコル)
 //
 // Tauri の WebView からは Referer を設定できないため、リファラーチェックで
-// ブロックされる URL は Rust 側 (paw:// プロトコルハンドラ) 経由にする。
+// ブロックされる URL は Rust 側 (pkv:// プロトコルハンドラ) 経由にする。
 // ---------------------------------------------------------------------------
 
 /** ホットリンク対策 (Referer チェック) をしている可能性のあるホスト */
@@ -512,12 +515,12 @@ function isHotlinkHost(hostname: string): boolean {
   return HOTLINK_HOSTS.some((d) => hostname === d || hostname.endsWith("." + d))
 }
 
-/** paw プロトコル経由 URL (Rust 側でリファラーを偽装して中継) */
-function pawProxyUrl(url: string, referer: string, force = false): string {
-  return `http://paw.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}${force ? "&f=1" : ""}`
+/** pkv プロトコル経由 URL (Rust 側でリファラーを偽装して中継) */
+function pkvProxyUrl(url: string, referer: string, force = false): string {
+  return `http://pkv.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}${force ? "&f=1" : ""}`
 }
 
-/** pawchive 自身のホストを paw:// 強制プロキシ経由に変換する (f=1)。
+/** pawchive 自身のホストを pkv:// 強制プロキシ経由に変換する (f=1)。
  *  端末 DNS が *.pawchive.pw をブロックする環境 (AdGuard sinkhole) の迂回用。
  *  pawchive 以外の URL はそのまま返す */
 export function pawchiveProxyUrl(url: string): string {
@@ -525,13 +528,13 @@ export function pawchiveProxyUrl(url: string): string {
   try {
     const h = new URL(url)
     if (!h.hostname.endsWith("pawchive.pw")) return url
-    return pawProxyUrl(h.toString(), "https://pawchive.pw/", true)
+    return pkvProxyUrl(h.toString(), "https://pawchive.pw/", true)
   } catch {
     return url
   }
 }
 
-/** proxyImages 設定が有効なときのみ pawchive ホストを paw:// 経由にする */
+/** proxyImages 設定が有効なときのみ pawchive ホストを pkv:// 経由にする */
 function maybeProxyPawchive(url: string): string {
   return getSettings().proxyImages ? pawchiveProxyUrl(url) : url
 }
@@ -552,7 +555,7 @@ export function proxyFileUrl(url: string): string {
     h.hostname.endsWith("patreon.com") || h.hostname.endsWith("patreonusercontent.com")
       ? "https://www.patreon.com/"
       : "https://www.fanbox.cc/"
-  return pawProxyUrl(h.toString(), referer)
+  return pkvProxyUrl(h.toString(), referer)
 }
 
 /** 投稿本文から張られた外部リンクを paw 経由に変換する。
@@ -571,7 +574,7 @@ export function proxyLinkUrl(url: string, service?: string): string {
   // fanbox / patreon 自体は SPA のためそのまま (リファラーチェックが無い・実測)
   if (h.hostname.endsWith("pawchive.pw") || isHotlinkHost(h.hostname)) return url
   const referer = service === "patreon" ? "https://www.patreon.com/" : "https://www.fanbox.cc/"
-  return pawProxyUrl(h.toString(), referer)
+  return pkvProxyUrl(h.toString(), referer)
 }
 
 export function creatorUrl(service: string, userId: string) {

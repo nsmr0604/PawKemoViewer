@@ -141,6 +141,32 @@ export function getCreatorIcon(service: string, id: string): Promise<string | nu
   })
 }
 
+/** アイコンのキャッシュ (メモリ・IndexedDB・ディスク) をすべて消去する。戻り値はディスクから消した件数 */
+export async function clearIconCache(): Promise<number> {
+  memory.clear()
+  try {
+    const d = await db()
+    await new Promise<void>((resolve) => {
+      const tx = d.transaction(STORE, "readwrite")
+      tx.objectStore(STORE).clear()
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => resolve()
+    })
+  } catch {
+    /* IDB 不使用でもディスク側は消す */
+  }
+  try {
+    return await invoke<number>("clear_creator_icon_cache")
+  } catch {
+    return 0
+  }
+}
+
+/** アイコンのディスクキャッシュの件数・合計バイト数 */
+export async function creatorIconInfo(): Promise<{ count: number; bytes: number }> {
+  return invoke<{ count: number; bytes: number }>("creator_icon_cache_info")
+}
+
 /** アイコンの保存・キャッシュ動作確認用 (設定 → キャッシュに表示する件数) */
 export async function iconCacheCount(): Promise<number> {
   try {

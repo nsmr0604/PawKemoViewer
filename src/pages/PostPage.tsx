@@ -48,6 +48,7 @@ export function PostPage({
   const [faved, setFaved] = useState<"none" | "checking" | "yes" | "no" | "busy" | "err">("none")
   // 元サービス (fanbox / patreon) の投稿 URL。構成できない場合は表示しない
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
+  const [loadedFiles, setLoadedFiles] = useState<Set<number>>(() => new Set())
 
   const load = useCallback(async () => {
     if (!validContext) {
@@ -313,6 +314,7 @@ export function PostPage({
     ...(displayPost.attachments || []),
   ]
   filesCountRef.current = allFiles.length
+  const listMode = getSettings().postFileListMode || getSettings().noImageMode
 
   return (
     <div className="page post-page" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -403,7 +405,11 @@ export function PostPage({
         </div>
       </div>
 
-      {allFiles.length > 0 && (
+      {displayPost.content && (
+        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service) }} />
+      )}
+
+      {allFiles.length > 0 && !listMode && (
         <div className="post-files">
           {allFiles.map((f, i) => (
             <figure key={i} className="post-file">
@@ -430,8 +436,8 @@ export function PostPage({
                       logWarn(`投稿画像サムネイル取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}; full URL で再試行`)
                       el.setAttribute("src", full)
                     } else if (src !== proxy && f.path) {
-                      // 端末 DNS ブロック等の迂回: paw:// プロキシ (Rust reqwest) 経由で再試行
-                      logWarn(`投稿画像取得失敗 file=${f.path}; paw:// プロキシで再試行`)
+                      // 端末 DNS ブロック等の迂回: pkv:// プロキシ (Rust reqwest) 経由で再試行
+                      logWarn(`投稿画像取得失敗 file=${f.path}; pkv:// プロキシで再試行`)
                       el.setAttribute("src", proxy)
                     } else {
                       logError(`投稿画像取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}`)
@@ -450,8 +456,40 @@ export function PostPage({
         </div>
       )}
 
-      {displayPost.content && (
-        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service) }} />
+      {allFiles.length > 0 && listMode && (
+        <div className="post-file-list-wrap">
+          <div className="section-row">
+            <span className="small">{allFiles.length} 件 (省データ表示・自動読み込みなし)</span>
+            <button className="btn btn-sm" onClick={() => setLoadedFiles(new Set(allFiles.map((_, i) => i)))}>
+              すべて読み込む
+            </button>
+          </div>
+          <ul className="post-file-list">
+            {allFiles.map((f, i) => (
+              <li key={i} className="post-file-row">
+                <div className="post-file-head">
+                  <span className="post-file-name">{f.name || "(名称なし)"}</span>
+                  <span className="small">{isVideoFile(f) ? "動画" : "画像"}</span>
+                  {loadedFiles.has(i) ? (
+                    <a href={fileUrl(f)} target="_blank" rel="noreferrer" download>
+                      保存 ↗
+                    </a>
+                  ) : (
+                    <button className="btn btn-sm" onClick={() => setLoadedFiles((prev) => new Set(prev).add(i))}>
+                      読み込む
+                    </button>
+                  )}
+                </div>
+                {loadedFiles.has(i) &&
+                  (isVideoFile(f) ? (
+                    <video src={fileUrl(f)} controls preload="metadata" playsInline />
+                  ) : (
+                    <img loading="lazy" decoding="async" src={fileUrl(f)} alt={f.name} />
+                  ))}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {Object.keys(displayPost.embed || {}).length > 0 && (

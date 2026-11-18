@@ -14,6 +14,7 @@ import { DEBUG_DIAG, debugOpenLogFolder } from "../debug"
 import { navigate } from "../router"
 import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
+import { clearIconCache, creatorIconInfo } from "../icons"
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -38,6 +39,8 @@ export function SettingsPage() {
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(s.layoutMode || "auto")
   const [noImageMode, setNoImageModeState] = useState<boolean>(s.noImageMode || false)
   const [proxyImages, setProxyImagesState] = useState<boolean>(s.proxyImages || false)
+  const [postFileListMode, setPostFileListModeState] = useState<boolean>(s.postFileListMode || false)
+  const [iconCache, setIconCache] = useState<{ count: number; bytes: number } | null>(null)
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
   const [saved, setSaved] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
@@ -54,6 +57,7 @@ export function SettingsPage() {
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => setAppVersion("取得失敗"))
     creatorCacheInfo().then(setCache).catch(() => setCache(null))
+    creatorIconInfo().then(setIconCache).catch(() => setIconCache(null))
   }, [])
 
   const save = () => {
@@ -81,6 +85,17 @@ export function SettingsPage() {
   const toggleNoImageMode = (val: boolean) => {
     setNoImageModeState(val)
     updateSettings({ noImageMode: val })
+  }
+
+  const togglePostFileListMode = (val: boolean) => {
+    setPostFileListModeState(val)
+    updateSettings({ postFileListMode: val })
+  }
+
+  const doClearIconCache = async () => {
+    await clearIconCache()
+    setIconCache(await creatorIconInfo().catch(() => null))
+    logInfo("クリエイターアイコンのキャッシュを消去しました")
   }
 
   const toggleProxyImages = (val: boolean) => {
@@ -363,7 +378,7 @@ export function SettingsPage() {
 
         <div className="setting-item">
           <div className="setting-text">
-            <span>画像を paw:// プロキシ経由で読み込む</span>
+            <span>画像を pkv:// プロキシ経由で読み込む</span>
             <small>
               DNS フィルタリング (AdGuard 等) で画像が表示されない端末向けの迂回設定。
               通常は無効のまま推奨
@@ -374,6 +389,46 @@ export function SettingsPage() {
             onClick={() => toggleProxyImages(!proxyImages)}
           >
             {proxyImages ? "有効 (プロキシ経由)" : "無効 (直接読み込み)"}
+          </button>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------ 投稿表示 (省データ) */}
+      <div className="settings-section">
+        <div className="section-label">投稿表示</div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>省データのリスト表示</span>
+            <small>
+              投稿内の画像を自動で読み込まず、ファイル名の一覧から必要なものだけ読み込みます
+              (低通信モードでも同様)
+            </small>
+          </div>
+          <button
+            className={`btn ${postFileListMode ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => togglePostFileListMode(!postFileListMode)}
+          >
+            {postFileListMode ? "有効 (リスト)" : "無効 (本文の下に表示)"}
+          </button>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------ アイコンキャッシュ */}
+      <div className="settings-section">
+        <div className="section-label">アイコンキャッシュ</div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>クリエイターアイコン</span>
+            <small>
+              {iconCache
+                ? `${iconCache.count.toLocaleString()} 件 · ${fmtBytes(iconCache.bytes)} をキャッシュ済み (再利用・通信なし)`
+                : "読み込み中…"}
+            </small>
+          </div>
+          <button className="btn" onClick={doClearIconCache}>
+            消去
           </button>
         </div>
       </div>
