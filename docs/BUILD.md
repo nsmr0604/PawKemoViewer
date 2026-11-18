@@ -71,6 +71,7 @@ npm run tauri:build                            # ローカルリリースバン�
 ### 既知の CI 障害パターン (実測)
 - **Android の gradle が Maven Central 429 (Too Many Requests) で失敗**: 一時的障害。
   次の push で再実行すれば解消 (Rust コンパイルは成功しているので failure でも慌てない)
+- **Gradle プラグイン解決の失敗** (`Could not resolve org.jetbrains.kotlin:kotlin-gradle-plugin` / plugins.gradle.org の POM 取得失敗): 一時障害。`gh run rerun <id> --failed` で再実行 (実測: 0.3.1 push で発生)
 - **同バージョン再 push での asset 衝突**: バージョンを上げてから push する
 - **macos ジョブの cancelled**: runner 起因のフレークあり。他プラットフォームが
   success なら再ランで直る
