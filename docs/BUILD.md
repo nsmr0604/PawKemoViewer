@@ -1,461 +1,116 @@
-# Build Guide
+# Build & Release Guide
 
-PawKemoViewer のビルド、パッケージ生成、GitHub Actions 自動ビルドについて説明します。
-
----
-
-# アーキテクチャ
-
-現在のビルド構成は以下の通りです。
-
-```text
-React
-TypeScript
-Vite
-        ↓
-     Tauri
-        ↓
-      Rust
-        ↓
-     Reqwest
-        ↓
-   pawchive.pw
-```
-
-Cloudflare Pages / Functions / Wrangler は使用しません。
+PawKemoViewer のビルド、CI、リリース運用について。
 
 ---
 
-# 必要環境
+## ビルドの原則
 
-## Node.js
-
-推奨:
-
-```text
-Node.js 24+
-npm 10+
-```
-
-確認:
-
-```bash
-node --version
-npm --version
-```
-
-例:
-
-```text
-v24.22.1
-10.9.2
-```
+- **正式ビルドは GitHub Actions に委任**。ローカルビルドは検証用
+- push (main) = **デバッグビルド** (診断コード入り) → rolling prerelease `debug-latest` へ
+- 正式リリース = **手動のみ** (workflow_dispatch の `release=true`)。診断コード無し
+- ローカルビルドは `V:\pawchive\` (リポジトリルート) で実行する。
+  エージェントの作業ファイルは `.agent-work/` (gitignore 済み)
 
 ---
 
-## Rust
-
-インストール:
-
-```bash
-rustup-init
-```
-
-確認:
-
-```bash
-rustc --version
-cargo --version
-```
-
-例:
-
-```text
-rustc 1.90+
-cargo 1.90+
-```
-
----
-
-# セットアップ
-
-依存インストール:
+## ローカルビルド
 
 ```bash
 npm install
+npm run build            # フロントエンド (tsc + Vite) → dist/
+cargo check              # Rust 型検査
+npm run tauri:dev        # デスクトップ開発実行
+npm run tauri:build      # デスクトップリリースビルド
 ```
+
+### デバッグ診断ビルド (手元で診断コードを入れる)
+
+```powershell
+$env:VITE_DEBUG_DIAG = "1"; npm run build          # フロントエンド
+cargo build --features debug-diag                   # Rust
+```
+
+診断ビルドではバックアップ JSON ダンプ・API 失敗詳細ログ・
+`app_data/logs/debug-app.log` 常時追記が有効になる (リリースでは自動分離)。
+
+### 成果物の名前 (v0.3.0~)
+
+| プラットフォーム | ファイル |
+|---|---|
+| Windows | `PawKemoViewer_0.3.0_x64-setup.exe` / `_x64_en-US.msi` |
+| Linux | `pawkemoviewer_0.3.0_amd64.deb` / `.AppImage` / `.rpm` |
+| macOS | `PawKemoViewer_0.3.0_aarch64.dmg` |
+| Android | `PawKemoViewer_0.3.0_universal.apk` (debug.keystore 署名) |
+
+プロセス名 / exe 名は `pawkemoviewer` (v0.3.0 で crate 名を改名したため)。
 
 ---
 
-# フロントエンドビルド
-
-Viteのみビルド:
-
-```bash
-npm run build
-```
-
-出力:
-
-```text
-dist/
-```
-
-例:
-
-```text
-dist/index.html
-dist/assets/*
-dist/manifest.webmanifest
-```
-
----
-
-# Tauri 開発モード
-
-```bash
-npm run tauri:dev
-```
-
-実行内容:
-
-```text
-npm run dev
-↓
-Vite
-↓
-http://localhost:5173
-↓
-Tauri 起動
-```
-
----
-
-# Tauri リリースビルド
-
-```bash
-npm run tauri:build
-```
-
-生成先:
-
-```text
-src-tauri/target/release/
-```
-
----
-
-# Windows ビルド
-
-成果物:
-
-```text
-src-tauri/target/release/bundle/msi/
-src-tauri/target/release/bundle/nsis/
-```
-
-例:
-
-```text
-PawKemoViewer_x64_en-US.msi
-
-PawKemoViewer_x64-setup.exe
-```
-
----
-
-# Linux ビルド
-
-成果物:
-
-```text
-AppImage
-deb
-rpm
-```
-
-例:
-
-```text
-pawkemoviewer_0.3.0_amd64.deb
-
-pawkemoviewer.AppImage
-```
-
----
-
-# macOS ビルド
-
-成果物:
-
-```text
-DMG
-.app
-```
-
-例:
-
-```text
-PawKemoViewer.dmg
-
-PawKemoViewer.app
-```
-
----
-
-# GitHub Actions
-
-ビルドは GitHub Actions によって自動実行されます。
-
-配置:
-
-```text
-.github/workflows/tauri.yml
-```
-
----
-
-## ワークフロー
-
-実行条件:
-
-```yaml
-on:
-  push:
-    branches:
-      - main
-
-  workflow_dispatch:
-```
-
-実行タイミング:
-
-- main ブランチへの push
-- GitHub UI から手動実行
-
----
-
-## マルチプラットフォーム構成
-
-```yaml
-strategy:
-  fail-fast: false
-
-  matrix:
-    include:
-      - platform: windows-latest
-
-      - platform: ubuntu-24.04
-
-      - platform: macos-15
-```
-
-ビルド対象:
-
-```text
-Windows
-Linux
-macOS
-```
-
----
-
-## GitHub Actions サンプル
-
-```yaml
-name: Build Tauri
-
-on:
-  push:
-    branches:
-      - main
-
-  workflow_dispatch:
-
-permissions:
-  contents: write
-
-jobs:
-  build:
-
-    strategy:
-      fail-fast: false
-
-      matrix:
-        include:
-          - platform: windows-latest
-
-          - platform: ubuntu-24.04
-
-          - platform: macos-15
-
-    runs-on: ${{ matrix.platform }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build Frontend
-        run: npm run build
-
-      - name: Build Tauri
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-        with:
-          tagName: pawchive-v__VERSION__
-          releaseName: PawKemoViewer v__VERSION__
-          releaseDraft: false
-          prerelease: false
-```
-
----
-
-# GitHub Releases
-
-ビルド成功後:
-
-```text
-GitHub
-↓
-Releases
-```
-
-へ成果物が自動アップロードされます。
-
-公開例:
-
-```text
-PawKemoViewer_x64-setup.exe
-
-pawkemoviewer.AppImage
-
-PawKemoViewer.dmg
-```
-
----
-
-# Android (予定)
-
-Tauri 2 は Android 対応予定です。
-
-初期化:
+## Android ビルド
 
 ```bash
 npm run tauri android init
-```
-
-デバッグ:
-
-```bash
-npm run tauri android dev
-```
-
-リリース:
-
-```bash
 npm run tauri android build
 ```
 
-生成:
+署名: `src-tauri/android-debug.keystore` (Android SDK 標準手順の debug.keystore。
+パスワード `android` は公開定数のため直書き可 — 非公開の鍵は GitHub Secrets 経由)。
+正式配布時はリリース鍵を Secrets 化し、debug.keystore をリポジトリから削除する。
+
+---
+
+## CI (GitHub Actions)
+
+| ワークフロー | トリガー | 出力先 |
+|---|---|---|
+| `.github/workflows/tauri.yml` (Build Tauri) | push (main) / dispatch | PC 成果物 |
+| `.github/workflows/android.yml` (Android Build) | push (main) / **PR** / dispatch | APK |
+
+### push (main) = デバッグビルド
+
+- `VITE_DEBUG_DIAG=1` を注入 (ジョブレベル env。`beforeBuildCommand` 内の再ビルドにも波及)
+- 成果物は rolling prerelease **`debug-latest`** に添付
+  (旧バージョンのアセットは「ファイル名に現行バージョンを含まないものを削除」で掃除)
+- PR ビルドは artifact のみ (リリースには出さない)
+
+### 正式リリース (手動)
+
+1. バージョンを上げる: `package.json` / `package-lock.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`
+2. push してデバッグビルドで動作確認
+3. GitHub UI → Actions → **Build Tauri / Android Build → Run workflow → `release=true`**
+4. タグ `pawkemoviewer-v{VER}` のリリースに成果物が添付される (PC 側は旧アセット削除→新アップロード)
+
+### トラブルシューティング
+
+- **Android がgradle 依存解決で失敗**: Maven Central の 429 (Too Many Requests) の
+  一時的障害のことがある。Rust コンパイル成功後に `Could not resolve` が出たら再実行で直る
+- ワークフロー YAML は push 前に `npx --yes js-yaml .github/workflows/*.yml` で検証
+
+---
+
+## リリースフロー
 
 ```text
-app-release.apk
+開発 (main push)
+  → デバッグビルド (VITE_DEBUG_DIAG=1)
+  → prerelease "debug-latest" (テスト用・上書き更新)
+実機テストで問題なければ
+  → バージョン更新 + workflow_dispatch release=true
+  → 正式リリース "pawkemoviewer-v{VER}"
 ```
+
+### 0.2.x → 0.3.0 移行 (破壊的変更)
+
+- identifier / 内部キーが変更されたため、**旧アプリのデータは自動引き継ぎされない**
+- 引き継ぎ手順: 旧バージョンでバックアップを書き出し → 新バージョンで読み込み
+  (フォロー・既読・設定・セッションキーを含む)
+- Windows は旧「Pawchive Viewer」が別フォルダに残るため手動アンインストール
+- Android は旧アプリ (`jp.geek.nsmr0604.pawchive`) と共存する
 
 ---
 
-# トラブルシューティング
+## 将来計画
 
-## cargo が見つからない
-
-```text
-failed to run cargo metadata
-```
-
-確認:
-
-```bash
-cargo --version
-```
-
-Rust を再インストール:
-
-```bash
-rustup update
-```
-
----
-
-## Tauri Build失敗
-
-依存を再生成:
-
-```bash
-rm -rf node_modules
-rm package-lock.json
-
-npm install
-```
-
----
-
-## TypeScriptエラー
-
-型検査のみ:
-
-```bash
-npx tsc --noEmit
-```
-
----
-
-## Viteエラー
-
-キャッシュ削除:
-
-```bash
-rm -rf dist
-rm -rf node_modules/.vite
-```
-
-再ビルド:
-
-```bash
-npm run build
-```
-
----
-
-# CI/CDフロー
-
-```text
-Developer
-      ↓
-git push
-      ↓
-GitHub Actions
-      ↓
-Tauri Build
-      ↓
-Windows
-Linux
-macOS
-      ↓
-GitHub Releases
-```
-
-これが PawKemoViewer の正式なビルド手順です。
+- Windows 正式署名 (eMudhra コード署名証明書)
+- Android リリース鍵の Secrets 化
