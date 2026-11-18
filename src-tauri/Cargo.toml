@@ -8,6 +8,12 @@ repository = ""
 edition = "2024"
 rust-version = "1.90"
 
+# デバッグ診断コードのビルド時注入フラグ (src/debug.ts の DEBUG_DIAG と対)。
+# テスト用ビルドでのみ --features debug-diag を付ける。リリースビルドでは無効のまま。
+# Rust 側の診断コードは #[cfg(feature = "debug-diag")] で書く
+[features]
+debug-diag = []
+
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]

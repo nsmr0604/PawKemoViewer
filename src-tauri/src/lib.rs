@@ -236,13 +236,6 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
     }
 }
 
-/// デバッグビルドか (debug_assertions が有効 = debug APK / cargo debug build)。
-/// デバッグ診断 (backup JSON ダンプ等) を release では無効化するための判定
-#[tauri::command]
-async fn is_debug() -> bool {
-    cfg!(debug_assertions)
-}
-
 // ---------------------------------------------------------------------------
 // paw:// プロトコル (リファラー偽装プロキシ)
 //
@@ -710,8 +703,7 @@ pub fn run() {
                 api_request,
                 login_request,
                 export_log,
-                export_file,
-                is_debug
+                export_file
             ]
         )
         .run(

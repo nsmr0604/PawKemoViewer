@@ -124,6 +124,22 @@ notes/
     `secret.md` に記録
   - 正式配布時はリリース鍵を Secrets 化し、debug.keystore もリポジトリから削除
 
+## デバッグ診断コードの注入規約
+
+- デバッグ用の診断コード (backup JSON ダンプ・詳細通信ログ等) は
+  **ビルド時フラグで注入し、リリースビルドではコード自体を分離する**。
+  実行時判定 (`cfg!(debug_assertions)` や is_debug コマンド) は使わない
+- **フロントエンド**: `VITE_DEBUG_DIAG=1` → `src/debug.ts` の `DEBUG_DIAG` 定数。
+  診断コードは `if (DEBUG_DIAG)` で囲み、リリースビルドでは定数畳み込みで
+  バンドラが分岐ごと排除する
+  - 開発サーバ (`npm run dev`): `.env.development` で自動有効
+  - テスト用ビルド: `VITE_DEBUG_DIAG=1 npm run build`
+  - CI: android.yml の workflow_dispatch input `debug_diag` (**リリース添付をスキップ**)。
+    push (リリース) ビルドでは常に無効
+- **Rust 側**: cargo feature `debug-diag` (src-tauri/Cargo.toml)。
+  診断コードは `#[cfg(feature = "debug-diag")]` で書き、テスト用ビルドでのみ
+  `--features debug-diag` を付ける
+
 ## エージェント作業領域
 
 - opencode 自身がビルド・テスト・解析等で使う一時ファイルは

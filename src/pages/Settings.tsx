@@ -9,8 +9,8 @@ import {
   formatLog,
   logInfo,
   logLong,
-  isDebugBuild,
 } from "../log"
+import { DEBUG_DIAG } from "../debug"
 import { navigate } from "../router"
 import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
@@ -107,11 +107,11 @@ export function SettingsPage() {
       }
       setBackupResult(`書き出しました: ${path}${clip}`)
       logInfo("バックアップを書き出しました")
-      // デバッグビルド限定: バックアップ JSON 全文を診断ログへ出力する
-      // (実機では app_data_dir が取り出せず・クリップボードも adb から読めないため
-      //  ログ経由が最短。release では sessionKey を含むため無効化)
-      if (isDebugBuild()) {
-        logLong("info", "DEBUG BACKUP DUMP (debug ビルド限定・下記全文):\n" + buildBackup())
+      // デバッグ診断ビルド (VITE_DEBUG_DIAG=1) 限定: バックアップ JSON 全文を
+      // 診断ログへ出力する (実機では app_data_dir が取り出せず・クリップボードも
+      // adb から読めないためログ経由が最短。リリースビルドでは分離される)
+      if (DEBUG_DIAG) {
+        logLong("info", "DEBUG BACKUP DUMP (デバッグ診断ビルド限定・下記全文):\n" + buildBackup())
       }
     } catch (e) {
       setBackupResult(`書き出し失敗: ${e instanceof Error ? e.message : String(e)}`)
