@@ -259,10 +259,16 @@ function loadIndex(): Promise<CreatorRow[]> {
  * 検索クエリの正規化。URL 貼り付け (https://tateha.fanbox.cc 等) から
  * slug / ID とサービスを取り出す。
  */
-export function normalizeCreatorQuery(raw: string): { q: string; service?: string } {
+export function normalizeCreatorQuery(raw: string): { q: string; service?: string; postId?: string } {
   const s = raw.trim()
   if (!s) return { q: "" }
-  let m = s.match(/^(?:https?:\/\/)?([a-z0-9_-]+)\.fanbox\.cc/i)
+  // 投稿 URL (slug サブドメイン / www + @slug の両パターン・実測どちらも同着地):
+  //   https://{slug}.fanbox.cc/posts/{id} / https://www.fanbox.cc/@{slug}/posts/{id}
+  let m = s.match(/^(?:https?:\/\/)?([a-z0-9_-]+)\.fanbox\.cc\/posts\/(\d+)/i)
+  if (m) return { q: m[1].toLowerCase(), service: "fanbox", postId: m[2] }
+  m = s.match(/^(?:https?:\/\/)?(?:www\.)?fanbox\.cc\/@([a-z0-9_-]+)\/posts\/(\d+)/i)
+  if (m) return { q: m[1].toLowerCase(), service: "fanbox", postId: m[2] }
+  m = s.match(/^(?:https?:\/\/)?([a-z0-9_-]+)\.fanbox\.cc/i)
   if (m) return { q: m[1].toLowerCase(), service: "fanbox" }
   m = s.match(/^(?:https?:\/\/)?(?:www\.)?fanbox\.cc\/@([a-z0-9_-]+)/i)
   if (m) return { q: m[1].toLowerCase(), service: "fanbox" }

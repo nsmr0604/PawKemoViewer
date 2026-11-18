@@ -17,6 +17,7 @@ import { logError } from "../log"
 import { isFollowed } from "../follows"
 import { readClipboardTextSafe, extractCreatorFromText, type ExtractedCreator } from "../platform"
 import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../history"
+import { normalizeCreatorQuery } from "../db"
 
 /** API レスポンス → 索引行 (パック v2: slug / favorited を保持) */
 function toRow(c: PawCreator): CreatorRow {
@@ -41,6 +42,7 @@ export function CreatorsPage() {
   const [error, setError] = useState<unknown>(null)
   const [clipCreator, setClipCreator] = useState<ExtractedCreator | null>(null)
   const [history, setHistory] = useState<string[]>(getSearchHistory)
+  const [postLink, setPostLink] = useState<{ service: string; creatorId: string; postId: string; name: string } | null>(null)
   const qRef = useRef(q)
   qRef.current = q
 
@@ -65,6 +67,13 @@ export function CreatorsPage() {
   const runSearch = useCallback(async (value: string) => {
     const res = await searchCreators(value)
     setRows(res)
+    // fanbox 投稿 URL 貼り付け (@{slug}/posts/{id} 両パターン) → 直接開けるリンクを出す
+    const norm = normalizeCreatorQuery(value)
+    if (norm.postId && norm.service && res[0] && res[0].service === norm.service) {
+      setPostLink({ service: norm.service, creatorId: res[0].id, postId: norm.postId, name: res[0].name })
+    } else {
+      setPostLink(null)
+    }
   }, [])
 
   // 初期表示
@@ -226,6 +235,24 @@ export function CreatorsPage() {
       {building && built === null && <Spinner label="クリエイター一覧を取得中 (約10万件・初回のみ)…" />}
       {error !== null && <ErrorBox error={error} onRetry={() => onSearch(q)} />}
       {ready && rows.length === 0 && !building && <Empty text="該当するクリエイターがいません" />}
+      <div className="hint-row">
+        {postLink && (
+          <div className="clipboard-banner" style={{ width: "100%" }}>
+            <div className="clipboard-banner-info">
+              <span className="clipboard-badge">🔗 投稿リンク</span>
+              <span className="clipboard-text">
+                {postLink.name} の fanbox 投稿です
+              </span>
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => navigate(`/post/${postLink.service}/${postLink.creatorId}/${postLink.postId}`)}
+            >
+              この投稿を開く
+            </button>
+          </div>
+        )}
+      </div>
       <div className="creator-list">
         {rows.map((r) => (
           <div
