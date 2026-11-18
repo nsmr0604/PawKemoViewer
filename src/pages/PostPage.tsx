@@ -54,6 +54,28 @@ export function PostPage({
   // FANBOX の cover.jpeg は作品カバー画像のため、必要に応じて投稿ファイルから除外できる。
   const [excludeFanboxCover, setExcludeFanboxCover] = useState(false)
 
+  // 元サービスの記事URLを Referer に使用する。FANBOX は slug サブドメインの
+  // URLから slug を取り出し、www.fanbox.cc の記事URLへ正規化する。
+  const proxyReferer = (() => {
+    if (service === "patreon") {
+      return `https://www.patreon.com/posts/${encodeURIComponent(postId)}`
+    }
+    if (service === "fanbox") {
+      let slug = ""
+      if (originalUrl) {
+        try {
+          slug = new URL(originalUrl).hostname.replace(/\\.fanbox\\.cc$/i, "")
+        } catch {
+          slug = ""
+        }
+      }
+      return slug && slug !== "www"
+        ? `https://www.fanbox.cc/@${encodeURIComponent(slug)}/posts/${encodeURIComponent(postId)}`
+        : `https://www.fanbox.cc/posts/${encodeURIComponent(postId)}`
+    }
+    return undefined
+  })()
+
   const load = useCallback(async () => {
     if (!validContext) {
       const message = `投稿識別子が不正です: service=${String(service)} creatorId=${String(creatorId)} postId=${String(postId)}`
@@ -420,7 +442,7 @@ export function PostPage({
       </div>
 
       {displayPost.content && (
-        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service, postContext.postId) }} />
+        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
       )}
 
       {sourceFiles.length > 0 && !listMode && (
