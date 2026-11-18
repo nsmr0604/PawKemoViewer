@@ -49,6 +49,8 @@ export function PostPage({
   // 元サービス (fanbox / patreon) の投稿 URL。構成できない場合は表示しない
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
   const [loadedFiles, setLoadedFiles] = useState<Set<number>>(() => new Set())
+  // 投稿内の画像はサムネイルを初期表示し、操作時に元画像へ一括切替する。
+  const [loadOriginalImages, setLoadOriginalImages] = useState(false)
 
   const load = useCallback(async () => {
     if (!validContext) {
@@ -182,7 +184,8 @@ export function PostPage({
   // ライトボックス: 投稿変更時に閉じる
   useEffect(() => {
     setLightboxIndex(null)
-  }, [service, creatorId, postId])
+    setLoadOriginalImages(false)
+  }, [service, creatorId, postId, selectedRevisionId])
 
   // タッチスワイプによる前後投稿遷移 (FANBOX Viewer「左右スワイプで投稿を見る」型)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
@@ -411,6 +414,12 @@ export function PostPage({
 
       {allFiles.length > 0 && !listMode && (
         <div className="post-files">
+          <div className="section-row">
+            <span className="small">{allFiles.length} 件 · {loadOriginalImages ? "元画像" : "サムネイル"}表示</span>
+            <button className="btn btn-sm" onClick={() => setLoadOriginalImages((current) => !current)}>
+              {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
+            </button>
+          </div>
           {allFiles.map((f, i) => (
             <figure key={i} className="post-file">
               {isVideoFile(f) ? (
@@ -424,7 +433,7 @@ export function PostPage({
               ) : (
                 <img
                   loading="lazy"
-                  src={f === displayPost.file ? thumbUrl(f) : fileUrl(f)}
+                  src={loadOriginalImages ? fileUrl(f) : thumbUrl(f)}
                   alt={f.name}
                   onClick={() => setLightboxIndex(i)}
                   onError={(e) => {
@@ -460,9 +469,14 @@ export function PostPage({
         <div className="post-file-list-wrap">
           <div className="section-row">
             <span className="small">{allFiles.length} 件 (省データ表示・自動読み込みなし)</span>
-            <button className="btn btn-sm" onClick={() => setLoadedFiles(new Set(allFiles.map((_, i) => i)))}>
-              すべて読み込む
-            </button>
+            <div className="creator-actions">
+              <button className="btn btn-sm" onClick={() => setLoadedFiles(new Set(allFiles.map((_, i) => i)))}>
+                すべて読み込む
+              </button>
+              <button className="btn btn-sm" onClick={() => setLoadOriginalImages((current) => !current)}>
+                {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
+              </button>
+            </div>
           </div>
           <ul className="post-file-list">
             {allFiles.map((f, i) => (
@@ -484,7 +498,7 @@ export function PostPage({
                   (isVideoFile(f) ? (
                     <video src={fileUrl(f)} controls preload="metadata" playsInline />
                   ) : (
-                    <img loading="lazy" decoding="async" src={fileUrl(f)} alt={f.name} />
+                    <img loading="lazy" decoding="async" src={loadOriginalImages ? fileUrl(f) : thumbUrl(f)} alt={f.name} />
                   ))}
               </li>
             ))}
