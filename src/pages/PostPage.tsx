@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, apiStatus, getSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile, pawchiveProxyUrl } from "../api"
+import { api, apiStatus, getSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavPost } from "../favstate"
 import { CreatorAvatar } from "../components"
 import type { PawComment, PawPost, PawRevision, HashLookupResult, PawFile } from "../types"
@@ -462,14 +462,9 @@ export function PostPage({
                     const el = e.currentTarget
                     const full = fileUrl(f, postContext.service, postContext.postId)
                     const src = el.getAttribute("src") || ""
-                    const proxy = pawchiveProxyUrl(full)
-                    if (src !== full && src !== proxy) {
+                    if (src !== full) {
                       logWarn(`投稿画像サムネイル取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}; full URL で再試行`)
                       el.setAttribute("src", full)
-                    } else if (src !== proxy && f.path) {
-                      // 端末 DNS ブロック等の迂回: pkv:// プロキシ (Rust reqwest) 経由で再試行
-                      logWarn(`投稿画像取得失敗 file=${f.path}; pkv:// プロキシで再試行`)
-                      el.setAttribute("src", proxy)
                     } else {
                       logError(`投稿画像取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}`)
                       el.style.display = "none"
