@@ -34,25 +34,43 @@
 
 - ナレッジバンドルの実体は **`V:\OpenCode\knowledge\`** (OpenCode 全体共通・全セッション参照)。
   `notes/` は同実体へのジャンクションであり、記録・読み込みはどちらのパスでも同一バンドルを指す
+- **ルート = 複数プロジェクトで再利用する共通知見**、
+  **`<プロジェクト名>/` サブディレクトリ = プロジェクト固有の知見・成果物**。
+  新規プロジェクトの固有知見は同名サブディレクトリにまとめる (現状: `pawchive/`、`pixiview/`)
 
 ```
 notes/
 ├─ index.md            # バンドル目次 (frontmatter は okf_version のみ許可)
 ├─ log.md              # 更新履歴 (日付降順、YYYY-MM-DD 見出し)
-├─ pawchive-api.md     # type: Reference   — pawchive 実測仕様
-├─ tauri2.md           # type: Reference   — Tauri 2 の罠集
-├─ github.md           # type: Reference   — GitHub / Actions 運用
-├─ bugs.md             # type: Incident Log — バグ履歴
+│
+│  # --- 共通 (ルート) ---
 ├─ env.md              # type: Reference   — 開発マシン環境
-├─ sessions.md         # type: Session Note — 進捗・未解決事項
-├─ android-testing.md  # type: Reference   — Android 実機テスト
-├─ windows-testing.md  # type: Reference   — Windows テストマニュアル
+├─ github.md           # type: Reference   — GitHub / Actions 運用
+├─ android-testing.md  # type: Reference   — Android 実機テスト (adb 共通操作)
 ├─ ui-reference.md     # type: Reference   — Android アプリ UI 参考
-└─ jhentai.md          # type: Reference   — JHenTai 実機確認知見
+├─ jhentai.md          # type: Reference   — JHenTai 実機確認知見
+├─ opencode.md         # type: Reference   — OpenCode 自体のノウハウ
+├─ sessions.md         # type: Session Note — 進捗・未解決事項
+│
+│  # --- pawchive 固有 (pawchive/) ---
+├─ pawchive/
+│   ├─ pawchive-api.md  # type: Reference   — pawchive 実測仕様
+│   ├─ tauri2.md        # type: Reference   — Tauri 2 の罠集
+│   ├─ bugs.md          # type: Incident Log — バグ履歴
+│   ├─ windows-testing.md # type: Reference — Windows テストマニュアル
+│   ├─ pawchive-handoff-2026-11-18.md # type: Session Note — 引き継ぎ
+│   └─ apk/             # 実測ログ・スクショ・旧 APK (成果物)
+│
+│  # --- pixiview 固有 (pixiview/) ---
+└─ pixiview/
+    └─ pixiview.md      # PixiView-KMP 非公式ビルドの実測知見
 ```
 
 ### 新規 concept ファイルの追加規約
 
+- **プロジェクト固有の知見・成果物 (実測ログ/スクショ/スクリプト等) は
+  `<プロジェクト名>/` サブディレクトリに置く** (例: `pawchive/`、`pixiview/`)。
+  共通化できる知見 (adb 操作、環境、CI 運用など) はルートの concept に追記する
 - **既存 concept の枠に収まらない知見 (新規プラットフォーム・新規ライブラリ・
   新規外部サービス等) は、既存ファイルに無理に混ぜず、
   新たな OKF 形式 markdown を作成して管理する** (例: GitHub 関連 → `github.md`)
