@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, apiStatus, getSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile, pawchiveProxyUrl } from "../api"
+import { api, apiStatus, getSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavPost } from "../favstate"
 import { CreatorAvatar } from "../components"
 import type { PawComment, PawPost, PawRevision, HashLookupResult, PawFile } from "../types"
@@ -49,6 +49,32 @@ export function PostPage({
   // 元サービス (fanbox / patreon) の投稿 URL。構成できない場合は表示しない
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
   const [loadedFiles, setLoadedFiles] = useState<Set<number>>(() => new Set())
+  // 投稿内の画像はサムネイルを初期表示し、操作時に元画像へ一括切替する。
+  const [loadOriginalImages, setLoadOriginalImages] = useState(false)
+  // FANBOX の cover.jpeg は作品カバー画像のため、必要に応じて投稿ファイルから除外できる。
+  const [excludeFanboxCover, setExcludeFanboxCover] = useState(false)
+
+  // 元サービスの記事URLを Referer に使用する。FANBOX は slug サブドメインの
+  // URLから slug を取り出し、www.fanbox.cc の記事URLへ正規化する。
+  const proxyReferer = (() => {
+    if (service === "patreon") {
+      return `https://www.patreon.com/posts/${encodeURIComponent(postId)}`
+    }
+    if (service === "fanbox") {
+      let slug = ""
+      if (originalUrl) {
+        try {
+          slug = new URL(originalUrl).hostname.replace(/\.fanbox\.cc$/i, "")
+        } catch {
+          slug = ""
+        }
+      }
+      return slug && slug !== "www"
+        ? `https://www.fanbox.cc/@${encodeURIComponent(slug)}/posts/${encodeURIComponent(postId)}`
+        : `https://www.fanbox.cc/posts/${encodeURIComponent(postId)}`
+    }
+    return undefined
+  })()
 
   const load = useCallback(async () => {
     if (!validContext) {
@@ -182,7 +208,9 @@ export function PostPage({
   // ライトボックス: 投稿変更時に閉じる
   useEffect(() => {
     setLightboxIndex(null)
-  }, [service, creatorId, postId])
+    setLoadOriginalImages(false)
+    setExcludeFanboxCover(false)
+  }, [service, creatorId, postId, selectedRevisionId])
 
   // タッチスワイプによる前後投稿遷移 (FANBOX Viewer「左右スワイプで投稿を見る」型)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
@@ -309,10 +337,18 @@ export function PostPage({
     }
   }
 
-  const allFiles: PawFile[] = [
+  const sourceFiles: PawFile[] = [
     ...(displayPost.file?.path ? [displayPost.file] : []),
     ...(displayPost.attachments || []),
   ]
+  const isFanboxCover = (f: PawFile) => {
+    const name = String(f.name || "").trim().toLowerCase()
+    const pathName = String(f.path || "").split(/[\\/?#]/).pop()?.toLowerCase() || ""
+    return name === "cover.jpeg" || pathName === "cover.jpeg"
+  }
+  const allFiles = sourceFiles.filter(
+    (f) => !(postContext.service === "fanbox" && excludeFanboxCover && isFanboxCover(f)),
+  )
   filesCountRef.current = allFiles.length
   const listMode = getSettings().postFileListMode || getSettings().noImageMode
 
@@ -406,16 +442,33 @@ export function PostPage({
       </div>
 
       {displayPost.content && (
-        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service) }} />
+        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
       )}
 
-      {allFiles.length > 0 && !listMode && (
+      {sourceFiles.length > 0 && !listMode && (
         <div className="post-files">
+          <div className="section-row">
+            <span className="small">{allFiles.length} 件 · {loadOriginalImages ? "元画像" : "サムネイル"}表示</span>
+            {postContext.service === "fanbox" && (
+              <label className="small">
+                <input
+                  type="checkbox"
+                  checked={excludeFanboxCover}
+                  onChange={(e) => setExcludeFanboxCover(e.target.checked)}
+                />
+                cover.jpeg を除外
+              </label>
+            )}
+            <button className="btn btn-sm" onClick={() => setLoadOriginalImages((current) => !current)}>
+              {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
+            </button>
+          </div>
+          {allFiles.length === 0 && <p className="small">表示対象のファイルはありません。</p>}
           {allFiles.map((f, i) => (
             <figure key={i} className="post-file">
               {isVideoFile(f) ? (
                 <video
-                  src={fileUrl(f)}
+                  src={fileUrl(f, postContext.service, postContext.postId, proxyReferer)}
                   controls
                   preload="metadata"
                   playsInline
@@ -424,21 +477,16 @@ export function PostPage({
               ) : (
                 <img
                   loading="lazy"
-                  src={f === displayPost.file ? thumbUrl(f) : fileUrl(f)}
+                  src={loadOriginalImages ? fileUrl(f, postContext.service, postContext.postId, proxyReferer) : thumbUrl(f)}
                   alt={f.name}
                   onClick={() => setLightboxIndex(i)}
                   onError={(e) => {
                     const el = e.currentTarget
-                    const full = fileUrl(f)
+                    const full = fileUrl(f, postContext.service, postContext.postId, proxyReferer)
                     const src = el.getAttribute("src") || ""
-                    const proxy = pawchiveProxyUrl(full)
-                    if (src !== full && src !== proxy) {
+                    if (src !== full) {
                       logWarn(`投稿画像サムネイル取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}; full URL で再試行`)
                       el.setAttribute("src", full)
-                    } else if (src !== proxy && f.path) {
-                      // 端末 DNS ブロック等の迂回: pkv:// プロキシ (Rust reqwest) 経由で再試行
-                      logWarn(`投稿画像取得失敗 file=${f.path}; pkv:// プロキシで再試行`)
-                      el.setAttribute("src", proxy)
                     } else {
                       logError(`投稿画像取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}`)
                       el.style.display = "none"
@@ -447,7 +495,7 @@ export function PostPage({
                 />
               )}
               <figcaption>
-                <a href={fileUrl(f)} target="_blank" rel="noreferrer" download>
+                <a href={fileUrl(f, postContext.service, postContext.postId, proxyReferer)} target="_blank" rel="noreferrer" download>
                   {f.name}
                 </a>
               </figcaption>
@@ -456,13 +504,38 @@ export function PostPage({
         </div>
       )}
 
-      {allFiles.length > 0 && listMode && (
+      {sourceFiles.length > 0 && listMode && (
         <div className="post-file-list-wrap">
           <div className="section-row">
             <span className="small">{allFiles.length} 件 (省データ表示・自動読み込みなし)</span>
-            <button className="btn btn-sm" onClick={() => setLoadedFiles(new Set(allFiles.map((_, i) => i)))}>
-              すべて読み込む
-            </button>
+            <div className="creator-actions">
+              {postContext.service === "fanbox" && (
+                <label className="small">
+                  <input
+                    type="checkbox"
+                    checked={excludeFanboxCover}
+                    onChange={(e) => setExcludeFanboxCover(e.target.checked)}
+                  />
+                  cover.jpeg を除外
+                </label>
+              )}
+              <button className="btn btn-sm" onClick={() => setLoadedFiles(new Set(allFiles.map((_, i) => i)))}>
+                すべて読み込む
+              </button>
+              <button
+                className="btn btn-sm"
+                onClick={() => {
+                  if (loadOriginalImages) {
+                    setLoadOriginalImages(false)
+                  } else {
+                    setLoadedFiles(new Set(allFiles.map((_, i) => i)))
+                    setLoadOriginalImages(true)
+                  }
+                }}
+              >
+                {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
+              </button>
+            </div>
           </div>
           <ul className="post-file-list">
             {allFiles.map((f, i) => (
@@ -471,7 +544,7 @@ export function PostPage({
                   <span className="post-file-name">{f.name || "(名称なし)"}</span>
                   <span className="small">{isVideoFile(f) ? "動画" : "画像"}</span>
                   {loadedFiles.has(i) ? (
-                    <a href={fileUrl(f)} target="_blank" rel="noreferrer" download>
+                    <a href={fileUrl(f, postContext.service, postContext.postId, proxyReferer)} target="_blank" rel="noreferrer" download>
                       保存 ↗
                     </a>
                   ) : (
@@ -482,9 +555,9 @@ export function PostPage({
                 </div>
                 {loadedFiles.has(i) &&
                   (isVideoFile(f) ? (
-                    <video src={fileUrl(f)} controls preload="metadata" playsInline />
+                    <video src={fileUrl(f, postContext.service, postContext.postId, proxyReferer)} controls preload="metadata" playsInline />
                   ) : (
-                    <img loading="lazy" decoding="async" src={fileUrl(f)} alt={f.name} />
+                    <img loading="lazy" decoding="async" src={loadOriginalImages ? fileUrl(f, postContext.service, postContext.postId, proxyReferer) : thumbUrl(f)} alt={f.name} />
                   ))}
               </li>
             ))}
@@ -559,7 +632,7 @@ export function PostPage({
                 <div className="comment-head">
                   <b>{c.commenter_name || c.commenter}</b> · {fmtDate(c.published)}
                 </div>
-                <div className="comment-body">{sanitizeContent(c.content, postContext.service)}</div>
+                <div className="comment-body">{sanitizeContent(c.content, postContext.service, postContext.postId, proxyReferer)}</div>
               </li>
             ))}
           </ul>
@@ -609,14 +682,14 @@ export function PostPage({
           <div className="lightbox" onClick={() => setLightboxIndex(null)}>
             {isVideoFile(lightbox) ? (
               <video
-                src={fileUrl(lightbox)}
+                src={fileUrl(lightbox, postContext.service, postContext.postId, proxyReferer)}
                 controls
                 autoPlay
                 playsInline
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <img src={fileUrl(lightbox)} alt={lightbox.name} onClick={(e) => e.stopPropagation()} />
+              <img src={fileUrl(lightbox, postContext.service, postContext.postId, proxyReferer)} alt={lightbox.name} onClick={(e) => e.stopPropagation()} />
             )}
             <div className="lightbox-caption" onClick={(e) => e.stopPropagation()}>
               {allFiles.length > 1 && (
@@ -627,7 +700,7 @@ export function PostPage({
               <button className="btn" onClick={() => hasPrev && setLightboxIndex(lightboxIndex - 1)} disabled={!hasPrev}>
                 ←
               </button>
-              <a href={fileUrl(lightbox)} target="_blank" rel="noreferrer" download>
+              <a href={fileUrl(lightbox, postContext.service, postContext.postId, proxyReferer)} target="_blank" rel="noreferrer" download>
                 {lightbox.name}
               </a>
               <button className="btn" onClick={() => hasNext && setLightboxIndex(lightboxIndex + 1)} disabled={!hasNext}>

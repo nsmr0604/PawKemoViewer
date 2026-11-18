@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import type { PawFile, PawPost } from "./types"
-import { fileUrl, thumbUrl, proxyFileUrl, proxyLinkUrl, getSettings, pawchiveProxyUrl } from "./api"
+import { fileUrl, thumbUrl, proxyFileUrl, proxyLinkUrl, getSettings } from "./api"
 import { navigate } from "./router"
 import { logWarn, logError } from "./log"
 import { isFollowed } from "./follows"
@@ -173,19 +173,19 @@ export function PostGrid({ posts, onEndReached, loading, done, newIds, viewMode 
 // ---------------------------------------------------------------------------
 
 export function Thumb({ file, className }: { file: PawFile | undefined; className?: string }) {
-  // 0=thumb, 1=full, 2=pkv:// プロキシ (DNS ブロック等の迂回), 3=giveup
-  const [stage, setStage] = useState<0 | 1 | 2 | 3>(0)
+  // 0=thumb, 1=full, 2=giveup
+  const [stage, setStage] = useState<0 | 1 | 2>(0)
   const noImage = getSettings().noImageMode
 
   useEffect(() => setStage(0), [file?.path])
-  if (!file?.path || stage === 3)
+  if (!file?.path || stage === 2)
     return <div className={`thumb thumb-fallback ${className || ""}`}>🖼️</div>
   if (noImage)
     return <div className={`thumb thumb-noimage ${className || ""}`}>🖼️ (通信節約)</div>
 
   const thumb = thumbUrl(file)
   const full = fileUrl(file)
-  const src = stage === 0 ? thumb : stage === 1 ? full : pawchiveProxyUrl(full)
+  const src = stage === 0 ? thumb : full
 
   return (
     <img
@@ -196,8 +196,8 @@ export function Thumb({ file, className }: { file: PawFile | undefined; classNam
       alt={file.name || ""}
       onError={() => {
         setStage((s) => {
-          if (s === 2) logError(`サムネイル取得失敗 file=${file?.path || ""} thumb=${thumb}`)
-          return s < 3 ? ((s + 1) as 1 | 2 | 3) : s
+          if (s === 1) logError(`サムネイル取得失敗 file=${file?.path || ""} thumb=${thumb}`)
+          return s === 0 ? 1 : 2
         })
       }}
     />
@@ -356,7 +356,7 @@ export function fmtDate(iso: string | undefined): string {
 /** 投稿本文 HTML を最小限サニタイズして返す。
  *  リファラーチェックでブロックされるホストの画像はプロキシ経由に、
  *  外部リンクはリファラー偽装プロキシ経由に書き換える。 */
-export function sanitizeContent(html: string, service?: string): string {
+export function sanitizeContent(html: string, service?: string, postId?: string, refererUrl?: string): string {
   if (!html) return ""
   const doc = new DOMParser().parseFromString(html, "text/html")
   for (const el of Array.from(doc.querySelectorAll("script,style,iframe,object,embed,link,meta"))) {
@@ -373,7 +373,7 @@ export function sanitizeContent(html: string, service?: string): string {
   // 本文中の画像: fanbox / patreon のホットリンク対策を回避
   for (const img of Array.from(doc.querySelectorAll("img[src]"))) {
     const src = img.getAttribute("src") || ""
-    const proxied = proxyFileUrl(src)
+    const proxied = proxyFileUrl(src, service, postId, refererUrl)
     if (proxied && proxied !== src) {
       img.setAttribute("src", proxied)
       img.setAttribute("loading", "lazy")
@@ -384,7 +384,7 @@ export function sanitizeContent(html: string, service?: string): string {
   for (const a of Array.from(doc.querySelectorAll("a[href]"))) {
     const href = a.getAttribute("href") || ""
     if (/^(#|mailto:|javascript:|tel:)/i.test(href)) continue
-    const proxied = proxyLinkUrl(href, service)
+    const proxied = proxyLinkUrl(href, service, postId, refererUrl)
     if (proxied && proxied !== href) {
       a.setAttribute("href", proxied)
       a.setAttribute("target", "_blank")
