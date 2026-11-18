@@ -516,8 +516,8 @@ function isHotlinkHost(hostname: string): boolean {
 }
 
 /** pkv プロトコル経由 URL (Rust 側でリファラーを偽装して中継) */
-function pkvProxyUrl(url: string, referer: string, force = false): string {
-  return `http://pkv.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}${force ? "&f=1" : ""}`
+function pkvProxyUrl(url: string, referer: string): string {
+  return `http://pkv.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}`
 }
 
 /** pawchive 自身のホストを pkv:// 強制プロキシ経由に変換する (f=1)。
@@ -540,6 +540,7 @@ export function proxyFileUrl(url: string, service?: string, postId?: string): st
   }
   if (h.protocol !== "https:" && h.protocol !== "http:") return url
   if (!isHotlinkHost(h.hostname)) return url
+  if (!getSettings().proxyImages) return url
   // 投稿記事を参照元にする。記事IDが無い場合のみサービスのトップを使う。
   const referer = service === "patreon"
     ? (postId ? `https://www.patreon.com/posts/${encodeURIComponent(postId)}` : "https://www.patreon.com/")
