@@ -51,6 +51,8 @@ export function PostPage({
   const [loadedFiles, setLoadedFiles] = useState<Set<number>>(() => new Set())
   // 投稿内の画像はサムネイルを初期表示し、操作時に元画像へ一括切替する。
   const [loadOriginalImages, setLoadOriginalImages] = useState(false)
+  // FANBOX の cover.jpeg は作品カバー画像のため、必要に応じて投稿ファイルから除外できる。
+  const [excludeFanboxCover, setExcludeFanboxCover] = useState(false)
 
   const load = useCallback(async () => {
     if (!validContext) {
@@ -185,6 +187,7 @@ export function PostPage({
   useEffect(() => {
     setLightboxIndex(null)
     setLoadOriginalImages(false)
+    setExcludeFanboxCover(false)
   }, [service, creatorId, postId, selectedRevisionId])
 
   // タッチスワイプによる前後投稿遷移 (FANBOX Viewer「左右スワイプで投稿を見る」型)
@@ -312,10 +315,18 @@ export function PostPage({
     }
   }
 
-  const allFiles: PawFile[] = [
+  const sourceFiles: PawFile[] = [
     ...(displayPost.file?.path ? [displayPost.file] : []),
     ...(displayPost.attachments || []),
   ]
+  const isFanboxCover = (f: PawFile) => {
+    const name = String(f.name || "").trim().toLowerCase()
+    const pathName = String(f.path || "").split(/[\\/?#]/).pop()?.toLowerCase() || ""
+    return name === "cover.jpeg" || pathName === "cover.jpeg"
+  }
+  const allFiles = sourceFiles.filter(
+    (f) => !(postContext.service === "fanbox" && excludeFanboxCover && isFanboxCover(f)),
+  )
   filesCountRef.current = allFiles.length
   const listMode = getSettings().postFileListMode || getSettings().noImageMode
 
@@ -416,6 +427,16 @@ export function PostPage({
         <div className="post-files">
           <div className="section-row">
             <span className="small">{allFiles.length} 件 · {loadOriginalImages ? "元画像" : "サムネイル"}表示</span>
+            {postContext.service === "fanbox" && (
+              <label className="small">
+                <input
+                  type="checkbox"
+                  checked={excludeFanboxCover}
+                  onChange={(e) => setExcludeFanboxCover(e.target.checked)}
+                />
+                cover.jpeg を除外
+              </label>
+            )}
             <button className="btn btn-sm" onClick={() => setLoadOriginalImages((current) => !current)}>
               {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
             </button>
@@ -470,6 +491,16 @@ export function PostPage({
           <div className="section-row">
             <span className="small">{allFiles.length} 件 (省データ表示・自動読み込みなし)</span>
             <div className="creator-actions">
+              {postContext.service === "fanbox" && (
+                <label className="small">
+                  <input
+                    type="checkbox"
+                    checked={excludeFanboxCover}
+                    onChange={(e) => setExcludeFanboxCover(e.target.checked)}
+                  />
+                  cover.jpeg を除外
+                </label>
+              )}
               <button className="btn btn-sm" onClick={() => setLoadedFiles(new Set(allFiles.map((_, i) => i)))}>
                 すべて読み込む
               </button>
