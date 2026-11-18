@@ -37,6 +37,8 @@ Desktop.ini
 # env
 .env
 .env.*
+# デバッグ診断フラグ用 (.env.development は秘密を含まないビルドフラグのみ)
+!.env.development
 
 # 作業コンテキスト (エージェントのセッションメモ・ローカル限定)
 /notes/
