@@ -15,8 +15,12 @@ on:
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/tauri.yml"
-
   workflow_dispatch:
+    inputs:
+      release:
+        description: "正式リリースビルド (診断コード無し・pawchive-v{VER} リリースへ添付)。無指定時はデバッグビルド"
+        type: boolean
+        default: false
 
 # 同一ブランチの新しいPCビルドを優先し、古い実行中ビルドはキャンセルする
 concurrency:
@@ -27,13 +31,14 @@ permissions:
   contents: write
 
 jobs:
-  prepare-release:
+  prepare:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Remove previous PC build assets for this version
+      - name: Remove previous PC build assets for this version (正式リリース時)
+        if: ${{ inputs.release == true }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -53,8 +58,29 @@ jobs:
             done
           fi
 
+      - name: Clean debug prerelease assets (デバッグビルド時)
+        if: ${{ inputs.release != true }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VER=$(jq -r '.version' src-tauri/tauri.conf.json)
+          TAG=debug-latest
+
+          # rolling prerelease debug-latest から現行バージョン以外のアセットを掃除
+          # (バージョンはファイル名に含まれる。PC/APK 両方に同じフィルタが使える)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r asset; do
+              case "$asset" in
+                *"_${VER}_"*) ;; # 現行バージョンは残す
+                *) gh release delete-asset "$TAG" "$asset" --yes || true
+                   echo "removed stale debug asset: $asset" ;;
+              esac
+            done
+          fi
+
   build:
-    needs: prepare-release
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -92,6 +118,10 @@ jobs:
         run: npm ci
 
       - name: Build Frontend
+        # push = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
+        # 手動 release=true のみ診断コード無しの正式リリースビルド (src/debug.ts 参照)
+        env:
+          VITE_DEBUG_DIAG: ${{ inputs.release == true && '' || '1' }}
         run: npm run build
 
       - name: Build Tauri
@@ -99,15 +129,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: pawchive-v__VERSION__
-          releaseName: Pawchive Viewer v__VERSION__
-          releaseBody: |
-            Automated build.
-
-            Supported platforms:
-
-            - Windows
-            - Linux
-            - macOS
+          tagName: ${{ inputs.release == true && 'pawchive-v__VERSION__' || 'debug-latest' }}
+          releaseName: ${{ inputs.release == true && 'Pawchive Viewer v__VERSION__' || 'Pawchive Viewer debug build' }}
+          releaseBody: ${{ inputs.release == true && 'Automated release build.' || 'Automated debug build. デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式).' }}
           releaseDraft: false
-          prerelease: false
+          prerelease: ${{ inputs.release != true }}

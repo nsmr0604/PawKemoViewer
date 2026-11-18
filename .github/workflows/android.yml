@@ -15,13 +15,28 @@ on:
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/android.yml"
-
+  pull_request:
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "public/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/android.yml"
   workflow_dispatch:
     inputs:
-      debug_diag:
-        description: "デバッグ診断コードを注入する (VITE_DEBUG_DIAG=1・リリース添付はされない)"
+      release:
+        description: "正式リリースビルド (診断コード無し・pawchive-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
+
+# 同一ブランチ/PR の新しいビルドを優先し、古い実行中ビルドはキャンセルする
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -68,10 +83,10 @@ jobs:
         run: npm ci
 
       - name: Build Frontend
-        # デバッグ診断コードはビルド時フラグで注入する (src/debug.ts 参照)。
-        # push (リリース) ビルドでは常に空 = 分離される
+        # push / PR = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
+        # 手動 release=true のみ診断コード無しの正式リリースビルド (src/debug.ts 参照)
         env:
-          VITE_DEBUG_DIAG: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_diag && '1' || '' }}
+          VITE_DEBUG_DIAG: ${{ inputs.release == true && '' || '1' }}
         run: npm run build
 
       - name: Initialize Android
@@ -121,13 +136,41 @@ jobs:
           path: dist-apk/*.apk
 
       - name: Attach APK to Release
-        # デバッグ診断ビルド (debug_diag=true) はリリースへ添付しない (artifact のみ)
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.debug_diag) }}
+        # push (main) = デバッグビルド → rolling prerelease `debug-latest` へ添付
+        # (旧バージョンのアセットは掃除する)。
+        # 手動 release=true のみ正式リリース pawchive-v{VER} へ添付。
+        # PR ビルドは artifact のみ (リリースへは出さない)
+        if: ${{ github.event_name != 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -e
           VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          gh release upload "pawchive-v${VER}" dist-apk/*.apk --clobber \
-            || gh release create "pawchive-v${VER}" dist-apk/*.apk \
-                 --title "Pawchive Viewer v${VER}" \
-                 --notes "Automated build (APK: dev-signed for testing)."
+
+          if [ "${{ inputs.release }}" = "true" ]; then
+            gh release upload "pawchive-v${VER}" dist-apk/*.apk --clobber \
+              || gh release create "pawchive-v${VER}" dist-apk/*.apk \
+                   --title "Pawchive Viewer v${VER}" \
+                   --notes "Automated build (APK: dev-signed for testing)."
+            exit 0
+          fi
+
+          # --- デバッグビルド: rolling prerelease debug-latest ---
+          TAG=debug-latest
+          SHA=$(git rev-parse --short HEAD)
+
+          # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r a; do
+              case "$a" in
+                *"_${VER}_"*) ;; # 現行バージョンは残す
+                *) gh release delete-asset "$TAG" "$a" --yes || true ;;
+              esac
+            done
+          fi
+
+          gh release upload "$TAG" dist-apk/*.apk --clobber \
+            || gh release create "$TAG" dist-apk/*.apk \
+                 --prerelease \
+                 --title "Pawchive Viewer debug build" \
+                 --notes "Automated debug build (${SHA}, v${VER}). デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式)."
