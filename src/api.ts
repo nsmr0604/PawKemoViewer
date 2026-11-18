@@ -472,11 +472,11 @@ export function normalizeTags(v: unknown): string[] {
 /** 本体ファイル URL (元ファイル名を付けてダウンロード時の名前にする)。
  *  fanbox / patreon 由来の一時 URL (署名付き) はリファラーチェックでブロックされるため
  *  同一オリジンプロキシ経由にする。 */
-export function fileUrl(f: PawFile | undefined): string {
+export function fileUrl(f: PawFile | undefined, service?: string, postId?: string): string {
   if (!f) return ""
   // deferred ファイル (動画等) は署名付き一時 URL を使う
-  if (f.temp_download_url) return proxyFileUrl(f.temp_download_url)
-  if (!f.path && f.temp_url) return proxyFileUrl(f.temp_url)
+  if (f.temp_download_url) return proxyFileUrl(f.temp_download_url, service, postId)
+  if (!f.path && f.temp_url) return proxyFileUrl(f.temp_url, service, postId)
   if (!f.path) return ""
   const server = f.server?.replace(/\/$/, "") || "https://n1.pawchive.pw"
   const name = f.name ? `?f=${encodeURIComponent(f.name)}` : ""
