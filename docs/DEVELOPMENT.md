@@ -1,6 +1,6 @@
 # PawKemoViewer 開発ガイド
 
-PawKemoViewer (v0.3.0) の開発者向けドキュメント。
+PawKemoViewer (v0.3.1) の開発者向けドキュメント。
 
 - 対象読者: 開発参加者・ビルド担当者・コントリビューター
 - ユーザー向け情報は [README.md](../README.md) を参照
@@ -19,7 +19,7 @@ pawchive.pw / *.pawchive.pw
 - **WebView は直接 fetch しない**。API・ログイン・アイコンはすべて Rust コマンド経由
   (端末 DNS ブロック・UA 偽装・Cloudflare 中継検出回避のためクライアント直叩き)
 - 画像・動画は WebView が直接 CDN (`img/n1..n3/t1..t4.pawchive.pw`) を参照する。
-  DNS フィルタリング環境向けに **pkv:// プロキシ経由へ切替可能** (後述)
+  pkv:// プロキシの対象は FANBOX / Patreon 由来の画像のみ (pawchive 本体は迂回対象外・後述)
 - **Cloudflare 系の中継 (Pages / Workers / Functions / Wrangler / Reverse Proxy) は禁止**。
   pawchive が中継を検出し Fake site を返すため (実測済み)
 
@@ -90,8 +90,10 @@ Rust は失敗時 `Err("STATUS=401 BODY=...")` 文字列を返し、JS 側は `A
 
 ### pkv:// プロキシ (`http://pkv.localhost/`)
 WebView から Referer を設定できないため、リファラーチェックがある外部 URL を Rust 側で中継する。
-`/file?u=<対象URL>&r=<リファラー>` (+ `&f=1` で pawchive ホストの強制中継)。
-SSRF 対策 (内部アドレス拒否) と direct ホスト (fanbox/patreon/pawchive) の除外ロジックあり。
+`/file?u=<対象URL>&r=<リファラー>`。
+対象は外部メディアホストのみ。pawchive 本体 (`pawchive.pw` / `*.pawchive.pw`) は除外し、常に WebView / Rust から直接取得する。
+SSRF 対策 (内部アドレス拒否) あり。fanbox / patreon のホストは中継対象。
+Referer は投稿の正規 URL (canonical) を優先して付与する。
 
 ### デバッグ診断コードはビルド時フラグ注入
 `VITE_DEBUG_DIAG=1` (フロント) / cargo feature `debug-diag` (Rust) でのみ有効。
@@ -116,7 +118,7 @@ SSRF 対策 (内部アドレス拒否) と direct ホスト (fanbox/patreon/pawc
 
 - API スケジューラ: 同時 3 / 最小間隔 250ms / GET キャッシュ TTL 60 秒 (最大 150 件)
 - Favorites の新着チェックは 5 分クールダウン
-- 画像は lazy loading + サムネ→本体→pkv:// の 3 段フォールバック
+- 画像は lazy loading + サムネ→本体の 2 段フォールバック (失敗時は非表示プレースホルダ)
 
 ## コーディング規約
 
@@ -132,7 +134,7 @@ SSRF 対策 (内部アドレス拒否) と direct ホスト (fanbox/patreon/pawc
 | `cargo metadata` 失敗 | `cargo --version` / `rustup update` |
 | Windows リンクで dbghelp.lib 欠落 | 自作 lib (env.md の手順) |
 | CI の Android が gradle 429 失敗 | Maven Central 一時障害。再実行で解消 (実測) |
-| Android 実機で API・画像が出ない | 端末/ルーターの DNS フィルタ (AdGuard 等) が pawchive を sinkhole (偽 IP) に解決していないか確認 (`adb shell ping pawchive.pw`)。DNS を通常の resolver へ変更するのが恒久対処。変更できない場合は設定の「画像を pkv:// プロキシ経由」を有効化 (API は Rust 経由のため DNS 依存は同じ) |
+| Android 実機で API・画像が出ない | 端末/ルーターの DNS フィルタ (AdGuard 等) が pawchive を sinkhole (偽 IP) に解決していないか確認 (`adb shell ping pawchive.pw`)。pawchive 本体は pkv:// 迂回の対象外のため、**DNS を通常の resolver へ変更するのが唯一の対処** |
 | node_modules 破損 | `rm -rf node_modules package-lock.json && npm install` |
 | Vite キャッシュ破損 | `rm -rf dist node_modules/.vite` |
 

@@ -1,6 +1,6 @@
 # API ドキュメント
 
-PawKemoViewer (v0.3.0) の API レイヤ仕様。実装は `src/api.ts`。
+PawKemoViewer (v0.3.1) の API レイヤ仕様。実装は `src/api.ts`。
 
 ## アーキテクチャ
 
@@ -24,7 +24,7 @@ interface Settings {
   noImageMode: boolean     // 低通信モード
   postViewMode: "grid" | "list"
   timeoutSecs: number      // 既定 30 (1〜300 にクランプ)
-  proxyImages: boolean     // 画像を pkv:// 経由で読み込む (AdGuard sinkhole 対策)
+  proxyImages: boolean     // FANBOX / Patreon 由来の画像・ファイルを pkv:// 経由で読み込む (pawchive 本体は常に直接)
   postFileListMode: boolean     // 投稿内の画像を一覧表示 (省データ・自動読み込みしない)
 }
 ```
@@ -73,11 +73,11 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 
 ### URL 生成
 
-- `fileUrl(f)` — 本体ファイル URL (deferred は temp_download_url を pkv:// 経由)
-- `thumbUrl(f)` — サムネイル (`img.pawchive.pw/thumbnail/data{path}`)
-- `proxyFileUrl(url)` — ホットリンク対策 (fanbox/patreon/pximg) を pkv:// 経由に変換
-- `proxyLinkUrl(url, service)` — 本文中の外部リンクを pkv:// 経由に変換
-- `pawchiveProxyUrl(url)` — pawchive ホストを pkv:// (f=1 force) で中継 (AdGuard 対策)
+- `fileUrl(f, service?, postId?, refererUrl?)` — 本体ファイル URL。FANBOX / Patreon 由来は `proxyImages` 有効時に pkv:// 経由 (記事 URL を Referer に使用)。pawchive 配信 (n1 / img) は直接
+- `thumbUrl(f)` — サムネイル (`img.pawchive.pw/thumbnail/data{path}`)。直接取得のみ
+- `proxyFileUrl(url, service?, postId?, refererUrl?)` — ホットリンク対策 (fanbox/patreon/pximg) を pkv:// 経由に変換 (`proxyImages` 無効時は原 URL のまま)
+- `proxyLinkUrl(url, service?, postId?, refererUrl?)` — 本文中の外部リンクを pkv:// 経由に変換
+- Referer の決定順: `refererUrl` (正規の記事 URL) → fanbox/patreon の記事 URL (postId あり) → サービストップ
 - `creatorIconUrl(service, id)` — `https://pawchive.pw/icons/{service}/{userId}`
 - `creatorBannerUrl(service, id)` — `https://pawchive.pw/banners/{service}/{userId}`
 - `postUrl(service, userId, postId)` — pawchive 投稿ページ
@@ -105,8 +105,9 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 
 ### pkv:// プロトコル
 WebView から Referer を設定できないため、リファラーチェックがある外部 URL を Rust 側で中継する。
-- `/file?u=<対象URL>&r=<リファラー>` (+ `&f=1` で pawchive ホストの強制中継)
-- SSRF 対策 (内部アドレス拒否) / direct ホスト (fanbox/patreon/pawchive) の除外ロジックあり
+- `/file?u=<対象URL>&r=<リファラー>`
+- 対象は外部メディアホストのみ。**pawchive 本体ホスト (`pawchive.pw` / `*.pawchive.pw`) は対象外** (`f=1` 強制中継は 0.3.1 で廃止)
+- SSRF 対策 (内部アドレス拒否) あり。fanbox / patreon のホストは中継対象
 - HTML ページは base 注入 + リンク/リソースのプロキシ化を行う
 
 ## データ型 (src/types.ts)
