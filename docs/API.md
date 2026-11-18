@@ -1,125 +1,116 @@
-# API Reference
+# API ドキュメント
 
-PawKemoViewer が利用する pawchive.pw API と、アプリ内 API レイヤ (`src/api.ts`) の対応表。
-
----
+PawKemoViewer (v0.3.0) の API レイヤ仕様。実装は `src/api.ts`。
 
 ## アーキテクチャ
 
-ブラウザの `fetch` は使用しません。すべて Tauri コマンド経由で Rust (reqwest) に委譲します。
-
 ```text
 React (src/api.ts)
-  ↓ invoke("api_request", { path, method, sessionKey, timeoutSecs })
-Tauri 2 (src-tauri/src/lib.rs)
-  ↓ reqwest (rustls / brotli / gzip)
-https://pawchive.pw/api/v1/{path}
+  ↓ invoke("api_request")
+Tauri (src-tauri/src/lib.rs)
+  ↓ reqwest (Rust / rustls)
+https://pawchive.pw/api/v1
 ```
 
-- ベース URL `https://pawchive.pw/api/v1` は Rust 側が付与
-- 負荷制御: 同時 3 リクエスト / 開始間隔 250ms / GET は 60 秒 TTL・150 件キャッシュ (`src/api.ts`)
-- エラーは `STATUS={code} BODY={...}` 形式の文字列で返るため、JS 側は `apiStatus(err)` で実ステータスを復元して判定する
+ブラウザの fetch は使用しない。Rust 側が User-Agent / Referer / Origin / Cookie を付与する。
 
----
+## 設定 (Settings)
 
-## エンドポイント一覧
+```ts
+interface Settings {
+  sessionKey: string       // pawchive の session cookie
+  theme: "dark" | "light"
+  layoutMode: "auto" | "desktop" | "mobile"
+  noImageMode: boolean     // 低通信モード
+  postViewMode: "grid" | "list"
+  timeoutSecs: number      // 既定 30 (1〜300 にクランプ)
+  proxyImages: boolean     // 画像を paw:// 経由で読み込む (AdGuard sinkhole 対策)
+}
+```
 
-### 投稿
+保存先: `localStorage` キー `pawkemo-settings`。変更は `pawkemo-settings-changed` イベントで通知。
 
-| API | 実装 | 備考 |
-|---|---|---|
-| `GET /posts?q=&o=` | `api.posts({ q, o })` | 最近の投稿。`o` は 50 刻み (50 の倍数以外は 400) |
-| `GET /{service}/user/{id}` | `api.creatorPosts(service, id, { q, tag, o })` | クリエイター投稿一覧。`tag` は `q` より優先 |
-| `GET /{service}/user/{id}/post/{postId}` | `api.post()` | 投稿詳細。`next` / `prev` に前後投稿 ID |
-| `GET .../post/{postId}/revisions` | `api.postRevisions()` | **改訂なし投稿は 404 + `[]` を返す** (実測)。アプリは 404 を「改訂なし」扱い |
-| `GET .../post/{postId}/comments` | `api.postComments()` | コメントなし投稿は 404 を返す |
-| `GET /search_hash/{sha256}` | `api.searchHash()` | ファイルハッシュ検索 |
+## HTTP レイヤ
 
-### クリエイター
+### 負荷制御
+- 同時実行: 最大 3
+- リクエスト間隔: 最小 250ms
+- GET レスポンスキャッシュ: TTL 60s / 最大 150 件
+- 世代番号 (cacheGeneration) でセッション切替時の古い結果混入を防止
 
-| API | 実装 | 備考 |
-|---|---|---|
-| `GET /creators` | `api.creators()` | 全クリエイター (約 10 万件)。`public_id` (fanbox slug) を含む |
-| `GET /{service}/user/{id}/profile` | `api.creatorProfile()` | 名前・アイコン URL・最終更新 |
-| `GET /{service}/user/{id}/tags` | `api.creatorTags()` | `{tag, post_count}` 配列 |
-| `GET /{service}/user/{id}/announcements` | `api.creatorAnnouncements()` | お知らせ |
+### エラー復元
+Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は `ApiError(500)` で包むため、
+**ステータス分岐は必ず `apiStatus(err)` で復元する**。
 
-### お気に入り (要セッション)
+### API エンドポイント (pawchive.pw)
 
-| API | 実装 | 備考 |
-|---|---|---|
-| `GET /account/favorites?type=artist` | `api.accountFavorites("artist")` | スリム形 (クリエイター) |
-| `GET /account/favorites?type=post` | `api.accountFavorites("post")` | **PawPost 全フィールド + `faved_seq`** (実測)。投稿カードとして描画可能 |
-| `POST /favorites/post/{service}/{id}/{postId}` | `api.favPostAdd()` | 未認証は 302 |
-| `DELETE /favorites/post/...` | `api.favPostRemove()` | |
-| `POST /favorites/creator/{service}/{id}` | `api.favCreatorAdd()` | フォロー (アカウント同期) |
-| `DELETE /favorites/creator/...` | `api.favCreatorRemove()` | |
+#### Posts
+- `api.posts({q?, o?})` → `GET /posts?q=&o=` (o は 50 刻み)
+- `api.creators()` → `GET /creators` (約 10 万件)
+- `api.creatorPosts(service, creatorId, {q?, tag?, o?})` → `GET /{service}/user/{creatorId}?q=&tag=&o=`
+  - `tag` は配列 (繰り返し送信)、q より優先
+- `api.creatorProfile(service, creatorId)` → `GET /{service}/user/{creatorId}/profile`
+- `api.creatorTags(service, creatorId)` → `GET /{service}/user/{creatorId}/tags`
+- `api.creatorAnnouncements(service, creatorId)` → `GET /{service}/user/{creatorId}/announcements`
+- `api.post(service, creatorId, postId)` → `GET /{service}/user/{creatorId}/post/{postId}`
+- `api.postRevisions(service, creatorId, postId)` → `GET /{service}/user/{creatorId}/post/{postId}/revisions`
+  - 改訂なし投稿は 404 + `[]` を返す → `apiStatus() === 404` で「改訂なし」扱い
+- `api.postComments(service, creatorId, postId)` → `GET /{service}/user/{creatorId}/post/{postId}/comments`
+  - コメント無しは 404 "No comments found." → 空配列扱い
+- `api.searchHash(hash)` → `GET /search_hash/{sha256}`
 
-### その他
+#### 認証が必要 (session cookie)
+- `api.accountFavorites(type, sessionKey)` → `GET /account/favorites?type=post|artist`
+  - type=post は PawPost 全フィールド + `faved_seq` を返す (スキーマのスリム形は artist 向け)
+- `api.favPostAdd(service, creatorId, postId)` → `POST /favorites/post/{service}/{creatorId}/{postId}`
+- `api.favPostRemove(...)` → `DELETE ...`
+- `api.favCreatorAdd(service, creatorId)` → `POST /favorites/creator/{service}/{creatorId}`
+- `api.favCreatorRemove(...)` → `DELETE ...`
+- `api.flagPost(service, creatorId, postId)` → `POST /{service}/user/{creatorId}/post/{postId}/flag`
+  (再インポート申請。409 = 既に申請済み)
+- `api.version()` → `GET /app_version` (サーバ commit hash / "custom")
 
-| API | 実装 | 備考 |
-|---|---|---|
-| `POST .../post/{postId}/flag` | `api.flagPost()` | 再インポート申請。409 = 申請済み |
-| `GET /app_version` | `api.version()` | 実測では `"custom"` を返す |
+### URL 生成
 
-未実装 (意図的): `links` / `fancards` / flag の GET。
+- `fileUrl(f)` — 本体ファイル URL (deferred は temp_download_url を paw:// 経由)
+- `thumbUrl(f)` — サムネイル (`img.pawchive.pw/thumbnail/data{path}`)
+- `proxyFileUrl(url)` — ホットリンク対策 (fanbox/patreon/pximg) を paw:// 経由に変換
+- `proxyLinkUrl(url, service)` — 本文中の外部リンクを paw:// 経由に変換
+- `pawchiveProxyUrl(url)` — pawchive ホストを paw:// (f=1 force) で中継 (AdGuard 対策)
+- `creatorIconUrl(service, id)` — `https://pawchive.pw/icons/{service}/{userId}`
+- `creatorBannerUrl(service, id)` — `https://pawchive.pw/banners/{service}/{userId}`
+- `postUrl(service, userId, postId)` — pawchive 投稿ページ
+- `creatorUrl(service, userId)` — pawchive クリエイターページ
+- `originalPostUrl(service, creatorId, postId)` — 元サービスの投稿 URL (fanbox: `{slug}.fanbox.cc/posts/{id}` / patreon: `patreon.com/posts/{id}`)
+- `originalCreatorUrl(service, creatorId)` — 元サービスのクリエイターページ (fanbox: `{slug}.fanbox.cc` / patreon: `patreon.com/user?u={id}`)
 
----
+### normalizeTags
+詳細 API の `tags` は PostgreSQL 配列リテラル文字列 (`"{\"one piece\"}"`) で返る場合がある。
+`normalizeTags(v)` は配列 / JSON 文字列 / PG 配列リテラルをすべて配列に正規化する。
 
-## 実測で判明しているレスポンスの癖
+## Tauri コマンド (src-tauri/src/lib.rs)
 
-- 詳細の `tags` は**配列ではなく PostgreSQL 配列リテラル文字列** (`"tags":"{\"one piece\"}"`)。
-  `normalizeTags()` (api.ts) で展開
-- 一覧レスポンスのみ `substring` (本文冒頭) を含む
-- `temp_url` / `temp_download_url` / `preview_state` / `has_full` はスキーマ外だが常に返る。
-  一時 URL は署名付き・期限付きのためキャッシュしない
+| コマンド | 用途 |
+|---|---|
+| `api_request(path, method, sessionKey, timeoutSecs)` | pawchive API 中継 (reqwest) |
+| `login_request(username, password, timeoutSecs)` | ログイン + session cookie 抽出 + 有効性検証 |
+| `export_log(text)` | ログを `%APPDATA%/logs/YYYY-MM-DD_HH-MM-SS_viewer.log` に書き出し |
+| `export_file(fileName, text)` | 任意テキストを `%APPDATA%/backup/` に書き出し |
+| `fetch_creator_icon(service, id)` | クリエイターアイコンを取得 + `app_data/icons/{service}_{id}.webp` にキャッシュ → data URL |
+| `debug_append_log(text)` | (debug-diag feature のみ) ログ行を `app_data/logs/debug-app.log` に追記 |
+| `debug_open_log_folder()` | (debug-diag feature のみ) ログフォルダをファイラで開く |
 
----
+### paw:// プロトコル
+WebView から Referer を設定できないため、リファラーチェックがある外部 URL を Rust 側で中継する。
+- `/file?u=<対象URL>&r=<リファラー>` (+ `&f=1` で pawchive ホストの強制中継)
+- SSRF 対策 (内部アドレス拒否) / direct ホスト (fanbox/patreon/pawchive) の除外ロジックあり
+- HTML ページは base 注入 + リンク/リソースのプロキシ化を行う
 
-## セッション認証
+## データ型 (src/types.ts)
 
-お気に入り同期には pawchive.pw の `session` Cookie 値が必要。
+主要型: `PawPost` / `PawCreator` / `PawTag` / `PawComment` / `PawRevision` / `PawFile` / `PawAnnouncement` / `HashLookupResult` / `AccountFavorite` / `Settings`
 
-取得方法 (どちらか):
-
-1. アプリ内ログイン (Login ページ) — ID/パスワードから Rust が自動取得
-2. pawchive.pw にブラウザでログイン → 開発者ツール → Application → Cookies → `session` の値を設定画面へ貼り付け
-
-保存先: `localStorage["pawkemo-settings"]` の `sessionKey`。
-Rust が `Cookie: session=xxx` ヘッダーを付与して送信する。
-**セッションキーはパスワード相当** (バックアップ JSON に含まれるため取り扱い注意)。
-
----
-
-## ファイル URL (api.ts の URL ビルダ)
-
-| 種別 | URL | 実装 |
-|---|---|---|
-| 本体 | `https://n{1-3}.pawchive.pw/data{path}` | `fileUrl()` |
-| サムネイル | `https://img.pawchive.pw/thumbnail/data{path}` | `thumbUrl()` |
-| 動画 (HLS) | `https://t{1-4}.pawchive.pw/v/.../master.m3u8?...` (署名付き一時 URL) | `fileUrl()` が `temp_url` を優先 |
-| クリエイターアイコン | `https://pawchive.pw/icons/{service}/{id}` (webp, 無い場合は 204) | `fetch_creator_icon` コマンド (ディスクキャッシュ) + `src/icons.ts` |
-| バナー | `https://pawchive.pw/banners/{service}/{id}` | `creatorBannerUrl()` |
-
-### paw:// プロキシ (`http://paw.localhost/file?u=&r=`)
-
-WebView から Referer を設定できないため、リファラーチェックがある URL は
-Rust 側プロトコルハンドラ経由で中継します (`proxyFileUrl()` / `proxyLinkUrl()`)。
-設定「画像を paw:// プロキシ経由で読み込む」(proxyImages) 有効時は
-pawchive 系画像もこの経路になります (DNS フィルタリング環境向け)。
-
----
-
-## 元サービス (fanbox / patreon) へのリンク
-
-| サービス | 投稿 | クリエイター |
-|---|---|---|
-| fanbox | `https://{slug}.fanbox.cc/posts/{id}` (**slug 必須**。`www.fanbox.cc/posts/{id}` は 404) | `https://{slug}.fanbox.cc` |
-| patreon | `https://www.patreon.com/posts/{id}` (実ブラウザで canonical へ自動リダイレクト) | `https://www.patreon.com/user?u={id}` (307 → `/{name}`) |
-
-実装: `api.originalPostUrl()` / `api.originalCreatorUrl()`。
-fanbox の slug はクリエイター索引の `publicId` から解決。
-外部リンクは `referrerpolicy="no-referrer"` でリファラーを送信しません。
-
-URL 貼り付け検索は `www.fanbox.cc/@{slug}/posts/{id}` パターンも認識し、
-投稿への直接遷移バナーを表示します (`normalizeCreatorQuery`)。
+- `PawPost`: id / user / service / title / content / embed / shared_file / added / published / edited / file / attachments / next / prev / (実測追加: tags / origin / preview_state / has_full / detail_fetched / substring)
+- `AccountFavorite`: PawPost を Partial 継承 + faved_seq (type=post は PawPost 全フィールド)
+- `PawCreator`: id / public_id / service / name / indexed / updated / favorited
+- `PawRevision extends PawPost` + revision_id

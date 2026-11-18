@@ -8,127 +8,40 @@ PawKemoViewer は複数のオープンソースソフトウェアを利用して
 
 ## PawKemoViewer
 
-License:
+License: MIT License
 
-```text
-MIT License
-```
+Copyright (c) 2026 nsmr0604
 
 ---
 
 # Frontend
 
-## React
+## React / React DOM
 
-Project:
-
-```text
-https://react.dev
-```
-
-License:
-
-```text
-MIT
-```
-
-Copyright:
-
-```text
-Copyright (c) Meta Platforms, Inc.
-```
-
----
-
-## React DOM
-
-Project:
-
-```text
-https://react.dev
-```
-
-License:
-
-```text
-MIT
-```
-
-Copyright:
-
-```text
-Copyright (c) Meta Platforms, Inc.
-```
-
----
+Project: https://react.dev
+License: MIT
+Copyright: Copyright (c) Meta Platforms, Inc.
 
 ## TypeScript
 
-Project:
-
-```text
-https://www.typescriptlang.org
-```
-
-License:
-
-```text
-Apache License 2.0
-```
-
-Copyright:
-
-```text
-Microsoft Corporation
-```
-
----
+Project: https://www.typescriptlang.org
+License: Apache License 2.0
+Copyright: Microsoft Corporation
 
 ## Vite
 
-Project:
-
-```text
-https://vitejs.dev
-```
-
-License:
-
-```text
-MIT
-```
-
-Copyright:
-
-```text
-Evan You
-```
-
----
+Project: https://vitejs.dev
+License: MIT
+Copyright: Evan You
 
 ## @vitejs/plugin-react
 
-License:
-
-```text
-MIT
-```
-
----
+License: MIT
 
 ## vite-plugin-pwa
 
-Project:
-
-```text
-https://vite-pwa-org.netlify.app
-```
-
-License:
-
-```text
-MIT
-```
+Project: https://vite-pwa-org.netlify.app
+License: MIT
 
 ---
 
@@ -136,37 +49,13 @@ MIT
 
 ## Tauri
 
-Project:
-
-```text
-https://tauri.app
-```
-
-License:
-
-```text
-Apache License 2.0
-MIT
-```
-
-Dual Licensed.
-
-Copyright:
-
-```text
-The Tauri Programme within The Commons Conservancy
-```
-
----
+Project: https://tauri.app
+License: Apache License 2.0 / MIT (Dual Licensed)
+Copyright: The Tauri Programme within The Commons Conservancy
 
 ## tauri-plugin-log
 
-License:
-
-```text
-Apache 2.0
-MIT
-```
+License: Apache 2.0 / MIT
 
 ---
 
@@ -174,50 +63,30 @@ MIT
 
 ## Rust
 
-Project:
-
-```text
-https://www.rust-lang.org
-```
-
-License:
-
-```text
-Apache License 2.0
-MIT
-```
-
-Dual Licensed.
-
----
+Project: https://www.rust-lang.org
+License: Apache License 2.0 / MIT (Dual Licensed)
 
 ## Reqwest
 
-Project:
+Project: https://github.com/seanmonstar/reqwest
+License: Apache License 2.0 / MIT
 
-```text
-https://github.com/seanmonstar/reqwest
-```
+## base64
 
-License:
+License: Apache License 2.0 / MIT
 
-```text
-Apache License 2.0
-MIT
-```
+## regex
+
+License: Apache License 2.0 / MIT
 
 ---
 
 # Build Tools
 
-## Cargo
+## Cargo / Node.js
 
-License:
-
-```text
-Apache License 2.0
-MIT
-```
+Cargo: Apache License 2.0 / MIT
+Node.js: MIT
 
 ---
 

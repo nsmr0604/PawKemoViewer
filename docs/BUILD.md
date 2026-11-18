@@ -1,116 +1,99 @@
-# Build & Release Guide
+# ビルドガイド
 
-PawKemoViewer のビルド、CI、リリース運用について。
+PawKemoViewer (v0.3.0) のビルド・パッケージング・CI 構成。
 
----
+## ビルドフロー (原則: CI 委任)
 
-## ビルドの原則
+**通常のビルドは GitHub Actions に委任する** (ローカルは検証のみ)。
 
-- **正式ビルドは GitHub Actions に委任**。ローカルビルドは検証用
-- push (main) = **デバッグビルド** (診断コード入り) → rolling prerelease `debug-latest` へ
-- 正式リリース = **手動のみ** (workflow_dispatch の `release=true`)。診断コード無し
-- ローカルビルドは `V:\pawchive\` (リポジトリルート) で実行する。
-  エージェントの作業ファイルは `.agent-work/` (gitignore 済み)
-
----
-
-## ローカルビルド
-
-```bash
-npm install
-npm run build            # フロントエンド (tsc + Vite) → dist/
-cargo check              # Rust 型検査
-npm run tauri:dev        # デスクトップ開発実行
-npm run tauri:build      # デスクトップリリースビルド
+```text
+git push (main)
+  ↓
+GitHub Actions
+  ├─ Build Tauri (tauri.yml)   Windows / Linux / macOS
+  └─ Android Build (android.yml) universal APK
+  ↓
+rolling prerelease "debug-latest" (デバッグビルド)
 ```
 
-### デバッグ診断ビルド (手元で診断コードを入れる)
+- **push (main) / PR = デバッグビルド**: 診断コード (`VITE_DEBUG_DIAG=1`) を注入し、
+  **rolling prerelease `debug-latest`** へアセット添付 (旧バージョン分は自動掃除)
+- **正式リリース = 手動のみ**: Actions 画面から `workflow_dispatch` の input
+  `release=true` (両ワークフロー)。診断コード無し・タグ `pawkemoviewer-v{VER}` へ添付
+- PR ビルドは artifact のみ (android.yml。PC は未設定)
 
-```powershell
-$env:VITE_DEBUG_DIAG = "1"; npm run build          # フロントエンド
-cargo build --features debug-diag                   # Rust
-```
+## 成果物
 
-診断ビルドではバックアップ JSON ダンプ・API 失敗詳細ログ・
-`app_data/logs/debug-app.log` 常時追記が有効になる (リリースでは自動分離)。
-
-### 成果物の名前 (v0.3.0~)
-
-| プラットフォーム | ファイル |
+| プラットフォーム | ファイル例 |
 |---|---|
 | Windows | `PawKemoViewer_0.3.0_x64-setup.exe` / `_x64_en-US.msi` |
-| Linux | `pawkemoviewer_0.3.0_amd64.deb` / `.AppImage` / `.rpm` |
+| Linux | `PawKemoViewer_0.3.0_amd64.AppImage` / `_amd64.deb` |
 | macOS | `PawKemoViewer_0.3.0_aarch64.dmg` |
 | Android | `PawKemoViewer_0.3.0_universal.apk` (debug.keystore 署名) |
 
-プロセス名 / exe 名は `pawkemoviewer` (v0.3.0 で crate 名を改名したため)。
+- 実行ファイル名は `pawkemoviewer` (crate 名由来)。Android packageId は
+  `com.nsmr0604.pawkemoviewer`
+- Android 署名は標準 debug.keystore (`src-tauri/android-debug.keystore`、パスワード `android`
+  は公開定数のため直書き。正式配布時はリリース鍵を GitHub Secrets へ)
 
----
-
-## Android ビルド
+## ローカルビルド (検証用)
 
 ```bash
-npm run tauri android init
-npm run tauri android build
+npm install
+npm run build                                  # 型検査 + フロントエンドビルド (dist/)
+cargo check --manifest-path src-tauri/Cargo.toml
+cargo build --manifest-path src-tauri/Cargo.toml                       # debug exe
+cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag # 診断ビルド
+npm run tauri:dev                              # 開発実行 (Vite + Tauri)
+npm run tauri:build                            # ローカルリリースバンドル (通常は不要)
 ```
 
-署名: `src-tauri/android-debug.keystore` (Android SDK 標準手順の debug.keystore。
-パスワード `android` は公開定数のため直書き可 — 非公開の鍵は GitHub Secrets 経由)。
-正式配布時はリリース鍵を Secrets 化し、debug.keystore をリポジトリから削除する。
+- デバッグ診断ビルド (PC): `npm run dev` は `.env.development` により
+  `VITE_DEBUG_DIAG` が自動有効。debug exe は
+  `src-tauri/target/debug/pawkemoviewer.exe`
+- ワークフロー YAML の push 前検証: `npx --yes js-yaml .github/workflows/*.yml`
 
----
+## CI 構成の詳細
 
-## CI (GitHub Actions)
+### tauri.yml (Build Tauri)
+- matrix: `windows-latest` / `ubuntu-24.04` / `macos-15` (fail-fast: false)
+- `prepare` ジョブ: release=true 時は旧 PC アセット削除 / debug 時は
+  debug-latest の現行バージョン以外を掃除
+- `VITE_DEBUG_DIAG` は **ジョブレベル env** (tauri-action の beforeBuildCommand 内
+  ビルドにも適用される)
+- concurrency: 同一ブランチの新ランが旧ランをキャンセル
 
-| ワークフロー | トリガー | 出力先 |
-|---|---|---|
-| `.github/workflows/tauri.yml` (Build Tauri) | push (main) / dispatch | PC 成果物 |
-| `.github/workflows/android.yml` (Android Build) | push (main) / **PR** / dispatch | APK |
+### android.yml (Android Build)
+- `npx tauri android init` → `npx tauri android build` → zipalign + apksigner
+  (debug.keystore) → リリース添付
+- `on: pull_request` も発火 (artifact のみ)
 
-### push (main) = デバッグビルド
+### 既知の CI 障害パターン (実測)
+- **Android の gradle が Maven Central 429 (Too Many Requests) で失敗**: 一時的障害。
+  次の push で再実行すれば解消 (Rust コンパイルは成功しているので failure でも慌てない)
+- **同バージョン再 push での asset 衝突**: バージョンを上げてから push する
+- **macos ジョブの cancelled**: runner 起因のフレークあり。他プラットフォームが
+  success なら再ランで直る
 
-- `VITE_DEBUG_DIAG=1` を注入 (ジョブレベル env。`beforeBuildCommand` 内の再ビルドにも波及)
-- 成果物は rolling prerelease **`debug-latest`** に添付
-  (旧バージョンのアセットは「ファイル名に現行バージョンを含まないものを削除」で掃除)
-- PR ビルドは artifact のみ (リリースには出さない)
+## バージョニング
 
-### 正式リリース (手動)
+- 形式: `0.x.y` (0.3 系)。**互換性を壊す変更はマイナー (0.x) を上げる**
+- 更新箇所: `package.json` / `package-lock.json` (`npm install --package-lock-only`) /
+  `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`
+- v0.3.0 は破壊的変更 (内部キー・identifier・crate 名の全面改名)。**0.2.x からの
+  引継ぎはバックアップ書き出し→読み込み**で行う
 
-1. バージョンを上げる: `package.json` / `package-lock.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`
-2. push してデバッグビルドで動作確認
-3. GitHub UI → Actions → **Build Tauri / Android Build → Run workflow → `release=true`**
-4. タグ `pawkemoviewer-v{VER}` のリリースに成果物が添付される (PC 側は旧アセット削除→新アップロード)
+## 手動リリース手順 (正式版)
 
-### トラブルシューティング
+1. バージョンを上げてコミット・push (デバッグビルドが回る)
+2. Actions → 「Build Tauri」/「Android Build」→ Run workflow → `release=true`
+3. 両方 success を確認 → リリース `pawkemoviewer-v{VER}` のアセットを確認
+4. (将来) 正式配布時: リリース鍵を Secrets 化し debug.keystore をリポジトリから削除
 
-- **Android がgradle 依存解決で失敗**: Maven Central の 429 (Too Many Requests) の
-  一時的障害のことがある。Rust コンパイル成功後に `Could not resolve` が出たら再実行で直る
-- ワークフロー YAML は push 前に `npx --yes js-yaml .github/workflows/*.yml` で検証
+## クロスプラットフォーム特記事項
 
----
-
-## リリースフロー
-
-```text
-開発 (main push)
-  → デバッグビルド (VITE_DEBUG_DIAG=1)
-  → prerelease "debug-latest" (テスト用・上書き更新)
-実機テストで問題なければ
-  → バージョン更新 + workflow_dispatch release=true
-  → 正式リリース "pawkemoviewer-v{VER}"
-```
-
-### 0.2.x → 0.3.0 移行 (破壊的変更)
-
-- identifier / 内部キーが変更されたため、**旧アプリのデータは自動引き継ぎされない**
-- 引き継ぎ手順: 旧バージョンでバックアップを書き出し → 新バージョンで読み込み
-  (フォロー・既読・設定・セッションキーを含む)
-- Windows は旧「Pawchive Viewer」が別フォルダに残るため手動アンインストール
-- Android は旧アプリ (`jp.geek.nsmr0604.pawchive`) と共存する
-
----
-
-## 将来計画
-
-- Windows 正式署名 (eMudhra コード署名証明書)
-- Android リリース鍵の Secrets 化
+- **Windows**: 未署名 exe は初回ファイアウォール許可が必要 (NSIS フックが
+  「PawKemoViewer (outbound allow)」規則を自動登録)
+- **Android**: WebView 157 / Chrome 157 挙動を前提。debug.keystore は
+  Android Studio の debug ビルドと署名が揃う
+- **macOS**: 未署名 (Gatekeeper の右クリック実行が必要)

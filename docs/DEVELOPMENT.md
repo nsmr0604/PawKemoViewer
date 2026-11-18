@@ -1,121 +1,143 @@
-# Development Guide
+# PawKemoViewer 開発ガイド
 
-PawKemoViewer の開発者向けドキュメント。対象: コントリビューター / ビルド担当 / 検証者。
+PawKemoViewer (v0.3.0) の開発者向けドキュメント。
 
----
+- 対象読者: 開発参加者・ビルド担当者・コントリビューター
+- ユーザー向け情報は [README.md](../README.md) を参照
+- 関連: [BUILD.md](BUILD.md) (ビルド・CI)、[API.md](API.md) (API 仕様)、[LICENSES.md](LICENSES.md) (帰属)
 
-## 技術構成
+## アーキテクチャ
 
 ```text
-Frontend      React 18 + TypeScript + Vite
-Desktop/Mobile   Tauri 2 (Windows / Linux / macOS / Android)
-Backend       Rust + reqwest (rustls・brotli/gzip) — すべての通信は Rust 経由
-Storage       IndexedDB (クリエイター索引・既読・アイコン) + localStorage (設定)
+React 19 (TypeScript + Vite)
+  ↓  invoke() (Tauri v2 コマンド)
+Rust (reqwest / rustls)
+  ↓  HTTPS
+pawchive.pw / *.pawchive.pw
 ```
 
-Cloudflare (Pages / Workers / Functions / Reverse Proxy) は使用禁止。
-pawchive が Cloudflare 由来の中継を検出してFake site を返すため (実測)。
+- **WebView は直接 fetch しない**。API・ログイン・アイコンはすべて Rust コマンド経由
+  (端末 DNS ブロック・UA 偽装・Cloudflare 中継検出回避のためクライアント直叩き)
+- 画像・動画は WebView が直接 CDN (`img/n1..n3/t1..t4.pawchive.pw`) を参照する。
+  DNS フィルタリング環境向けに **paw:// プロキシ経由へ切替可能** (後述)
+- **Cloudflare 系の中継 (Pages / Workers / Functions / Wrangler / Reverse Proxy) は禁止**。
+  pawchive が中継を検出し Fake site を返すため (実測済み)
 
----
+## 技術スタック
+
+| 層 | 技术 | 備考 |
+|---|---|---|
+| UI | React 19 + TypeScript (strict) | 関数コンポーネント・hooks のみ |
+| バンドラ | Vite 6 | PWA プラグイン不使用 |
+| ランタイム | Tauri 2 | identifier `com.nsmr0604.pawkemoviewer` |
+| バックエンド | Rust (edition 2024) + reqwest | `default-features = false` + rustls-tls (OpenSSL 不使用) |
+| ストレージ | IndexedDB + localStorage | 詳細は後述 |
+
+## ディレクトリ構成
+
+```text
+src/                    フロントエンド
+  api.ts                API クライアント (スケジューラ・キャッシュ・URL 生成)
+  db.ts                 IndexedDB (クリエイター索引パック・既読)
+  icons.ts              クリエイターアイコンの多段キャッシュ
+  follows.ts            フォロー (アカウント同期)
+  favstate.ts           お気に入り投稿の共有状態
+  backup.ts             バックアップ書き出し/読み込み
+  log.ts                アプリ内ログ (リングバッファ)
+  debug.ts              デバッグ診断フラグ (VITE_DEBUG_DIAG)
+  router.ts / hooks.ts / platform.ts / history.ts / types.ts / styles.css
+  components/           FollowButton / NavigationRail
+  pages/                Home / Creators / CreatorPage / PostPage / Favorites / Login / Settings
+src-tauri/
+  src/lib.rs            Rust 実装 (コマンド・paw:// プロキシ)
+  src/main.rs           エントリポイント
+  examples/probe_api.rs API 実測プローブ
+  Cargo.toml            features: debug-diag
+docs/                   本ドキュメント群
+.github/workflows/      tauri.yml (PC) / android.yml (APK)
+```
 
 ## 開発環境
 
-| 要件 | バージョン | 備考 |
+- Node.js 24+ / npm 10+ / Rust 1.90+ (rustup) / Android SDK (実機テスト時)
+- Windows の場合: VS BuildTools (C++) + Windows SDK
+  - **注意: SDK の `um/x64` に dbghelp.lib が無い環境あり** → 自作手順は notes/env.md 参照
+
+```bash
+npm install          # 依存
+npm run dev          # Vite 開発サーバ (localhost:5173)
+npm run tauri:dev    # Tauri 開発実行
+npm run build        # 型検査 + 本番ビルド
+cargo check --manifest-path src-tauri/Cargo.toml
+cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag   # 診断ビルド
+```
+
+## 重要な実装規約
+
+### Tauri v2 コマンド引数は camelCase
+Rust 側 snake_case → JS からは `sessionKey` 等。**snake_case で渡すと Option が常に None** になる (実害発生済み)。
+
+### API 失敗のステータス復元
+Rust は失敗時 `Err("STATUS=401 BODY=...")` 文字列を返し、JS 側は `ApiError(500)` で包む。
+**ステータス分岐は必ず `apiStatus(err)` 経由** (`ApiError.status` は常に 500)。
+
+### 既知の API 仕様癖 (実測)
+- `GET .../revisions` は改訂なし投稿で **404 + `[]`** → 「改訂なし」扱いにする
+- 詳細の `tags` は **PostgreSQL 配列リテラル文字列** (`"{\"one piece\"}"`) → `normalizeTags()` で正規化
+- `account/favorites?type=post` は **PawPost 全フィールド** を返す (スリム形は artist のみ)
+- 一覧のみ `substring` フィールドを持つ
+
+### paw:// プロキシ (`http://paw.localhost/`)
+WebView から Referer を設定できないため、リファラーチェックがある外部 URL を Rust 側で中継する。
+`/file?u=<対象URL>&r=<リファラー>` (+ `&f=1` で pawchive ホストの強制中継)。
+SSRF 対策 (内部アドレス拒否) と direct ホスト (fanbox/patreon/pawchive) の除外ロジックあり。
+
+### デバッグ診断コードはビルド時フラグ注入
+`VITE_DEBUG_DIAG=1` (フロント) / cargo feature `debug-diag` (Rust) でのみ有効。
+**リリースビルドからはコード自体が分離される** (実行時判定は使わない)。詳細は AGENTS.md 参照。
+
+## ストレージ構成 (v0.3.0 のキー体系)
+
+| 種別 | キー | 内容 |
 |---|---|---|
-| Node.js | 24+ | `node --version` |
-| Rust | 1.90+ | `rustup` で導入。Windows は MSVC + Windows SDK (C++ ワークロード) |
-| Android (任意) | Android SDK + JDK 17 | 実機ビルド時のみ |
+| localStorage | `pawkemo-settings` / `pawkemo-follows` / `pawkemo-fav-tab` / `pawkemo-scroll` / `pawkemo-search-history` | 設定・フォロー・タブ状態・スクロール・履歴 |
+| IndexedDB | `pawkemoviewer` (DB) | creators パック索引 / seen (既読) / meta |
+| IndexedDB | `pawkemo-icons` (DB) | クリエイターアイコンの data URL キャッシュ |
+| ファイル | `app_data/icons/` | Rust 側アイコンキャッシュ (`{service}_{id}.webp`) |
+| バックアップ | type `pawkemoviewer-backup` | 設定+フォロー+既読 (旧 `pawchive-backup` は 0.2.x 系) |
 
-```bash
-git clone https://github.com/nsmr0604/pawchive.git
-cd pawchive
-npm install
-```
+- **0.2.x (旧 Pawchive Viewer) からの引継ぎはバックアップ書き出し→読み込み**が正式手順
+  (identifier 変更によりデータディレクトリが別になるため)
+- クリエイター索引は**単一パックレコード** (約 10 万行を 1 文字列化・decode 1 回でメモリ索引化)
+- アイコンは メモリ → IndexedDB → Rust ディスク の 3 段キャッシュで再利用 (同一キーはリクエスト統合)
 
----
+## パフォーマンス・負荷配慮
 
-## ソース構成
+- API スケジューラ: 同時 3 / 最小間隔 250ms / GET キャッシュ TTL 60 秒 (最大 150 件)
+- Favorites の新着チェックは 5 分クールダウン
+- 画像は lazy loading + サムネ→本体→paw:// の 3 段フォールバック
 
-```text
-src/
-  api.ts          API レイヤ (エンドポイント・スケジューラ・キャッシュ・URL ビルダ)
-  db.ts           IndexedDB (クリエイター索引パック・既読・移行)
-  follows.ts      フォロー (アカウント同期ミラー)
-  favstate.ts     お気に入り投稿 ID の共有キャッシュ
-  icons.ts        クリエイターアイコンのキャッシュ (メモリ→IndexedDB→Rust)
-  backup.ts       バックアップ書き出し/復元
-  log.ts          アプリ内ログ (リングバッファ 400 件)
-  debug.ts        デバッグ診断フラグ (DEBUG_DIAG・ビルド時注入)
-  router.ts       ハッシュルータ
-  hooks.ts        useDebounced / useScrollMemory など
-  types.ts        API 型
-  components.tsx  PostCard / PostRow / Thumb / CreatorAvatar など
-  components/FollowButton.tsx
-  pages/          Home / Creators / CreatorPage / PostPage / Favorites / Login / Settings
-src-tauri/
-  src/lib.rs      Tauri コマンド (api_request / login_request / fetch_creator_icon /
-                  export_log / export_file / paw:// プロトコルハンドラ)
-  src/main.rs     エントリポイント
-  examples/probe_api.rs  reqwest 実測プローブ
-  tauri.conf.json identifier: com.nsmr0604.pawkemoviewer
-```
+## コーディング規約
 
----
+- TypeScript `strict`。`any` 禁止 (`unknown` を使用)
+- `unknown` / `any` を JSX の子にしない (boolean 化してから)
+- IndexedDB への直書き禁止 (db.ts / icons.ts ヘルパー経由)
+- コミットメッセージは端的に (規約は AGENTS.md 参照)
 
-## 主要コマンド
+## トラブルシューティング
 
-```bash
-npm run dev            # Vite 開発サーバ (http://localhost:5173)
-npm run build          # tsc + Vite 本番ビルド → dist/
-cargo check            # Rust 型検査 (src-tauri/)
-npm run tauri:dev      # デスクトップ開発実行
-npm run tauri:build    # デスクトップリリースビルド
-npm run tauri android init   # Android 初期化 (要 SDK)
-npm run tauri android build # APK ビルド
-```
-
----
-
-## 設計メモ
-
-### 通信
-- React は `fetch` を使わず `invoke("api_request")` で Rust に委譲
-- **Tauri v2 コマンド引数は camelCase** (`session_key` ではなく `sessionKey`)。
-  snake_case で渡すと Option が常に None になる (実被害済み)
-- API エラーは文字列 `STATUS=401 BODY=...` で返る → `apiStatus(err)` で判定
-
-### ストレージキー (v0.3.0 で pawkemo-* 系に統一)
-- localStorage: `pawkemo-settings` / `pawkemo-follows` / `pawkemo-fav-tab` / `pawkemo-scroll` / `pawkemo-search-history`
-- IndexedDB: `pawkemoviewer` (索引/既読) / `pawkemo-icons` (アイコン)
-- バックアップ形式: `pawkemoviewer-backup` (フォロー・既読・設定を含む。sessionKey 含むため取り扱い注意)
-
-### クリエイター索引 (db.ts)
-- 全クリエイター (約 10 万件) を 1 IndexedDB レコードのパック形式で保存 (約 5MB)
-- `public_id` (fanbox slug) を保持し、URL 貼り付け検索・元サービスリンクに使用
-
-### デバッグ診断コード (ビルド時注入)
-- フロントエンド: `VITE_DEBUG_DIAG=1` → `src/debug.ts` の `DEBUG_DIAG`
-  - `npm run dev` は `.env.development` で自動有効
-- Rust: cargo feature `debug-diag` (`--features debug-diag`)
-- 診断機能: backup JSON 全文ダンプ / API 失敗詳細ログ / `debug-app.log` 常時追記
-- **リリースビルドでは定数畳み込みでコード自体が分離される** (診断文字列がバンドルに出ないことを実測確認済み)
-
-### コーディング規約
-- TypeScript: `strict` / `any` 禁止 (`unknown` を使う) / `unknown` を JSX 子にしない
-- React: 関数コンポーネント + フック
-- CSS: `src/styles.css` 単一 (CSS Modules 不使用)
-- コミットメッセージ: 作業内容のみ簡潔に (装飾・経緯を含めない)
-
----
-
-## ドキュメント構成
-
-| ファイル | 内容 |
+| 症状 | 対処 |
 |---|---|
-| README.md | ユーザー向け概要 (詳細実装を書かない) |
-| docs/API.md | pawchive API とアプリ API レイヤの対応 |
-| docs/BUILD.md | ビルド・CI・リリースフロー |
-| docs/DEVELOPMENT.md | 本ドキュメント |
-| docs/LICENSES.md | 第三者ライセンス帰属 |
+| `cargo metadata` 失敗 | `cargo --version` / `rustup update` |
+| Windows リンクで dbghelp.lib 欠落 | 自作 lib (env.md の手順) |
+| CI の Android が gradle 429 失敗 | Maven Central 一時障害。再実行で解消 (実測) |
+| Android 実機で画像が出ない | 端末 DNS (AdGuard sinkhole) を疑う。設定の「画像を paw:// プロキシ経由」も有効 |
+| node_modules 破損 | `rm -rf node_modules package-lock.json && npm install` |
+| Vite キャッシュ破損 | `rm -rf dist node_modules/.vite` |
 
-詳細な API 実測仕様・設計判断の経緯は開発ナレッジ (非公開) を参照のこと。
+## 参考資料
+
+- Tauri 2: https://tauri.app
+- Rust: https://www.rust-lang.org
+- React: https://react.dev / Vite: https://vitejs.dev
+- pawchive API 仕様: [API.md](API.md) および Swagger UI (https://pawchive.pw/api/schema)
