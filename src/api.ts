@@ -34,9 +34,8 @@ export interface Settings {
   postViewMode: "grid" | "list"
   /** 通信タイムアウト秒 (JHenTai の Connect/Receive Timeout 参考)。既定 30 秒 */
   timeoutSecs: number
-  /** 画像を pkv:// プロキシ経由で読み込む。
-   *  実機の DNS フィルタリング (AdGuard sinkhole) で *.pawchive.pw が
-   *  WebView 直読みできない環境向け (bugs.md 参照)。Rust (reqwest) 経路は実測正常 */
+  /** FANBOX / Patreon 由来の画像・ファイルを pkv:// プロキシ経由で読み込む。
+   *  Pawchive 本体・API・画像サーバーは常に直接アクセスする */
   proxyImages: boolean
   /** 投稿内の画像・ファイルを一覧表示する (省データ・自動読み込みしない) */
   postFileListMode: boolean
@@ -470,8 +469,7 @@ export function normalizeTags(v: unknown): string[] {
 // ---------------------------------------------------------------------------
 
 /** 本体ファイル URL (元ファイル名を付けてダウンロード時の名前にする)。
- *  fanbox / patreon 由来の一時 URL (署名付き) はリファラーチェックでブロックされるため
- *  同一オリジンプロキシ経由にする。 */
+ *  FANBOX / Patreon の配信ホストは設定有効時に pkv:// 経由で取得する。 */
 export function fileUrl(f: PawFile | undefined, service?: string, postId?: string, refererUrl?: string): string {
   if (!f) return ""
   // deferred ファイル (動画等) は署名付き一時 URL を使う
