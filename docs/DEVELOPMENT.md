@@ -46,6 +46,7 @@ src/                    フロントエンド
   log.ts                アプリ内ログ (リングバッファ)
   debug.ts              デバッグ診断フラグ (VITE_DEBUG_DIAG)
   router.ts / hooks.ts / platform.ts / history.ts / types.ts / styles.css
+  components.tsx        共通 UI (PostCard / PostRow / PostGrid / Thumb / CreatorAvatar / ErrorBox / fmtDate ほか)
   components/           FollowButton / NavigationRail
   pages/                Home / Creators / CreatorPage / PostPage / Favorites / Login / Settings
 src-tauri/
@@ -131,7 +132,7 @@ SSRF 対策 (内部アドレス拒否) と direct ホスト (fanbox/patreon/pawc
 | `cargo metadata` 失敗 | `cargo --version` / `rustup update` |
 | Windows リンクで dbghelp.lib 欠落 | 自作 lib (env.md の手順) |
 | CI の Android が gradle 429 失敗 | Maven Central 一時障害。再実行で解消 (実測) |
-| Android 実機で画像が出ない | 端末 DNS (AdGuard sinkhole) を疑う。設定の「画像を pkv:// プロキシ経由」も有効 |
+| Android 実機で API・画像が出ない | 端末/ルーターの DNS フィルタ (AdGuard 等) が pawchive を sinkhole (偽 IP) に解決していないか確認 (`adb shell ping pawchive.pw`)。DNS を通常の resolver へ変更するのが恒久対処。変更できない場合は設定の「画像を pkv:// プロキシ経由」を有効化 (API は Rust 経由のため DNS 依存は同じ) |
 | node_modules 破損 | `rm -rf node_modules package-lock.json && npm install` |
 | Vite キャッシュ破損 | `rm -rf dist node_modules/.vite` |
 
