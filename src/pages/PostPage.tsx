@@ -473,7 +473,17 @@ export function PostPage({
               <button className="btn btn-sm" onClick={() => setLoadedFiles(new Set(allFiles.map((_, i) => i)))}>
                 すべて読み込む
               </button>
-              <button className="btn btn-sm" onClick={() => setLoadOriginalImages((current) => !current)}>
+              <button
+                className="btn btn-sm"
+                onClick={() => {
+                  if (loadOriginalImages) {
+                    setLoadOriginalImages(false)
+                  } else {
+                    setLoadedFiles(new Set(allFiles.map((_, i) => i)))
+                    setLoadOriginalImages(true)
+                  }
+                }}
+              >
                 {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
               </button>
             </div>
