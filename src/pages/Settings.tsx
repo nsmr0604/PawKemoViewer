@@ -10,7 +10,7 @@ import {
   logInfo,
   logLong,
 } from "../log"
-import { DEBUG_DIAG } from "../debug"
+import { DEBUG_DIAG, debugOpenLogFolder } from "../debug"
 import { navigate } from "../router"
 import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
@@ -188,6 +188,56 @@ export function SettingsPage() {
   return (
     <div className="page settings">
       <h2>設定</h2>
+
+      {/* ------------------------------------------------ デバッグ診断 (ビルド時フラグ注入・リリースでは分離) */}
+      {DEBUG_DIAG && (
+        <div className="settings-section">
+          <div className="section-label">デバッグ診断 (診断ビルド限定)</div>
+
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>診断フラグ</span>
+              <small>
+                有効 (VITE_DEBUG_DIAG=1 / cargo feature debug-diag)。
+                ログは app_data/logs/debug-app.log に常時追記されます。
+                バックアップ JSON のダンプはこのセクション・書き出し時に出力されます
+              </small>
+            </div>
+            <code className="small">DEBUG_DIAG=on</code>
+          </div>
+
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>ログフォルダ</span>
+              <small>ログファイルの保存先をファイラで開きます (PC 向け)</small>
+            </div>
+            <button className="btn" onClick={() => debugOpenLogFolder().then((p) => setLogResult(`フォルダ: ${p}`)).catch((e) => setLogResult(`失敗: ${e instanceof Error ? e.message : String(e)}`))}>
+              開く
+            </button>
+          </div>
+
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>バックアップ JSON ダンプ</span>
+              <small>
+                現在のバックアップ JSON 全文を診断ログへ出力します
+                (実機での sessionKey 回収用。書き出し時にも自動ダンプされます)
+              </small>
+            </div>
+            <button
+              className="btn"
+              onClick={() => {
+                logLong("info", "DEBUG BACKUP DUMP (手動ダンプ・下記全文):\n" + buildBackup())
+                setLogResult("診断ログへダンプしました (表示 or ファイルログで確認)")
+              }}
+            >
+              ダンプ
+            </button>
+          </div>
+
+          {logResult && <span className="small">{logResult}</span>}
+        </div>
+      )}
 
       {/* ------------------------------------------------ アカウント */}
       <div className="settings-section">

@@ -671,6 +671,63 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
     (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
+// ---------------------------------------------------------------------------
+// デバッグ診断 (PC 向け・debug-diag feature のみ有効)
+//
+// フロントエンドのログ行を常時ファイルへ追記し、ログフォルダを
+// エクスプローラで開けるようにする (PC でのログ収集を容易にするため)。
+// リリースビルド (feature 無し) では分離される (登録自体も行わない)
+// ---------------------------------------------------------------------------
+
+/// フロントエンドのログ行を app_data/logs/debug-app.log へ追記する。
+/// debug-diag feature 無しでは登録されない
+#[cfg(feature = "debug-diag")]
+#[tauri::command]
+fn debug_append_log(app: tauri::AppHandle, text: String) -> Result<(), String> {
+    use std::io::Write;
+
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("logs");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("debug-app.log");
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| e.to_string())?;
+    writeln!(f, "{}", text).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// ログフォルダ (app_data/logs) を OS のファイラで開く。
+/// debug-diag feature 無しでは登録されない
+#[cfg(feature = "debug-diag")]
+#[tauri::command]
+fn debug_open_log_folder(app: tauri::AppHandle) -> Result<String, String> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("logs");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+
+    #[cfg(target_os = "windows")]
+    let opener = "explorer";
+    #[cfg(target_os = "macos")]
+    let opener = "open";
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let opener = "xdg-open";
+
+    std::process::Command::new(opener)
+        .arg(&dir)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(dir.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -703,7 +760,14 @@ pub fn run() {
                 api_request,
                 login_request,
                 export_log,
-                export_file
+                export_file,
+                // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
+                // (リリースビルドでは分離)。tauri v2 の generate_handler は
+                // 属性付き項目に対応している
+                #[cfg(feature = "debug-diag")]
+                debug_append_log,
+                #[cfg(feature = "debug-diag")]
+                debug_open_log_folder
             ]
         )
         .run(

@@ -6,7 +6,7 @@
 // 失敗などの切り分けに使う。設定 → 診断 から閲覧・書き出しできる。
 // ---------------------------------------------------------------------------
 
-import { DEBUG_DIAG } from "./debug"
+import { DEBUG_DIAG, debugAppendLog } from "./debug"
 
 export interface LogEntry {
   ts: number
@@ -39,8 +39,23 @@ export function logError(msg: string) {
 
 function push(level: LogEntry["level"], msg: string) {
   if (msg.length > MAX_MSG_LEN) msg = msg.slice(0, MAX_MSG_LEN) + "…"
-  entries.push({ ts: Date.now(), level, msg })
+  const entry: LogEntry = { ts: Date.now(), level, msg }
+  entries.push(entry)
   if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES)
+  // PC 向けデバッグ: ログ行をファイル (app_data/logs/debug-app.log) へ常時追記する。
+  // DEBUG_DIAG 定数はリリースビルドで false に畳まれ、呼び出しごと分離される
+  debugAppendLog(formatEntry(entry))
+}
+
+/** 1 エントリをテキスト化 (ファイルログ・書き出し共通の書式) */
+function formatEntry(e: LogEntry): string {
+  const d = new Date(e.ts)
+  const t = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes(),
+  ).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
+  return `[${t}] [${e.level}] ${e.msg}`
 }
 
 /** 長文ログの分割記録 (デバッグ診断用)。
@@ -82,17 +97,7 @@ export function clearLog() {
 
 /** ログをテキスト化 (書き出し・表示用) */
 export function formatLog(): string {
-  return entries
-    .map((e) => {
-      const d = new Date(e.ts)
-      const t = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-        d.getDate(),
-      ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
-        d.getMinutes(),
-      ).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`
-      return `[${t}] [${e.level}] ${e.msg}`
-    })
-    .join("\n")
+  return entries.map(formatEntry).join("\n")
 }
 
 // グローバルエラーの自動キャプチャ
