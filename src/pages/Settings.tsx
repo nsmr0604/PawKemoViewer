@@ -8,11 +8,12 @@ import {
   clearLog,
   formatLog,
   logInfo,
+  logLong,
+  isDebugBuild,
 } from "../log"
 import { navigate } from "../router"
 import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
-
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -36,6 +37,7 @@ export function SettingsPage() {
   const [theme, setTheme] = useState<"dark" | "light">(s.theme)
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(s.layoutMode || "auto")
   const [noImageMode, setNoImageModeState] = useState<boolean>(s.noImageMode || false)
+  const [proxyImages, setProxyImagesState] = useState<boolean>(s.proxyImages || false)
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
   const [saved, setSaved] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
@@ -81,6 +83,13 @@ export function SettingsPage() {
     updateSettings({ noImageMode: val })
   }
 
+  const toggleProxyImages = (val: boolean) => {
+    setProxyImagesState(val)
+    updateSettings({ proxyImages: val })
+    // 表示中の URL は設定反映済みなので、リロードして新しい URL 形式を適用する
+    setTimeout(() => window.location.reload(), 300)
+  }
+
   const applyTimeoutSecs = (v: number) => {
     setTimeoutSecsState(v)
     updateSettings({ timeoutSecs: v })
@@ -98,6 +107,12 @@ export function SettingsPage() {
       }
       setBackupResult(`書き出しました: ${path}${clip}`)
       logInfo("バックアップを書き出しました")
+      // デバッグビルド限定: バックアップ JSON 全文を診断ログへ出力する
+      // (実機では app_data_dir が取り出せず・クリップボードも adb から読めないため
+      //  ログ経由が最短。release では sessionKey を含むため無効化)
+      if (isDebugBuild()) {
+        logLong("info", "DEBUG BACKUP DUMP (debug ビルド限定・下記全文):\n" + buildBackup())
+      }
     } catch (e) {
       setBackupResult(`書き出し失敗: ${e instanceof Error ? e.message : String(e)}`)
     }
@@ -293,6 +308,22 @@ export function SettingsPage() {
             onClick={() => toggleNoImageMode(!noImageMode)}
           >
             {noImageMode ? "有効 (画像オフ)" : "無効 (通常)"}
+          </button>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>画像を paw:// プロキシ経由で読み込む</span>
+            <small>
+              DNS フィルタリング (AdGuard 等) で画像が表示されない端末向けの迂回設定。
+              通常は無効のまま推奨
+            </small>
+          </div>
+          <button
+            className={`btn ${proxyImages ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => toggleProxyImages(!proxyImages)}
+          >
+            {proxyImages ? "有効 (プロキシ経由)" : "無効 (直接読み込み)"}
           </button>
         </div>
       </div>

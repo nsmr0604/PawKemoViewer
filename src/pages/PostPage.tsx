@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
+import { api, apiStatus, fileUrl, postUrl, thumbUrl, isVideoFile, pawchiveProxyUrl } from "../api"
 import type { PawComment, PawPost, PawRevision, HashLookupResult, PawFile } from "../types"
 import {
   Spinner,
@@ -89,9 +89,17 @@ export function PostPage({
         setSelectedRevisionId(null)
         logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${ordered.length}`)
       } catch (e) {
-        setRevisions([])
-        setRevisionsError(e)
-        logError(`投稿改訂履歴取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
+        if (apiStatus(e) === 404) {
+          // 改訂が無い投稿では API が 404 + 空配列を返す (実測・bugs.md 参照)。
+          // 404 は「改訂なし」扱いにして ErrorBox を出さない
+          setRevisions([])
+          setRevisionsError(null)
+          logInfo(`投稿改訂履歴なし (404) service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}`)
+        } else {
+          setRevisions([])
+          setRevisionsError(e)
+          logError(`投稿改訂履歴取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
+        }
       }
       setPost(p)
       api.postComments(postContext.service, postContext.creatorId, postContext.postId).then(setComments).catch(() => setComments([]))
@@ -300,9 +308,15 @@ export function PostPage({
                   onError={(e) => {
                     const el = e.currentTarget
                     const full = fileUrl(f)
-                    if (el.getAttribute("src") !== full) {
+                    const src = el.getAttribute("src") || ""
+                    const proxy = pawchiveProxyUrl(full)
+                    if (src !== full && src !== proxy) {
                       logWarn(`投稿画像サムネイル取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}; full URL で再試行`)
                       el.setAttribute("src", full)
+                    } else if (src !== proxy && f.path) {
+                      // 端末 DNS ブロック等の迂回: paw:// プロキシ (Rust reqwest) 経由で再試行
+                      logWarn(`投稿画像取得失敗 file=${f.path}; paw:// プロキシで再試行`)
+                      el.setAttribute("src", proxy)
                     } else {
                       logError(`投稿画像取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}`)
                       el.style.display = "none"

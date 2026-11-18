@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import type { PawFile, PawPost } from "./types"
-import { fileUrl, thumbUrl, proxyFileUrl, proxyLinkUrl, getSettings } from "./api"
+import { fileUrl, thumbUrl, proxyFileUrl, proxyLinkUrl, getSettings, pawchiveProxyUrl } from "./api"
 import { navigate } from "./router"
-import { logWarn } from "./log"
+import { logWarn, logError } from "./log"
 
 // ---------------------------------------------------------------------------
 // 汎用
@@ -140,23 +140,33 @@ export function PostGrid({ posts, onEndReached, loading, done, newIds, viewMode 
 // ---------------------------------------------------------------------------
 
 export function Thumb({ file, className }: { file: PawFile | undefined; className?: string }) {
-  const [stage, setStage] = useState<0 | 1 | 2>(0) // 0=thumb, 1=full, 2=giveup
+  // 0=thumb, 1=full, 2=paw:// プロキシ (DNS ブロック等の迂回), 3=giveup
+  const [stage, setStage] = useState<0 | 1 | 2 | 3>(0)
   const noImage = getSettings().noImageMode
 
   useEffect(() => setStage(0), [file?.path])
-  if (!file?.path || stage === 2)
+  if (!file?.path || stage === 3)
     return <div className={`thumb thumb-fallback ${className || ""}`}>🖼️</div>
   if (noImage)
     return <div className={`thumb thumb-noimage ${className || ""}`}>🖼️ (通信節約)</div>
+
+  const thumb = thumbUrl(file)
+  const full = fileUrl(file)
+  const src = stage === 0 ? thumb : stage === 1 ? full : pawchiveProxyUrl(full)
 
   return (
     <img
       className={`thumb ${className || ""}`}
       loading="lazy"
       decoding="async"
-      src={stage === 0 ? thumbUrl(file) : fileUrl(file)}
+      src={src}
       alt={file.name || ""}
-      onError={() => setStage((s) => (s === 0 ? 1 : 2))}
+      onError={() => {
+        setStage((s) => {
+          if (s === 2) logError(`サムネイル取得失敗 file=${file?.path || ""} thumb=${thumb}`)
+          return s < 3 ? ((s + 1) as 1 | 2 | 3) : s
+        })
+      }}
     />
   )
 }

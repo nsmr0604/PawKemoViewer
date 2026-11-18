@@ -6,6 +6,8 @@
 // 失敗などの切り分けに使う。設定 → 診断 から閲覧・書き出しできる。
 // ---------------------------------------------------------------------------
 
+import { invoke } from "@tauri-apps/api/core"
+
 export interface LogEntry {
   ts: number
   level: "info" | "warn" | "error"
@@ -14,8 +16,32 @@ export interface LogEntry {
 
 const MAX_ENTRIES = 400
 const MAX_MSG_LEN = 2000
+/** 分割記録 (logLong) の 1 エントリあたりの文字数 */
+const CHUNK_LEN = 1800
 
 const entries: LogEntry[] = []
+
+/** デバッグビルド判定 (Rust is_debug)。release では診断の詳細出力を無効化する */
+let debugBuildFlag: boolean | null = null
+if (typeof window !== "undefined") {
+  try {
+    invoke<boolean>("is_debug")
+      .then((v) => {
+        debugBuildFlag = v
+        if (v) push("info", "debug ビルド: 詳細診断ログが有効")
+      })
+      .catch(() => {
+        /* is_debug が無い (旧バックエンド) 場合は通常ログのまま */
+      })
+  } catch {
+    /* ignore */
+  }
+}
+
+/** デバッグビルドか (同期・未確定の場合は false) */
+export function isDebugBuild(): boolean {
+  return debugBuildFlag === true
+}
 
 export function logInfo(msg: string) {
   push("info", msg)
@@ -35,9 +61,32 @@ function push(level: LogEntry["level"], msg: string) {
   if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES)
 }
 
-/** API リクエスト失敗の記録 (source chain) */
+/** 長文ログの分割記録 (デバッグ診断用)。
+ *  backup JSON 全文や長いエラーレスポンスを失わずに
+ *  リングバッファへ入れるため MAX_MSG_LEN ごとに分割する */
+export function logLong(level: LogEntry["level"], msg: string) {
+  if (msg.length <= CHUNK_LEN) {
+    push(level, msg)
+    return
+  }
+  const chunks = Math.ceil(msg.length / CHUNK_LEN)
+  for (let i = 0; i < chunks; i++) {
+    push(
+      level,
+      `[part ${i + 1}/${chunks}] ${msg.slice(i * CHUNK_LEN, (i + 1) * CHUNK_LEN)}`,
+    )
+  }
+}
+
+/** API リクエスト失敗の記録 (source chain)。
+ *  debug ビルドでは本文/URL 全文を失わずに記録する */
 export function logApiFailure(path: string, method: string, message: string) {
-  push("error", `API失敗 ${method} ${path} → ${message}`)
+  if (isDebugBuild()) {
+    push("error", `API失敗 ${method} ${path} (詳細下記)`)
+    logLong("error", message)
+  } else {
+    push("error", `API失敗 ${method} ${path} → ${message}`)
+  }
 }
 
 /** 古い順の全エントリ */

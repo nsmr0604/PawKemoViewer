@@ -34,6 +34,10 @@ export interface Settings {
   postViewMode: "grid" | "list"
   /** 通信タイムアウト秒 (JHenTai の Connect/Receive Timeout 参考)。既定 30 秒 */
   timeoutSecs: number
+  /** 画像を paw:// プロキシ経由で読み込む。
+   *  実機の DNS フィルタリング (AdGuard sinkhole) で *.pawchive.pw が
+   *  WebView 直読みできない環境向け (bugs.md 参照)。Rust (reqwest) 経路は実測正常 */
+  proxyImages: boolean
 }
 
 /** 設定変更を上位コンポーネント (App) に通知するイベント名。
@@ -59,6 +63,7 @@ function defaultSettings(): Settings {
     noImageMode: false,
     postViewMode: "grid",
     timeoutSecs: 30,
+    proxyImages: false,
   }
 }
 
@@ -392,18 +397,19 @@ export const api = {
 export function fileUrl(f: PawFile | undefined): string {
   if (!f) return ""
   // deferred ファイル (動画等) は署名付き一時 URL を使う
-  if (f.temp_download_url) return proxyFileUrl(f.temp_download_url)
-  if (!f.path && f.temp_url) return proxyFileUrl(f.temp_url)
+  if (f.temp_download_url) return maybeProxyPawchive(proxyFileUrl(f.temp_download_url))
+  if (!f.path && f.temp_url) return maybeProxyPawchive(proxyFileUrl(f.temp_url))
   if (!f.path) return ""
   const server = f.server?.replace(/\/$/, "") || "https://n1.pawchive.pw"
   const name = f.name ? `?f=${encodeURIComponent(f.name)}` : ""
-  return `${server}/data${f.path}${name}`
+  return maybeProxyPawchive(`${server}/data${f.path}${name}`)
 }
 
 /** サムネイル URL (縮小画像が無い場合は画像側でフォールバック) */
 export function thumbUrl(f: PawFile | undefined): string {
   if (!f?.path) return ""
-  return `https://img.pawchive.pw/thumbnail/data${f.path}`
+  const url = `https://img.pawchive.pw/thumbnail/data${f.path}`
+  return getSettings().proxyImages ? pawchiveProxyUrl(url) : url
 }
 
 /** 動画ファイルかどうか */
@@ -432,8 +438,27 @@ function isHotlinkHost(hostname: string): boolean {
 }
 
 /** paw プロトコル経由 URL (Rust 側でリファラーを偽装して中継) */
-function pawProxyUrl(url: string, referer: string): string {
-  return `http://paw.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}`
+function pawProxyUrl(url: string, referer: string, force = false): string {
+  return `http://paw.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}${force ? "&f=1" : ""}`
+}
+
+/** pawchive 自身のホストを paw:// 強制プロキシ経由に変換する (f=1)。
+ *  端末 DNS が *.pawchive.pw をブロックする環境 (AdGuard sinkhole) の迂回用。
+ *  pawchive 以外の URL はそのまま返す */
+export function pawchiveProxyUrl(url: string): string {
+  if (!url) return url
+  try {
+    const h = new URL(url)
+    if (!h.hostname.endsWith("pawchive.pw")) return url
+    return pawProxyUrl(h.toString(), "https://pawchive.pw/", true)
+  } catch {
+    return url
+  }
+}
+
+/** proxyImages 設定が有効なときのみ pawchive ホストを paw:// 経由にする */
+function maybeProxyPawchive(url: string): string {
+  return getSettings().proxyImages ? pawchiveProxyUrl(url) : url
 }
 
 /** リファラーチェックでブロックされる可能性のあるファイル URL を paw 経由に変換する。

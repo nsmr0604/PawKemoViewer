@@ -13,6 +13,7 @@ import {
 import type { PawCreator } from "../types"
 import { Spinner, ErrorBox, Empty, fmtDate } from "../components"
 import { navigate } from "../router"
+import { logError } from "../log"
 import { readClipboardTextSafe, extractCreatorFromText, type ExtractedCreator } from "../platform"
 import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../history"
 
@@ -281,7 +282,10 @@ export function CreatorHeader({ service, id }: { service: string; id: string }) 
           alt=""
           loading="lazy"
           decoding="async"
-          onError={() => setBannerOk(false)}
+          onError={() => {
+            logError(`クリエイターバナー取得失敗 service=${service} id=${id} url=${creatorBannerUrl(service, id)}`)
+            setBannerOk(false)
+          }}
         />
       )}
       <div className="creator-head-row">
@@ -292,7 +296,10 @@ export function CreatorHeader({ service, id }: { service: string; id: string }) 
             alt=""
             loading="lazy"
             decoding="async"
-            onError={() => setIconOk(false)}
+            onError={() => {
+              logError(`クリエイターアイコン取得失敗 service=${service} id=${id} url=${creatorIconUrl(service, id)}`)
+              setIconOk(false)
+            }}
           />
         ) : (
           <div className="creator-avatar big">{(profile.name || "?").slice(0, 1).toUpperCase()}</div>

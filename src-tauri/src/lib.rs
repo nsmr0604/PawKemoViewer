@@ -236,6 +236,13 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
     }
 }
 
+/// デバッグビルドか (debug_assertions が有効 = debug APK / cargo debug build)。
+/// デバッグ診断 (backup JSON ダンプ等) を release では無効化するための判定
+#[tauri::command]
+async fn is_debug() -> bool {
+    cfg!(debug_assertions)
+}
+
 // ---------------------------------------------------------------------------
 // paw:// プロトコル (リファラー偽装プロキシ)
 //
@@ -272,7 +279,9 @@ fn forbidden_host(hostname: &str) -> bool {
 /// ホストに応じた既定のリファラー
 fn derive_referer(hostname: &str) -> &'static str {
     let h = hostname.to_ascii_lowercase();
-    if h.ends_with("fanbox.cc") || h.ends_with("pximg.net") {
+    if h.ends_with("pawchive.pw") {
+        "https://pawchive.pw/"
+    } else if h.ends_with("fanbox.cc") || h.ends_with("pximg.net") {
         "https://www.fanbox.cc/"
     } else if h.ends_with("patreon.com") || h.ends_with("patreonusercontent.com") {
         "https://www.patreon.com/"
@@ -451,15 +460,17 @@ fn paw_proxy_fetch(
             .unwrap()
     };
 
-    // クエリの解析 (u / r)
+    // クエリの解析 (u / r / f)
     let q = uri.split_once('?').map(|(_, q)| q).unwrap_or("");
     let mut u: Option<String> = None;
     let mut r: Option<String> = None;
+    let mut f = false;
     for pair in q.split('&') {
         let (k, v) = pair.split_once('=').unwrap_or((pair, ""));
         match percent_decode(k).as_str() {
             "u" => u = Some(percent_decode(v)),
             "r" => r = Some(percent_decode(v)),
+            "f" => f = v == "1",
             _ => {}
         }
     }
@@ -471,7 +482,15 @@ fn paw_proxy_fetch(
         Ok(t) => t,
         Err(_) => return bad(400, "bad url"),
     };
-    if !is_proxyable(&target) {
+    // f=1 (force) は pawchive 自身のホストを明示的に中継する。
+    // 通常は is_proxyable の direct host (pawchive.pw) 除外で弾くが、
+    // 端末 DNS が pawchive をブロックする環境 (AdGuard sinkhole 実測・bugs.md) で
+    // 画像を Rust (reqwest) 経由に迂回させるために使用する。SSRF 対策は維持。
+    let is_pawchive_host = {
+        let h = target.host_str().unwrap_or("").to_ascii_lowercase();
+        h == "pawchive.pw" || h.ends_with(".pawchive.pw")
+    };
+    if !is_proxyable(&target) && !(f && is_pawchive_host && !forbidden_host(target.host_str().unwrap_or(""))) {
         return bad(403, "forbidden host");
     }
 
@@ -691,7 +710,8 @@ pub fn run() {
                 api_request,
                 login_request,
                 export_log,
-                export_file
+                export_file,
+                is_debug
             ]
         )
         .run(
