@@ -114,8 +114,11 @@ notes/
   - 標準手順: `%USERPROFILE%\.android\debug.keystore` に keytool で作成
     (パスワード `android` / alias `androiddebugkey` / `CN=Android Debug,O=Android,C=US`)
     をリポジトリへ同梱コピー(パスワードは公開定数のためコミット可)
-  - **パスワードは yml に直書き禁止**: GitHub Secrets `ANDROID_KEYSTORE_PASSWORD`
-    (値は標準の `android`)を参照。ローカルの値・再作成手順は `secret.md` に記録
+  - **例外規定 (公開情報の鍵は直書き可)**: 仕様上公開されている値
+    (標準 debug.keystore のパスワード `android` 等、誰でも作れる公開定数) は
+    yml への直書きを許可する。逆に**非公開の鍵 (正式リリース鍵・API 鍵等) は
+    yml 直書き禁止**で GitHub Secrets 経由とする。ローカルの値・再作成手順は
+    `secret.md` に記録
   - 正式配布時はリリース鍵を Secrets 化し、debug.keystore もリポジトリから削除
 
 ## 検証ツール

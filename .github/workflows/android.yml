@@ -75,8 +75,8 @@ jobs:
 
       - name: Sign APKs (debug keystore / 開発用仮署名)
         # 標準手順の debug.keystore を使用。パスワード "android" は Android SDK の
-        # 公開定数 (debug.keystore は開発環境共通) のため直書きしてよい (ユーザー確定)。
-        # 正式リリース用の鍵では GitHub Secrets を使うこと
+        # 公開定数 (debug.keystore は開発環境共通) のため直書き可 (例外規定: AGENT.md 参照)。
+        # 秘密鍵 (正式リリース用の鍵) では GitHub Secrets を使うこと
         run: |
           set -e
           BT="$ANDROID_HOME/build-tools/35.0.0"
