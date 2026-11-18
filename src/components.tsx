@@ -26,11 +26,11 @@ function usePostMarks(
       })
     loadFavPosts()
     window.addEventListener(FAVPOSTS_CHANGED_EVENT, upd)
-    window.addEventListener("pawchive-follows-changed", upd)
+    window.addEventListener("pawkemo-follows-changed", upd)
     upd()
     return () => {
       window.removeEventListener(FAVPOSTS_CHANGED_EVENT, upd)
-      window.removeEventListener("pawchive-follows-changed", upd)
+      window.removeEventListener("pawkemo-follows-changed", upd)
     }
   }, [service, userId, postId])
   return marks

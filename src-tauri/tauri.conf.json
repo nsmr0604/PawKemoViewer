@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "PawKemoViewer",
   "version": "0.3.0",
-  "identifier": "jp.geek.nsmr0604.pawchive",
+  "identifier": "jp.geek.nsmr0604.pawkemoviewer",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",

@@ -1,8 +1,8 @@
 // IndexedDB ヘルパー: クリエイターキャッシュと未読管理
-// 注意: DB_NAME は旧名 (Pawchive Viewer 時代) のまま — リネームすると
-// 既存端末の IndexedDB (クリエイター索引・既読) が失われるため変更禁止
+// 注意: DB_NAME は v0.3.0 (PawKemoViewer 改名) で "pawkemoviewer" に変更。
+// v0.2.x からの引継ぎは バックアップ書き出し→読み込み で行う
 
-const DB_NAME = "pawchive-viewer"
+const DB_NAME = "pawkemoviewer"
 const DB_VERSION = 1
 
 type StoreName = "creators" | "seen" | "meta"

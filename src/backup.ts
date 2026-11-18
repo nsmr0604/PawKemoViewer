@@ -13,7 +13,7 @@ import { getSettings, updateSettings, type Settings } from "./api"
 import { loadFollows, replaceFollows, type FollowEntry } from "./follows"
 import { setSeen, type SeenEntry } from "./db"
 
-export const BACKUP_TYPE = "pawchive-backup"
+export const BACKUP_TYPE = "pawkemoviewer-backup"
 const BACKUP_VERSION = 1
 
 export interface BackupData {
@@ -41,7 +41,7 @@ export function buildBackup(): string {
 /** バックアップをファイルに書き出し (Rust 側で %APPDATA%/backup/) */
 export async function exportBackup(): Promise<string> {
   const path = await invoke<string>("export_file", {
-    fileName: "pawchive-backup.json",
+    fileName: "pawkemoviewer-backup.json",
     text: buildBackup(),
   })
   return path
@@ -57,7 +57,7 @@ export function parseBackup(text: string): BackupData {
   }
   const b = j as Partial<BackupData>
   if (!b || b.type !== BACKUP_TYPE) {
-    throw new Error("PawKemoViewer (旧 Pawchive Viewer) のバックアップファイルではありません")
+    throw new Error("PawKemoViewer のバックアップファイルではありません")
   }
   return {
     type: BACKUP_TYPE,

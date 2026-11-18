@@ -19,7 +19,7 @@ import { logApiFailure } from "./log"
 // 設定
 // ---------------------------------------------------------------------------
 
-const SETTINGS_KEY = "pawchive-settings"
+const SETTINGS_KEY = "pawkemo-settings"
 
 export interface Settings {
   /** pawchive.pw の session cookie の値 (お気に入り同期に使用) */
@@ -43,7 +43,7 @@ export interface Settings {
 /** 設定変更を上位コンポーネント (App) に通知するイベント名。
  *  モジュール変数 settings を読むだけのコンポーネントは再レンダリングされないため、
  *  変更をイベントで通知する (レイアウトモード即時反映バグの再発防止) */
-export const SETTINGS_CHANGED_EVENT = "pawchive-settings-changed"
+export const SETTINGS_CHANGED_EVENT = "pawkemo-settings-changed"
 
 export function loadSettings(): Settings {
   try {

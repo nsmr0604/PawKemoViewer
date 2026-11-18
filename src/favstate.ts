@@ -8,7 +8,7 @@
 
 import { api, getSettings } from "./api"
 
-const CHANGED_EVENT = "pawchive-favposts-changed"
+const CHANGED_EVENT = "pawkemo-favposts-changed"
 const TTL_MS = 60_000
 
 let favSet: Set<string> | null = null

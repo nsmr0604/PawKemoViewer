@@ -29,7 +29,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "正式リリースビルド (診断コード無し・pawchive-v{VER} リリースへ添付)。無指定時はデバッグビルド"
+        description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
 
@@ -116,7 +116,7 @@ jobs:
             # app-{abi}-release.apk / app-{abi}-unsigned-release.apk から abi を抽出
             abi=$(echo "$base" | sed -n 's/^app-\([a-z0-9_]*\)-\(unsigned-\)\{0,1\}release\.apk$/\1/p')
             if [ -z "$abi" ]; then abi="universal"; fi
-            out="dist-apk/Pawchive.Viewer_${VER}_${abi}.apk"
+            out="dist-apk/PawKemoViewer_${VER}_${abi}.apk"
 
             "$BT/zipalign" -f -p 4 "$apk" "$out.aligned"
             "$BT/apksigner" sign \
@@ -141,7 +141,7 @@ jobs:
       - name: Attach APK to Release
         # push (main) = デバッグビルド → rolling prerelease `debug-latest` へ添付
         # (旧バージョンのアセットは掃除する)。
-        # 手動 release=true のみ正式リリース pawchive-v{VER} へ添付。
+        # 手動 release=true のみ正式リリース pawkemoviewer-v{VER} へ添付。
         # PR ビルドは artifact のみ (リリースへは出さない)
         if: ${{ github.event_name != 'pull_request' }}
         env:
@@ -151,8 +151,8 @@ jobs:
           VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
 
           if [ "${{ inputs.release }}" = "true" ]; then
-            gh release upload "pawchive-v${VER}" dist-apk/*.apk --clobber \
-              || gh release create "pawchive-v${VER}" dist-apk/*.apk \
+            gh release upload "pawkemoviewer-v${VER}" dist-apk/*.apk --clobber \
+              || gh release create "pawkemoviewer-v${VER}" dist-apk/*.apk \
                    --title "PawKemoViewer v${VER}" \
                    --notes "Automated build (APK: dev-signed for testing)."
             exit 0

@@ -1,9 +1,9 @@
 // クリエイターフォローは pawchive アカウントを同期元とし、ローカルはそのミラーとして扱う。
 import { api, getSettings } from "./api"
 
-const KEY = "pawchive-follows"
-const CHANGED_EVENT = "pawchive-follows-changed"
-const MIGRATED_KEY = "pawchive-follows-migrated-to-account"
+const KEY = "pawkemo-follows"
+const CHANGED_EVENT = "pawkemo-follows-changed"
+const MIGRATED_KEY = "pawkemo-follows-migrated-to-account"
 let syncInFlight: Promise<number> | null = null
 
 export interface FollowEntry {

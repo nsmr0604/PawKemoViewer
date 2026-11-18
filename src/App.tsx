@@ -49,8 +49,8 @@ export default function App() {
 
   useEffect(() => {
     const onFollowsChanged = () => setFollowCount(loadFollows().length)
-    window.addEventListener("pawchive-follows-changed", onFollowsChanged)
-    return () => window.removeEventListener("pawchive-follows-changed", onFollowsChanged)
+    window.addEventListener("pawkemo-follows-changed", onFollowsChanged)
+    return () => window.removeEventListener("pawkemo-follows-changed", onFollowsChanged)
   }, [])
 
   // テーマをルート要素に反映 (設定 → 表示 で切替、即時反映)

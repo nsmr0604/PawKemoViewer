@@ -121,7 +121,7 @@ export function PostPage({
       openedAt: new Date().toISOString(),
     }
     try {
-      sessionStorage.setItem("pawchive-current-post-context", JSON.stringify(contextRecord))
+      sessionStorage.setItem("pawkemo-current-post-context", JSON.stringify(contextRecord))
     } catch {
       // sessionStorage が利用できない環境でも画面表示は継続する。
     }

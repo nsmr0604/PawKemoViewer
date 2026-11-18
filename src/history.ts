@@ -1,7 +1,7 @@
 // 検索履歴 (localStorage)。JHenTai / EhViewer の検索履歴チップ相当。
 // 投稿検索 (Home) とクリエイター検索 (Creators) で共用する。
 
-const KEY = "pawchive-search-history"
+const KEY = "pawkemo-search-history"
 const MAX = 20
 
 export function getSearchHistory(): string[] {

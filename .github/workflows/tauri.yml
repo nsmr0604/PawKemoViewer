@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "正式リリースビルド (診断コード無し・pawchive-v{VER} リリースへ添付)。無指定時はデバッグビルド"
+        description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
 
@@ -44,14 +44,14 @@ jobs:
         run: |
           set -euo pipefail
           VER=$(jq -r '.version' src-tauri/tauri.conf.json)
-          TAG="pawchive-v${VER}"
+          TAG="pawkemoviewer-v${VER}"
 
           # 同じバージョンの既存リリースからPC向け成果物だけを削除する。
           # Android APKはAndroid workflowが管理するため残す。
           if gh release view "$TAG" >/dev/null 2>&1; then
             mapfile -t assets < <(gh release view "$TAG" --json assets --jq '.assets[].name')
             for asset in "${assets[@]}"; do
-              if [[ "$asset" == Pawchive.Viewer* && "$asset" != *.apk ]]; then
+              if [[ "$asset" == PawKemoViewer* && "$asset" != *.apk ]]; then
                 gh release delete-asset "$TAG" "$asset" --yes
                 echo "removed previous PC asset: $asset"
               fi
@@ -132,7 +132,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ inputs.release == true && 'pawchive-v__VERSION__' || 'debug-latest' }}
+          tagName: ${{ inputs.release == true && 'pawkemoviewer-v__VERSION__' || 'debug-latest' }}
           releaseName: ${{ inputs.release == true && 'PawKemoViewer v__VERSION__' || 'PawKemoViewer debug build' }}
           releaseBody: ${{ inputs.release == true && 'Automated release build.' || 'Automated debug build. デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式).' }}
           releaseDraft: false

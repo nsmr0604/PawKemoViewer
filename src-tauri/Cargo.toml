@@ -1,5 +1,5 @@
 [package]
-name = "app"
+name = "pawkemoviewer"
 version = "0.3.0"
 description = "PawKemoViewer"
 authors = ["nsmr0604"]
@@ -15,7 +15,7 @@ rust-version = "1.90"
 debug-diag = []
 
 [lib]
-name = "app_lib"
+name = "pawkemoviewer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

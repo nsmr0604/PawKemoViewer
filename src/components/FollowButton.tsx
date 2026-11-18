@@ -9,8 +9,8 @@ export function FollowButton({ service, id }: { service: string; id: string }) {
 
   useEffect(() => {
     const update = () => setFollowed(isFollowed(service, id))
-    window.addEventListener("pawchive-follows-changed", update)
-    return () => window.removeEventListener("pawchive-follows-changed", update)
+    window.addEventListener("pawkemo-follows-changed", update)
+    return () => window.removeEventListener("pawkemo-follows-changed", update)
   }, [service, id])
 
   // キャッシュ済みクリエイター名を補完 (フォローリスト表示用)
@@ -22,7 +22,7 @@ export function FollowButton({ service, id }: { service: string; id: string }) {
       const f = list.find((x) => x.service === service && x.id === id)
       if (f && f.name !== row.name && row.name) {
         f.name = row.name
-        localStorage.setItem("pawchive-follows", JSON.stringify(list))
+        localStorage.setItem("pawkemo-follows", JSON.stringify(list))
       }
     })
     return () => { alive = false }

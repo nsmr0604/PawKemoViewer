@@ -446,7 +446,7 @@ export function SettingsPage() {
               rows={5}
               value={backupPaste}
               onChange={(e) => setBackupPaste(e.target.value)}
-              placeholder='{"type":"pawchive-backup",...} を貼り付け'
+              placeholder='{"type":"pawkemoviewer-backup",...} を貼り付け'
               className="mono"
             />
             <button

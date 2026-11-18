@@ -24,12 +24,12 @@ export function FavoritesPage() {
   const { sessionKey } = getSettings()
   // 選択タブを保存しておき、次回起動時に復元する (FANBOX Viewer「ホーム既定タブ」型)
   const [tab, setTabState] = useState<"follows" | "account">(() => {
-    const t = localStorage.getItem("pawchive-fav-tab")
+    const t = localStorage.getItem("pawkemo-fav-tab")
     return t === "account" ? "account" : "follows"
   })
   const setTab = (t: "follows" | "account") => {
     setTabState(t)
-    localStorage.setItem("pawchive-fav-tab", t)
+    localStorage.setItem("pawkemo-fav-tab", t)
   }
   const [follows, setFollows] = useState<FollowState[]>([])
   const [accountFavs, setAccountFavs] = useState<AccountFavorite[] | null>(null)

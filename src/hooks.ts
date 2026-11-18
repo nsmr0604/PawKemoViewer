@@ -14,7 +14,7 @@ export function useDebounced<T>(value: T, delay = 400): T {
 // スクロール位置の記憶 (戻るナビゲーション時に復元)
 // ---------------------------------------------------------------------------
 
-const SCROLL_KEY = "pawchive-scroll"
+const SCROLL_KEY = "pawkemo-scroll"
 
 type ScrollMap = Record<string, number>
 
