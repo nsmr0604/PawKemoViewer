@@ -378,10 +378,10 @@ export function SettingsPage() {
 
         <div className="setting-item">
           <div className="setting-text">
-            <span>画像を pkv:// プロキシ経由で読み込む</span>
+            <span>FANBOX / Patreon の画像を pkv:// プロキシ経由で読み込む</span>
             <small>
-              DNS フィルタリング (AdGuard 等) で画像が表示されない端末向けの迂回設定。
-              通常は無効のまま推奨
+              記事URLの Referer とブラウザーの User-Agent を付けて取得します。
+              Pawchive 本体・API・画像サーバーは常に直接通信します。
             </small>
           </div>
           <button
