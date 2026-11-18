@@ -1,34 +1,78 @@
 # PawKemoViewer
 
-PawKemoViewer は
-pawchive.pw の非公式クライアントです。
+[pawchive.pw](https://pawchive.pw) の非公式クライアントです。Windows / Linux / macOS / Android に対応しています。
 
-## 機能
+pawchive の投稿・クリエイター・お気に入りを、デスクトップとモバイルの両方で快適に閲覧するためのビューアです。ブラウザを開かずに、フォローしたクリエイターの新着や保存済みの投稿をすぐ確認できます。
 
-- 投稿閲覧
-- クリエイター検索
-- フォロー
-- お気に入り同期
+## 主な機能
 
-## 対応環境
+- **投稿一覧**: 新着投稿の表示 (グリッド / リスト切替)、無限スクロール
+- **クリエイター**: 検索、プロフィール・タグ・告知の表示、フォロー (★ バッジ付き)
+- **投稿詳細**: 本文、画像・動画 (本文の下に縦一列で表示)、コメント、改訂履歴、タグ、取得日時
+- **投稿の前後移動** と **タグからの絞り込み**
+- **お気に入り**: 投稿・クリエイターの一覧、ソート
+- **URL 貼り付け**: pawchive の投稿 URL / クリエイター URL / fanbox の投稿 URL を貼り付けて直接開く
+- **元サービスで開く**: fanbox / patreon の投稿・クリエイターページを外部ブラウザで開く (リファラーは送信しません)
+- **アイコンキャッシュ**: クリエイターアイコンを端末に保存し、2 回目以降は通信せずに表示
+- **省データ表示**
+  - 低通信モード: 画像の自動読み込みを止めます
+  - 省データのリスト表示: 投稿内のファイルを名前の一覧で表示し、必要なものだけ読み込みます
+- **バックアップ**: フォロー・既読・設定を JSON で書き出し / 読み込み
+- **テーマ**: ダーク / ライト、レイアウト自動判定 (PC / モバイル切替可)
 
-- Windows
-- macOS
-- Linux
+## 使い方
+
+### ログイン
+
+設定 → アカウント から次のどちらかでログインします。
+
+- **ID / パスワード**でログイン
+- pawchive のセッションキーを直接入力
+
+ログインすると、お気に入りとフォローが利用できるようになります。ログインしなくても、投稿とクリエイターの閲覧は可能です。
+
+### 画像が表示されない場合
+
+DNS フィルタ (AdGuard など) やネットワーク環境によっては、画像や API に接続できないことがあります。その場合は、設定の **「画像を pkv:// プロキシ経由で読み込む」** を有効にしてください。
 
 ## ダウンロード
 
-GitHub Releases を参照
+[GitHub Releases](https://github.com/nsmr0604/pawchive/releases) から入手できます。
+
+| プラットフォーム | ファイル |
+|---|---|
+| Windows | `PawKemoViewer_x.y.z_x64-setup.exe` / `.msi` |
+| Linux | `.AppImage` / `.deb` |
+| macOS | `.dmg` (Apple Silicon) |
+| Android | `PawKemoViewer_x.y.z_universal.apk` |
+
+- Windows / macOS の実行ファイルは現在未署名です。Windows では初回起動時にファイアウォールの許可が必要になる場合があります。macOS では右クリックから開いてください。
+- Android の APK は署名済みですが、Play ストアでは配布していません。端末の「提供元不明のアプリ」を許可してインストールしてください。
+- 開発中のビルドは [debug-latest](https://github.com/nsmr0604/pawchive/releases/tag/debug-latest) (プレリリース) に置かれます。
 
 ## ドキュメント
 
-- docs/DEVELOPMENT.md
-- docs/BUILD.md
-- docs/API.md
-- docs/LICENSES.md
+- [開発ガイド](docs/DEVELOPMENT.md): アーキテクチャ、ディレクトリ構成、ストレージ
+- [ビルドガイド](docs/BUILD.md): ローカルビルド、CI、リリース手順
+- [API 仕様](docs/API.md): pawchive API と Tauri コマンドの仕様
+- [ライセンス一覧](docs/LICENSES.md): 利用しているオープンソースソフトウェア
+
+## 開発
+
+```bash
+npm install
+npm run tauri:dev     # 開発実行 (Vite + Tauri)
+```
+
+ビルドの詳細は [docs/BUILD.md](docs/BUILD.md) を参照してください。
+
+## 注意事項
+
+- 本アプリは pawchive.pw の非公式クライアントであり、pawchive・fanbox・patreon などの各サービスとは提携していません。
+- 閲覧データ (フォロー・既読・キャッシュ) は端末内にのみ保存されます。
+- 過剰な通信を避けるため、API 呼び出しは同時実行数と間隔を制限しています。
 
 ## ライセンス
 
-MIT License — 詳細は [LICENSE](LICENSE) を参照してください。
-
+[MIT License](LICENSE) で公開しています。
 第三者ソフトウェアの帰属は [docs/LICENSES.md](docs/LICENSES.md) を参照してください。
