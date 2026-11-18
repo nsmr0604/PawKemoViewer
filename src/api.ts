@@ -480,7 +480,7 @@ export function fileUrl(f: PawFile | undefined, service?: string, postId?: strin
   if (!f.path) return ""
   const server = f.server?.replace(/\/$/, "") || "https://n1.pawchive.pw"
   const name = f.name ? `?f=${encodeURIComponent(f.name)}` : ""
-  return `${server}/data${f.path}${name}`
+  return proxyFileUrl(`${server}/data${f.path}${name}`, service, postId)
 }
 
 /** サムネイル URL (縮小画像が無い場合は画像側でフォールバック) */
