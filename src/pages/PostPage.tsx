@@ -468,7 +468,7 @@ export function PostPage({
             <figure key={i} className="post-file">
               {isVideoFile(f) ? (
                 <video
-                  src={fileUrl(f, postContext.service, postContext.postId)}
+                  src={fileUrl(f, postContext.service, postContext.postId, proxyReferer)}
                   controls
                   preload="metadata"
                   playsInline
@@ -477,12 +477,12 @@ export function PostPage({
               ) : (
                 <img
                   loading="lazy"
-                  src={loadOriginalImages ? fileUrl(f, postContext.service, postContext.postId) : thumbUrl(f)}
+                  src={loadOriginalImages ? fileUrl(f, postContext.service, postContext.postId, proxyReferer) : thumbUrl(f)}
                   alt={f.name}
                   onClick={() => setLightboxIndex(i)}
                   onError={(e) => {
                     const el = e.currentTarget
-                    const full = fileUrl(f, postContext.service, postContext.postId)
+                    const full = fileUrl(f, postContext.service, postContext.postId, proxyReferer)
                     const src = el.getAttribute("src") || ""
                     if (src !== full) {
                       logWarn(`投稿画像サムネイル取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} file=${f.path}; full URL で再試行`)
@@ -495,7 +495,7 @@ export function PostPage({
                 />
               )}
               <figcaption>
-                <a href={fileUrl(f, postContext.service, postContext.postId)} target="_blank" rel="noreferrer" download>
+                <a href={fileUrl(f, postContext.service, postContext.postId, proxyReferer)} target="_blank" rel="noreferrer" download>
                   {f.name}
                 </a>
               </figcaption>
@@ -544,7 +544,7 @@ export function PostPage({
                   <span className="post-file-name">{f.name || "(名称なし)"}</span>
                   <span className="small">{isVideoFile(f) ? "動画" : "画像"}</span>
                   {loadedFiles.has(i) ? (
-                    <a href={fileUrl(f, postContext.service, postContext.postId)} target="_blank" rel="noreferrer" download>
+                    <a href={fileUrl(f, postContext.service, postContext.postId, proxyReferer)} target="_blank" rel="noreferrer" download>
                       保存 ↗
                     </a>
                   ) : (
@@ -555,9 +555,9 @@ export function PostPage({
                 </div>
                 {loadedFiles.has(i) &&
                   (isVideoFile(f) ? (
-                    <video src={fileUrl(f, postContext.service, postContext.postId)} controls preload="metadata" playsInline />
+                    <video src={fileUrl(f, postContext.service, postContext.postId, proxyReferer)} controls preload="metadata" playsInline />
                   ) : (
-                    <img loading="lazy" decoding="async" src={loadOriginalImages ? fileUrl(f, postContext.service, postContext.postId) : thumbUrl(f)} alt={f.name} />
+                    <img loading="lazy" decoding="async" src={loadOriginalImages ? fileUrl(f, postContext.service, postContext.postId, proxyReferer) : thumbUrl(f)} alt={f.name} />
                   ))}
               </li>
             ))}
@@ -632,7 +632,7 @@ export function PostPage({
                 <div className="comment-head">
                   <b>{c.commenter_name || c.commenter}</b> · {fmtDate(c.published)}
                 </div>
-                <div className="comment-body">{sanitizeContent(c.content, postContext.service, postContext.postId)}</div>
+                <div className="comment-body">{sanitizeContent(c.content, postContext.service, postContext.postId, proxyReferer)}</div>
               </li>
             ))}
           </ul>
@@ -682,14 +682,14 @@ export function PostPage({
           <div className="lightbox" onClick={() => setLightboxIndex(null)}>
             {isVideoFile(lightbox) ? (
               <video
-                src={fileUrl(lightbox, postContext.service, postContext.postId)}
+                src={fileUrl(lightbox, postContext.service, postContext.postId, proxyReferer)}
                 controls
                 autoPlay
                 playsInline
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <img src={fileUrl(lightbox, postContext.service, postContext.postId)} alt={lightbox.name} onClick={(e) => e.stopPropagation()} />
+              <img src={fileUrl(lightbox, postContext.service, postContext.postId, proxyReferer)} alt={lightbox.name} onClick={(e) => e.stopPropagation()} />
             )}
             <div className="lightbox-caption" onClick={(e) => e.stopPropagation()}>
               {allFiles.length > 1 && (
@@ -700,7 +700,7 @@ export function PostPage({
               <button className="btn" onClick={() => hasPrev && setLightboxIndex(lightboxIndex - 1)} disabled={!hasPrev}>
                 ←
               </button>
-              <a href={fileUrl(lightbox, postContext.service, postContext.postId)} target="_blank" rel="noreferrer" download>
+              <a href={fileUrl(lightbox, postContext.service, postContext.postId, proxyReferer)} target="_blank" rel="noreferrer" download>
                 {lightbox.name}
               </a>
               <button className="btn" onClick={() => hasNext && setLightboxIndex(lightboxIndex + 1)} disabled={!hasNext}>
