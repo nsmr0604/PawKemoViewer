@@ -423,7 +423,7 @@ export function PostPage({
         <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service) }} />
       )}
 
-      {allFiles.length > 0 && !listMode && (
+      {sourceFiles.length > 0 && !listMode && (
         <div className="post-files">
           <div className="section-row">
             <span className="small">{allFiles.length} 件 · {loadOriginalImages ? "元画像" : "サムネイル"}表示</span>
@@ -441,6 +441,7 @@ export function PostPage({
               {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
             </button>
           </div>
+          {allFiles.length === 0 && <p className="small">表示対象のファイルはありません。</p>}
           {allFiles.map((f, i) => (
             <figure key={i} className="post-file">
               {isVideoFile(f) ? (
@@ -486,7 +487,7 @@ export function PostPage({
         </div>
       )}
 
-      {allFiles.length > 0 && listMode && (
+      {sourceFiles.length > 0 && listMode && (
         <div className="post-file-list-wrap">
           <div className="section-row">
             <span className="small">{allFiles.length} 件 (省データ表示・自動読み込みなし)</span>
