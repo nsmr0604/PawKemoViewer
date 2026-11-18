@@ -472,15 +472,15 @@ export function normalizeTags(v: unknown): string[] {
 /** 本体ファイル URL (元ファイル名を付けてダウンロード時の名前にする)。
  *  fanbox / patreon 由来の一時 URL (署名付き) はリファラーチェックでブロックされるため
  *  同一オリジンプロキシ経由にする。 */
-export function fileUrl(f: PawFile | undefined, service?: string, postId?: string): string {
+export function fileUrl(f: PawFile | undefined, service?: string, postId?: string, refererUrl?: string): string {
   if (!f) return ""
   // deferred ファイル (動画等) は署名付き一時 URL を使う
-  if (f.temp_download_url) return proxyFileUrl(f.temp_download_url, service, postId)
-  if (!f.path && f.temp_url) return proxyFileUrl(f.temp_url, service, postId)
+  if (f.temp_download_url) return proxyFileUrl(f.temp_download_url, service, postId, refererUrl)
+  if (!f.path && f.temp_url) return proxyFileUrl(f.temp_url, service, postId, refererUrl)
   if (!f.path) return ""
   const server = f.server?.replace(/\/$/, "") || "https://n1.pawchive.pw"
   const name = f.name ? `?f=${encodeURIComponent(f.name)}` : ""
-  return proxyFileUrl(`${server}/data${f.path}${name}`, service, postId)
+  return proxyFileUrl(`${server}/data${f.path}${name}`, service, postId, refererUrl)
 }
 
 /** サムネイル URL (縮小画像が無い場合は画像側でフォールバック) */
@@ -522,7 +522,7 @@ function pkvProxyUrl(url: string, referer: string): string {
 
 /** リファラーチェックでブロックされる可能性のあるファイル URL を paw 経由に変換する。
  *  pawchive 自身のミラー (n1 / img) はそのまま。 */
-export function proxyFileUrl(url: string, service?: string, postId?: string): string {
+export function proxyFileUrl(url: string, service?: string, postId?: string, refererUrl?: string): string {
   if (!url) return url
   let h: URL
   try {
@@ -534,20 +534,20 @@ export function proxyFileUrl(url: string, service?: string, postId?: string): st
   if (!isHotlinkHost(h.hostname)) return url
   if (!getSettings().proxyImages) return url
   // 投稿記事を参照元にする。記事IDが無い場合のみサービスのトップを使う。
-  const referer = service === "patreon"
+  const referer = refererUrl || (service === "patreon"
     ? (postId ? `https://www.patreon.com/posts/${encodeURIComponent(postId)}` : "https://www.patreon.com/")
     : service === "fanbox"
       ? (postId ? `https://www.fanbox.cc/posts/${encodeURIComponent(postId)}` : "https://www.fanbox.cc/")
       : h.hostname.endsWith("patreon.com") || h.hostname.endsWith("patreonusercontent.com")
         ? "https://www.patreon.com/"
-        : "https://www.fanbox.cc/"
+        : "https://www.fanbox.cc/")
   return pkvProxyUrl(h.toString(), referer)
 }
 
 /** 投稿本文から張られた外部リンクを paw 経由に変換する。
  *  リンク先がリファラー (元サイト = fanbox / patreon) を検証してブロックする
  *  ケースに対応。fanbox / patreon / pawchive 自体へのリンクはそのまま開く。 */
-export function proxyLinkUrl(url: string, service?: string, postId?: string): string {
+export function proxyLinkUrl(url: string, service?: string, postId?: string, refererUrl?: string): string {
   if (!url) return url
   let h: URL
   try {
@@ -559,11 +559,11 @@ export function proxyLinkUrl(url: string, service?: string, postId?: string): st
   if (h.origin === location.origin) return url
   // fanbox / patreon 自体は SPA のためそのまま (リファラーチェックが無い・実測)
   if (h.hostname.endsWith("pawchive.pw") || isHotlinkHost(h.hostname)) return url
-  const referer = service === "patreon"
+  const referer = refererUrl || (service === "patreon"
     ? (postId ? `https://www.patreon.com/posts/${encodeURIComponent(postId)}` : "https://www.patreon.com/")
     : service === "fanbox"
       ? (postId ? `https://www.fanbox.cc/posts/${encodeURIComponent(postId)}` : "https://www.fanbox.cc/")
-      : "https://www.fanbox.cc/"
+      : "https://www.fanbox.cc/")
   return pkvProxyUrl(h.toString(), referer)
 }
 
