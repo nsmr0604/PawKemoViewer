@@ -47,6 +47,12 @@ jobs:
 
     runs-on: ubuntu-24.04
 
+    env:
+      # push / PR = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
+      # 手動 release=true のみ診断コード無しの正式リリースビルド。
+      # ジョブレベルで設定する (tauri build の beforeBuildCommand でも同じフラグを使うため)
+      VITE_DEBUG_DIAG: ${{ inputs.release == true && '' || '1' }}
+
     steps:
 
       - name: Checkout
@@ -83,10 +89,7 @@ jobs:
         run: npm ci
 
       - name: Build Frontend
-        # push / PR = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
-        # 手動 release=true のみ診断コード無しの正式リリースビルド (src/debug.ts 参照)
-        env:
-          VITE_DEBUG_DIAG: ${{ inputs.release == true && '' || '1' }}
+        # ジョブレベル env (VITE_DEBUG_DIAG) を使用
         run: npm run build
 
       - name: Initialize Android
