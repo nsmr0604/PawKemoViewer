@@ -32,6 +32,14 @@ export interface PawPost {
   attachments: PawFile[]
   next?: string | null
   prev?: string | null
+  // 実測で返るがスキーマに明記のないフィールド (pawchive-api.md 参照)
+  tags?: string[]
+  origin?: string
+  preview_state?: string
+  has_full?: boolean
+  detail_fetched?: boolean
+  /** 一覧レスポンスのみ (詳細には無い) */
+  substring?: string
 }
 
 export interface PawRevision extends PawPost {
@@ -94,7 +102,11 @@ export interface HashLookupResult {
   discord_posts: unknown[]
 }
 
-export interface AccountFavorite {
+/** /account/favorites の応答。
+ *  type=post は **PawPost 全フィールド + faved_seq** の配列 (実測 2026-11-18・
+ *  スキーマ記載の {faved_seq,id,...} スリム形は type=artist 向け)。
+ *  type=artist はスリム形 (name=クリエイター名) */
+export interface AccountFavorite extends Partial<PawPost> {
   faved_seq?: number
   id: string
   indexed?: string

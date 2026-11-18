@@ -5,6 +5,7 @@ import { Spinner, PostGrid, ErrorBox } from "../components"
 import { CreatorHeader } from "./Creators"
 import { FollowButton } from "../components/FollowButton"
 import { useDebounced, useScrollMemory } from "../hooks"
+import { parseHash } from "../router"
 import { MIN_QUERY } from "./Home"
 
 const PAGE = 50
@@ -12,7 +13,11 @@ const PAGE = 50
 export function CreatorPage({ service, id }: { service: string; id: string }) {
   const [posts, setPosts] = useState<PawPost[]>([])
   const [tags, setTags] = useState<PawTag[] | null>(null)
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  // 投稿詳細のタグチップからの深リンク (#creator/...?tag=xxx) を初期選択にする
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
+    const t = parseHash().query.get("tag")
+    return t ? [t] : []
+  })
   const [input, setInput] = useState("")
   const q = useDebounced(input, 400)
   const [offset, setOffset] = useState(0)

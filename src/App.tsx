@@ -120,7 +120,16 @@ export default function App() {
       content = <CreatorsPage />
       break
     case "creator":
-      content = <CreatorPage service={route.params.service} id={route.params.id} />
+      // key で確実に再マウント: クリエイター間の移動やタグ深リンク (?tag=) で
+      // 状態 (選択タグ・エラー) を引きずらない。同一 URL への再遷移でも
+      // エラー後の再試行ができるようになる
+      content = (
+        <CreatorPage
+          key={`creator:${route.params.service}:${route.params.id}`}
+          service={route.params.service}
+          id={route.params.id}
+        />
+      )
       break
     case "post":
       content = (

@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
 import { getAllSeen, setSeen, getSeen } from "../db"
 import { loadFollows, removeFollow, syncFollowsWithAccount } from "../follows"
-import { ErrorBox, Empty, fmtDate } from "../components"
+import { ErrorBox, Empty, PostGrid, fmtDate } from "../components"
 import { navigate } from "../router"
 
 /** 自動新着チェックのクールダウン (この間はネットワークを叩かない) */
@@ -36,6 +36,22 @@ export function FavoritesPage() {
   const [accountErr, setAccountErr] = useState<unknown>(null)
   const [syncResult, setSyncResult] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
+  // ソート (web の favorites UI 相当: お気に入り日 / 投稿日 / 取得日 + 降順/昇順)
+  const [favSort, setFavSort] = useState<"faved" | "published" | "added">("faved")
+  const [favOrder, setFavOrder] = useState<"desc" | "asc">("desc")
+
+  const sortedFavs = useMemo(() => {
+    if (!accountFavs) return []
+    const key = (p: AccountFavorite): number => {
+      if (favSort === "faved") return p.faved_seq ?? 0
+      const iso = favSort === "published" ? p.published || p.added : p.added || p.published
+      const t = Date.parse(iso || "")
+      return isNaN(t) ? 0 : t
+    }
+    const arr = [...accountFavs]
+    arr.sort((a, b) => (favOrder === "desc" ? key(b) - key(a) : key(a) - key(b)))
+    return arr
+  }, [accountFavs, favSort, favOrder])
 
   const refresh = useCallback(async () => {
     const list = loadFollows()
@@ -169,6 +185,14 @@ export function FavoritesPage() {
     }
   }, [])
 
+  // アカウントタブを開いた時点で自動取得 (web の favorites と同じ挙動)
+  useEffect(() => {
+    if (tab === "account" && sessionKey && accountFavs === null) {
+      loadAccount()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, sessionKey])
+
   const newCount = follows.filter((f) => f.isNew).length
 
   return (
@@ -289,26 +313,41 @@ export function FavoritesPage() {
             </div>
           )}
           {accountFavs && accountFavs.length === 0 && <Empty text="アカウントのお気に入りはありません" />}
-          <div className="creator-list">
-            {accountFavs?.map((f) => (
-              <div
-                key={`${f.service}:${f.id}`}
-                className="creator-row"
-                onClick={() => f.service && f.id && navigate(`/creator/${f.service}/${f.id}`)}
-              >
-                <div className="creator-row-main">
-                  <div className="creator-avatar">{(f.name || f.id).slice(0, 1).toUpperCase()}</div>
-                  <div>
-                    <div className="creator-name">{f.name || f.id}</div>
-                    <div className="creator-sub">
-                      {f.service} · {f.id}
-                      {f.updated ? ` · 更新 ${fmtDate(f.updated)}` : ""}
-                    </div>
-                  </div>
-                </div>
+          {accountFavs && accountFavs.length > 0 && (
+            <div className="hint-row">
+              <span>{accountFavs.length} 件</span>
+              <div className="segmented">
+                <button
+                  className={`seg ${favSort === "faved" ? "seg-active" : ""}`}
+                  onClick={() => setFavSort("faved")}
+                >
+                  お気に入り日
+                </button>
+                <button
+                  className={`seg ${favSort === "published" ? "seg-active" : ""}`}
+                  onClick={() => setFavSort("published")}
+                >
+                  投稿日
+                </button>
+                <button
+                  className={`seg ${favSort === "added" ? "seg-active" : ""}`}
+                  onClick={() => setFavSort("added")}
+                >
+                  取得日
+                </button>
+                <button
+                  className={`seg ${favOrder === "asc" ? "seg-active" : ""}`}
+                  onClick={() => setFavOrder(favOrder === "desc" ? "asc" : "desc")}
+                  title={favOrder === "desc" ? "�順へ切替" : "降順へ切替"}
+                >
+                  {favOrder === "desc" ? "降順" : "昇順"}
+                </button>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+          {sortedFavs.length > 0 && (
+            <PostGrid posts={sortedFavs as PawPost[]} />
+          )}
         </>
       )}
     </div>

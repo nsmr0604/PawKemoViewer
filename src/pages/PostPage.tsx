@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, apiStatus, fileUrl, postUrl, thumbUrl, isVideoFile, pawchiveProxyUrl } from "../api"
+import { api, apiStatus, getSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile, pawchiveProxyUrl } from "../api"
 import type { PawComment, PawPost, PawRevision, HashLookupResult, PawFile } from "../types"
 import {
   Spinner,
@@ -42,6 +42,8 @@ export function PostPage({
   /** ライトボックスで開いているファイルの allFiles 内インデックス (null=閉じている) */
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [error, setError] = useState<unknown>(null)
+  // お気に入り状態 (web の ☆ Favorite 相当)。セッションが無い場合は表示しない
+  const [faved, setFaved] = useState<"none" | "checking" | "yes" | "no" | "busy" | "err">("none")
 
   const load = useCallback(async () => {
     if (!validContext) {
@@ -126,6 +128,28 @@ export function PostPage({
       logError(`不正な投稿URL service=${String(service)} creatorId=${String(creatorId)} postId=${String(postId)}`)
     }
   }, [service, creatorId, postId, validContext])
+
+  // お気に入り状態の初期判定 (アカウントお気に入り一覧に含まれるか・キャッシュ 60 秒)
+  useEffect(() => {
+    if (!getSettings().sessionKey) {
+      setFaved("none")
+      return
+    }
+    let alive = true
+    setFaved("checking")
+    api
+      .accountFavorites("post")
+      .then((list) => {
+        if (!alive) return
+        setFaved(list.some((p) => String(p.id) === postId) ? "yes" : "no")
+      })
+      .catch(() => {
+        if (alive) setFaved("no")
+      })
+    return () => {
+      alive = false
+    }
+  }, [postId])
 
   useEffect(() => {
     load()
@@ -236,6 +260,32 @@ export function PostPage({
     if (targetId && validContext) navigate(`/post/${postContext.service}/${encodeURIComponent(postContext.creatorId)}/${encodeURIComponent(targetId)}`)
   }
 
+  /** お気に入りの追加/解除 (web の ☆ Favorite 相当) */
+  const toggleFav = async () => {
+    if (faved !== "yes" && faved !== "no") return
+    const next = faved === "no" ? "yes" : "no"
+    setFaved("busy")
+    try {
+      if (next === "yes") {
+        await api.favPostAdd(postContext.service, postContext.creatorId, postContext.postId)
+      } else {
+        await api.favPostRemove(postContext.service, postContext.creatorId, postContext.postId)
+      }
+      // キャッシュを消して次の詳細表示で最新状態を判定させる
+      clearApiCache()
+      setFaved(next)
+      logInfo(`お気に入り${next === "yes" ? "追加" : "解除"} service=${postContext.service} postId=${postContext.postId}`)
+    } catch (e) {
+      logError(`お気に入り操作失敗 service=${postContext.service} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
+      const st = apiStatus(e)
+      if (st === 401) {
+        setFaved("none") // セッション無効 → ボタン非表示 (設定で再設定を促す)
+      } else {
+        setFaved("err")
+      }
+    }
+  }
+
   const allFiles: PawFile[] = [
     ...(displayPost.file?.path ? [displayPost.file] : []),
     ...(displayPost.attachments || []),
@@ -253,10 +303,40 @@ export function PostPage({
           {" · "}
           公開 {fmtDate(displayPost.published)}
           {displayPost.edited && displayPost.edited !== displayPost.published && ` · 編集 ${fmtDate(displayPost.edited)}`}
+          {displayPost.added && ` · 取得 ${fmtDate(displayPost.added)}`}
           {revisions && revisions.length > 0 && (activeRevision ? ` · 旧版 ${revisions.findIndex((r) => r.revision_id === activeRevision.revision_id) + 1}/${revisions.length}` : " · 最新版")}
         </div>
+        {(() => {
+          const tags = normalizeTags(displayPost.tags)
+          return tags.length > 0 ? (
+            <div className="tag-chips">
+              {tags.map((t) => (
+                <span
+                  key={t}
+                  className="chip"
+                  onClick={() =>
+                    navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}?tag=${encodeURIComponent(t)}`)
+                  }
+                  title={`クリエイターの「${t}」タグで絞り込む`}
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          ) : null
+        })()}
         <div className="creator-actions">
           <FollowButton service={postContext.service} id={postContext.creatorId} />
+          {faved !== "none" && (
+            <button
+              className="btn btn-ghost"
+              onClick={toggleFav}
+              disabled={faved === "checking" || faved === "busy"}
+              title={faved === "err" ? "操作に失敗しました (再クリックで再試行)" : "アカウントの投稿お気に入りに追加/解除します"}
+            >
+              {faved === "checking" ? "…" : faved === "yes" ? "★ お気に入り中" : faved === "err" ? "☆ 失敗 (再試行)" : "☆ お気に入り"}
+            </button>
+          )}
           <div className="post-quick-nav">
             <button
               className="btn btn-sm"

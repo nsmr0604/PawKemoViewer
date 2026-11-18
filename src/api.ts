@@ -387,6 +387,41 @@ export const api = {
   version: () => request<string>("/app_version"),
 }
 
+/** 投稿の tags を正規化する。
+ *  詳細 API は tags を **PostgreSQL 配列リテラル文字列**で返すことがある
+ *  (実測 2026-11-18: "tags":"{\"one piece\"}" = text[] の文字列化)。
+ *  配列 / JSON 文字列 / PG 配列リテラルの両方に対応 */
+export function normalizeTags(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string")
+  if (typeof v === "string") {
+    const s = v.trim()
+    try {
+      const p = JSON.parse(s) as unknown
+      if (Array.isArray(p)) return normalizeTags(p)
+    } catch {
+      /* JSON でなければ下で PG 配列リテラルとして試す */
+    }
+    // PostgreSQL 配列リテラル (例: {"one piece"} / {"a","b c"})
+    if (s.startsWith("{") && s.endsWith("}")) {
+      const inner = s.slice(1, -1).trim()
+      if (!inner) return []
+      const out: string[] = []
+      const re = /"((?:[^"\\]|\\.)*)"|([^,]+)/g
+      let m: RegExpExecArray | null
+      while ((m = re.exec(inner))) {
+        if (m[1] !== undefined) {
+          out.push(m[1].replace(/\\(.)/g, "$1"))
+        } else if (m[2] !== undefined) {
+          const t = m[2].trim()
+          if (t) out.push(t)
+        }
+      }
+      return out
+    }
+  }
+  return []
+}
+
 // ---------------------------------------------------------------------------
 // ファイル URL
 // ---------------------------------------------------------------------------
