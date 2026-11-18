@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api, apiStatus, getSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile, pawchiveProxyUrl } from "../api"
+import { setFavPost } from "../favstate"
 import type { PawComment, PawPost, PawRevision, HashLookupResult, PawFile } from "../types"
 import {
   Spinner,
@@ -273,6 +274,7 @@ export function PostPage({
       }
       // キャッシュを消して次の詳細表示で最新状態を判定させる
       clearApiCache()
+      setFavPost(postContext.service, postContext.postId, next === "yes")
       setFaved(next)
       logInfo(`お気に入り${next === "yes" ? "追加" : "解除"} service=${postContext.service} postId=${postContext.postId}`)
     } catch (e) {

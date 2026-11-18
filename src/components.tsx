@@ -3,6 +3,38 @@ import type { PawFile, PawPost } from "./types"
 import { fileUrl, thumbUrl, proxyFileUrl, proxyLinkUrl, getSettings, pawchiveProxyUrl } from "./api"
 import { navigate } from "./router"
 import { logWarn, logError } from "./log"
+import { isFollowed } from "./follows"
+import { isFavPost, loadFavPosts, FAVPOSTS_CHANGED_EVENT } from "./favstate"
+
+/** 投稿カード用のマーク状態 (フォロー中クリエイター / お気に入り投稿)。
+ *  favstate / follows の変更イベントを購読して全カードが同期する。
+ *  web はフォロー = クリエイターのお気に入り、☆ = 投稿のお気に入り */
+function usePostMarks(
+  service: string | undefined,
+  userId: string | undefined,
+  postId: string | undefined,
+): { faved: boolean; followed: boolean } {
+  const [marks, setMarks] = useState(() => ({
+    faved: !!(service && postId && isFavPost(service, postId)),
+    followed: !!(service && userId && isFollowed(service, userId)),
+  }))
+  useEffect(() => {
+    const upd = () =>
+      setMarks({
+        faved: !!(service && postId && isFavPost(service, postId)),
+        followed: !!(service && userId && isFollowed(service, userId)),
+      })
+    loadFavPosts()
+    window.addEventListener(FAVPOSTS_CHANGED_EVENT, upd)
+    window.addEventListener("pawchive-follows-changed", upd)
+    upd()
+    return () => {
+      window.removeEventListener(FAVPOSTS_CHANGED_EVENT, upd)
+      window.removeEventListener("pawchive-follows-changed", upd)
+    }
+  }, [service, userId, postId])
+  return marks
+}
 
 // ---------------------------------------------------------------------------
 // 汎用
@@ -199,15 +231,22 @@ export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
   // 画像枚数バッジ (EhViewer のページ数バッジ相当): 本体 + 添付の合計
   const imageCount =
     (post.file?.path ? 1 : 0) + (post.attachments?.length || 0)
+  // フォロー中クリエイター / お気に入り投稿のマーク (pawchive の ☆ / ★ と同期)
+  const marks = usePostMarks(post.service, post.user, post.id)
   return (
-    <div className="post-card" onClick={onClick}>
+    <div className={`post-card${marks.faved ? " is-fav" : ""}${marks.followed ? " is-follow" : ""}`} onClick={onClick}>
       <div className="post-card-thumb">
         <Thumb file={post.file?.path ? post.file : post.attachments?.[0]} />
         {isNew && <span className="badge-new">NEW</span>}
         {imageCount > 1 && <span className="badge-count">🖼{imageCount}</span>}
+        {marks.faved && <span className="badge-fav">★</span>}
+        {marks.followed && <span className="badge-follow">フォロー中</span>}
       </div>
       <div className="post-card-info">
-        <div className="post-card-title">{post.title || "(無題)"}</div>
+        <div className="post-card-title">
+          {marks.faved && <span className="title-mark">★</span>}
+          {post.title || "(無題)"}
+        </div>
         <div className="post-card-meta">
           {post.service} · {fmtDate(post.published || post.added)}
         </div>
@@ -224,20 +263,23 @@ export function PostRow({ post, isNew }: { post: PawPost; isNew?: boolean }) {
   }, [post])
   const imageCount =
     (post.file?.path ? 1 : 0) + (post.attachments?.length || 0)
+  const marks = usePostMarks(post.service, post.user, post.id)
   return (
-    <div className="post-row-item" onClick={onClick}>
+    <div className={`post-row-item${marks.faved ? " is-fav" : ""}${marks.followed ? " is-follow" : ""}`} onClick={onClick}>
       <div className="post-row-thumb">
         <Thumb file={post.file?.path ? post.file : post.attachments?.[0]} />
         {imageCount > 1 && <span className="badge-count-mini">🖼{imageCount}</span>}
+        {marks.faved && <span className="badge-fav mini">★</span>}
       </div>
       <div className="post-row-content">
         <div className="post-row-title">
+          {marks.faved && <span className="title-mark">★</span>}
           {isNew && <span className="badge-new inline">NEW</span>}
           {post.title || "(無題)"}
         </div>
         <div className="post-row-meta">
           <span className="post-row-service">{post.service}</span>
-          <span className="post-row-user">{post.user}</span>
+          <span className="post-row-user">{marks.followed ? "★" : ""}{post.user}</span>
           <span className="post-row-date">{fmtDate(post.published || post.added)}</span>
         </div>
       </div>

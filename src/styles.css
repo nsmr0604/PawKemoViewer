@@ -1296,3 +1296,71 @@ input:not([type]) {
   align-items: center;
 }
 
+/* ------------------------------------------------------------------ */
+/* フォロー中 / お気に入りマーク (pawchive の ☆ ★ と同期)              */
+/* ------------------------------------------------------------------ */
+
+/* お気に入り投稿: アクセント色の枠で強調 */
+.post-card.is-fav,
+.post-row-item.is-fav {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+/* フォロー中クリエイター: 落ち着いた色の枠 (お気に入りと両方ならお気に入り優先表示) */
+.post-card.is-follow,
+.post-row-item.is-follow {
+  border-color: color-mix(in srgb, var(--accent2) 65%, var(--bg3));
+}
+
+/* サムネ右上の ★ バッジ (お気に入り投稿) */
+.badge-fav {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: var(--accent);
+  color: #14161a;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 2px 8px;
+  line-height: 1.4;
+  backdrop-filter: blur(4px);
+}
+.badge-fav.mini {
+  bottom: 4px;
+  top: auto;
+  left: 4px;
+  font-size: 9px;
+  padding: 1px 5px;
+}
+
+/* サムネ左下の「フォロー中」バッジ (フォロー中クリエイターの投稿) */
+.badge-follow {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  background: color-mix(in srgb, var(--accent2) 80%, #000);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 6px;
+  backdrop-filter: blur(4px);
+}
+.badge-fav ~ .badge-follow {
+  bottom: 30px; /* ★ と重ならないように一段上げる */
+}
+
+/* タイトル内の ★ (お気に入り) */
+.title-mark {
+  color: var(--accent);
+  font-weight: 800;
+  margin-right: 4px;
+}
+
+/* クリエイター一覧のフォロー中バッジ (既存 badge-new.inline を流用) */
+.creator-row.is-followed {
+  border-color: color-mix(in srgb, var(--accent2) 65%, var(--bg3));
+}
+
+

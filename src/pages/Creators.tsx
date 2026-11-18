@@ -14,6 +14,7 @@ import type { PawCreator } from "../types"
 import { Spinner, ErrorBox, Empty, fmtDate } from "../components"
 import { navigate } from "../router"
 import { logError } from "../log"
+import { isFollowed } from "../follows"
 import { readClipboardTextSafe, extractCreatorFromText, type ExtractedCreator } from "../platform"
 import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../history"
 
@@ -229,12 +230,15 @@ export function CreatorsPage() {
         {rows.map((r) => (
           <div
             key={r.key}
-            className="creator-row"
+            className={`creator-row${isFollowed(r.service, r.id) ? " is-followed" : ""}`}
             onClick={() => navigate(`/creator/${r.service}/${r.id}`)}
           >
             <div className="creator-avatar">{r.name.slice(0, 1).toUpperCase()}</div>
             <div className="creator-row-main">
-              <div className="creator-name">{r.name}</div>
+              <div className="creator-name">
+                {isFollowed(r.service, r.id) && <span className="badge-new inline">★ フォロー中</span>}
+                {r.name}
+              </div>
               <div className="creator-sub">
                 {r.service} · {r.id}
                 {r.publicId ? ` · ${r.publicId}` : ""}
