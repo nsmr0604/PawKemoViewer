@@ -15,7 +15,17 @@ import { navigate } from "../router"
 import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
 import { clearIconCache, creatorIconInfo } from "../icons"
-import { t, loadLocale, type Locale } from "../i18n"
+import {
+  t,
+  loadLocale,
+  refreshLocales,
+  availableLocales,
+  localeFolder,
+  invalidLocaleFiles,
+  parseLocaleJson,
+  type Locale,
+  type LocaleInfo,
+} from "../i18n"
 import { displayAppVersion } from "../version"
 
 function fmtBytes(n: number): string {
@@ -58,6 +68,11 @@ export function SettingsPage() {
   const [backupResult, setBackupResult] = useState<string | null>(null)
   const [backupPaste, setBackupPaste] = useState("")
   const [showBackupPaste, setShowBackupPaste] = useState(false)
+  const [localeList, setLocaleList] = useState<LocaleInfo[]>(() => availableLocales())
+  const [localeMsg, setLocaleMsg] = useState<string | null>(null)
+  const [localeAddOpen, setLocaleAddOpen] = useState(false)
+  const [localeAddCode, setLocaleAddCode] = useState("")
+  const [localeAddJson, setLocaleAddJson] = useState("")
 
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => setAppVersion(t("settings.loadFailed")))
@@ -109,6 +124,53 @@ export function SettingsPage() {
     const applied = await loadLocale(value)
     setLocaleState(applied)
     updateSettings({ locale: applied })
+  }
+
+  const reloadLocales = async () => {
+    await refreshLocales()
+    setLocaleList(availableLocales())
+    // 外部の ja.json 等を反映させるため、現在の言語を読み直す
+    await applyLocale(locale)
+  }
+
+  const addLocale = async () => {
+    const code = localeAddCode.trim()
+    if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) {
+      setLocaleMsg(t("settings.localeBadCode"))
+      return
+    }
+    if (!parseLocaleJson(localeAddJson)) {
+      setLocaleMsg(t("settings.localeBadJson"))
+      return
+    }
+    try {
+      await invoke("write_locale_file", { code, json: localeAddJson })
+    } catch (e) {
+      setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
+      return
+    }
+    await refreshLocales()
+    setLocaleList(availableLocales())
+    setLocaleAddCode("")
+    setLocaleAddJson("")
+    setLocaleAddOpen(false)
+    setLocaleMsg(t("settings.localeAdded", { code }))
+    await applyLocale(locale)
+  }
+
+  const deleteLocale = async (code: string) => {
+    if (!window.confirm(t("settings.localeDeleteConfirm", { code }))) return
+    try {
+      await invoke("delete_locale_file", { code })
+    } catch (e) {
+      setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
+      return
+    }
+    await refreshLocales()
+    setLocaleList(availableLocales())
+    setLocaleMsg(t("settings.localeDeleted", { code }))
+    // 削除した言語を選択中なら日本語へ戻す
+    if (locale === code) await applyLocale("ja")
   }
 
   const doClearIconCache = async () => {
@@ -323,21 +385,87 @@ export function SettingsPage() {
             <span>{t("settings.language")}</span>
             <small>{t("settings.languageDesc")}</small>
           </div>
-          <div className="segmented">
-            <button
-              className={`seg ${locale === "ja" ? "seg-active" : ""}`}
-              onClick={() => void applyLocale("ja")}
-            >
-              {t("settings.languageJapanese")}
-            </button>
-            <button
-              className={`seg ${locale === "en" ? "seg-active" : ""}`}
-              onClick={() => void applyLocale("en")}
-            >
-              {t("settings.languageEnglish")}
+          <select
+            className="locale-select"
+            value={locale}
+            onChange={(e) => void applyLocale(e.target.value)}
+          >
+            {localeList.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.localeFolder")}</span>
+            <small>{localeFolder() || "-"}</small>
+            {invalidLocaleFiles().length > 0 && (
+              <small>{t("settings.localeInvalid", { files: invalidLocaleFiles().join(", ") })}</small>
+            )}
+          </div>
+          <button className="btn" onClick={() => void reloadLocales()}>
+            {t("settings.localeRefresh")}
+          </button>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.localeAddTitle")}</span>
+            <small>{t("settings.localeAddDesc")}</small>
+          </div>
+          <button className="btn" onClick={() => setLocaleAddOpen((v) => !v)}>
+            {t("settings.localeAddButton")}
+          </button>
+        </div>
+
+        {localeAddOpen && (
+          <div className="field">
+            <label>
+              <span>{t("settings.localeCode")}</span>
+              <input
+                type="text"
+                value={localeAddCode}
+                onChange={(e) => setLocaleAddCode(e.target.value)}
+                placeholder="es / zh-Hant"
+              />
+            </label>
+            <label>
+              <span>{t("settings.localeJson")}</span>
+              <textarea
+                rows={5}
+                className="mono"
+                value={localeAddJson}
+                onChange={(e) => setLocaleAddJson(e.target.value)}
+                placeholder='{"locale.name": "Español", ...}'
+              />
+            </label>
+            <button className="btn" disabled={!localeAddCode.trim() || !localeAddJson.trim()} onClick={() => void addLocale()}>
+              {t("settings.localeAddButton")}
             </button>
           </div>
-        </div>
+        )}
+
+        {localeList.some((l) => l.external) && (
+          <div className="setting-item">
+            <div className="setting-text">
+              {localeList
+                .filter((l) => l.external)
+                .map((l) => (
+                  <div key={l.code} className="settings-actions">
+                    <span>{l.name} ({l.code})</span>
+                    <button className="btn btn-ghost" onClick={() => void deleteLocale(l.code)}>
+                      {t("settings.localeDelete")}
+                    </button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {localeMsg && <span className="small">{localeMsg}</span>}
 
         <div className="setting-item">
           <div className="setting-text">

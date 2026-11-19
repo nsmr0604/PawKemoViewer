@@ -261,5 +261,19 @@
   "settings.loadFailed": "取得失敗",
   "settings.cacheTitle": "キャッシュ",
   "settings.creatorIndex": "クリエイター索引",
-  "settings.lastFetched": "最終取得"
+  "settings.lastFetched": "最終取得",
+  "settings.localeFolder": "言語フォルダ",
+  "settings.localeInvalid": "読み込めなかった言語ファイル: {{files}}",
+  "settings.localeRefresh": "言語を再読み込み",
+  "settings.localeAddTitle": "言語を追加",
+  "settings.localeAddDesc": "言語コード (例: es) と言語ファイル (JSON) を入力します。locale.name の値が表示名になります",
+  "settings.localeAddButton": "追加",
+  "settings.localeCode": "言語コード",
+  "settings.localeJson": "言語ファイル (JSON)",
+  "settings.localeDelete": "削除",
+  "settings.localeDeleteConfirm": "言語 {{code}} の外部ファイルを削除します。よろしいですか?",
+  "settings.localeBadCode": "言語コードは英字 2〜3 文字で始め、英数字の区切り (-) を続けてください (例: es, zh-Hant)",
+  "settings.localeBadJson": "JSON として読めないか、locale.name がありません",
+  "settings.localeAdded": "言語を追加しました: {{code}}",
+  "settings.localeDeleted": "言語を削除しました: {{code}}"
 }

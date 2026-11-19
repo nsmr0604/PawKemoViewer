@@ -1022,6 +1022,20 @@ input:not([type]) {
 }
 
 /* セグメントボタン (テーマ切替等) */
+.locale-select {
+  min-width: 10rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.locale-select option {
+  background: #1b1d22;
+  color: #eee;
+}
+
 .segmented {
   display: inline-flex;
   border: 1px solid var(--bg3);

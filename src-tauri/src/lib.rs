@@ -866,6 +866,95 @@ fn clear_creator_icon_cache(app: tauri::AppHandle) -> Result<u64, String> {
     Ok(n)
 }
 
+// ---------------------------------------------------------------------------
+// 言語ファイル (app_data/locales/<code>.json)。利用者が追加・差し替え・削除できる。
+// 中身の検証 (JSON・locale.name) は JS 側 (src/i18n.ts) で行う
+// ---------------------------------------------------------------------------
+
+const LOCALE_MAX_BYTES: u64 = 1024 * 1024;
+
+fn locale_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("locales"))
+}
+
+/// ファイル名に使える言語コード (ja / en / zh-Hant-TW など)。パス区切りを含めない
+fn valid_locale_code(code: &str) -> bool {
+    let parts: Vec<&str> = code.split('-').collect();
+    parts.len() <= 3
+        && (2..=3).contains(&parts[0].len())
+        && parts[0].chars().all(|c| c.is_ascii_alphabetic())
+        && parts[1..]
+            .iter()
+            .all(|p| (2..=8).contains(&p.len()) && p.chars().all(|c| c.is_ascii_alphanumeric()))
+}
+
+#[derive(serde::Serialize)]
+pub struct LocaleFile {
+    code: String,
+    json: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct LocaleList {
+    dir: String,
+    files: Vec<LocaleFile>,
+    invalid: Vec<String>,
+}
+
+#[tauri::command]
+fn list_locale_files(app: tauri::AppHandle) -> Result<LocaleList, String> {
+    let dir = locale_dir(&app)?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let mut files = Vec::new();
+    let mut invalid = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let Some(code) = name.strip_suffix(".json") else { continue };
+        let too_big = entry.metadata().map(|m| m.len() > LOCALE_MAX_BYTES).unwrap_or(true);
+        if !valid_locale_code(code) || too_big {
+            invalid.push(name);
+            continue;
+        }
+        match std::fs::read_to_string(&path) {
+            Ok(json) => files.push(LocaleFile { code: code.to_string(), json }),
+            Err(_) => invalid.push(name),
+        }
+    }
+    Ok(LocaleList { dir: dir.to_string_lossy().to_string(), files, invalid })
+}
+
+#[tauri::command]
+fn write_locale_file(app: tauri::AppHandle, code: String, json: String) -> Result<String, String> {
+    if !valid_locale_code(&code) {
+        return Err("invalid locale code".into());
+    }
+    if json.len() as u64 > LOCALE_MAX_BYTES {
+        return Err("locale file too large".into());
+    }
+    let dir = locale_dir(&app)?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join(format!("{}.json", code));
+    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn delete_locale_file(app: tauri::AppHandle, code: String) -> Result<bool, String> {
+    if !valid_locale_code(&code) {
+        return Err("invalid locale code".into());
+    }
+    let path = locale_dir(&app)?.join(format!("{}.json", code));
+    if !path.is_file() {
+        return Ok(false);
+    }
+    std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -902,6 +991,9 @@ pub fn run() {
                 fetch_creator_icon,
                 creator_icon_cache_info,
                 clear_creator_icon_cache,
+                list_locale_files,
+                write_locale_file,
+                delete_locale_file,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している
