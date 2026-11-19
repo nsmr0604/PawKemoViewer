@@ -48,7 +48,7 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 ### API エンドポイント (pawchive.pw)
 
 #### Posts
-- `api.posts({q?, o?})` → `GET /posts?q=&o=` (o は 50 刻み)
+- `api.posts({q?, o?})` → `GET /posts?q=&o=` (o は 50 刻み)。ホームのサービス / タグフィルターは、API の既存契約を変更せず読み込み済み投稿をクライアント側で絞り込む (タグは `normalizeTags()` で正規化)
 - `api.creators()` → `GET /creators` (約 10 万件)
 - `api.creatorPosts(service, creatorId, {q?, tag?, o?})` → `GET /{service}/user/{creatorId}?q=&tag=&o=`
   - `tag` は配列 (繰り返し送信)、q より優先
