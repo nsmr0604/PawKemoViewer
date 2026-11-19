@@ -17,7 +17,7 @@
   - 最新作業 head: `3cc2dcd1fad3b373fd8b7ab5cb9938f4be5f1cd3`
   - AI除外は初期値 OFF。設定を localStorage / バックアップに保存し、ホームの一覧・検索 API に適用
   - 最新変更に対する GitHub Actions / combined status は未確認。ビルド成功とは扱わない
-  - 状態: Open。最新 head は作業開始時に GitHub から取得する。mergeable=false の場合は差分・競合状態を再確認する
+  - 状態: Open。2026-11-20 の最新確認では GitHub API が `mergeable=false` を返却。原因の詳細は未確認のため、マージせず差分・競合状態を再確認する
   - バージョン番号は変更していない
   - **マージしないこと。ユーザーから明示的な依頼があるまで PR は open のままにする。**
 - PR #7 の Android Actions: [run 44634915879](https://github.com/nsmr0604/pawchive/actions/runs/44634915879)
