@@ -62,7 +62,7 @@ docs/                   本ドキュメント群
 
 - Node.js 24+ / npm 10+ / Rust 1.90+ (rustup) / Android SDK (実機テスト時)
 - Windows の場合: VS BuildTools (C++) + Windows SDK
-  - **注意: SDK の `um/x64` に dbghelp.lib が無い環境あり** → 自作手順は notes/env.md 参照
+  - **注意: SDK の `um/x64` に dbghelp.lib が無い環境あり** → Windows SDK の該当ライブラリを補って対処する
 
 ```bash
 npm install          # 依存

@@ -1,0 +1,57 @@
+name: Wiki Sync
+
+# docs/ の変更を GitHub Wiki (<repo>.wiki.git) へ自動同期する。
+# 正本は docs/ と docs/wiki/。Wiki は生成物なので直接編集しない。
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "README.md"
+      - "scripts/sync-wiki.mjs"
+      - ".github/workflows/wiki.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (main)
+        uses: actions/checkout@v4
+
+      - name: Checkout (wiki)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Generate wiki pages
+        run: node scripts/sync-wiki.mjs wiki
+
+      - name: Push wiki
+        working-directory: wiki
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "wiki に変更なし"
+            exit 0
+          fi
+          git commit -m "docs から自動同期 (${GITHUB_SHA::7})"
+          git push
