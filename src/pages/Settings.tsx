@@ -638,7 +638,7 @@ export function SettingsPage() {
 
       {/* ------------------------------------------------ 接続 */}
       <div id="settings-connection" className="settings-section">
-        <div className="section-label">{t("settings.connection")}</div>
+        <div className="section-label">{t("settings.navConnection")}</div>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -661,7 +661,7 @@ export function SettingsPage() {
 
       {/* ------------------------------------------------ データ (バックアップ) */}
       <div id="settings-data" className="settings-section">
-        <div className="section-label">{t("settings.dataTitle")}</div>
+        <div className="section-label">{t("settings.backupSection")}</div>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -717,7 +717,7 @@ export function SettingsPage() {
 
       {/* ------------------------------------------------ キャッシュ */}
       <div id="settings-cache" className="settings-section">
-        <div className="section-label">{t("settings.cacheTitle")}</div>
+        <div className="section-label">{t("settings.storageTitle")}</div>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -732,7 +732,7 @@ export function SettingsPage() {
             {t("settings.clear")}
           </button>
         </div>
-<div className="setting-subsection">
+        <div className="setting-subsection">
         <div className="section-label">{t("settings.iconTitle")}</div>
 
         <div className="setting-item">
