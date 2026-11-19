@@ -38,12 +38,6 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   }
 
   useEffect(() => {
-    const syncSettings = () => setExcludeAiPosts(getSettings().excludeAiPosts)
-    window.addEventListener(SETTINGS_CHANGED_EVENT, syncSettings)
-    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, syncSettings)
-  }, [])
-
-  useEffect(() => {
     setInput(q)
     setPosts([])
     setOffset(0)
@@ -74,6 +68,18 @@ export function HomePage({ query }: { query: URLSearchParams }) {
     },
     [q],
   )
+
+  useEffect(() => {
+    const syncSettings = () => {
+      const next = getSettings().excludeAiPosts
+      if (next !== excludeAiPosts) {
+        setExcludeAiPosts(next)
+        load(0, true)
+      }
+    }
+    window.addEventListener(SETTINGS_CHANGED_EVENT, syncSettings)
+    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, syncSettings)
+  }, [excludeAiPosts, load])
 
   useEffect(() => {
     if (tooShort) return
@@ -133,6 +139,19 @@ export function HomePage({ query }: { query: URLSearchParams }) {
         </div>
       )}
       <section className="home-filters" aria-label={t("home.filters")}>
+        <div className="home-filter-group">
+          <span className="small text-muted">{t("home.serviceFilter")}</span>
+          <div className="tag-chips">
+            {(["all", "fanbox", "patreon"] as const).map((service) => (
+              <button key={service} type="button"
+                className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
+                aria-pressed={serviceFilter === service}
+                onClick={() => setServiceFilter(service)}>
+                {service === "all" ? t("home.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+              </button>
+            ))}
+          </div>
+        </div>
         {hasActiveFilters && (
           <div className="hint-row">
             <span className="small text-muted">{t("home.filteredCount", { shown: filteredPosts.length, total: posts.length })}</span>
