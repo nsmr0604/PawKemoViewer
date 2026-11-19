@@ -287,5 +287,14 @@
   "nav.accountGuest": "ログインして同期機能を利用",
   "nav.login": "ログイン",
   "nav.postDetail": "投稿詳細",
-  "settings.sections": "設定カテゴリー"
+  "settings.sections": "設定カテゴリー",
+  "home.filters": "投稿を絞り込む",
+  "home.serviceFilter": "サービス",
+  "home.allServices": "すべて",
+  "home.tagFilter": "タグ（複数選択可・いずれかを含む）",
+  "home.tagsUnavailable": "この一覧ではタグ情報がまだありません",
+  "home.filteredCount": "表示 {{shown}} / 読込済み {{total}} 件",
+  "home.clearFilters": "条件をクリア",
+  "home.noFilterResults": "読み込み済みの投稿に条件に一致するものはありません",
+  "home.loadMoreForFilter": "条件に合う投稿をさらに読み込む"
 }
