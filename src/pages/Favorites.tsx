@@ -26,9 +26,12 @@ interface FollowState {
 
 /** 公開日時が直近 7 日以内の投稿だけ NEW 対象にする。日時不明・不正値は対象外。 */
 function isRecentPost(post?: { published?: string; added?: string }): boolean {
-  const timestamp = Date.parse(post?.published || post?.added || "")
+  const timestamp = [post?.published, post?.added]
+    .map((value) => Date.parse(value || ""))
+    .find((value) => Number.isFinite(value))
+  if (timestamp === undefined) return false
   const age = Date.now() - timestamp
-  return Number.isFinite(timestamp) && age >= 0 && age <= NEW_POST_WINDOW_MS
+  return age >= 0 && age <= NEW_POST_WINDOW_MS
 }
 
 /** IndexedDB に保存した最小限の投稿情報を一覧表示用に復元する。 */
@@ -91,17 +94,6 @@ export function FavoritesPage() {
   useEffect(() => {
     refresh()
   }, [refresh])
-
-  // ログイン中は画面を開いた時点でアカウントとローカルを自動同期する。
-  useEffect(() => {
-    if (!sessionKey) return
-    syncFollowsWithAccount()
-      .then(async (count) => {
-        await refresh()
-        setSyncResult(t("favorites.synced", { n: count }))
-      })
-      .catch((e) => setAccountErr(e))
-  }, [sessionKey, refresh])
 
   /** 新着チェック: 各フォローの最新投稿を取得して既読IDと比較 (4並列)。
    *  force=false (自動) の場合はチェック済みのものをクールダウン中スキップして API 負荷を抑える */
@@ -167,6 +159,25 @@ export function FavoritesPage() {
     checkNew(false) // 自動チェック (クールダウン適用)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // アカウント同期後にも新着を確認する。同期で追加された購読先も対象に含める。
+  useEffect(() => {
+    if (!sessionKey) return
+    let active = true
+    syncFollowsWithAccount()
+      .then(async (count) => {
+        if (!active) return
+        await refresh()
+        setSyncResult(t("favorites.synced", { n: count }))
+        await checkNew(false)
+      })
+      .catch((e) => {
+        if (active) setAccountErr(e)
+      })
+    return () => {
+      active = false
+    }
+  }, [sessionKey, refresh, checkNew])
 
   const markRead = async (f: FollowState) => {
     if (!f.newest) return
