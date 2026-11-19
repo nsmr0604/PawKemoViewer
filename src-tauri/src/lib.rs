@@ -12,6 +12,37 @@ use reqwest::header::{
     USER_AGENT,
 };
 
+use std::sync::LazyLock;
+
+// reqwest Client は Clone が安価で内部の接続プールを共有できる。
+// コマンドごとに Client を生成せず、接続/TLS セッションをアプリ全体で再利用する。
+static API_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .brotli(true)
+        .gzip(true)
+        .build()
+        .expect("failed to initialize API HTTP client")
+});
+
+static LOGIN_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .brotli(true)
+        .gzip(true)
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .expect("failed to initialize login HTTP client")
+});
+
+static PROXY_HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
+    reqwest::blocking::Client::builder()
+        .user_agent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+        )
+        .gzip(true)
+        .build()
+        .expect("failed to initialize proxy HTTP client")
+});
+
 #[tauri::command]
 async fn api_request(
     path: String,
@@ -31,11 +62,7 @@ async fn api_request(
     // タイムアウトはユーザー設定 (Settings → 接続)。1〜300 秒にクランプ
     let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(30).clamp(1, 300));
 
-    let client = reqwest::Client::builder()
-        .brotli(true)
-        .gzip(true)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = &*API_HTTP_CLIENT;
 
     let mut headers = HeaderMap::new();
 
@@ -162,12 +189,7 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
 
     // リダイレクトを追従しない (pawchive は 302 応答に Set-Cookie を付けるため。
     // 追従すると最終応答のヘッダーしか見えず session を取り逃す)
-    let client = reqwest::Client::builder()
-        .brotli(true)
-        .gzip(true)
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = &*LOGIN_HTTP_CLIENT;
 
     let ua = HeaderValue::from_static(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
@@ -599,16 +621,7 @@ fn pkv_proxy_fetch(
         })
         .unwrap_or_default();
 
-    let client = match reqwest::blocking::Client::builder()
-        .user_agent(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-        )
-        .gzip(true)
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => return bad(500, &format!("client: {}", e)),
-    };
+    let client = &*PROXY_HTTP_CLIENT;
 
     let mut rb = match method {
         "POST" => client.post(target.clone()),
