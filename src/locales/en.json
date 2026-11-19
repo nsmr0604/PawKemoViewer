@@ -107,6 +107,7 @@
   "favorites.count": "{{n}} entries",
   "favorites.sortFaved": "Favorited",
   "favorites.sortPublished": "Published",
+  "favorites.sortLatestPost": "Latest post",
   "favorites.sortAdded": "Added",
   "favorites.sortChecked": "Checked",
   "favorites.sortName": "Name",
