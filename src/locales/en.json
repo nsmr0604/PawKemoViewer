@@ -275,5 +275,12 @@
   "settings.localeBadCode": "Start the code with 2–3 letters, then optional alphanumeric parts separated by - (e.g. es, zh-Hant)",
   "settings.localeBadJson": "Not valid JSON, or locale.name is missing",
   "settings.localeAdded": "Language added: {{code}}",
-  "settings.localeDeleted": "Language deleted: {{code}}"
+  "settings.localeDeleted": "Language deleted: {{code}}",
+  "nav.primary": "Primary navigation",
+  "nav.menu": "MENU",
+  "nav.account": "Account settings",
+  "nav.accountConnected": "Signed in · Sync is available",
+  "nav.accountGuest": "Sign in to enable sync",
+  "nav.login": "Sign in",
+  "nav.postDetail": "Post details"
 }
