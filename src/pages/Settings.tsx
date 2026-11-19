@@ -292,6 +292,17 @@ export function SettingsPage() {
     <div className="page settings">
       <h2>{t("settings.title")}</h2>
 
+      <nav className="settings-nav" aria-label={t("settings.sections")}>
+        <a href="#settings-account">{t("settings.accountTitle")}</a>
+        <a href="#settings-display">{t("settings.displayTitle")}</a>
+        <a href="#settings-post">{t("settings.postTitle")}</a>
+        <a href="#settings-connection">{t("settings.connection")}</a>
+        <a href="#settings-data">{t("settings.dataTitle")}</a>
+        <a href="#settings-cache">{t("settings.cacheTitle")}</a>
+        <a href="#settings-diagnostics">{t("settings.diagnostics")}</a>
+        <a href="#settings-info">{t("settings.info")}</a>
+      </nav>
+
       {/* ------------------------------------------------ デバッグ診断 (ビルド時フラグ注入・リリースでは分離) */}
       {DEBUG_DIAG && (
         <div className="settings-section">
@@ -343,7 +354,7 @@ export function SettingsPage() {
       )}
 
       {/* ------------------------------------------------ アカウント */}
-      <div className="settings-section">
+      <div id="settings-account" className="settings-section">
         <div className="section-label">{t("settings.accountTitle")}</div>
 
         <div className="settings-actions">
@@ -377,7 +388,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 表示 */}
-      <div className="settings-section">
+      <div id="settings-display" className="settings-section">
         <div className="section-label">{t("settings.displayTitle")}</div>
 
         <div className="setting-item">
@@ -564,7 +575,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 投稿表示 (省データ) */}
-      <div className="settings-section">
+      <div id="settings-post" className="settings-section">
         <div className="section-label">{t("settings.postTitle")}</div>
 
         <div className="setting-item">
@@ -595,7 +606,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ アイコンキャッシュ */}
-      <div className="settings-section">
+      <div id="settings-icon-cache" className="settings-section">
         <div className="section-label">{t("settings.iconTitle")}</div>
 
         <div className="setting-item">
@@ -614,7 +625,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 接続 */}
-      <div className="settings-section">
+      <div id="settings-connection" className="settings-section">
         <div className="section-label">{t("settings.connection")}</div>
 
         <div className="setting-item">
@@ -637,7 +648,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ データ (バックアップ) */}
-      <div className="settings-section">
+      <div id="settings-data" className="settings-section">
         <div className="section-label">{t("settings.dataTitle")}</div>
 
         <div className="setting-item">
@@ -693,7 +704,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ キャッシュ */}
-      <div className="settings-section">
+      <div id="settings-cache" className="settings-section">
         <div className="section-label">{t("settings.cacheTitle")}</div>
 
         <div className="setting-item">
@@ -712,7 +723,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 診断 */}
-      <div className="settings-section">
+      <div id="settings-diagnostics" className="settings-section">
         <div className="section-label">{t("settings.diagnostics")}</div>
 
         <div className="setting-item">
@@ -750,7 +761,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 情報 */}
-      <div className="settings-section">
+      <div id="settings-info" className="settings-section">
         <div className="section-label">{t("settings.info")}</div>
 
         <div className="setting-item">
