@@ -94,8 +94,11 @@ jobs:
     env:
       # push = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
       # 手動 release=true のみ診断コード無しの正式リリースビルド。
-      # ジョブレベルで設定する (tauri-action の beforeBuildCommand でも同じフラグを使うため)
-      VITE_DEBUG_DIAG: ${{ inputs.release == true && '' || '1' }}
+      # ジョブレベルで設定する (tauri-action の beforeBuildCommand でも同じフラグを使うため)。
+      # 注意: `true && '' || '1'` は空文字が偽のため '1' になる。リリースは '0' を明示する
+      VITE_DEBUG_DIAG: ${{ inputs.release == true && '0' || '1' }}
+      # デバッグビルドの表記用ビルド番号 (バージョン番号は変えない)。リリースは 'release'
+      VITE_BUILD_REV: ${{ inputs.release == true && 'release' || github.run_number }}
 
     steps:
       - name: Checkout

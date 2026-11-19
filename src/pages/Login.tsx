@@ -5,6 +5,7 @@ import { updateSettings, getSettings } from "../api"
 import { syncFollowsWithAccount } from "../follows"
 import { navigate, useRoute } from "../router"
 import { t } from "../i18n"
+import { displayAppVersion } from "../version"
 
 export function LoginPage() {
   const route = useRoute()
@@ -128,7 +129,7 @@ export function LoginPage() {
           </span>
         </div>
         {appVersion && (
-          <div className="login-version small">PawKemoViewer v{appVersion}</div>
+          <div className="login-version small">PawKemoViewer v{displayAppVersion(appVersion)}</div>
         )}
       </div>
     </div>

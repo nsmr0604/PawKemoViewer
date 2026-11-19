@@ -16,6 +16,7 @@ import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../plat
 import { exportBackup, applyBackup, buildBackup } from "../backup"
 import { clearIconCache, creatorIconInfo } from "../icons"
 import { t, loadLocale, type Locale } from "../i18n"
+import { displayAppVersion } from "../version"
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -662,7 +663,7 @@ export function SettingsPage() {
           <div className="setting-text">
             <span>アプリバージョン</span>
           </div>
-          <code className="small">{appVersion || "…"}</code>
+          <code className="small">{appVersion ? displayAppVersion(appVersion) : "…"}</code>
         </div>
 
         <p className="small">
