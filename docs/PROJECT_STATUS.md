@@ -14,6 +14,9 @@
 - 現在の作業 PR: [#7 UX/UI刷新と通信・描画処理の効率化](https://github.com/nsmr0604/pawchive/pull/7)
   - ブランチ: `improve/ux-ui-codebase`
   - 直近の追加機能: ホーム投稿一覧のサービスフィルター、および設定による公式 `hide=(ai)` AI除外。任意タグフィルターは実装しない
+  - 最新作業 head: `349ce8977bc2c6e4616dea523c30f62af8ac02c9`
+  - AI除外は初期値 OFF。設定を localStorage / バックアップに保存し、ホームの一覧・検索 API に適用
+  - 変更後の head に対する GitHub Actions / combined status は未報告 (2026-11-20 確認)。ビルド成功とは扱わない
   - 状態: Open。最新 head は作業開始時に GitHub から取得する。mergeable=false の場合は差分・競合状態を再確認する
   - バージョン番号は変更していない
   - **マージしないこと。ユーザーから明示的な依頼があるまで PR は open のままにする。**
