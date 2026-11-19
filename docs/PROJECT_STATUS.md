@@ -13,13 +13,14 @@
 - main の既知バージョン: `0.3.2`
 - 現在の作業 PR: [#7 UX/UI刷新と通信・描画処理の効率化](https://github.com/nsmr0604/pawchive/pull/7)
   - ブランチ: `improve/ux-ui-codebase`
-  - 記録時点の head: `8036d31bf7aa8f88583e154378551a6c3cc493b0`
-  - 状態: Open / mergeable
+  - ドキュメント追加後の head: `54c2dc1c9d410378bf1e313b417fba34bf1e4c6c`
+  - 状態: Open。直近の PR メタデータでは mergeable=false のため、マージ前に差分・競合状態を再確認する
   - バージョン番号は変更していない
   - **マージしないこと。ユーザーから明示的な依頼があるまで PR は open のままにする。**
 - PR #7 の Android Actions: [run 44634915879](https://github.com/nsmr0604/pawchive/actions/runs/44634915879)
-  - 2026-11-20 時点で `in_progress`
-  - 成功・失敗はこの文書の記録では確定していない。作業開始時に Actions の最新状態を確認すること
+  - 対象 SHA はドキュメント追加前の `8036d31bf7aa8f88583e154378551a6c3cc493b0`
+  - 2026-11-20 時点の前回確認では `in_progress`。ドキュメントのみの後続コミットに対する新しい run は確認できていない
+  - 成功・失敗は確定していない。作業開始時に Actions の最新状態を確認すること
 - PC 向け Tauri workflow は現状 main への push でのみ実行される。PR #7 では PC ビルド未検証。マージして CI を起動してはならない。ユーザーの明示指示を待つ
 - 実機での UI/UX の視覚確認は未完了
 
