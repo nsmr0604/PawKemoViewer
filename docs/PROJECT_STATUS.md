@@ -92,7 +92,7 @@
 ### P0 — PR #7 の検証と完了判断
 - [x] PR #7 の Android Actions run `44640938963` の失敗ログを確認。原因は `src/pages/Creators.tsx:28` の `Date.parse` に `string | number` を渡す TypeScript エラー
 - [x] 上記を `Date.parse(String(value))` に修正 (commit `3f06879`)
-- [ ] 最新HEAD `89d835fd99bd0f96564e4c50467ea5b5bc2ec69b` の Android Actions run `44641968656` (run #142) は queued。完了結果を確認する
+- [ ] Android Actions run `44641968656` (run #142、対象 SHA `89d835f`) は次の push に伴い Setup Node.js 前に cancelled。最新 docs-only head `31b2394` には新しい PR run が確認できず、今回の変更を含むビルド成功は未確認
 - [ ] TypeScript / Frontend / Rust のチェック結果を確認
 - [ ] PC ビルドは PR の現行 workflow では未検証であることを維持し、main への push が必要な場合もユーザーの許可なくマージしない
 - [ ] Android 実機と PC でナビゲーション、設定カテゴリ移動、ログイン導線、ライト / ダークテーマ、キーボード操作、狭い画面幅を確認
