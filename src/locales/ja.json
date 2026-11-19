@@ -275,5 +275,12 @@
   "settings.localeBadCode": "言語コードは英字 2〜3 文字で始め、英数字の区切り (-) を続けてください (例: es, zh-Hant)",
   "settings.localeBadJson": "JSON として読めないか、locale.name がありません",
   "settings.localeAdded": "言語を追加しました: {{code}}",
-  "settings.localeDeleted": "言語を削除しました: {{code}}"
+  "settings.localeDeleted": "言語を削除しました: {{code}}",
+  "nav.primary": "メインメニュー",
+  "nav.menu": "メニュー",
+  "nav.account": "アカウント設定",
+  "nav.accountConnected": "ログイン中 · 同期を利用できます",
+  "nav.accountGuest": "ログインして同期機能を利用",
+  "nav.login": "ログイン",
+  "nav.postDetail": "投稿詳細"
 }
