@@ -282,5 +282,6 @@
   "nav.accountConnected": "Signed in · Sync is available",
   "nav.accountGuest": "Sign in to enable sync",
   "nav.login": "Sign in",
-  "nav.postDetail": "Post details"
+  "nav.postDetail": "Post details",
+  "settings.sections": "Settings sections"
 }
