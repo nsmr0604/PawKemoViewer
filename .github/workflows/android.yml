@@ -98,8 +98,8 @@ jobs:
 
       - name: Patch Android back key dispatch
         # Tauri 2.9+ の onBackButtonPress は実機で発火しないことがある。
-        # MainActivity で KEYCODE_BACK を捕捉し、WebView の JS (androidBackCallback)
-        # を直接呼ぶ。参考: https://github.com/tauri-apps/tauri/issues/8142
+        # MainActivity で KEYCODE_BACK を捕捉し、WebView.goBack() / finish() を直接呼ぶ。
+        # 参考: https://github.com/tauri-apps/tauri/issues/8142
         run: |
           set -e
           MAIN=$(find src-tauri/gen/android/app/src/main/java -name MainActivity.kt | head -1)
@@ -123,9 +123,7 @@ jobs:
 
             override fun dispatchKeyEvent(event: KeyEvent): Boolean {
               if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                wv.evaluateJavascript("try { window.androidBackCallback() } catch (_) { true }") { result ->
-                  if (result == "true") finish()
-                }
+                if (wv.canGoBack()) wv.goBack() else finish()
                 return true
               }
               return super.dispatchKeyEvent(event)
