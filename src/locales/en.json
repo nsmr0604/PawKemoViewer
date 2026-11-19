@@ -294,5 +294,7 @@
   "settings.excludeAiTitle": "Exclude AI posts",
   "settings.excludeAiDesc": "Hide posts classified as AI from the global post list and search results.",
   "settings.excludeAiOn": "Excluded",
-  "settings.excludeAiOff": "Included"
+  "settings.excludeAiOff": "Included",
+  "home.filteredCount": "Showing {{shown}} / {{total}} loaded",
+  "home.clearFilters": "Clear service filter"
 }
