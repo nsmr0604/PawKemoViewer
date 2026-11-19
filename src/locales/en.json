@@ -296,5 +296,13 @@
   "settings.excludeAiOn": "Excluded",
   "settings.excludeAiOff": "Included",
   "home.filteredCount": "Showing {{shown}} / {{total}} loaded",
-  "home.clearFilters": "Clear service filter"
+  "home.clearFilters": "Clear service filter",
+  "creators.serviceFilter": "Service",
+  "creators.allServices": "All",
+  "creators.sortBy": "Sort by",
+  "creators.sortUpdated": "Recently updated",
+  "creators.sortPopular": "Popularity",
+  "creators.sortName": "Name",
+  "creators.resultCount": "Showing {{shown}} / {{total}}",
+  "creators.showMore": "Show {{count}} more"
 }
