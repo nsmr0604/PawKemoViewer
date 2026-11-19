@@ -6,6 +6,7 @@ import { CreatorHeader } from "./Creators"
 import { FollowButton } from "../components/FollowButton"
 import { useScrollMemory } from "../hooks"
 import { parseHash } from "../router"
+import { t } from "../i18n"
 
 const PAGE = 50
 
@@ -117,7 +118,7 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
             rel="noreferrer"
             referrerPolicy="no-referrer"
           >
-            サイトで開く ↗
+            {t("common.openSite")}
           </a>
           {originalUrl && (
             <a
@@ -126,15 +127,15 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
               target="_blank"
               rel="noreferrer"
               referrerPolicy="no-referrer"
-              title="元の fanbox / patreon のクリエイターページを開きます (リファラーは送信しません)"
+              title={t("creator.originalTitle")}
             >
-              {service === "fanbox" ? "fanbox で開く ↗" : "patreon で開く ↗"}
+              {t("common.openOn", { service })}
             </a>
           )}
         </div>
       </div>
 
-      {tags === null && <Spinner label="タグ…" />}
+      {tags === null && <Spinner label={t("creator.tags")} />}
       {tags && tags.length > 0 && (
         <div className="tag-chips">
           {visibleTags.map((t) => (
@@ -148,20 +149,20 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
           ))}
           {tags.length > 20 && (
             <button className="chip chip-more" onClick={() => setShowAllTags((s) => !s)}>
-              {showAllTags ? "閉じる" : `+${tags.length - 20}`}
+              {showAllTags ? t("common.close") : `+${tags.length - 20}`}
             </button>
           )}
         </div>
       )}
 
       <div className="view-mode-bar">
-        <span className="small text-muted">投稿一覧</span>
+        <span className="small text-muted">{t("creator.posts")}</span>
         <div className="view-mode-toggles">
           <button
             type="button"
             className={`btn-icon ${viewMode === "grid" ? "active" : ""}`}
             onClick={() => toggleViewMode("grid")}
-            title="グリッド表示"
+            title={t("common.grid")}
           >
             🔲
           </button>
@@ -169,7 +170,7 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
             type="button"
             className={`btn-icon ${viewMode === "list" ? "active" : ""}`}
             onClick={() => toggleViewMode("list")}
-            title="リスト表示"
+            title={t("common.list")}
           >
             ☰
           </button>
@@ -184,7 +185,7 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
         viewMode={viewMode}
         onEndReached={loading || done ? undefined : () => load(offset + PAGE, false)}
       />
-      {!loading && !error && posts.length === 0 && done && <div className="empty">投稿がありません</div>}
+      {!loading && !error && posts.length === 0 && done && <div className="empty">{t("home.empty")}</div>}
     </div>
   )
 }
@@ -192,7 +193,7 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
 export function CreatorNotFound() {
   return (
     <div className="page">
-      <ErrorBox error={new ApiError(404, "クリエイターが見つかりません")} />
+      <ErrorBox error={new ApiError(404, t("creator.notFound"))} />
     </div>
   )
 }

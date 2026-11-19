@@ -10,6 +10,7 @@ import { loadFollows, syncFollowsWithAccount } from "./follows"
 import { useEffect, useState, useCallback } from "react"
 import { LoginPage } from "./pages/Login"
 import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
+import { loadLocale, t } from "./i18n"
 import { resolveLayout, type ResolvedLayout } from "./platform"
 import { NavigationRail } from "./components/NavigationRail"
 import { ErrorBox } from "./components"
@@ -36,6 +37,9 @@ export default function App() {
   }, [])
 
   const settings = getSettings()
+  useEffect(() => {
+    void loadLocale(settings.locale).then(() => setSettingsRev((n) => n + 1))
+  }, [settings.locale])
   useEffect(() => {
     if (settings.sessionKey) syncFollowsWithAccount().catch(() => {
       // オフライン時は次回起動またはフォロー画面表示時に再試行する。
@@ -204,19 +208,23 @@ export default function App() {
             </div>
             {isDesktopLayout && (
               <div className="desktop-shortcuts-hint" title="キーボードショートカットが利用可能です">
-                <span className="kbd">/</span> 検索
-                <span className="kbd">H</span> ホーム
-                <span className="kbd">C</span> 作者
-                <span className="kbd">F</span> フォロー
-                <span className="kbd">S</span> 設定
+                <span className="kbd">/</span> {t("common.search")}
+                <span className="kbd">H</span> {t("nav.home")}
+                <span className="kbd">C</span> {t("nav.creators")}
+                <span className="kbd">F</span> {t("nav.favorites")}
+                <span className="kbd">S</span> {t("nav.settings")}
               </div>
             )}
           </header>
         )}
         {(isDetail || isLogin) && (
           <header className="top-bar detail-bar">
-            <button className="btn btn-ghost" onClick={() => history.back()} title="戻る (Esc)">
-              ← 戻る <span className="kbd small">Esc</span>
+            <button
+              className="btn btn-ghost"
+              onClick={() => history.back()}
+              title={`${t("common.back")} (Esc)`}
+            >
+              ← {t("common.back")} <span className="kbd small">Esc</span>
             </button>
             <div className="logo small" onClick={() => navigate("/", true)}>🐾 Pawchive</div>
           </header>
@@ -231,25 +239,25 @@ export default function App() {
               className={route.path === "home" || route.path === "search" ? "nav-active" : ""}
               onClick={() => navigate("/", true)}
             >
-              🏠<span>ホーム</span>
+              🏠<span>{t("nav.home")}</span>
             </button>
             <button
               className={route.path === "creators" || route.path === "creator" ? "nav-active" : ""}
               onClick={() => navigate("/creators")}
             >
-              👤<span>クリエイター</span>
+              👤<span>{t("nav.creators")}</span>
             </button>
             <button
               className={route.path === "favorites" ? "nav-active" : ""}
               onClick={() => navigate("/favorites")}
             >
-              ⭐<span>フォロー{followCount > 0 ? ` (${followCount})` : ""}</span>
+              ⭐<span>{t("nav.favorites")}{followCount > 0 ? ` (${followCount})` : ""}</span>
             </button>
             <button
               className={route.path === "settings" ? "nav-active" : ""}
               onClick={() => navigate("/settings")}
             >
-              ⚙️<span>設定</span>
+              ⚙️<span>{t("nav.settings")}</span>
             </button>
           </nav>
         )}

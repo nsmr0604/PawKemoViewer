@@ -18,6 +18,7 @@ import { isFollowed } from "../follows"
 import { readClipboardTextSafe, extractCreatorFromText, type ExtractedCreator } from "../platform"
 import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../history"
 import { normalizeCreatorQuery } from "../db"
+import { t } from "../i18n"
 
 /** API レスポンス → 索引行 (パック v2: slug / favorited を保持) */
 function toRow(c: PawCreator): CreatorRow {
@@ -145,7 +146,7 @@ export function CreatorsPage() {
       {clipCreator && (
         <div className="clipboard-banner">
           <div className="clipboard-banner-info">
-            <span className="clipboard-badge">📋 クリップボード</span>
+            <span className="clipboard-badge">📋 {t("creators.clipboard")}</span>
             <span className="clipboard-text">
               {clipCreator.service} / {clipCreator.idOrSlug}
             </span>
@@ -158,7 +159,7 @@ export function CreatorsPage() {
                 setClipCreator(null)
               }}
             >
-              検索に入力
+              {t("creators.useClipboard")}
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => setClipCreator(null)}>
               ×
@@ -170,7 +171,7 @@ export function CreatorsPage() {
       <form className="search-bar" onSubmit={onSearchSubmit}>
         <input
           type="search"
-          placeholder="クリエイター名 / ID / URL で検索"
+          placeholder={t("creators.searchPlaceholder")}
           value={q}
           onChange={(e) => onSearch(e.target.value)}
         />
@@ -189,29 +190,29 @@ export function CreatorsPage() {
           ))}
           <button
             className="chip chip-more"
-            title="検索履歴を消去"
+            title={t("creators.historyClear")}
             onClick={() => {
               clearSearchHistory()
               setHistory([])
             }}
           >
-            履歴消去 ×
+            {t("creators.historyClearShort")}
           </button>
         </div>
       )}
       <div className="hint-row">
         <span>
           {building && built !== null
-            ? `クリエイター索引を構築中… ${built.toLocaleString()} 件 (検索はすぐ使えます)`
+            ? t("creators.building", { count: built.toLocaleString() })
             : built !== null
-              ? `クリエイター ${built.toLocaleString()} 件をキャッシュ済み`
-              : "クリエイター一覧"}
+              ? t("creators.cached", { count: built.toLocaleString() })
+              : t("creators.list")}
         </span>
         {built !== null && !building && (
           <button
             className="btn btn-ghost"
             onClick={async () => {
-              if (!window.confirm("クリエイター一覧 (約10万件) を再取得します。よろしいですか?")) return
+              if (!window.confirm(t("creators.refreshConfirm"))) return
               clearApiCache()
               invalidateCreatorIndex()
               setBuilding(true)
@@ -228,27 +229,27 @@ export function CreatorsPage() {
               }
             }}
           >
-            更新
+            {t("common.refresh")}
           </button>
         )}
       </div>
-      {building && built === null && <Spinner label="クリエイター一覧を取得中 (約10万件・初回のみ)…" />}
+      {building && built === null && <Spinner label={t("creators.loading")} />}
       {error !== null && <ErrorBox error={error} onRetry={() => onSearch(q)} />}
-      {ready && rows.length === 0 && !building && <Empty text="該当するクリエイターがいません" />}
+      {ready && rows.length === 0 && !building && <Empty text={t("creators.empty")} />}
       <div className="hint-row">
         {postLink && (
           <div className="clipboard-banner" style={{ width: "100%" }}>
             <div className="clipboard-banner-info">
-              <span className="clipboard-badge">🔗 投稿リンク</span>
+              <span className="clipboard-badge">🔗 {t("creators.postLink")}</span>
               <span className="clipboard-text">
-                {postLink.name} の fanbox 投稿です
+                {t("creators.postLinkText", { name: postLink.name })}
               </span>
             </div>
             <button
               className="btn btn-primary btn-sm"
               onClick={() => navigate(`/post/${postLink.service}/${postLink.creatorId}/${postLink.postId}`)}
             >
-              この投稿を開く
+              {t("creators.openPost")}
             </button>
           </div>
         )}
@@ -263,7 +264,7 @@ export function CreatorsPage() {
             <CreatorAvatar service={r.service} id={r.id} name={r.name} />
             <div className="creator-row-main">
               <div className="creator-name">
-                {isFollowed(r.service, r.id) && <span className="badge-new inline">★ フォロー中</span>}
+                {isFollowed(r.service, r.id) && <span className="badge-new inline">{t("creators.following")}</span>}
                 {r.name}
               </div>
               <div className="creator-sub">
@@ -299,10 +300,10 @@ export function CreatorHeader({ service, id }: { service: string; id: string }) 
   if (error)
     return (
       <div className="creator-head error-box">
-        <p>プロフィール取得失敗 (投稿一覧は表示できます)</p>
+        <p>{t("creators.profileError")}</p>
       </div>
     )
-  if (!profile) return <Spinner label="プロフィール…" />
+  if (!profile) return <Spinner label={t("creators.profileLoading")} />
   return (
     <div className="creator-head creator-head-col">
       {bannerOk && (
@@ -324,7 +325,7 @@ export function CreatorHeader({ service, id }: { service: string; id: string }) 
         <div>
           <h2>{profile.name}</h2>
           <div className="creator-sub">
-            {service} · {id} · 最終更新 {fmtDate(String(profile.updated))}
+            {service} · {id} · {t("creators.lastUpdated")} {fmtDate(String(profile.updated))}
           </div>
         </div>
       </div>

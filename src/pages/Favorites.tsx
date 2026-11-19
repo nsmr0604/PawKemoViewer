@@ -5,6 +5,7 @@ import { getAllSeen, setSeen, getSeen } from "../db"
 import { loadFollows, removeFollow, syncFollowsWithAccount } from "../follows"
 import { ErrorBox, Empty, PostGrid, fmtDate, CreatorAvatar } from "../components"
 import { navigate } from "../router"
+import { t } from "../i18n"
 
 /** 自動新着チェックのクールダウン (この間はネットワークを叩かない) */
 const CHECK_COOLDOWN_MS = 5 * 60_000
@@ -75,7 +76,7 @@ export function FavoritesPage() {
     syncFollowsWithAccount()
       .then(async (count) => {
         await refresh()
-        setSyncResult("pawchive と同期しました (" + count + " 件)")
+        setSyncResult(t("favorites.synced", { n: count }))
       })
       .catch((e) => setAccountErr(e))
   }, [sessionKey, refresh])
@@ -199,17 +200,17 @@ export function FavoritesPage() {
     <div className="page">
       <div className="tabs">
         <button className={`tab ${tab === "follows" ? "tab-active" : ""}`} onClick={() => setTab("follows")}>
-          フォロー {newCount > 0 && <span className="badge">{newCount}</span>}
+          {t("nav.favorites")} {newCount > 0 && <span className="badge">{newCount}</span>}
         </button>
         <button className={`tab ${tab === "account" ? "tab-active" : ""}`} onClick={() => setTab("account")}>
-          投稿お気に入り
+          {t("favorites.tabAccount")}
         </button>
       </div>
 
       {tab === "follows" && (
         <>
           <div className="hint-row">
-            <span>フォロー中クリエイターの新着をチェックします</span>
+            <span>{t("favorites.desc")}</span>
             <button
               className="btn"
               disabled={checking}
@@ -218,18 +219,18 @@ export function FavoritesPage() {
                 checkNew(true)
               }}
             >
-              {checking ? "チェック中…" : "新着チェック"}
+              {checking ? t("favorites.checking") : t("favorites.check")}
             </button>
           </div>
           {follows.length > 0 && (
             <div className="hint-row">
               <span />
               <button className="btn btn-ghost" onClick={markAllRead}>
-                すべて既読
+                {t("favorites.markAllRead")}
               </button>
             </div>
           )}
-          {follows.length === 0 && <Empty text="フォローはありません。クリエイターページで ☆ を押してください" />}
+          {follows.length === 0 && <Empty text={t("favorites.emptyFollows")} />}
           <div className="creator-list">
             {follows.map((f) => (
               <div key={`${f.service}:${f.id}`} className="creator-row">
@@ -245,7 +246,7 @@ export function FavoritesPage() {
                     </div>
                     <div className="creator-sub">
                       {f.service}
-                      {f.newest ? ` · 最新 ${fmtDate(f.newest.published || f.newest.added)}` : ""}
+                      {f.newest ? ` · ${t("favorites.latest", { date: fmtDate(f.newest.published || f.newest.added) })}` : ""}
                       {f.error ? ` · ${f.error}` : ""}
                     </div>
                     {f.newest && (
@@ -256,7 +257,7 @@ export function FavoritesPage() {
                           navigate(`/post/${f.newest!.service}/${f.newest!.user}/${f.newest!.id}`)
                         }}
                       >
-                        {f.newest.title || "(無題)"}
+                        {f.newest.title || t("common.untitled")}
                       </div>
                     )}
                   </div>
@@ -264,7 +265,7 @@ export function FavoritesPage() {
                 <div className="creator-row-actions">
                   {f.isNew && (
                     <button className="btn btn-ghost" onClick={() => markRead(f)}>
-                      既読
+                      {t("favorites.markRead")}
                     </button>
                   )}
                   <button
@@ -274,11 +275,11 @@ export function FavoritesPage() {
                         await removeFollow(f.service, f.id)
                         await refresh()
                       } catch (e) {
-                        setSyncResult("解除に失敗しました: " + (e instanceof Error ? e.message : String(e)))
+                        setSyncResult(t("favorites.unfollowFailed", { msg: e instanceof Error ? e.message : String(e) }))
                       }
                     }}
                   >
-                    解除
+                    {t("favorites.unfollow")}
                   </button>
                 </div>
               </div>
@@ -291,17 +292,15 @@ export function FavoritesPage() {
         <>
           <div className="hint-row">
             <span>
-              {sessionKey
-                ? "pawchive アカウントの投稿お気に入りを取得します"
-                : "ログインするとアカウントのお気に入りを取得できます"}
+              {sessionKey ? t("favorites.accountDesc") : t("favorites.loginDesc")}
             </span>
             {sessionKey ? (
               <button className="btn" onClick={loadAccount}>
-                投稿お気に入りを取得
+                {t("favorites.fetch")}
               </button>
             ) : (
               <button className="btn btn-primary" onClick={() => navigate("/login?next=/favorites")}>
-                ログイン
+                {t("login.submit")}
               </button>
             )}
           </div>
@@ -309,38 +308,38 @@ export function FavoritesPage() {
           {accountErr !== null && <ErrorBox error={accountErr} onRetry={loadAccount} />}
           {accountErr instanceof ApiError && apiStatus(accountErr) === 401 && (
             <div className="error-box">
-              <p>セッションキーが無効です。pawchive.pw にログインして、cookie の session 値を設定欄に貼り付けてください。</p>
+              <p>{t("favorites.sessionInvalid")}</p>
             </div>
           )}
-          {accountFavs && accountFavs.length === 0 && <Empty text="アカウントのお気に入りはありません" />}
+          {accountFavs && accountFavs.length === 0 && <Empty text={t("favorites.emptyAccount")} />}
           {accountFavs && accountFavs.length > 0 && (
             <div className="hint-row">
-              <span>{accountFavs.length} 件</span>
+              <span>{t("favorites.count", { n: accountFavs.length })}</span>
               <div className="segmented">
                 <button
                   className={`seg ${favSort === "faved" ? "seg-active" : ""}`}
                   onClick={() => setFavSort("faved")}
                 >
-                  お気に入り日
+                  {t("favorites.sortFaved")}
                 </button>
                 <button
                   className={`seg ${favSort === "published" ? "seg-active" : ""}`}
                   onClick={() => setFavSort("published")}
                 >
-                  投稿日
+                  {t("favorites.sortPublished")}
                 </button>
                 <button
                   className={`seg ${favSort === "added" ? "seg-active" : ""}`}
                   onClick={() => setFavSort("added")}
                 >
-                  取得日
+                  {t("favorites.sortAdded")}
                 </button>
                 <button
                   className={`seg ${favOrder === "asc" ? "seg-active" : ""}`}
                   onClick={() => setFavOrder(favOrder === "desc" ? "asc" : "desc")}
-                  title={favOrder === "desc" ? "�順へ切替" : "降順へ切替"}
+                  title={favOrder === "desc" ? t("favorites.orderAsc") : t("favorites.orderDesc")}
                 >
-                  {favOrder === "desc" ? "降順" : "昇順"}
+                  {favOrder === "desc" ? t("favorites.descOrder") : t("favorites.asc")}
                 </button>
               </div>
             </div>

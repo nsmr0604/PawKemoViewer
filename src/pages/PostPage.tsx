@@ -13,6 +13,7 @@ import {
 import { navigate } from "../router"
 import { FollowButton } from "../components/FollowButton"
 import { logError, logInfo, logWarn } from "../log"
+import { t as tr } from "../i18n"
 
 export function PostPage({
   service,
@@ -348,7 +349,7 @@ export function PostPage({
   return (
     <div className="page post-page" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="post-title-wrap">
-        <h1 className="post-title">{displayPost.title || "(無題)"}</h1>
+        <h1 className="post-title">{displayPost.title || tr("common.untitled")}</h1>
         <div className="post-meta">
           <CreatorAvatar service={postContext.service} id={postContext.creatorId} name={postContext.creatorId} className="small" />
           {" "}
@@ -356,10 +357,10 @@ export function PostPage({
             {postContext.service} / {postContext.creatorId}
           </span>
           {" · "}
-          公開 {fmtDate(displayPost.published)}
-          {displayPost.edited && displayPost.edited !== displayPost.published && ` · 編集 ${fmtDate(displayPost.edited)}`}
-          {displayPost.added && ` · 取得 ${fmtDate(displayPost.added)}`}
-          {revisions && revisions.length > 0 && (activeRevision ? ` · 旧版 ${revisions.findIndex((r) => r.revision_id === activeRevision.revision_id) + 1}/${revisions.length}` : " · 最新版")}
+          {tr("post.published", { date: fmtDate(displayPost.published) })}
+          {displayPost.edited && displayPost.edited !== displayPost.published && ` · ${tr("post.edited", { date: fmtDate(displayPost.edited) })}`}
+          {displayPost.added && ` · ${tr("post.added", { date: fmtDate(displayPost.added) })}`}
+          {revisions && revisions.length > 0 && (activeRevision ? ` · ${tr("post.oldVersion", { i: revisions.findIndex((r) => r.revision_id === activeRevision.revision_id) + 1, n: revisions.length })}` : ` · ${tr("post.latestVersion")}`)}
         </div>
         {(() => {
           const tags = normalizeTags(displayPost.tags)
@@ -372,7 +373,7 @@ export function PostPage({
                   onClick={() =>
                     navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}?tag=${encodeURIComponent(t)}`)
                   }
-                  title={`クリエイターの「${t}」タグで絞り込む`}
+                  title={tr("post.filterTag", { tag: String(t) })}
                 >
                   {t}
                 </span>
@@ -387,9 +388,9 @@ export function PostPage({
               className="btn btn-ghost"
               onClick={toggleFav}
               disabled={faved === "checking" || faved === "busy"}
-              title={faved === "err" ? "操作に失敗しました (再クリックで再試行)" : "アカウントの投稿お気に入りに追加/解除します"}
+              title={faved === "err" ? tr("post.favError") : tr("post.favAdd")}
             >
-              {faved === "checking" ? "…" : faved === "yes" ? "★ お気に入り中" : faved === "err" ? "☆ 失敗 (再試行)" : "☆ お気に入り"}
+              {faved === "checking" ? "…" : faved === "yes" ? tr("post.favYes") : faved === "err" ? tr("post.favErrorShort") : tr("post.favNo")}
             </button>
           )}
           <div className="post-quick-nav">
@@ -397,17 +398,17 @@ export function PostPage({
               className="btn btn-sm"
               disabled={!post.prev}
               onClick={() => navPost(post.prev)}
-              title="前の投稿 (←)"
+              title={tr("post.prevTitle")}
             >
-              ← 前
+              {tr("post.prev")}
             </button>
             <button
               className="btn btn-sm"
               disabled={!post.next}
               onClick={() => navPost(post.next)}
-              title="次の投稿 (→)"
+              title={tr("post.nextTitle")}
             >
-              次 →
+              {tr("post.next")}
             </button>
           </div>
           <a
@@ -417,7 +418,7 @@ export function PostPage({
             rel="noreferrer"
             referrerPolicy="no-referrer"
           >
-            サイトで開く ↗
+            {tr("common.openSite")}
           </a>
           {originalUrl && (
             <a
@@ -426,9 +427,9 @@ export function PostPage({
               target="_blank"
               rel="noreferrer"
               referrerPolicy="no-referrer"
-              title="元の fanbox / patreon の投稿ページを開きます (リファラーは送信しません)"
+              title={tr("post.originalTitle")}
             >
-              {postContext.service === "fanbox" ? "fanbox で開く ↗" : "patreon で開く ↗"}
+              {tr("common.openOn", { service: postContext.service })}
             </a>
           )}
         </div>
@@ -441,7 +442,7 @@ export function PostPage({
       {sourceFiles.length > 0 && !listMode && (
         <div className="post-files">
           <div className="section-row">
-            <span className="small">{allFiles.length} 件 · {loadOriginalImages ? "元画像" : "サムネイル"}表示</span>
+            <span className="small">{tr("post.filesCount", { n: allFiles.length })} · {tr(loadOriginalImages ? "post.originalImage" : "post.thumbnail")}</span>
             {postContext.service === "fanbox" && (
               <label className="small">
                 <input
@@ -449,14 +450,14 @@ export function PostPage({
                   checked={excludeFanboxCover}
                   onChange={(e) => toggleFanboxCover(e.target.checked)}
                 />
-                cover.jpeg を除外
+                {tr("post.excludeCover")}
               </label>
             )}
             <button className="btn btn-sm" onClick={() => setLoadOriginalImages((current) => !current)}>
-              {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
+              {tr(loadOriginalImages ? "post.backToThumbnail" : "post.loadOriginals")}
             </button>
           </div>
-          {allFiles.length === 0 && <p className="small">表示対象のファイルはありません。</p>}
+          {allFiles.length === 0 && <p className="small">{tr("post.noFiles")}</p>}
           {allFiles.map((f, i) => (
             <figure key={i} className="post-file">
               {isVideoFile(f) ? (
@@ -500,7 +501,7 @@ export function PostPage({
       {sourceFiles.length > 0 && listMode && (
         <div className="post-file-list-wrap">
           <div className="section-row">
-            <span className="small">{allFiles.length} 件 (省データ表示・自動読み込みなし)</span>
+            <span className="small">{tr("post.listModeFiles", { n: allFiles.length })}</span>
             <div className="creator-actions">
               {postContext.service === "fanbox" && (
                 <label className="small">
@@ -509,11 +510,11 @@ export function PostPage({
                     checked={excludeFanboxCover}
                     onChange={(e) => toggleFanboxCover(e.target.checked)}
                   />
-                  cover.jpeg を除外
+                  {tr("post.excludeCover")}
                 </label>
               )}
               <button className="btn btn-sm" onClick={() => setLoadedFiles(new Set(allFiles.map((_, i) => i)))}>
-                すべて読み込む
+                {tr("post.loadAll")}
               </button>
               <button
                 className="btn btn-sm"
@@ -526,7 +527,7 @@ export function PostPage({
                   }
                 }}
               >
-                {loadOriginalImages ? "サムネイルに戻す" : "元画像を一括読み込み"}
+                {tr(loadOriginalImages ? "post.backToThumbnail" : "post.loadOriginals")}
               </button>
             </div>
           </div>
@@ -534,15 +535,15 @@ export function PostPage({
             {allFiles.map((f, i) => (
               <li key={i} className="post-file-row">
                 <div className="post-file-head">
-                  <span className="post-file-name">{f.name || "(名称なし)"}</span>
-                  <span className="small">{isVideoFile(f) ? "動画" : "画像"}</span>
+                  <span className="post-file-name">{f.name || tr("post.unnamed")}</span>
+                  <span className="small">{tr(isVideoFile(f) ? "post.video" : "post.image")}</span>
                   {loadedFiles.has(i) ? (
                     <a href={fileUrl(f, postContext.service, postContext.postId, proxyReferer)} target="_blank" rel="noreferrer" download>
-                      保存 ↗
+                      {tr("post.save")}
                     </a>
                   ) : (
                     <button className="btn btn-sm" onClick={() => setLoadedFiles((prev) => new Set(prev).add(i))}>
-                      読み込む
+                      {tr("post.load")}
                     </button>
                   )}
                 </div>
@@ -564,26 +565,26 @@ export function PostPage({
 
       <div className="post-nav">
         <button className="btn" disabled={!post.prev} onClick={() => navPost(post.prev)}>
-          ← 前の投稿
+          {tr("post.prevPost")}
         </button>
         <button className="btn" disabled={!post.next} onClick={() => navPost(post.next)}>
-          次の投稿 →
+          {tr("post.nextPost")}
         </button>
       </div>
 
       <div className="section">
         <div className="section-row">
-          <h3>その他</h3>
+          <h3>{tr("post.other")}</h3>
           <button className="btn btn-ghost" onClick={onFlag} disabled={flagged === "busy" || flagged === "ok" || flagged === "dup"}>
-            {flagged === "ok" ? "申請済み" : flagged === "dup" ? "既に申請済み" : flagged === "err" ? "失敗" : "再取得を申請 (flag)"}
+            {flagged === "ok" ? tr("post.flagged") : flagged === "dup" ? tr("post.duplicate") : flagged === "err" ? tr("post.failed") : tr("post.flag")}
           </button>
         </div>
       </div>
 
       <div className="section">
-        <h3>コメント</h3>
-        {comments === null && <Spinner label="コメント…" />}
-        {comments && comments.length === 0 && <Empty text="コメントはありません" />}
+        <h3>{tr("post.comments")}</h3>
+        {comments === null && <Spinner label={tr("post.commentsLoading")} />}
+        {comments && comments.length === 0 && <Empty text={tr("post.noComments")} />}
         {comments && comments.length > 0 && (
           <ul className="comment-list">
             {comments.map((c) => (
@@ -600,10 +601,10 @@ export function PostPage({
 
       <div className="section">
         <div className="section-row">
-          <h3>改訂履歴{revisions && revisions.length > 0 ? ` (${revisions.length})` : ""}</h3>
+          <h3>{tr("post.revisions")}{revisions && revisions.length > 0 ? ` (${revisions.length})` : ""}</h3>
           {revisions && revisions.length > 0 && (
             <label className="revision-selector-label">
-              <span className="small">表示する版</span>
+              <span className="small">{tr("post.revisionSelect")}</span>
               <select
                 className="revision-selector"
                 value={String(activeRevision?.revision_id ?? "latest")}
@@ -613,23 +614,23 @@ export function PostPage({
                   setLightboxIndex(null)
                 }}
               >
-                <option value="latest">最新版（現在の投稿）</option>
+                <option value="latest">{tr("post.latestOption")}</option>
                 {revisions.map((r, index) => (
                   <option key={r.revision_id} value={String(r.revision_id)}>
-                    旧版 {index + 1} · {fmtDate(r.added)} · {r.title || "(無題)"}
+                    {tr("post.oldOption", { i: index + 1 })} · {fmtDate(r.added)} · {r.title || tr("common.untitled")}
                   </option>
                 ))}
               </select>
             </label>
           )}
         </div>
-        {revisions === null && <Spinner label="改訂履歴…" />}
+        {revisions === null && <Spinner label={tr("post.revisionsLoading")} />}
         {revisionsError !== null && revisionsError !== undefined && <ErrorBox error={revisionsError} />}
         {revisions && revisions.length === 0 && !revisionsError && (
-          <Empty text="改訂履歴はありません" />
+          <Empty text={tr("post.noRevisions")} />
         )}
         {revisions && revisions.length > 0 && (
-          <p className="small revision-hint">現在の投稿（最新版）を初期表示しています。プルダウンから過去の版へ切り替えられます。</p>
+          <p className="small revision-hint">{tr("post.revisionHint")}</p>
         )}
       </div>
 
@@ -666,7 +667,7 @@ export function PostPage({
                 →
               </button>
               <button className="btn" onClick={() => setLightboxIndex(null)}>
-                閉じる
+                {tr("common.close")}
               </button>
             </div>
           </div>

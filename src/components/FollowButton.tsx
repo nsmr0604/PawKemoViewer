@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { isFollowed, addFollow, removeFollow, loadFollows } from "../follows"
 import { getCreatorRow } from "../db"
+import { t } from "../i18n"
 
 export function FollowButton({ service, id }: { service: string; id: string }) {
   const [followed, setFollowed] = useState(() => isFollowed(service, id))
@@ -55,9 +56,9 @@ export function FollowButton({ service, id }: { service: string; id: string }) {
         className={`btn ${followed ? "btn-primary" : ""}`}
         disabled={busy}
         onClick={onToggle}
-        title={error || (followed ? "フォロー解除" : "フォロー")}
+        title={error || (followed ? t("follow.unfollow") : t("follow.follow"))}
       >
-        {busy ? "同期中…" : followed ? "★ フォロー中" : "☆ フォロー"}
+        {busy ? t("follow.syncing") : followed ? t("follow.following") : t("follow.follow")}
       </button>
       {error && <span className="creator-sub">{error}</span>}
     </span>

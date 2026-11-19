@@ -15,6 +15,7 @@ import { navigate } from "../router"
 import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
 import { clearIconCache, creatorIconInfo } from "../icons"
+import { t, loadLocale, type Locale } from "../i18n"
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -41,6 +42,7 @@ export function SettingsPage() {
   const [proxyImages, setProxyImagesState] = useState<boolean>(s.proxyImages || false)
   const [postFileListMode, setPostFileListModeState] = useState<boolean>(s.postFileListMode || false)
   const [excludeFanboxCover, setExcludeFanboxCoverState] = useState<boolean>(s.excludeFanboxCover || false)
+  const [locale, setLocaleState] = useState<Locale>(s.locale || "ja")
   const [iconCache, setIconCache] = useState<{ count: number; bytes: number } | null>(null)
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
   const [saved, setSaved] = useState(false)
@@ -96,6 +98,15 @@ export function SettingsPage() {
   const toggleExcludeFanboxCover = (val: boolean) => {
     setExcludeFanboxCoverState(val)
     updateSettings({ excludeFanboxCover: val })
+  }
+
+  // 言語ファイルを読み込んでから設定に保存する。
+  // 読込失敗時は loadLocale() が日本語へフォールバックするため、
+  // その結果を state と設定に反映する (存在しない言語が残らない)。
+  const applyLocale = async (value: Locale) => {
+    const applied = await loadLocale(value)
+    setLocaleState(applied)
+    updateSettings({ locale: applied })
   }
 
   const doClearIconCache = async () => {
@@ -297,6 +308,27 @@ export function SettingsPage() {
       {/* ------------------------------------------------ 表示 */}
       <div className="settings-section">
         <div className="section-label">表示</div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.language")}</span>
+            <small>{t("settings.languageDesc")}</small>
+          </div>
+          <div className="segmented">
+            <button
+              className={`seg ${locale === "ja" ? "seg-active" : ""}`}
+              onClick={() => void applyLocale("ja")}
+            >
+              {t("settings.languageJapanese")}
+            </button>
+            <button
+              className={`seg ${locale === "en" ? "seg-active" : ""}`}
+              onClick={() => void applyLocale("en")}
+            >
+              {t("settings.languageEnglish")}
+            </button>
+          </div>
+        </div>
 
         <div className="setting-item">
           <div className="setting-text">

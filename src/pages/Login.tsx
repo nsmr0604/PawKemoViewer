@@ -4,6 +4,7 @@ import { getVersion } from "@tauri-apps/api/app"
 import { updateSettings, getSettings } from "../api"
 import { syncFollowsWithAccount } from "../follows"
 import { navigate, useRoute } from "../router"
+import { t } from "../i18n"
 
 export function LoginPage() {
   const route = useRoute()
@@ -23,7 +24,7 @@ export function LoginPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!username || !password) {
-      setResult({ ok: false, msg: "ユーザー名とパスワードを入力してください" })
+      setResult({ ok: false, msg: t("login.errorEmpty") })
       return
     }
     setBusy(true)
@@ -46,21 +47,21 @@ export function LoginPage() {
           updateSettings({ sessionKey: j.session })
           // ログイン直後にローカルフォローをアカウントと同期する。
           await syncFollowsWithAccount()
-          setResult({ ok: true, msg: "ログインしました" })
+          setResult({ ok: true, msg: t("login.success") })
           setTimeout(() => navigate(next.startsWith("/") ? next : "/", true), 800)
         } else {
           // 認証は成功したが cookie が取得できなかった
           setResult({
             ok: true,
-            msg: "認証に成功しましたが、セッションキーを取得できませんでした。設定画面から手動で貼り付けてください。",
+            msg: t("login.sessionError"),
           })
           setTimeout(() => navigate("/settings", true), 2500)
         }
       } else {
-        setResult({ ok: false, msg: j.error || "ログインに失敗しました" })
+        setResult({ ok: false, msg: j.error || t("login.errorFail") })
       }
     } catch (e) {
-      setResult({ ok: false, msg: `通信エラー: ${e instanceof Error ? e.message : e}` })
+      setResult({ ok: false, msg: t("login.commError", { msg: e instanceof Error ? e.message : String(e) }) })
     } finally {
       setBusy(false)
       setPassword("")
@@ -72,34 +73,31 @@ export function LoginPage() {
   return (
     <div className="page login-page">
       <div className="login-card">
-        <h1>🐾 ログイン</h1>
-        <p className="login-desc">
-          pawchive.pw のアカウントでログインすると、アカウントのお気に入りを同期できます。
-          認証情報はログイン時にのみ使用され、この端末に保存されるのはセッションキーだけです。
-        </p>
+        <h1>🐾 {t("login.title")}</h1>
+        <p className="login-desc">{t("login.desc")}</p>
         <form className="login-form" onSubmit={submit}>
           <label className="field">
-            <span>ユーザー名</span>
+            <span>{t("login.username")}</span>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
-              placeholder="pawchive のユーザー名"
+              placeholder={t("login.usernamePlaceholder")}
             />
           </label>
           <label className="field">
-            <span>パスワード</span>
+            <span>{t("login.password")}</span>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              placeholder="pawchive のパスワード"
+              placeholder={t("login.passwordPlaceholder")}
             />
           </label>
           <button type="submit" className="btn btn-primary login-submit" disabled={busy}>
-            {busy ? "ログイン中…" : "ログイン"}
+            {busy ? t("login.submitting") : t("login.submit")}
           </button>
         </form>
         {result && (
@@ -107,7 +105,7 @@ export function LoginPage() {
         )}
         {sessionKey && (
           <div className="login-status">
-            セッションキーが設定済みです (設定画面で確認・削除できます)
+            {t("login.sessionSet")}
           </div>
         )}
         <div className="login-links">
@@ -117,7 +115,7 @@ export function LoginPage() {
             target="_blank"
             rel="noreferrer"
           >
-            アカウントを持っていない場合は登録 ↗
+            {t("login.register")}
           </a>
         </div>
         <div className="login-links">
@@ -126,7 +124,7 @@ export function LoginPage() {
             onClick={() => navigate("/settings")}
             role="button"
           >
-            セッションキーを手動入力する →
+            {t("login.sessionManual")}
           </span>
         </div>
         {appVersion && (

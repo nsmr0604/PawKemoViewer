@@ -6,6 +6,7 @@ import { logWarn, logError } from "./log"
 import { isFollowed } from "./follows"
 import { isFavPost, loadFavPosts, FAVPOSTS_CHANGED_EVENT } from "./favstate"
 import { getCreatorIcon } from "./icons"
+import { t } from "./i18n"
 
 /** 投稿カード用のマーク状態 (フォロー中クリエイター / お気に入り投稿)。
  *  favstate / follows の変更イベントを購読して全カードが同期する。
@@ -41,7 +42,7 @@ function usePostMarks(
 // 汎用
 // ---------------------------------------------------------------------------
 
-export function Spinner({ label = "読み込み中…" }: { label?: string }) {
+export function Spinner({ label = t("common.loading") }: { label?: string }) {
   return (
     <div className="spinner-wrap">
       <div className="spinner" />
@@ -58,26 +59,26 @@ export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => v
   const body = sm ? sm[2].trim() : raw
 
   // 状況に応じた説明 (JHenTai の Sad Panda 型: 固有名詞 + 対処を伝える)
-  let title = "読み込みに失敗しました"
+  let title = t("error.loadFailed")
   let hint = ""
   if (raw.includes("Fake site")) {
-    title = "サイトにブロックされた可能性 (Fake site)"
-    hint = "pawchive 側が中継を検出し偽ページを返しています。しばらく時間を置いてから再試行してください。"
+    title = t("error.blocked")
+    hint = t("error.blockedHint")
   } else if (status === 401) {
-    title = "セッションキーが無効または期限切れです"
-    hint = "設定 → アカウント からセッションキーを再設定するか、ID/パスワードでログインし直してください。"
+    title = t("error.sessionInvalid")
+    hint = t("error.sessionHint")
   } else if (status === 429) {
-    title = "リクエストが集中しています (429)"
-    hint = "サーバー側の制限です。少し待ってから再試行してください。"
+    title = t("error.tooManyRequests")
+    hint = t("error.tooManyRequestsHint")
   } else if (status === 403) {
-    title = "アクセスが拒否されました (403)"
-    hint = "サーバー側の制限または中継検出の可能性があります。時間を置いて再試行してください。"
+    title = t("error.forbidden")
+    hint = t("error.forbiddenHint")
   } else if (status === 404) {
-    title = "見つかりません (404)"
-    hint = "投稿またはクリエイターが削除されたか、URL が正しくない可能性があります。"
+    title = t("error.notFound")
+    hint = t("error.notFoundHint")
   } else if (status === 502 || /upstream|network|timed?\s?out/i.test(raw)) {
-    title = "サーバーに接続できません"
-    hint = "ネットワーク状態を確認するか、時間を置いて再試行してください。"
+    title = t("error.serverUnavailable")
+    hint = t("error.serverUnavailableHint")
   }
 
   return (
@@ -86,20 +87,22 @@ export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => v
       {hint && <p className="error-hint">{hint}</p>}
       {body && (
         <details className="error-detail">
-          <summary>詳細 ({status !== null ? `HTTP ${status}` : "理由不明"})</summary>
+          <summary>
+            {t("error.detail", { info: status !== null ? `HTTP ${status}` : t("error.reasonUnknown") })}
+          </summary>
           <pre className="mono small">{body.slice(0, 2000)}{body.length > 2000 ? "…" : ""}</pre>
         </details>
       )}
       {onRetry && (
         <button className="btn" onClick={onRetry}>
-          再試行
+          {t("common.retry")}
         </button>
       )}
     </div>
   )
 }
 
-export function Empty({ text = "何もありません" }: { text?: string }) {
+export function Empty({ text = t("common.noData") }: { text?: string }) {
   return <div className="empty">{text}</div>
 }
 
@@ -163,7 +166,7 @@ export function PostGrid({ posts, onEndReached, loading, done, newIds, viewMode 
       )}
       <div ref={sentinelRef} style={{ height: 1 }} />
       {loading && <Spinner />}
-      {done && posts.length > 0 && <div className="grid-end">終わり</div>}
+      {done && posts.length > 0 && <div className="grid-end">{t("common.end")}</div>}
     </div>
   )
 }
@@ -181,7 +184,7 @@ export function Thumb({ file, className }: { file: PawFile | undefined; classNam
   if (!file?.path || stage === 2)
     return <div className={`thumb thumb-fallback ${className || ""}`}>🖼️</div>
   if (noImage)
-    return <div className={`thumb thumb-noimage ${className || ""}`}>🖼️ (通信節約)</div>
+    return <div className={`thumb thumb-noimage ${className || ""}`}>🖼️ ({t("common.dataSaving")})</div>
 
   const thumb = thumbUrl(file)
   const full = fileUrl(file)
@@ -277,12 +280,12 @@ export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
         {isNew && <span className="badge-new">NEW</span>}
         {imageCount > 1 && <span className="badge-count">🖼{imageCount}</span>}
         {marks.faved && <span className="badge-fav">★</span>}
-        {marks.followed && <span className="badge-follow">フォロー中</span>}
+        {marks.followed && <span className="badge-follow">{t("follow.following")}</span>}
       </div>
       <div className="post-card-info">
         <div className="post-card-title">
           {marks.faved && <span className="title-mark">★</span>}
-          {post.title || "(無題)"}
+          {post.title || t("common.untitled")}
         </div>
         <div className="post-card-meta">
           {post.service} · {fmtDate(post.published || post.added)}
@@ -312,7 +315,7 @@ export function PostRow({ post, isNew }: { post: PawPost; isNew?: boolean }) {
         <div className="post-row-title">
           {marks.faved && <span className="title-mark">★</span>}
           {isNew && <span className="badge-new inline">NEW</span>}
-          {post.title || "(無題)"}
+          {post.title || t("common.untitled")}
         </div>
         <div className="post-row-meta">
           <span className="post-row-service">{post.service}</span>

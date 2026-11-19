@@ -1,4 +1,5 @@
 import { navigate } from "../router"
+import { t } from "../i18n"
 
 export interface NavigationRailProps {
   currentPath: string
@@ -27,45 +28,45 @@ export function NavigationRail({ currentPath, followCount }: NavigationRailProps
         <button
           className={`nav-rail-btn ${isHome ? "active" : ""}`}
           onClick={() => navigate("/", true)}
-          title="ホーム (H)"
+          title={`${t("nav.home")} (H)`}
         >
           <span className="nav-rail-icon">🏠</span>
-          <span className="nav-rail-label">ホーム</span>
+          <span className="nav-rail-label">{t("nav.home")}</span>
         </button>
 
         <button
           className={`nav-rail-btn ${isCreators ? "active" : ""}`}
           onClick={() => navigate("/creators")}
-          title="クリエイター (C)"
+          title={`${t("nav.creators")} (C)`}
         >
           <span className="nav-rail-icon">👤</span>
-          <span className="nav-rail-label">クリエイター</span>
+          <span className="nav-rail-label">{t("nav.creators")}</span>
         </button>
 
         <button
           className={`nav-rail-btn ${isFavorites ? "active" : ""}`}
           onClick={() => navigate("/favorites")}
-          title="フォロー (F)"
+          title={`${t("nav.favorites")} (F)`}
         >
           <span className="nav-rail-icon">
             ⭐
             {followCount > 0 && <span className="nav-rail-badge">{followCount}</span>}
           </span>
-          <span className="nav-rail-label">フォロー</span>
+          <span className="nav-rail-label">{t("nav.favorites")}</span>
         </button>
 
         <button
           className={`nav-rail-btn ${isSettings ? "active" : ""}`}
           onClick={() => navigate("/settings")}
-          title="設定 (S)"
+          title={`${t("nav.settings")} (S)`}
         >
           <span className="nav-rail-icon">⚙️</span>
-          <span className="nav-rail-label">設定</span>
+          <span className="nav-rail-label">{t("nav.settings")}</span>
         </button>
       </nav>
 
       <div className="nav-rail-bottom">
-        <div className="nav-rail-hint" title="ショートカット: Esc=戻る / H=ホーム / C=作者 / F=フォロー / S=設定">
+        <div className="nav-rail-hint" title={t("nav.shortcuts")}>
           ⌨️
         </div>
       </div>

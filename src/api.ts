@@ -1,6 +1,7 @@
 import {
   invoke
 } from "@tauri-apps/api/core"
+import type { Locale } from "./i18n"
 
 import type {
   PawAnnouncement,
@@ -42,6 +43,8 @@ export interface Settings {
   /** FANBOX の cover.jpeg (作品カバー画像) を投稿ファイルから除外する。
    *  グローバル設定 (投稿を切り替えても維持) */
   excludeFanboxCover: boolean
+  /** 表示言語 (既定 ja)。変更すると SETTINGS_CHANGED_EVENT で各画面が再描画される */
+  locale: Locale
 }
 
 /** 設定変更を上位コンポーネント (App) に通知するイベント名。
@@ -70,6 +73,7 @@ function defaultSettings(): Settings {
     proxyImages: false,
     postFileListMode: false,
     excludeFanboxCover: false,
+    locale: "ja",
   }
 }
 
