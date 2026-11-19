@@ -26,6 +26,7 @@ interface Settings {
   timeoutSecs: number      // 既定 30 (1〜300 にクランプ)
   proxyImages: boolean     // FANBOX / Patreon 由来の画像・ファイルを pkv:// 経由で読み込む (pawchive 本体は常に直接)
   postFileListMode: boolean     // 投稿内の画像を一覧表示 (省データ・自動読み込みしない)
+  excludeAiPosts: boolean       // グローバル投稿一覧・検索で AI 分類を除外 (hide=(ai))
   excludeFanboxCover: boolean   // FANBOX の cover.jpeg を投稿ファイルから除外 (グローバル設定)
   locale: "ja" | "en"           // 表示言語 (既定 ja)
 }
@@ -48,7 +49,7 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 ### API エンドポイント (pawchive.pw)
 
 #### Posts
-- `api.posts({q?, o?})` → `GET /posts?q=&o=` (o は 50 刻み)。ホームのサービス / タグフィルターは、API の既存契約を変更せず読み込み済み投稿をクライアント側で絞り込む (タグは `normalizeTags()` で正規化)
+- `api.posts({q?, o?})` → `GET /posts?q=&o=` (o は 50 刻み)。設定 `excludeAiPosts=true` の場合は `hide=(ai)` を追加し、公式 API 側で AI 分類投稿を除外する。ホームのサービスフィルターのみクライアント側で適用する。任意タグフィルターは提供しない
 - `api.creators()` → `GET /creators` (約 10 万件)
 - `api.creatorPosts(service, creatorId, {q?, tag?, o?})` → `GET /{service}/user/{creatorId}?q=&tag=&o=`
   - `tag` は配列 (繰り返し送信)、q より優先
