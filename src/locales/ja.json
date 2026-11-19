@@ -296,5 +296,13 @@
   "settings.excludeAiOn": "除外する",
   "settings.excludeAiOff": "除外しない",
   "home.filteredCount": "表示中 {{shown}} / 読込済み {{total}} 件",
-  "home.clearFilters": "サービス絞り込みを解除"
+  "home.clearFilters": "サービス絞り込みを解除",
+  "creators.serviceFilter": "サービス",
+  "creators.allServices": "すべて",
+  "creators.sortBy": "並び順",
+  "creators.sortUpdated": "更新日が新しい順",
+  "creators.sortPopular": "人気順",
+  "creators.sortName": "名前順",
+  "creators.resultCount": "{{shown}} / {{total}} 件を表示",
+  "creators.showMore": "さらに {{count}} 件表示"
 }
