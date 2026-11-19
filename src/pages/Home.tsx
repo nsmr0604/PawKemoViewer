@@ -141,6 +141,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
         </div>
       )}
       <section className="home-filters" aria-label={t("home.filters")}>
+        <p className="small text-muted">{t("home.filterScope")}</p>
         <div className="home-filter-group">
           <span className="small text-muted">{t("home.serviceFilter")}</span>
           <div className="tag-chips">
@@ -149,7 +150,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
                 className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
                 aria-pressed={serviceFilter === service}
                 onClick={() => setServiceFilter(service)}>
-                {service === "all" ? t("home.allServices") : service}
+                {service === "all" ? t("home.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
               </button>
             ))}
           </div>
