@@ -140,6 +140,47 @@ export function HomePage({ query }: { query: URLSearchParams }) {
           </button>
         </div>
       )}
+      <section className="home-filters" aria-label={t("home.filters")}>
+        <div className="home-filter-group">
+          <span className="small text-muted">{t("home.serviceFilter")}</span>
+          <div className="tag-chips">
+            {(["all", "fanbox", "patreon"] as const).map((service) => (
+              <button key={service} type="button"
+                className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
+                aria-pressed={serviceFilter === service}
+                onClick={() => setServiceFilter(service)}>
+                {service === "all" ? t("home.allServices") : service}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="home-filter-group">
+          <span className="small text-muted">{t("home.tagFilter")}</span>
+          {tagOptions.length > 0 ? (
+            <div className="tag-chips">
+              {tagOptions.slice(0, 40).map(([tag, count]) => (
+                <button key={tag} type="button"
+                  className={`chip ${selectedTags.includes(tag) ? "chip-active" : ""}`}
+                  aria-pressed={selectedTags.includes(tag)}
+                  onClick={() => toggleTag(tag)}>
+                  {tag} <span className="chip-count">{count}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="small text-muted">{t("home.tagsUnavailable")}</span>
+          )}
+        </div>
+        {hasActiveFilters && (
+          <div className="hint-row">
+            <span className="small text-muted">{t("home.filteredCount", { shown: filteredPosts.length, total: posts.length })}</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
+              setServiceFilter("all")
+              setSelectedTags([])
+            }}>{t("home.clearFilters")}</button>
+          </div>
+        )}
+      </section>
       <div className="view-mode-bar">
         {tooShort && <div className="hint-row">{t("home.tooShort")}</div>}
         {q && !tooShort && (
@@ -172,15 +213,20 @@ export function HomePage({ query }: { query: URLSearchParams }) {
       {error !== null && <ErrorBox error={error} onRetry={() => load(offset, offset === 0)} />}
       {!tooShort && (
         <PostGrid
-          posts={posts}
+          posts={filteredPosts}
           loading={loading}
           done={done}
           viewMode={viewMode}
           onEndReached={loading || done ? undefined : () => load(offset + PAGE, false)}
         />
       )}
-      {!loading && !error && posts.length === 0 && done && (
-        <div className="empty">{t("home.empty")}</div>
+      {!loading && !error && filteredPosts.length === 0 && (done || hasActiveFilters) && (
+        <div className="empty">{hasActiveFilters && posts.length > 0 ? t("home.noFilterResults") : t("home.empty")}</div>
+      )}
+      {hasActiveFilters && filteredPosts.length === 0 && !done && !loading && !tooShort && (
+        <div className="hint-row">
+          <button type="button" className="btn" onClick={() => load(offset + PAGE, false)}>{t("home.loadMoreForFilter")}</button>
+        </div>
       )}
     </div>
   )
