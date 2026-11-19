@@ -13,7 +13,7 @@
 - main の既知バージョン: `0.3.2`
 - 現在の作業 PR: [#7 UX/UI刷新と通信・描画処理の効率化](https://github.com/nsmr0604/pawchive/pull/7)
   - ブランチ: `improve/ux-ui-codebase`
-  - 最新 head (2026-11-20): `3fe1904a2900e2ca7104ffa627537b4ea71a9cde`
+  - 新着判定・既読キャッシュ実装反映時点の head: `3fe1904a2900e2ca7104ffa627537b4ea71a9cde` (その後、引き継ぎ文書更新コミットあり)
   - 状態: Open。直近の PR メタデータでは mergeable=false のため、マージ前に差分・競合状態を再確認する
   - バージョン番号は変更していない
   - **マージしないこと。ユーザーから明示的な依頼があるまで PR は open のままにする。**
