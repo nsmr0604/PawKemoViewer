@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
-import { getAllSeen, setSeen, getSeen } from "../db"
+import { getAllSeen, setSeen, getSeen, updateSeenCheck } from "../db"
 import { loadFollows, removeFollow, syncFollowsWithAccount } from "../follows"
 import { ErrorBox, Empty, PostGrid, fmtDate, CreatorAvatar } from "../components"
 import { navigate } from "../router"
 import { t } from "../i18n"
+
+/** NEW を表示する投稿の公開日時の範囲 (直近 7 日)。 */
+const NEW_POST_WINDOW_MS = 7 * 24 * 60 * 60_000
 
 /** 自動新着チェックのクールダウン (この間はネットワークを叩かない) */
 const CHECK_COOLDOWN_MS = 5 * 60_000
@@ -19,6 +22,22 @@ interface FollowState {
   lastSeen?: string
   error?: string
   checking?: boolean
+}
+
+/** 公開日時が直近 7 日以内の投稿だけ NEW 対象にする。日時不明・不正値は対象外。 */
+function isRecentPost(post?: { published?: string; added?: string }): boolean {
+  const timestamp = Date.parse(post?.published || post?.added || "")
+  const age = Date.now() - timestamp
+  return Number.isFinite(timestamp) && age >= 0 && age <= NEW_POST_WINDOW_MS
+}
+
+/** IndexedDB に保存した最小限の投稿情報を一覧表示用に復元する。 */
+function restoreCachedPost(
+  follow: FollowState,
+  cached?: { id: string; title?: string; published?: string },
+): PawPost | undefined {
+  if (!cached) return undefined
+  return { ...cached, service: follow.service, user: follow.id } as PawPost
 }
 
 export function FavoritesPage() {
@@ -61,7 +80,10 @@ export function FavoritesPage() {
     const seenAll = await getAllSeen()
     for (const s of base) {
       const e = seenAll.find((x) => x.key === `${s.service}:${s.id}`)
-      if (e) s.lastSeen = e.lastSeenPostId
+      if (!e) continue
+      s.lastSeen = e.lastSeenPostId
+      s.newest = restoreCachedPost(s, e.newest)
+      s.isNew = !!s.newest && s.newest.id !== e.lastSeenPostId && isRecentPost(s.newest)
     }
     setFollows(base)
   }, [])
@@ -95,10 +117,8 @@ export function FavoritesPage() {
       // クールダウン中 (自動チェックのみ): 保存済みの最新情報で判定して API を叩かない
       if (!force && seen?.checkedAt && Date.now() - seen.checkedAt < CHECK_COOLDOWN_MS) {
         const st: FollowState = { ...f, lastSeen: seen?.lastSeenPostId }
-        if (seen.newest) {
-          st.newest = seen.newest as unknown as PawPost
-          st.isNew = seen.newest.id !== seen.lastSeenPostId
-        }
+        st.newest = restoreCachedPost(st, seen.newest)
+        st.isNew = !!st.newest && st.newest.id !== seen?.lastSeenPostId && isRecentPost(st.newest)
         setFollows((prev) => {
           const copy = [...prev]
           const idx = copy.findIndex((x) => x.service === f.service && x.id === f.id)
@@ -115,11 +135,13 @@ export function FavoritesPage() {
         const newestInfo = posts[0]
           ? { id: posts[0].id, title: posts[0].title, published: posts[0].published || posts[0].added }
           : undefined
-        st.lastSeen = seen?.lastSeenPostId
-        st.isNew = !!posts[0] && posts[0].id !== seen?.lastSeenPostId
-        // チェック時刻と最新投稿を保存 (クールダウン中の再チェック用)
-        await setSeen(key, seen?.lastSeenPostId || "", newestInfo)
-        // lastSeenPostId が未設定のまま保存してしまうのを避ける (既読前は元の値を維持)
+        // API 待機中に「既読」が押されていても、その既読IDを上書きしないよう
+        // IndexedDB の readwrite transaction 内で最新状態を読み直してから更新する。
+        const latestSeen = await updateSeenCheck(key, newestInfo)
+        st.lastSeen = latestSeen.lastSeenPostId
+        st.isNew = !!posts[0] &&
+          posts[0].id !== latestSeen.lastSeenPostId &&
+          isRecentPost(posts[0])
       } catch (e) {
         st.error = e instanceof Error ? e.message : String(e)
       }
