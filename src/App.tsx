@@ -287,10 +287,12 @@ export default function App() {
               <NavIcon name="creators" /><span>{t("nav.creators")}</span>
             </button>
             <button
+              type="button"
               className={route.path === "favorites" ? "nav-active" : ""}
               onClick={() => navigate("/favorites")}
+              aria-current={route.path === "favorites" ? "page" : undefined}
             >
-              ⭐<span>{t("nav.favorites")}{followCount > 0 ? ` (${followCount})` : ""}</span>
+              <NavIcon name="favorites" /><span>{t("nav.favorites")}{followCount > 0 ? ` (${followCount})` : ""}</span>
             </button>
             <button
               type="button"
