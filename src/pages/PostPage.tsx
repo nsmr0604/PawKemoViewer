@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, apiStatus, getSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
+import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavPost } from "../favstate"
 import { CreatorAvatar } from "../components"
-import type { PawComment, PawPost, PawRevision, HashLookupResult, PawFile } from "../types"
+import type { PawComment, PawPost, PawRevision, PawFile } from "../types"
 import {
   Spinner,
   ErrorBox,
   Empty,
   fmtDate,
   sanitizeContent,
-  PostCard,
 } from "../components"
 import { navigate } from "../router"
 import { FollowButton } from "../components/FollowButton"
@@ -38,8 +37,6 @@ export function PostPage({
   const [revisions, setRevisions] = useState<PawRevision[] | null>(null)
   const [revisionsError, setRevisionsError] = useState<unknown>(null)
   const [selectedRevisionId, setSelectedRevisionId] = useState<number | null>(null)
-  const [hashResult, setHashResult] = useState<HashLookupResult | null>(null)
-  const [showHash, setShowHash] = useState(false)
   const [flagged, setFlagged] = useState<"none" | "busy" | "ok" | "dup" | "err">("none")
   /** ライトボックスで開いているファイルの allFiles 内インデックス (null=閉じている) */
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -51,8 +48,12 @@ export function PostPage({
   const [loadedFiles, setLoadedFiles] = useState<Set<number>>(() => new Set())
   // 投稿内の画像はサムネイルを初期表示し、操作時に元画像へ一括切替する。
   const [loadOriginalImages, setLoadOriginalImages] = useState(false)
-  // FANBOX の cover.jpeg は作品カバー画像のため、必要に応じて投稿ファイルから除外できる。
-  const [excludeFanboxCover, setExcludeFanboxCover] = useState(false)
+  // FANBOX の cover.jpeg は作品カバー画像のため除外できる。設定はグローバル (投稿を跨いで維持)
+  const [excludeFanboxCover, setExcludeFanboxCover] = useState(getSettings().excludeFanboxCover)
+  const toggleFanboxCover = (value: boolean) => {
+    setExcludeFanboxCover(value)
+    updateSettings({ excludeFanboxCover: value })
+  }
 
   // 元サービスの記事URLを Referer に使用する。FANBOX は slug サブドメインの
   // URLから slug を取り出し、www.fanbox.cc の記事URLへ正規化する。
@@ -90,8 +91,6 @@ export function PostPage({
     setRevisions(null)
     setRevisionsError(null)
     setSelectedRevisionId(null)
-    setHashResult(null)
-    setShowHash(false)
     try {
       logInfo(`投稿詳細取得開始 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}`)
       const p = await api.post(postContext.service, postContext.creatorId, postContext.postId)
@@ -205,11 +204,10 @@ export function PostPage({
     window.scrollTo(0, 0)
   }, [load])
 
-  // ライトボックス: 投稿変更時に閉じる
+  // ライトボックス: 投稿変更時に閉じる (cover 除外はグローバル設定なのでリセットしない)
   useEffect(() => {
     setLightboxIndex(null)
     setLoadOriginalImages(false)
-    setExcludeFanboxCover(false)
   }, [service, creatorId, postId, selectedRevisionId])
 
   // タッチスワイプによる前後投稿遷移 (FANBOX Viewer「左右スワイプで投稿を見る」型)
@@ -285,16 +283,11 @@ export function PostPage({
     )
   }
 
-  const hashFromPath = (path: string) => {
-    const name = path.split("/").pop() || ""
-    return name.replace(/\.[^.]+$/, "")
-  }
   const activeRevision =
     selectedRevisionId !== null && revisions
       ? (revisions.find((r) => r.revision_id === selectedRevisionId) || null)
       : null
   const displayPost: PawPost = activeRevision || post
-  const mainHash = displayPost.file?.path ? hashFromPath(displayPost.file.path) : ""
 
   const onFlag = async () => {
     setFlagged("busy")
@@ -454,7 +447,7 @@ export function PostPage({
                 <input
                   type="checkbox"
                   checked={excludeFanboxCover}
-                  onChange={(e) => setExcludeFanboxCover(e.target.checked)}
+                  onChange={(e) => toggleFanboxCover(e.target.checked)}
                 />
                 cover.jpeg を除外
               </label>
@@ -514,7 +507,7 @@ export function PostPage({
                   <input
                     type="checkbox"
                     checked={excludeFanboxCover}
-                    onChange={(e) => setExcludeFanboxCover(e.target.checked)}
+                    onChange={(e) => toggleFanboxCover(e.target.checked)}
                   />
                   cover.jpeg を除外
                 </label>
@@ -577,40 +570,6 @@ export function PostPage({
           次の投稿 →
         </button>
       </div>
-
-      {mainHash && (
-        <div className="section">
-          <div className="section-row">
-            <span className="mono small">{mainHash}</span>
-            <button
-              className="btn"
-              onClick={async () => {
-                setShowHash(true)
-                if (!hashResult) {
-                  try {
-                    setHashResult(await api.searchHash(mainHash))
-                  } catch {
-                    setHashResult(null)
-                  }
-                }
-              }}
-            >
-              同一ファイル検索
-            </button>
-          </div>
-          {showHash && (
-            <div className="hash-results">
-              {!hashResult && <Spinner label="検索中…" />}
-              {hashResult && (hashResult.posts?.length || 0) === 0 && (
-                <Empty text="同一ファイルは他に見つかりません" />
-              )}
-              {hashResult?.posts?.map((p) => (
-                <PostCard key={`${p.service}:${p.id}`} post={p as unknown as PawPost} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="section">
         <div className="section-row">

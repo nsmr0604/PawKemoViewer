@@ -26,6 +26,7 @@ interface Settings {
   timeoutSecs: number      // 既定 30 (1〜300 にクランプ)
   proxyImages: boolean     // FANBOX / Patreon 由来の画像・ファイルを pkv:// 経由で読み込む (pawchive 本体は常に直接)
   postFileListMode: boolean     // 投稿内の画像を一覧表示 (省データ・自動読み込みしない)
+  excludeFanboxCover: boolean   // FANBOX の cover.jpeg を投稿ファイルから除外 (グローバル設定)
 }
 ```
 

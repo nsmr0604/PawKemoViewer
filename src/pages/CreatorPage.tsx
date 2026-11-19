@@ -4,9 +4,8 @@ import type { PawPost, PawTag } from "../types"
 import { Spinner, PostGrid, ErrorBox } from "../components"
 import { CreatorHeader } from "./Creators"
 import { FollowButton } from "../components/FollowButton"
-import { useDebounced, useScrollMemory } from "../hooks"
+import { useScrollMemory } from "../hooks"
 import { parseHash } from "../router"
-import { MIN_QUERY } from "./Home"
 
 const PAGE = 50
 
@@ -19,8 +18,6 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
     const t = parseHash().query.get("tag")
     return t ? [t] : []
   })
-  const [input, setInput] = useState("")
-  const q = useDebounced(input, 400)
   const [offset, setOffset] = useState(0)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -34,11 +31,10 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
     updateSettings({ postViewMode: mode })
   }
 
-  const qValid = q.length >= MIN_QUERY
   const tagKey = selectedTags.join(",")
-  const scrollKey = `creator:${service}:${id}|t=${tagKey}|q=${qValid ? q : ""}`
-  // 検索条件が変わったらリストをリセット (q はデバウンス済み)
-  const filterKey = `${service}:${id}:${tagKey}:${qValid ? q : ""}`
+  const scrollKey = `creator:${service}:${id}|t=${tagKey}`
+  // タグ条件が変わったらリストをリセット
+  const filterKey = `${service}:${id}:${tagKey}`
 
   const load = useCallback(
     async (o: number, replace: boolean) => {
@@ -47,7 +43,6 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
       setError(null)
       try {
         const res = await api.creatorPosts(service, id, {
-          q: qValid ? q : undefined,
           tag: selectedTags.length ? selectedTags : undefined,
           o,
         })
@@ -61,7 +56,7 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
         if (seq === reqSeq.current) setLoading(false)
       }
     },
-    [service, id, q, qValid, tagKey],
+    [service, id, tagKey],
   )
 
   useEffect(() => {
@@ -108,7 +103,6 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
   }
 
   const visibleTags = tags ? (showAllTags ? tags : tags.slice(0, 20)) : []
-  const searching = input.length > 0 && input.length < MIN_QUERY
 
   return (
     <div className="page">
@@ -139,21 +133,6 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
           )}
         </div>
       </div>
-
-      <form className="search-bar" onSubmit={(e) => e.preventDefault()}>
-        <input
-          type="search"
-          placeholder="このクリエイター内で検索 (3文字以上)"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        {input && (
-          <button type="button" className="btn btn-ghost" onClick={() => setInput("")}>
-            ×
-          </button>
-        )}
-      </form>
-      {searching && <div className="hint-row">検索ワードは3文字以上入力してください (入力から少し待って自動検索)</div>}
 
       {tags === null && <Spinner label="タグ…" />}
       {tags && tags.length > 0 && (

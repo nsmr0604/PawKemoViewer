@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "PawKemoViewer",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "identifier": "com.nsmr0604.pawkemoviewer",
   "build": {
     "frontendDist": "../dist",

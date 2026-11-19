@@ -40,6 +40,7 @@ export function SettingsPage() {
   const [noImageMode, setNoImageModeState] = useState<boolean>(s.noImageMode || false)
   const [proxyImages, setProxyImagesState] = useState<boolean>(s.proxyImages || false)
   const [postFileListMode, setPostFileListModeState] = useState<boolean>(s.postFileListMode || false)
+  const [excludeFanboxCover, setExcludeFanboxCoverState] = useState<boolean>(s.excludeFanboxCover || false)
   const [iconCache, setIconCache] = useState<{ count: number; bytes: number } | null>(null)
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
   const [saved, setSaved] = useState(false)
@@ -90,6 +91,11 @@ export function SettingsPage() {
   const togglePostFileListMode = (val: boolean) => {
     setPostFileListModeState(val)
     updateSettings({ postFileListMode: val })
+  }
+
+  const toggleExcludeFanboxCover = (val: boolean) => {
+    setExcludeFanboxCoverState(val)
+    updateSettings({ excludeFanboxCover: val })
   }
 
   const doClearIconCache = async () => {
@@ -410,6 +416,22 @@ export function SettingsPage() {
             onClick={() => togglePostFileListMode(!postFileListMode)}
           >
             {postFileListMode ? "有効 (リスト)" : "無効 (本文の下に表示)"}
+          </button>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>FANBOX の cover.jpeg を除外</span>
+            <small>
+              FANBOX 投稿の作品カバー画像 (cover.jpeg) をファイル一覧から除外します。
+              設定は全投稿に適用されます (投稿ごとの切替は投稿詳細からも可能)
+            </small>
+          </div>
+          <button
+            className={`btn ${excludeFanboxCover ? "btn-primary" : "btn-ghost"}`}
+            onClick={() => toggleExcludeFanboxCover(!excludeFanboxCover)}
+          >
+            {excludeFanboxCover ? "除外する" : "表示する"}
           </button>
         </div>
       </div>

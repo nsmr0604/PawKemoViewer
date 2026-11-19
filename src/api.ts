@@ -39,6 +39,9 @@ export interface Settings {
   proxyImages: boolean
   /** 投稿内の画像・ファイルを一覧表示する (省データ・自動読み込みしない) */
   postFileListMode: boolean
+  /** FANBOX の cover.jpeg (作品カバー画像) を投稿ファイルから除外する。
+   *  グローバル設定 (投稿を切り替えても維持) */
+  excludeFanboxCover: boolean
 }
 
 /** 設定変更を上位コンポーネント (App) に通知するイベント名。
@@ -66,6 +69,7 @@ function defaultSettings(): Settings {
     timeoutSecs: 30,
     proxyImages: false,
     postFileListMode: false,
+    excludeFanboxCover: false,
   }
 }
 
