@@ -282,5 +282,6 @@
   "nav.accountConnected": "ログイン中 · 同期を利用できます",
   "nav.accountGuest": "ログインして同期機能を利用",
   "nav.login": "ログイン",
-  "nav.postDetail": "投稿詳細"
+  "nav.postDetail": "投稿詳細",
+  "settings.sections": "設定カテゴリー"
 }
