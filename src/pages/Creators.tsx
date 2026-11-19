@@ -25,7 +25,7 @@ function toTimestamp(value: number | string | undefined): number {
   if (value === undefined || value === "") return 0
   const numeric = Number(value)
   if (Number.isFinite(numeric)) return numeric
-  const parsed = Date.parse(value)
+  const parsed = Date.parse(String(value))
   return Number.isFinite(parsed) ? parsed : 0
 }
 
