@@ -36,6 +36,10 @@ export function HomePage({ query }: { query: URLSearchParams }) {
     setOffset(0)
     setDone(false)
     setError(null)
+    // クエリ切替/画面離脱後に前の検索結果が遅れて反映されるのを防ぐ。
+    return () => {
+      reqSeq.current += 1
+    }
   }, [q])
 
   const load = useCallback(
