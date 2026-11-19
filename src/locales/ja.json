@@ -107,6 +107,7 @@
   "favorites.count": "{{n}} 件",
   "favorites.sortFaved": "お気に入り日",
   "favorites.sortPublished": "投稿日",
+  "favorites.sortLatestPost": "最新投稿日",
   "favorites.sortAdded": "取得日",
   "favorites.sortChecked": "確認日",
   "favorites.sortName": "名前",
