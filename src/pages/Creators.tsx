@@ -20,7 +20,16 @@ import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../histo
 import { normalizeCreatorQuery } from "../db"
 import { t } from "../i18n"
 
-/** API レスポンス → 索引行 (パック v2: slug / favorited を保持) */
+/** API の日時値 (Unix 秒/ミリ秒または ISO 文字列) を比較用数値へ変換 */
+function toTimestamp(value: number | string | undefined): number {
+  if (value === undefined || value === "") return 0
+  const numeric = Number(value)
+  if (Number.isFinite(numeric)) return numeric
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+/** API レスポンス → 索引行 (slug / 人気度 / 更新日を保持) */
 function toRow(c: PawCreator): CreatorRow {
   const slug = (c.public_id || "").toLowerCase()
   return {
@@ -31,8 +40,8 @@ function toRow(c: PawCreator): CreatorRow {
     nameLower: (c.name || "").toLowerCase(),
     ...(slug ? { publicId: c.public_id, publicIdLower: slug } : {}),
     ...(c.favorited !== undefined ? { favorited: Number(c.favorited) || 0 } : {}),
-    ...(c.updated !== undefined ? { updated: Number(c.updated) || 0 } : {}),
-    ...(c.indexed !== undefined ? { indexed: Number(c.indexed) || 0 } : {}),
+    ...(c.updated !== undefined ? { updated: toTimestamp(c.updated) } : {}),
+    ...(c.indexed !== undefined ? { indexed: toTimestamp(c.indexed) } : {}),
   }
 }
 
@@ -73,7 +82,7 @@ export function CreatorsPage() {
   // メモリ索引から即時検索 (構築途中でも部分結果を表示)
   const runSearch = useCallback(async (value: string) => {
     const seq = ++searchSeq.current
-    const res = await searchCreators(value)
+    const res = await searchCreators(value, 100000)
     if (seq !== searchSeq.current) return
     setRows(res)
     // fanbox 投稿 URL 貼り付け (@{slug}/posts/{id} 両パターン) → 直接開けるリンクを出す
