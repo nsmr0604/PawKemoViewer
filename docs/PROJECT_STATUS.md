@@ -13,11 +13,11 @@
 - main の既知バージョン: `0.3.2`
 - 現在の作業 PR: [#7 UX/UI刷新と通信・描画処理の効率化](https://github.com/nsmr0604/pawchive/pull/7)
   - ブランチ: `improve/ux-ui-codebase`
-  - 直近の追加機能: ホーム投稿一覧のサービスフィルターと公式 `hide=(ai)` AI除外、クリエイター一覧の更新日 / 人気 / 名前ソートとサービスフィルター。ホームの任意タグフィルターは実装しない
-  - 最新作業 head: `3cc2dcd1fad3b373fd8b7ab5cb9938f4be5f1cd3`
+  - 直近の追加機能: ホーム投稿一覧のサービスフィルターと公式 `hide=(ai)` AI除外、クリエイター一覧の更新日 / 人気 / 名前ソートとサービスフィルター。ホームの任意タグフィルターは実装しない。Android CIで検出されたCreators.tsxの日時パース型エラーを修正
+  - 最新作業 head: `cf48a4ed413e64d168749f05b92f9f8ad0d4ccd4` (修正コミット反映前の確認値。修正後のSHAは次のActions確認時に更新)
   - AI除外は初期値 OFF。設定を localStorage / バックアップに保存し、ホームの一覧・検索 API に適用
-  - 最新変更に対する GitHub Actions / combined status は未確認。ビルド成功とは扱わない
-  - 状態: Open。2026-11-20 の最新確認では GitHub API が `mergeable=false` を返却。原因の詳細は未確認のため、マージせず差分・競合状態を再確認する
+  - 最新 head `cf48a4e` の Android Actions run `44640938963` は failure。`src/pages/Creators.tsx:28` の `Date.parse(string | number)` 型エラーで Frontend build が停止。修正をコミット後、最新SHAで Actions を再確認する
+  - 状態: Open。2026-11-20 の再確認で GitHub API は `mergeable=true` を返却。競合は現時点で検出されていない
   - バージョン番号は変更していない
   - **マージしないこと。ユーザーから明示的な依頼があるまで PR は open のままにする。**
 - PR #7 の Android Actions: [run 44634915879](https://github.com/nsmr0604/pawchive/actions/runs/44634915879)
@@ -82,7 +82,8 @@
 以下は優先順位付きの候補・未完了項目です。実装済みと誤認しないこと。着手時にコードと GitHub の最新状態を確認し、完了した項目は状態と根拠を更新する。
 
 ### P0 — PR #7 の検証と完了判断
-- [ ] PR #7 の Android Actions の最終結果を確認。失敗時はログを読み、原因を修正して再実行する
+- [x] PR #7 の Android Actions run `44640938963` の失敗ログを確認。原因は `src/pages/Creators.tsx:28` の `Date.parse` に `string | number` を渡す TypeScript エラー
+- [ ] 上記を `Date.parse(String(value))` に修正し、最新SHAで Android Actions を再確認する
 - [ ] TypeScript / Frontend / Rust のチェック結果を確認
 - [ ] PC ビルドは PR の現行 workflow では未検証であることを維持し、main への push が必要な場合もユーザーの許可なくマージしない
 - [ ] Android 実機と PC でナビゲーション、設定カテゴリ移動、ログイン導線、ライト / ダークテーマ、キーボード操作、狭い画面幅を確認
