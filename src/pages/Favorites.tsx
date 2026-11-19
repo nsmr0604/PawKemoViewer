@@ -220,7 +220,7 @@ export function FavoritesPage() {
     await setSeen(`${f.service}:${f.id}`, f.newest.id, info)
     setFollows((prev) =>
       prev.map((x) =>
-        x.service === f.service && x.id === f.id ? { ...x, lastSeen: f.newest!.id, isNew: false } : x,
+        x.service === f.service && x.id === f.id ? { ...x, lastSeen: f.newest!.id, isNew: false, checkedAt: Date.now() } : x,
       ),
     )
   }
@@ -236,7 +236,7 @@ export function FavoritesPage() {
         await setSeen(`${f.service}:${f.id}`, f.newest.id, info)
       }
     }
-    setFollows((prev) => prev.map((x) => ({ ...x, isNew: false, lastSeen: x.newest?.id })))
+    setFollows((prev) => prev.map((x) => ({ ...x, isNew: false, lastSeen: x.newest?.id, checkedAt: x.newest ? Date.now() : x.checkedAt })))
   }
 
   const loadAccount = useCallback(async () => {
