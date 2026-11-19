@@ -9,6 +9,6 @@ export default defineConfig({
   server: {
     // src-tauri/target (cargo のビルド成果物) を監視すると
     // Windows 上で EBUSY が発生し dev サーバがクラッシュするため除外
-    watch: { ignored: ["**/src-tauri/target/**"] },
+    watch: { ignored: ["**/src-tauri/target/**", "**/.agent-work/**"] },
   },
 })
