@@ -140,19 +140,41 @@ const CACHE_MAX = 150 // キャッシュ最大エントリ数
 
 let activeCount = 0
 let lastStartAt = 0
+let pumpTimer: ReturnType<typeof setTimeout> | null = null
 const waiting: (() => void)[] = []
 
 function pump() {
-  while (activeCount < MAX_CONCURRENT && waiting.length > 0) {
-    const wait = Math.max(0, lastStartAt + MIN_GAP_MS - Date.now())
-    if (wait > 0) {
-      setTimeout(pump, wait)
-      return
+  if (activeCount >= MAX_CONCURRENT || waiting.length === 0) return
+
+  const wait = Math.max(0, lastStartAt + MIN_GAP_MS - Date.now())
+  if (wait > 0) {
+    // enqueue が短時間に続いてもタイマーを重複登録しない。
+    if (pumpTimer === null) {
+      pumpTimer = setTimeout(() => {
+        pumpTimer = null
+        pump()
+      }, wait)
     }
+    return
+  }
+
+  while (activeCount < MAX_CONCURRENT && waiting.length > 0) {
+    // 1 リクエスト開始ごとに最小間隔を守る。次回の pump は完了時に呼ぶ。
+    if (Date.now() < lastStartAt + MIN_GAP_MS) break
     const run = waiting.shift()!
     lastStartAt = Date.now()
     activeCount++
     run()
+  }
+
+  if (waiting.length > 0 && activeCount < MAX_CONCURRENT) {
+    const nextWait = Math.max(0, lastStartAt + MIN_GAP_MS - Date.now())
+    if (nextWait > 0 && pumpTimer === null) {
+      pumpTimer = setTimeout(() => {
+        pumpTimer = null
+        pump()
+      }, nextWait)
+    }
   }
 }
 
