@@ -18,7 +18,7 @@ import { ErrorBox } from "./components"
 export default function App() {
   const route = useRoute()
   const [followCount, setFollowCount] = useState(loadFollows().length)
-  const [winWidth, setWinWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
+  const [isWideLayout, setIsWideLayout] = useState(typeof window !== "undefined" ? window.innerWidth >= 768 : true)
   // 設定変更を検知して再レンダリングする (getSettings() はモジュール変数なので
   // これが無いとレイアウトモード等の変更が次の遷移まで反映されない)
   const [settingsRev, setSettingsRev] = useState(0)
@@ -30,8 +30,8 @@ export default function App() {
       if (frame) return
       frame = requestAnimationFrame(() => {
         frame = 0
-        const nextWidth = window.innerWidth
-        setWinWidth((current) => current === nextWidth ? current : nextWidth)
+        const nextIsWide = window.innerWidth >= 768
+        setIsWideLayout((current) => current === nextIsWide ? current : nextIsWide)
       })
     }
     window.addEventListener("resize", onResize, { passive: true })
@@ -56,7 +56,7 @@ export default function App() {
       // オフライン時は次回起動またはフォロー画面表示時に再試行する。
     })
   }, [settings.sessionKey])
-  const layout: ResolvedLayout = resolveLayout(settings.layoutMode, winWidth)
+  const layout: ResolvedLayout = resolveLayout(settings.layoutMode, isWideLayout ? 768 : 767)
 
   useEffect(() => {
     // ページ遷移のたびにフォロー数を同期
