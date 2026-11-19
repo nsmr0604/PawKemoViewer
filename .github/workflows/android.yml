@@ -96,6 +96,39 @@ jobs:
         run: |
           npx tauri android init
 
+      - name: Patch Android back key dispatch
+        # Tauri 2.9+ の onBackButtonPress リスナーは登録されるが、WebView が
+        # KEYCODE_BACK を consume して Activity の dispatcher に届かない端末がある。
+        # dispatchKeyEvent で明示的に onBackPressedDispatcher を呼び JS リスナーを発火させる。
+        # 参考: https://github.com/tauri-apps/tauri/issues/8142
+        run: |
+          set -e
+          MAIN=$(find src-tauri/gen/android/app/src/main/java -name MainActivity.kt | head -1)
+          test -n "$MAIN"
+          python3 - "$MAIN" <<'PY'
+          import re, sys
+          path = sys.argv[1]
+          src = open(path, encoding="utf-8").read()
+          if "dispatchKeyEvent" in src:
+            print("already patched")
+            sys.exit(0)
+          if "import android.view.KeyEvent" not in src:
+            src = src.replace("import android.os.Bundle", "import android.os.Bundle\nimport android.view.KeyEvent", 1)
+          patch = """  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+            if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+              onBackPressedDispatcher.onBackPressed()
+              return true
+            }
+            return super.dispatchKeyEvent(event)
+            }
+          """
+          src, n = re.subn(r"(class MainActivity\s*:\s*TauriActivity\s*\(\)\s*\{)", lambda m: m.group(1) + "\n" + patch, src, count=1)
+          if n != 1:
+            sys.exit("MainActivity class not found")
+          open(path, "w", encoding="utf-8").write(src)
+          print("patched " + path)
+          PY
+
       - name: Build APK
         run: |
           npx tauri android build
