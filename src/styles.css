@@ -625,6 +625,24 @@ input:not([type]) {
   flex-wrap: wrap;
 }
 
+
+.creator-list-controls {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+.creator-list-controls .home-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.creator-list-controls select {
+  min-width: 180px;
+  max-width: 100%;
+}
+
 /* ------------------------------------------------------------------ */
 /* タグチップ                                                          */
 /* ------------------------------------------------------------------ */
