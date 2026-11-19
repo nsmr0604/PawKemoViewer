@@ -294,5 +294,7 @@
   "settings.excludeAiTitle": "AI投稿を除外",
   "settings.excludeAiDesc": "ホームの投稿一覧・検索結果から、AI分類された投稿を除外します。",
   "settings.excludeAiOn": "除外する",
-  "settings.excludeAiOff": "除外しない"
+  "settings.excludeAiOff": "除外しない",
+  "home.filteredCount": "表示中 {{shown}} / 読込済み {{total}} 件",
+  "home.clearFilters": "サービス絞り込みを解除"
 }
