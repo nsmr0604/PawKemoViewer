@@ -57,16 +57,20 @@ export interface CreatorRow {
   /** URL slug (fanbox: tateha 等)。索引 v1 には存在しない (再構築で付与) */
   publicId?: string
   publicIdLower?: string
-  /** お気に入り数 (人気度タイブレーク用)。パック v2 から保存 */
+  /** お気に入り数 (人気度順) */
   favorited?: number
+  /** 最終更新日時 (API の updated) */
+  updated?: number
+  /** インデックス日時 */
+  indexed?: number
 }
 
 /**
  * クリエイター索引のバージョン。
- * v1: per-row + name/id のみ / v2: per-row + publicId /
- * **pack v2: 単一パック文字列 (name + id + slug + favorited)** — 現行
+ * v1: per-row + name/id のみ / v2: pack (name + id + slug + favorited)
+ * **pack v3: updated / indexed を追加** — 現行
  *
- * パック形式: 1 行 = service\u001fid\u001fname\u001fnameLower\u001fslug\u001ffavorited、
+ * パック形式: 1 行 = service\u001fid\u001fname\u001fnameLower\u001fslug\u001ffavorited\u001fupdated\u001findexed、
  * 行区切り \u001e、nameLower 順ソート済み。99,231 行を 1 レコード (約 6MB) で保存し、
  * put × 99k / getAll × 99k オブジェクト復元を 1 put / 1 get + 文字列 split に置き換える。
  * 旧 per-row ストアは移行元としてのみ使用し、パック保存後に clear する。
@@ -75,7 +79,7 @@ export interface CreatorRow {
  * かな入力はクエリ側のローマ字変換 (kanaToRomaji) のみで slug にマッチさせる。
  * decode は v3 レイアウト (7 フィールド) も自動判別して読める。
  */
-export const SEARCH_INDEX_VERSION = 2
+export const SEARCH_INDEX_VERSION = 3
 
 const PACK_META_KEY = "creatorsPack"
 const ROW_SEP = "\u001e"
@@ -183,9 +187,14 @@ function decodePack(pack: string): CreatorRow[] {
     const name = f[2] || id
     const nameLower = f[3] || name.toLowerCase()
     const row: CreatorRow = { key: `${service}:${id}`, id, service, name, nameLower }
-    const v3 = f.length >= 7
-    const slug = (v3 ? f[5] : f[4]) || ""
-    const fav = Number((v3 ? f[6] : f[5]) || "") || 0
+    const current = f.length >= 8
+    const legacyV3 = f.length === 7
+    const slug = (current ? f[4] : legacyV3 ? f[5] : f[4]) || ""
+    const fav = Number((current ? f[5] : legacyV3 ? f[6] : f[5]) || "") || 0
+    const updated = current ? Number(f[6]) : 0
+    const indexed = current ? Number(f[7]) : 0
+    if (updated > 0) row.updated = updated
+    if (indexed > 0) row.indexed = indexed
     if (slug) {
       row.publicId = slug
       row.publicIdLower = slug
@@ -211,6 +220,8 @@ function encodePack(rows: CreatorRow[]): string {
         sanitizeField(r.nameLower),
         sanitizeField(r.publicIdLower || ""),
         String(r.favorited || 0),
+        String(r.updated || 0),
+        String(r.indexed || 0),
       ].join(FIELD_SEP),
     )
     .join(ROW_SEP)
