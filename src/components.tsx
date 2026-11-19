@@ -8,6 +8,22 @@ import { isFavPost, loadFavPosts, FAVPOSTS_CHANGED_EVENT } from "./favstate"
 import { getCreatorIcon } from "./icons"
 import { t } from "./i18n"
 
+/** FANBOX の作品カバー画像 (cover.jpeg) か。ファイル名・パス末尾で判定する */
+export function isFanboxCoverFile(f: PawFile): boolean {
+  const name = String(f.name || "").trim().toLowerCase()
+  const pathName = String(f.path || "").split(/[\\/?#]/).pop()?.toLowerCase() || ""
+  return name === "cover.jpeg" || pathName === "cover.jpeg"
+}
+
+/** 投稿の表示対象ファイル (本体 → 添付の順)。
+ *  FANBOX の cover.jpeg は設定 (excludeFanboxCover) が有効なら除く。
+ *  投稿詳細・一覧カードの両方がこの関数を使うため、設定が全画面に一貫して効く */
+export function visiblePostFiles(post: PawPost): PawFile[] {
+  const all: PawFile[] = [...(post.file?.path ? [post.file] : []), ...(post.attachments || [])]
+  if (post.service !== "fanbox" || !getSettings().excludeFanboxCover) return all
+  return all.filter((f) => !isFanboxCoverFile(f))
+}
+
 /** 投稿カード用のマーク状態 (フォロー中クリエイター / お気に入り投稿)。
  *  favstate / follows の変更イベントを購読して全カードが同期する。
  *  web はフォロー = クリエイターのお気に入り、☆ = 投稿のお気に入り */
@@ -269,14 +285,14 @@ export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
     if (path) navigate(path)
   }, [post])
   // 画像枚数バッジ (EhViewer のページ数バッジ相当): 本体 + 添付の合計
-  const imageCount =
-    (post.file?.path ? 1 : 0) + (post.attachments?.length || 0)
+  const files = visiblePostFiles(post)
+  const imageCount = files.length
   // フォロー中クリエイター / お気に入り投稿のマーク (pawchive の ☆ / ★ と同期)
   const marks = usePostMarks(post.service, post.user, post.id)
   return (
     <div className={`post-card${marks.faved ? " is-fav" : ""}${marks.followed ? " is-follow" : ""}`} onClick={onClick}>
       <div className="post-card-thumb">
-        <Thumb file={post.file?.path ? post.file : post.attachments?.[0]} />
+        <Thumb file={files[0]} />
         {isNew && <span className="badge-new">NEW</span>}
         {imageCount > 1 && <span className="badge-count">🖼{imageCount}</span>}
         {marks.faved && <span className="badge-fav">★</span>}
@@ -301,13 +317,13 @@ export function PostRow({ post, isNew }: { post: PawPost; isNew?: boolean }) {
     const path = postPath(post)
     if (path) navigate(path)
   }, [post])
-  const imageCount =
-    (post.file?.path ? 1 : 0) + (post.attachments?.length || 0)
+  const files = visiblePostFiles(post)
+  const imageCount = files.length
   const marks = usePostMarks(post.service, post.user, post.id)
   return (
     <div className={`post-row-item${marks.faved ? " is-fav" : ""}${marks.followed ? " is-follow" : ""}`} onClick={onClick}>
       <div className="post-row-thumb">
-        <Thumb file={post.file?.path ? post.file : post.attachments?.[0]} />
+        <Thumb file={files[0]} />
         {imageCount > 1 && <span className="badge-count-mini">🖼{imageCount}</span>}
         {marks.faved && <span className="badge-fav mini">★</span>}
       </div>

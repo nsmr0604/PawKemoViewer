@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavPost } from "../favstate"
-import { CreatorAvatar } from "../components"
+import { CreatorAvatar, isFanboxCoverFile } from "../components"
 import type { PawComment, PawPost, PawRevision, PawFile } from "../types"
 import {
   Spinner,
@@ -335,13 +335,8 @@ export function PostPage({
     ...(displayPost.file?.path ? [displayPost.file] : []),
     ...(displayPost.attachments || []),
   ]
-  const isFanboxCover = (f: PawFile) => {
-    const name = String(f.name || "").trim().toLowerCase()
-    const pathName = String(f.path || "").split(/[\\/?#]/).pop()?.toLowerCase() || ""
-    return name === "cover.jpeg" || pathName === "cover.jpeg"
-  }
   const allFiles = sourceFiles.filter(
-    (f) => !(postContext.service === "fanbox" && excludeFanboxCover && isFanboxCover(f)),
+    (f) => !(postContext.service === "fanbox" && excludeFanboxCover && isFanboxCoverFile(f)),
   )
   filesCountRef.current = allFiles.length
   const listMode = getSettings().postFileListMode || getSettings().noImageMode

@@ -455,7 +455,7 @@ export function SettingsPage() {
           <div className="setting-text">
             <span>FANBOX の cover.jpeg を除外</span>
             <small>
-              FANBOX 投稿の作品カバー画像 (cover.jpeg) をファイル一覧から除外します。
+              FANBOX 投稿の作品カバー画像 (cover.jpeg) を、投稿一覧のサムネイル・枚数と投稿詳細のファイル一覧から除外します。
               設定は全投稿に適用されます (投稿ごとの切替は投稿詳細からも可能)
             </small>
           </div>
