@@ -54,6 +54,7 @@ export function SettingsPage() {
   const [proxyImages, setProxyImagesState] = useState<boolean>(s.proxyImages || false)
   const [postFileListMode, setPostFileListModeState] = useState<boolean>(s.postFileListMode || false)
   const [excludeFanboxCover, setExcludeFanboxCoverState] = useState<boolean>(s.excludeFanboxCover || false)
+  const [excludeAiPosts, setExcludeAiPostsState] = useState<boolean>(s.excludeAiPosts || false)
   const [locale, setLocaleState] = useState<Locale>(s.locale || "ja")
   const [iconCache, setIconCache] = useState<{ count: number; bytes: number } | null>(null)
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
@@ -115,6 +116,11 @@ export function SettingsPage() {
   const toggleExcludeFanboxCover = (val: boolean) => {
     setExcludeFanboxCoverState(val)
     updateSettings({ excludeFanboxCover: val })
+  }
+
+  const toggleExcludeAiPosts = (val: boolean) => {
+    setExcludeAiPostsState(val)
+    updateSettings({ excludeAiPosts: val })
   }
 
   // 言語ファイルを読み込んでから設定に保存する。
@@ -598,6 +604,20 @@ export function SettingsPage() {
             onClick={() => togglePostFileListMode(!postFileListMode)}
           >
             {postFileListMode ? t("settings.fileListOn") : t("settings.fileListOff")}
+          </button>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.excludeAiTitle")}</span>
+            <small>{t("settings.excludeAiDesc")}</small>
+          </div>
+          <button
+            className={`btn ${excludeAiPosts ? "btn-primary" : "btn-ghost"}`}
+            aria-pressed={excludeAiPosts}
+            onClick={() => toggleExcludeAiPosts(!excludeAiPosts)}
+          >
+            {excludeAiPosts ? t("settings.excludeAiOn") : t("settings.excludeAiOff")}
           </button>
         </div>
 
