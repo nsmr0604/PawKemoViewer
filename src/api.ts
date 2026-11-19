@@ -43,6 +43,8 @@ export interface Settings {
   /** FANBOX の cover.jpeg (作品カバー画像) を投稿ファイルから除外する。
    *  グローバル設定 (投稿を切り替えても維持) */
   excludeFanboxCover: boolean
+  /** サイト全体の投稿一覧・検索で AI 分類の投稿を除外する */
+  excludeAiPosts: boolean
   /** 表示言語 (既定 ja)。変更すると SETTINGS_CHANGED_EVENT で各画面が再描画される */
   locale: Locale
 }
@@ -73,6 +75,7 @@ function defaultSettings(): Settings {
     proxyImages: false,
     postFileListMode: false,
     excludeFanboxCover: false,
+    excludeAiPosts: false,
     locale: "ja",
   }
 }
@@ -317,6 +320,7 @@ export const api = {
     const p = new URLSearchParams()
     if (opts.q) p.set("q", opts.q)
     if (opts.o) p.set("o", String(opts.o))
+    if (settings.excludeAiPosts) p.set("hide", "(ai)")
     const qs = p.toString()
     return request<PawPost[]>(`/posts${qs ? `?${qs}` : ""}`)
   },
