@@ -46,6 +46,7 @@ export function CreatorsPage() {
   const [postLink, setPostLink] = useState<{ service: string; creatorId: string; postId: string; name: string } | null>(null)
   const qRef = useRef(q)
   qRef.current = q
+  const searchSeq = useRef(0)
 
   // クリップボードの URL 検出 (JHenTai の Check Gallery URL in Clipboard 参考)
   useEffect(() => {
@@ -66,7 +67,9 @@ export function CreatorsPage() {
 
   // メモリ索引から即時検索 (構築途中でも部分結果を表示)
   const runSearch = useCallback(async (value: string) => {
+    const seq = ++searchSeq.current
     const res = await searchCreators(value)
+    if (seq !== searchSeq.current) return
     setRows(res)
     // fanbox 投稿 URL 貼り付け (@{slug}/posts/{id} 両パターン) → 直接開けるリンクを出す
     const norm = normalizeCreatorQuery(value)
@@ -260,6 +263,15 @@ export function CreatorsPage() {
             key={r.key}
             className={`creator-row${isFollowed(r.service, r.id) ? " is-followed" : ""}`}
             onClick={() => navigate(`/creator/${r.service}/${r.id}`)}
+            role="button"
+            tabIndex={0}
+            aria-label={r.name}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                navigate(`/creator/${r.service}/${r.id}`)
+              }
+            }}
           >
             <CreatorAvatar service={r.service} id={r.id} name={r.name} />
             <div className="creator-row-main">
