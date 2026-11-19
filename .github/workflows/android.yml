@@ -97,10 +97,9 @@ jobs:
           npx tauri android init
 
       - name: Patch Android back key dispatch
-        # Tauri 2.9+ の onBackButtonPress リスナーは登録されるが、WebView が
-        # KEYCODE_BACK を consume して Activity の dispatcher に届かない端末がある。
-        # dispatchKeyEvent で明示的に onBackPressedDispatcher を呼び JS リスナーを発火させる。
-        # 参考: https://github.com/tauri-apps/tauri/issues/8142
+        # Tauri 2.9+ の onBackButtonPress は実機で発火しないことがある。
+        # MainActivity で KEYCODE_BACK を捕捉し、WebView の JS (androidBackCallback)
+        # を直接呼ぶ。参考: https://github.com/tauri-apps/tauri/issues/8142
         run: |
           set -e
           MAIN=$(find src-tauri/gen/android/app/src/main/java -name MainActivity.kt | head -1)
@@ -112,14 +111,24 @@ jobs:
           if "dispatchKeyEvent" in src:
             print("already patched")
             sys.exit(0)
-          if "import android.view.KeyEvent" not in src:
-            src = src.replace("import android.os.Bundle", "import android.os.Bundle\nimport android.view.KeyEvent", 1)
-          patch = """  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-            if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-              onBackPressedDispatcher.onBackPressed()
-              return true
+          base = "import android.os.Bundle"
+          for imp in ["import android.view.KeyEvent", "import android.webkit.WebView"]:
+            if imp not in src:
+              src = src.replace(base, base + "\n" + imp, 1)
+          patch = """  private lateinit var wv: WebView
+
+            override fun onWebViewCreate(webView: WebView) {
+              wv = webView
             }
-            return super.dispatchKeyEvent(event)
+
+            override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+              if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+                wv.evaluateJavascript("try { window.androidBackCallback() } catch (_) { true }") { result ->
+                  if (result == "true") finish()
+                }
+                return true
+              }
+              return super.dispatchKeyEvent(event)
             }
           """
           src, n = re.subn(r"(class MainActivity\s*:\s*TauriActivity\s*\(\)\s*\{)", lambda m: m.group(1) + "\n" + patch, src, count=1)
