@@ -428,9 +428,54 @@ export async function setSeen(
   lastSeenPostId: string,
   newest?: { id: string; title?: string; published?: string },
 ) {
-  await tx("seen", "readwrite", (s) =>
-    s.put({ key, lastSeenPostId, checkedAt: Date.now(), newest }),
-  )
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction("seen", "readwrite")
+    const store = t.objectStore("seen")
+    const req = store.get(key)
+    req.onsuccess = () => {
+      const current = req.result as SeenEntry | undefined
+      store.put({
+        ...current,
+        key,
+        lastSeenPostId,
+        checkedAt: Date.now(),
+        ...(newest ? { newest } : {}),
+      })
+    }
+    t.oncomplete = () => resolve()
+    t.onerror = () => reject(t.error)
+    t.onabort = () => reject(t.error || new Error("既読状態の保存に失敗しました"))
+  })
+}
+
+/** 新着チェック結果だけを更新し、チェック中に変更された既読IDを上書きしない。 */
+export async function updateSeenCheck(
+  key: string,
+  newest?: { id: string; title?: string; published?: string },
+): Promise<SeenEntry> {
+  const db = await openDb()
+  let saved: SeenEntry | undefined
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction("seen", "readwrite")
+    const store = t.objectStore("seen")
+    const req = store.get(key)
+    req.onsuccess = () => {
+      const current = req.result as SeenEntry | undefined
+      saved = {
+        ...current,
+        key,
+        lastSeenPostId: current?.lastSeenPostId || "",
+        checkedAt: Date.now(),
+        ...(newest ? { newest } : {}),
+      }
+      store.put(saved)
+    }
+    t.oncomplete = () => resolve()
+    t.onerror = () => reject(t.error)
+    t.onabort = () => reject(t.error || new Error("新着状態の保存に失敗しました"))
+  })
+  return saved!
 }
 
 export async function getSeen(key: string): Promise<SeenEntry | undefined> {
