@@ -43,7 +43,8 @@ let externalDir = ""
 let invalidFiles: string[] = []
 
 i18n.use(initReactI18next).init({
-  resources: { ja: { translation: BASE_JA } },
+  // i18next は渡したオブジェクトを参照のまま書き換えるため、同梱の辞書はコピーを渡す
+  resources: { ja: { translation: { ...BASE_JA } } },
   lng: "ja",
   fallbackLng: "ja",
   // 平坦なキー (settings.title など) をそのまま使う
