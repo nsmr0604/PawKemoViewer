@@ -83,10 +83,11 @@ export function FavoritesPage() {
       } else if (followSort === "name") {
         result = a.follow.name.localeCompare(b.follow.name, undefined, { sensitivity: "base" })
       } else {
-        // フォロー順は元の配列順 (新しくフォローしたものが先頭)
+        // 元の配列は新しくフォローした順 (先頭が最新)
         result = a.index - b.index
+        return followOrder === "desc" ? result : -result
       }
-      if (result === 0) result = a.index - b.index
+      if (result === 0) return a.index - b.index
       return followOrder === "desc" ? -result : result
     })
     return indexed.map(({ follow }) => follow)
@@ -292,7 +293,7 @@ export function FavoritesPage() {
               <span>{t("favorites.count", { n: follows.length })}</span>
               <div className="segmented">
                 <button className={`seg ${followSort === "published" ? "seg-active" : ""}`} onClick={() => setFollowSort("published")}>
-                  {t("favorites.sortPublished")}
+                  {t("favorites.sortLatestPost")}
                 </button>
                 <button className={`seg ${followSort === "checked" ? "seg-active" : ""}`} onClick={() => setFollowSort("checked")}>
                   {t("favorites.sortChecked")}
