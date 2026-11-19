@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { api, getSettings, updateSettings } from "../api"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { api, getSettings, normalizeTags, updateSettings } from "../api"
 import type { PawPost } from "../types"
 import { PostGrid, ErrorBox } from "../components"
 import { useNavigate } from "../router"
@@ -21,9 +21,30 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   const [input, setInput] = useState(q)
   const [viewMode, setViewMode] = useState<"grid" | "list">(getSettings().postViewMode)
   const [history, setHistory] = useState<string[]>(getSearchHistory)
+  const [serviceFilter, setServiceFilter] = useState<"all" | "fanbox" | "patreon">("all")
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const reqSeq = useRef(0)
   const tooShort = q.length > 0 && q.length < MIN_QUERY
-  const scrollKey = `home:${q}`
+  const scrollKey = `home:${q}:service=${serviceFilter}:tags=${selectedTags.join(",")}`
+  const tagOptions = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const post of posts) {
+      for (const tag of normalizeTags(post.tags)) counts.set(tag, (counts.get(tag) || 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  }, [posts])
+  const filteredPosts = useMemo(() => posts.filter((post) => {
+    if (serviceFilter !== "all" && post.service !== serviceFilter) return false
+    if (selectedTags.length > 0) {
+      const postTags = normalizeTags(post.tags)
+      if (!selectedTags.some((tag) => postTags.includes(tag))) return false
+    }
+    return true
+  }), [posts, serviceFilter, selectedTags])
+  const hasActiveFilters = serviceFilter !== "all" || selectedTags.length > 0
+  const toggleTag = (tag: string) => setSelectedTags((current) =>
+    current.includes(tag) ? current.filter((value) => value !== tag) : [...current, tag],
+  )
 
   const toggleViewMode = (mode: "grid" | "list") => {
     setViewMode(mode)
