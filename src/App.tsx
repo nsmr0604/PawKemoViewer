@@ -87,24 +87,6 @@ export default function App() {
     }
   }, [])
 
-  // Kotlin (MainActivity.dispatchKeyEvent) から直接呼ばれる back ハンドラ。
-  // Tauri 公式の onBackButtonPress が発火しない端末向けのフォールバック。
-  // true を返すと Activity を終了する (履歴が無い = アプリの最初の画面)。
-  useEffect(() => {
-    const w = window as Window & { androidBackCallback?: () => boolean }
-    w.androidBackCallback = () => {
-      if (history.length > 1) {
-        history.back()
-        return false
-      }
-      void exit(0)
-      return true
-    }
-    return () => {
-      delete w.androidBackCallback
-    }
-  }, [])
-
   // デスクトップ向けキーボードショートカット (JHenTai 参考: H/C/F/S/Esc//)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
