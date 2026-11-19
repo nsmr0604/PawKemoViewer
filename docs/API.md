@@ -119,5 +119,5 @@ WebView から Referer を設定できないため、リファラーチェック
 
 - `PawPost`: id / user / service / title / content / embed / shared_file / added / published / edited / file / attachments / next / prev / (実測追加: tags / origin / preview_state / has_full / detail_fetched / substring)
 - `AccountFavorite`: PawPost を Partial 継承 + faved_seq (type=post は PawPost 全フィールド)
-- `PawCreator`: id / public_id / service / name / indexed / updated / favorited
+- `PawCreator`: id / public_id / service / name / indexed / updated / favorited. Creator list caches updated / indexed / favorited in index v3 to support client-side sorting.
 - `PawRevision extends PawPost` + revision_id
