@@ -293,14 +293,24 @@ export function SettingsPage() {
       <h2>{t("settings.title")}</h2>
 
       <nav className="settings-nav" aria-label={t("settings.sections")}>
-        <a href="#settings-account">{t("settings.accountTitle")}</a>
-        <a href="#settings-display">{t("settings.displayTitle")}</a>
-        <a href="#settings-post">{t("settings.postTitle")}</a>
-        <a href="#settings-connection">{t("settings.connection")}</a>
-        <a href="#settings-data">{t("settings.dataTitle")}</a>
-        <a href="#settings-cache">{t("settings.cacheTitle")}</a>
-        <a href="#settings-diagnostics">{t("settings.diagnostics")}</a>
-        <a href="#settings-info">{t("settings.info")}</a>
+        {[
+          ["settings-account", t("settings.accountTitle")],
+          ["settings-display", t("settings.displayTitle")],
+          ["settings-post", t("settings.postTitle")],
+          ["settings-connection", t("settings.connection")],
+          ["settings-data", t("settings.dataTitle")],
+          ["settings-cache", t("settings.cacheTitle")],
+          ["settings-diagnostics", t("settings.diagnostics")],
+          ["settings-info", t("settings.info")],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
+            {label}
+          </button>
+        ))}
       </nav>
 
       {/* ------------------------------------------------ デバッグ診断 (ビルド時フラグ注入・リリースでは分離) */}
