@@ -22,6 +22,7 @@ interface FollowState {
   lastSeen?: string
   error?: string
   checking?: boolean
+  checkedAt?: number
 }
 
 /** 公開日時が直近 7 日以内の投稿だけ NEW 対象にする。日時不明・不正値は対象外。 */
@@ -62,6 +63,34 @@ export function FavoritesPage() {
   // ソート (web の favorites UI 相当: お気に入り日 / 投稿日 / 取得日 + 降順/昇順)
   const [favSort, setFavSort] = useState<"faved" | "published" | "added">("faved")
   const [favOrder, setFavOrder] = useState<"desc" | "asc">("desc")
+  // フォロー一覧も投稿お気に入りと同じ操作感でソート可能にする
+  const [followSort, setFollowSort] = useState<"published" | "checked" | "name" | "followed">("published")
+  const [followOrder, setFollowOrder] = useState<"desc" | "asc">("desc")
+
+  const sortedFollows = useMemo(() => {
+    const indexed = follows.map((follow, index) => ({ follow, index }))
+    const timestamp = (value?: string) => {
+      const parsed = Date.parse(value || "")
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+    indexed.sort((a, b) => {
+      let result = 0
+      if (followSort === "published") {
+        result = timestamp(a.follow.newest?.published || a.follow.newest?.added) -
+          timestamp(b.follow.newest?.published || b.follow.newest?.added)
+      } else if (followSort === "checked") {
+        result = (a.follow.checkedAt || 0) - (b.follow.checkedAt || 0)
+      } else if (followSort === "name") {
+        result = a.follow.name.localeCompare(b.follow.name, undefined, { sensitivity: "base" })
+      } else {
+        // フォロー順は元の配列順 (新しくフォローしたものが先頭)
+        result = a.index - b.index
+      }
+      if (result === 0) result = a.index - b.index
+      return followOrder === "desc" ? -result : result
+    })
+    return indexed.map(({ follow }) => follow)
+  }, [follows, followSort, followOrder])
 
   const sortedFavs = useMemo(() => {
     if (!accountFavs) return []
@@ -85,6 +114,7 @@ export function FavoritesPage() {
       const e = seenAll.find((x) => x.key === `${s.service}:${s.id}`)
       if (!e) continue
       s.lastSeen = e.lastSeenPostId
+      s.checkedAt = e.checkedAt
       s.newest = restoreCachedPost(s, e.newest)
       s.isNew = !!s.newest && s.newest.id !== e.lastSeenPostId && isRecentPost(s.newest)
     }
@@ -108,7 +138,7 @@ export function FavoritesPage() {
 
       // クールダウン中 (自動チェックのみ): 保存済みの最新情報で判定して API を叩かない
       if (!force && seen?.checkedAt && Date.now() - seen.checkedAt < CHECK_COOLDOWN_MS) {
-        const st: FollowState = { ...f, lastSeen: seen?.lastSeenPostId }
+        const st: FollowState = { ...f, lastSeen: seen?.lastSeenPostId, checkedAt: seen?.checkedAt }
         st.newest = restoreCachedPost(st, seen.newest)
         st.isNew = !!st.newest && st.newest.id !== seen?.lastSeenPostId && isRecentPost(st.newest)
         setFollows((prev) => {
@@ -131,6 +161,7 @@ export function FavoritesPage() {
         // IndexedDB の readwrite transaction 内で最新状態を読み直してから更新する。
         const latestSeen = await updateSeenCheck(key, newestInfo)
         st.lastSeen = latestSeen.lastSeenPostId
+        st.checkedAt = latestSeen.checkedAt
         st.isNew = !!posts[0] &&
           posts[0].id !== latestSeen.lastSeenPostId &&
           isRecentPost(posts[0])
@@ -256,16 +287,42 @@ export function FavoritesPage() {
             </button>
           </div>
           {follows.length > 0 && (
+            <>
+            <div className="hint-row">
+              <span>{t("favorites.count", { n: follows.length })}</span>
+              <div className="segmented">
+                <button className={`seg ${followSort === "published" ? "seg-active" : ""}`} onClick={() => setFollowSort("published")}>
+                  {t("favorites.sortPublished")}
+                </button>
+                <button className={`seg ${followSort === "checked" ? "seg-active" : ""}`} onClick={() => setFollowSort("checked")}>
+                  {t("favorites.sortChecked")}
+                </button>
+                <button className={`seg ${followSort === "name" ? "seg-active" : ""}`} onClick={() => setFollowSort("name")}>
+                  {t("favorites.sortName")}
+                </button>
+                <button className={`seg ${followSort === "followed" ? "seg-active" : ""}`} onClick={() => setFollowSort("followed")}>
+                  {t("favorites.sortFollowed")}
+                </button>
+                <button
+                  className={`seg ${followOrder === "asc" ? "seg-active" : ""}`}
+                  onClick={() => setFollowOrder(followOrder === "desc" ? "asc" : "desc")}
+                  title={followOrder === "desc" ? t("favorites.orderAsc") : t("favorites.orderDesc")}
+                >
+                  {followOrder === "desc" ? t("favorites.descOrder") : t("favorites.asc")}
+                </button>
+              </div>
+            </div>
             <div className="hint-row">
               <span />
               <button className="btn btn-ghost" onClick={markAllRead}>
                 {t("favorites.markAllRead")}
               </button>
             </div>
+            </>
           )}
           {follows.length === 0 && <Empty text={t("favorites.emptyFollows")} />}
           <div className="creator-list">
-            {follows.map((f) => (
+            {sortedFollows.map((f) => (
               <div key={`${f.service}:${f.id}`} className="creator-row">
                 <div
                   className="creator-row-main"
