@@ -70,16 +70,19 @@ export default function App() {
   useEffect(() => {
     let listener: Awaited<ReturnType<typeof onBackButtonPress>> | null = null
     let alive = true
+    console.log("[PKV-BACK] registering")
     onBackButtonPress(({ canGoBack }) => {
+      console.log(`[PKV-BACK] fired canGoBack=${canGoBack} hash=${location.hash}`)
       if (canGoBack) history.back()
       else void exit(0)
     })
       .then((l) => {
+        console.log("[PKV-BACK] registered")
         if (alive) listener = l
         else void l.unregister()
       })
-      .catch(() => {
-        // 非 Android / 非 Tauri では未サポート
+      .catch((e) => {
+        console.log("[PKV-BACK] register failed", e)
       })
     return () => {
       alive = false
