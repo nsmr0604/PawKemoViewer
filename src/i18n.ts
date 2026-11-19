@@ -5,7 +5,7 @@
 // - フォールバック (3 段):
 //   1. 選択言語の辞書 (言語ファイルが読み込めなければ日本語辞書を使う)
 //   2. 組み込み日本語辞書 (キーが欠落している場合)
-//   3. キー名そのもの (ies. どの辞書にも無い場合)
+//   3. キー名そのもの (どの辞書にも無い場合)
 // - 現在の言語は Settings.locale に保存し、起動時に loadLocale() で適用する
 // - 将来的に言語を増やす場合は LOCALES と locales/ にファイルを追加するだけ
 // ---------------------------------------------------------------------------
@@ -41,18 +41,6 @@ export async function loadLocale(locale: Locale): Promise<Locale> {
     current = "ja"
   }
   return current
-}
-
-/** 既に読み込んでいる辞書へ即時切替する (日本語に戻す場合もフォールバック辞書を使う) */
-export function setLocale(locale: Locale) {
-  if (!LOCALES.includes(locale)) {
-    dictionary = FALLBACK_DICTIONARY
-    current = "ja"
-    return
-  }
-  current = locale
-  // en の辞書がまだロードされていなければ日本語のまま (loadLocale を await していない場合)
-  if (locale === "ja") dictionary = FALLBACK_DICTIONARY
 }
 
 export function getLocale(): Locale {
