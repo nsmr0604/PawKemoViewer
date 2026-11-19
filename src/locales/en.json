@@ -296,5 +296,6 @@
   "home.filteredCount": "Showing {{shown}} / {{total}} loaded",
   "home.clearFilters": "Clear filters",
   "home.noFilterResults": "No loaded posts match these filters",
-  "home.loadMoreForFilter": "Load more posts for these filters"
+  "home.loadMoreForFilter": "Load more posts for these filters",
+  "home.filterScope": "Filters apply to loaded posts. Scroll or load more to expand the results."
 }
