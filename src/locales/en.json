@@ -287,5 +287,14 @@
   "nav.accountGuest": "Sign in to enable sync",
   "nav.login": "Sign in",
   "nav.postDetail": "Post details",
-  "settings.sections": "Settings sections"
+  "settings.sections": "Settings sections",
+  "home.filters": "Filter posts",
+  "home.serviceFilter": "Service",
+  "home.allServices": "All",
+  "home.tagFilter": "Tags (select multiple; match any)",
+  "home.tagsUnavailable": "No tag information is available in the loaded posts yet",
+  "home.filteredCount": "Showing {{shown}} / {{total}} loaded",
+  "home.clearFilters": "Clear filters",
+  "home.noFilterResults": "No loaded posts match these filters",
+  "home.loadMoreForFilter": "Load more posts for these filters"
 }
