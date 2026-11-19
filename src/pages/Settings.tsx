@@ -297,15 +297,16 @@ export function SettingsPage() {
   return (
     <div className="page settings">
       <h2>{t("settings.title")}</h2>
+      <p className="settings-intro">{t("settings.intro")}</p>
 
       <nav className="settings-nav" aria-label={t("settings.sections")}>
         {[
           ["settings-account", t("settings.accountTitle")],
           ["settings-display", t("settings.displayTitle")],
           ["settings-post", t("settings.postTitle")],
-          ["settings-connection", t("settings.connection")],
-          ["settings-data", t("settings.dataTitle")],
-          ["settings-cache", t("settings.cacheTitle")],
+          ["settings-connection", t("settings.navConnection")],
+          ["settings-data", t("settings.navBackup")],
+          ["settings-cache", t("settings.navStorage")],
           ["settings-diagnostics", t("settings.diagnostics")],
           ["settings-info", t("settings.info")],
         ].map(([id, label]) => (
@@ -635,25 +636,6 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* ------------------------------------------------ アイコンキャッシュ */}
-      <div id="settings-icon-cache" className="settings-section">
-        <div className="section-label">{t("settings.iconTitle")}</div>
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>{t("settings.creatorIcon")}</span>
-            <small>
-              {iconCache
-                ? t("settings.iconInfo", { count: iconCache.count.toLocaleString(), size: fmtBytes(iconCache.bytes) })
-                : t("common.loading")}
-            </small>
-          </div>
-          <button className="btn" onClick={doClearIconCache}>
-            {t("settings.clear")}
-          </button>
-        </div>
-      </div>
-
       {/* ------------------------------------------------ 接続 */}
       <div id="settings-connection" className="settings-section">
         <div className="section-label">{t("settings.connection")}</div>
@@ -750,6 +732,23 @@ export function SettingsPage() {
             {t("settings.clear")}
           </button>
         </div>
+<div className="setting-subsection">
+        <div className="section-label">{t("settings.iconTitle")}</div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.creatorIcon")}</span>
+            <small>
+              {iconCache
+                ? t("settings.iconInfo", { count: iconCache.count.toLocaleString(), size: fmtBytes(iconCache.bytes) })
+                : t("common.loading")}
+            </small>
+          </div>
+          <button className="btn" onClick={doClearIconCache}>
+            {t("settings.clear")}
+          </button>
+        </div>
+      </div>
       </div>
 
       {/* ------------------------------------------------ 診断 */}
