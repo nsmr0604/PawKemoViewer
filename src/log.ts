@@ -19,10 +19,6 @@ const MAX_MSG_LEN = 2000
 
 const entries: LogEntry[] = []
 
-function verboseDiagnosticsEnabled(): boolean {
-  return DEBUG_DIAG
-}
-
 if (DEBUG_DIAG) {
   push("info", "debug 診断フラグ有効 (VITE_DEBUG_DIAG=1・ビルド時注入)")
 }
