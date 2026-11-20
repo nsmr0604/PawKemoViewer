@@ -324,5 +324,6 @@
   "settings.developerToolsOn": "Visible",
   "settings.developerToolsOff": "Show",
   "settings.fullDiagnosticsTitle": "Full developer diagnostics",
-  "settings.fullDiagnosticsDesc": "Detailed logs, log-folder access, and backup dump (debug builds only)"
+  "settings.fullDiagnosticsDesc": "Detailed logs, log-folder access, and backup dump (debug builds only)",
+  "settings.fullApiLogcatDesc": "Android debug builds stream API request starts, HTTP status, and response bodies to logcat. Authentication cookies and login form credentials are never logged."
 }
