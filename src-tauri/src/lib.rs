@@ -55,9 +55,31 @@ fn safe_log_url(url: &reqwest::Url) -> String {
     safe.to_string()
 }
 
+
+// Append diagnostics to app_data/logs/pawchive.log in Lite and Full builds.
+fn append_app_log(app: &tauri::AppHandle, line: &str) {
+    use std::io::Write;
+    let result = (|| -> Result<(), String> {
+        let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("logs");
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let mut file = std::fs::OpenOptions::new().create(true).append(true)
+            .open(dir.join("pawchive.log")).map_err(|e| e.to_string())?;
+        writeln!(file, "{}", line).map_err(|e| e.to_string())
+    })();
+    if let Err(error) = result {
+        log::error!(target: "Pawchive::Logging", "LOG_FILE_WRITE_ERROR {}", error);
+    }
+}
+
+#[cfg(feature = "debug-diag")]
+fn full_http_log(app: &tauri::AppHandle, target: &str, message: &str) {
+    log::info!(target: target, "{}", message);
+    append_app_log(app, &format!("[{}] {}", target, message));
+}
+
 // Full diagnostics: dump HTTP headers while masking credentials and session material.
 #[cfg(feature = "debug-diag")]
-fn log_http_headers(target: &str, direction: &str, headers: &reqwest::header::HeaderMap) {
+fn log_http_headers(app: &tauri::AppHandle, target: &str, direction: &str, headers: &reqwest::header::HeaderMap) {
     for (name, value) in headers.iter() {
         let key = name.as_str();
         let lower = key.to_ascii_lowercase();
@@ -73,7 +95,7 @@ fn log_http_headers(target: &str, direction: &str, headers: &reqwest::header::He
         } else {
             value.to_str().unwrap_or("<non-utf8>").to_string()
         };
-        log::info!(target: target, "{}_HEADER {}: {}", direction, key, rendered);
+        full_http_log(app, target, &format!("{}_HEADER {}: {}", direction, key, rendered));
     }
 }
 
@@ -89,6 +111,7 @@ static PROXY_HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(||
 
 #[tauri::command]
 async fn api_request(
+    app: tauri::AppHandle,
     path: String,
     method: String,
     session_key: Option<String>,
@@ -155,7 +178,7 @@ async fn api_request(
     }
 
     #[cfg(feature = "debug-diag")]
-    log_http_headers("Pawchive::API", "REQUEST", &headers);
+    log_http_headers(&app, "Pawchive::API", "REQUEST", &headers);
 
     let response = match method.as_str() {
         "POST" => {
@@ -196,7 +219,7 @@ async fn api_request(
     #[cfg(feature = "debug-diag")]
     {
         log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), status);
-        log_http_headers("Pawchive::API", "RESPONSE", response.headers());
+        log_http_headers(&app, "Pawchive::API", "RESPONSE", response.headers());
     }
 
     let text = response
@@ -211,7 +234,7 @@ async fn api_request(
     #[cfg(feature = "debug-diag")]
     {
         log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={} bytes={}", method, url, status, text.len());
-        log_http_response_body("Pawchive::API", &text);
+        log_http_response_body(&app, "Pawchive::API", &text);
     }
 
     if !status.is_success() {
@@ -225,10 +248,10 @@ async fn api_request(
 // Full: レスポンス本文を logcat の1行サイズに収まるよう分割して出力する。
 // UTF-8文字境界を維持し、空レスポンスも明示する。
 #[cfg(feature = "debug-diag")]
-fn log_http_response_body(target: &str, body: &str) {
+fn log_http_response_body(app: &tauri::AppHandle, target: &str, body: &str) {
     const MAX_CHUNK_BYTES: usize = 3000;
     if body.is_empty() {
-        log::info!(target: target, "RESPONSE_BODY <empty>");
+        full_http_log(app, target, "RESPONSE_BODY <empty>");
         return;
     }
     let mut chunk = String::new();
@@ -236,13 +259,13 @@ fn log_http_response_body(target: &str, body: &str) {
     for ch in body.chars() {
         chunk.push(ch);
         if chunk.len() >= MAX_CHUNK_BYTES {
-            log::info!(target: target, "RESPONSE_BODY chunk={} {}", chunk_index, chunk);
+            full_http_log(app, target, &format!("RESPONSE_BODY chunk={} {}", chunk_index, chunk));
             chunk.clear();
             chunk_index += 1;
         }
     }
     if !chunk.is_empty() {
-        log::info!(target: "Pawchive::API", "RESPONSE_BODY chunk={} {}", chunk_index, chunk);
+        full_http_log(app, target, &format!("RESPONSE_BODY chunk={} {}", chunk_index, chunk));
     }
 }
 
@@ -648,6 +671,7 @@ fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> Stri
 
 /// pkv:// ハンドラ本体 (GET / POST を中継)
 fn pkv_proxy_fetch(
+    app: &tauri::AppHandle,
     method: &str,
     uri: &str,
     body: Option<Vec<u8>>,
@@ -731,7 +755,7 @@ fn pkv_proxy_fetch(
     #[cfg(feature = "debug-diag")]
     {
         log::info!(target: "Pawchive::Proxy", "REQUEST method={} url={}", request.method(), safe_log_url(request.url()));
-        log_http_headers("Pawchive::Proxy", "REQUEST", request.headers());
+        log_http_headers(app, "Pawchive::Proxy", "REQUEST", request.headers());
     }
 
     let resp = match client.execute(request) {
@@ -747,7 +771,7 @@ fn pkv_proxy_fetch(
     #[cfg(feature = "debug-diag")]
     {
         log::info!(target: "Pawchive::Proxy", "RESPONSE url={} status={}", safe_log_url(&target), status);
-        log_http_headers("Pawchive::Proxy", "RESPONSE", resp.headers());
+        log_http_headers(app, "Pawchive::Proxy", "RESPONSE", resp.headers());
     }
     let ct = resp
         .headers()
@@ -760,7 +784,7 @@ fn pkv_proxy_fetch(
     if ct.contains("text/html") && !is_direct_host(&host) {
         let html = resp.text().unwrap_or_default();
         #[cfg(feature = "debug-diag")]
-        log_http_response_body("Pawchive::Proxy", &html);
+        log_http_response_body(app, "Pawchive::Proxy", &html);
         let self_referer = format!("{}://{}/", target.scheme(), host);
         let out = transform_html(&html, &target, &self_referer);
         return Response::builder()
@@ -790,12 +814,12 @@ fn pkv_proxy_fetch(
     #[cfg(feature = "debug-diag")]
     if ct.starts_with("text/") || ct.contains("json") || ct.contains("xml") || ct.contains("javascript") {
         if let Ok(text) = std::str::from_utf8(&bytes) {
-            log_http_response_body("Pawchive::Proxy", text);
+            log_http_response_body(app, "Pawchive::Proxy", text);
         } else {
-            log::info!(target: "Pawchive::Proxy", "RESPONSE_BODY <non-utf8 text payload; {} bytes>", bytes.len());
+            full_http_log(app, "Pawchive::Proxy", &format!("RESPONSE_BODY <non-utf8 text payload; {} bytes>", bytes.len()));
         }
     } else {
-        log::info!(target: "Pawchive::Proxy", "RESPONSE_BODY <binary omitted; {} bytes>", bytes.len());
+        full_http_log(app, "Pawchive::Proxy", &format!("RESPONSE_BODY <binary omitted; {} bytes>", bytes.len()));
     }
     b.body(bytes.to_vec()).unwrap()
 }
@@ -1090,7 +1114,8 @@ pub fn run() {
                 .level(log::LevelFilter::Info)
                 .build(),
         )
-        .register_asynchronous_uri_scheme_protocol("pkv", |_ctx, request, responder| {
+        .register_asynchronous_uri_scheme_protocol("pkv", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
             let method = request.method().as_str().to_string();
             let uri = request.uri().to_string();
             let range = request
@@ -1105,7 +1130,7 @@ pub fn run() {
             };
             // ブロッキング取得は別スレッドで行う (UI を止めない)
             std::thread::spawn(move || {
-                let response = pkv_proxy_fetch(&method, &uri, body, range);
+                let response = pkv_proxy_fetch(&app, &method, &uri, body, range);
                 responder.respond(response);
             });
         })
