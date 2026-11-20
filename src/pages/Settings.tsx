@@ -207,7 +207,7 @@ export function SettingsPage() {
     }
     await refreshLocales()
     setLocaleList(availableLocales())
-    setLocaleMsg(failures.length ? `Imported ${imported}; skipped ${failures.join(", ")}` : `Imported ${imported} locale file(s)`)
+    setLocaleMsg(failures.length ? `インポート数: ${imported}; スキップ: ${failures.join(", ")}` : `Imported ${imported} 件の言語ファイル`)
     await applyLocale(locale)
   }
 
@@ -416,11 +416,11 @@ export function SettingsPage() {
         </div>
         <div className="setting-item">
           <div className="setting-text">
-            <span>Import locale JSON files</span>
-            <small>Select one or more JSON files from the device; validated files are copied into the app's private locale storage.</small>
+            <span>言語JSONファイルをインポート</span>
+            <small>端末からJSONファイルを複数選択できます。検証後、アプリ専用領域へコピーします。</small>
           </div>
           <label className="btn">
-            Choose files
+            ファイル選択
             <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
           </label>
         </div>
