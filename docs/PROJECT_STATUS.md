@@ -234,3 +234,6 @@
 - [x] 製品版で Lite を有効にしても Full は含まれず、詳細ログは無効
 - [ ] 最新 Android Actions の成功と正式版構成のビルドを確認
 - [ ] 製品版成果物に Full UI / Rust commands / debug-log が含まれないことを確認
+
+
+> 2026-11-20 追記: Lite / Full の分離は上記の現行実装を正とする。以前の「製品版トグルで Full 診断も有効化」「Rust診断コマンドを製品版にも登録」という説明は無効。現行 PR head では Android run #202 より後に追加コミットがあり、head に対応する Actions 実行は未確認。
