@@ -10,7 +10,8 @@
 // ---------------------------------------------------------------------------
 
 import { invoke } from "@tauri-apps/api/core"
-import { logError } from "./log"\nimport { getPlatformRuntime } from "./platform/runtime"
+import { logError } from "./log"
+import { getPlatformRuntime } from "./platform/runtime"
 
 const DB_NAME = "pawkemo-icons"
 const STORE = "icons"
