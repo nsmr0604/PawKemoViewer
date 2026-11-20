@@ -325,5 +325,5 @@
   "settings.developerToolsOff": "Show",
   "settings.fullDiagnosticsTitle": "Full developer diagnostics",
   "settings.fullDiagnosticsDesc": "Detailed logs, log-folder access, and backup dump (debug builds only)",
-  "settings.fullApiLogcatDesc": "Android debug builds stream API request starts, HTTP status, and response bodies to logcat. Authentication cookies and login form credentials are never logged."
+  "settings.fullApiLogcatDesc": "Android debug builds log request/response headers, HTTP status, and text response bodies for Pawchive API and pkv:// external proxy traffic. Cookie/Authorization and similar credential values are redacted; binary bodies are size-only. Response bodies may contain personal data, so review logs before sharing."
 }
