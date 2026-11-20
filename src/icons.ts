@@ -78,10 +78,15 @@ async function prune(db: IDBDatabase): Promise<void> {
 let dbPromise: Promise<IDBDatabase> | null = null
 function db(): Promise<IDBDatabase> {
   if (!dbPromise) {
-    dbPromise = openDb().catch((e) => {
+    const opening = openDb().then((database) => {
+      database.onversionchange = () => database.close()
+      return database
+    }).catch((e) => {
+      if (dbPromise === opening) dbPromise = null
       logError(`アイコンキャッシュ DB を開けません: ${String(e)}`)
       throw e
     })
+    dbPromise = opening
   }
   return dbPromise
 }
