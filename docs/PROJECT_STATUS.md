@@ -238,3 +238,8 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - Dialog plugin is not configured in the fetched package/Cargo/Tauri/capability files. Mobile export remains app-private.
 - Safe native picker implementation still requires synchronized package-lock/dependency and generated platform configuration; no speculative dependency wiring was committed.
 - M2 remains highest priority; build/typecheck/device validation unconfirmed.
+
+
+## Locale import correction
+- Fixed `.json` filename extension parsing for both app-private and secondary locale file import handlers; ordinary selected locale filenames now yield the locale code before validation. Commit `5792d089`.
+- Source-level only; validation unconfirmed.
