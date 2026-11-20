@@ -40,7 +40,7 @@ function push(level: LogEntry["level"], msg: string) {
   const entry: LogEntry = { ts: Date.now(), level, msg }
   entries.push(entry)
   if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES)
-  // 詳細ファイルログはデバッグビルド、または製品版で開発項目を有効にした場合だけロードする。
+  // 詳細ファイルログはFull 開発診断を含むデバッグビルドだけでロードする。
   if (DEBUG_DIAG) {
     void import("./debug").then(({ debugAppendLog }) => debugAppendLog(formatEntry(entry)))
   }
@@ -58,9 +58,9 @@ function formatEntry(e: LogEntry): string {
 }
 
 /** API リクエスト失敗の記録 (source chain)。
- *  デバッグビルドまたは製品版で開発項目を有効にした場合は詳細情報も記録する */
+ *  Full 開発診断を含むデバッグビルドでは詳細情報も記録する */
 export function logApiFailure(path: string, method: string, message: string) {
-  if (verboseDiagnosticsEnabled()) {
+  if (DEBUG_DIAG) {
     push("error", `API失敗 ${method} ${path} (詳細下記)`)
     void import("./debug-log").then(({ splitDebugLog }) => {
       for (const part of splitDebugLog(message)) push("error", part)
