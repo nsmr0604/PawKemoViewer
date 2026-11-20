@@ -35,3 +35,13 @@ The storage consumer audit found no new feature path needing immediate invasive 
 
 ## Milestone advance
 M4 consumer migration has been marked complete in `docs/PROJECT_STATUS.md`; next milestone is M5. Investigation confirmed `src-tauri/tauri.conf.json` and Cargo config, but native generated project layouts were not yet established by this check. Mobile adapter still has no lifecycle service and secondary storage returns null. Avoid implementing SAF/Files via generic browser picker.
+
+
+## Priority update
+Unfinished roadmap ordered by impact and dependencies:
+1. M2 Android SAF/iOS Files user-accessible storage and export.
+2. M3 locale private-primary/shared-secondary overlay.
+3. M5 native lifecycle and permission adapters, only after native integration surface is located.
+4. M6 batch validation.
+
+Browser-only lifecycle slice was implemented: web adapter can subscribe to popstate as a back-navigation event and explicitly rejects unsupported exit. Native lifecycle remains outstanding. No test/build performed.
