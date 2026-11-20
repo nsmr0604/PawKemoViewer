@@ -47,6 +47,7 @@ function fmtTs(ms: number | undefined): string {
 
 export function SettingsPage() {
   const s = getSettings()
+  const supportsSecondaryLocale = getPlatformRuntime().descriptor.family === "desktop"
 
   const [theme, setTheme] = useState<"dark" | "light">(s.theme)
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(s.layoutMode || "auto")
@@ -439,16 +440,18 @@ export function SettingsPage() {
             {t("settings.localeAddButton")}
           </button>
         </div>
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>共有領域へ言語JSONをインポート</span>
-            <small>Desktop: Documents/Pawchive/languages に保存し、アプリ専用ファイルとは分離します。</small>
+        {supportsSecondaryLocale && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>共有領域へ言語JSONをインポート</span>
+              <small>Desktop: Documents/Pawchive/languages に保存し、アプリ専用ファイルとは分離します。</small>
+            </div>
+            <label className="btn">
+              共有ファイル選択
+              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importSecondaryLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
+            </label>
           </div>
-          <label className="btn">
-            共有ファイル選択
-            <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importSecondaryLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
-          </label>
-        </div>
+        )}
 
         <div className="setting-item">
           <div className="setting-text">
