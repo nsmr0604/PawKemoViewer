@@ -343,3 +343,8 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - Native dialog plugin wiring (Rust dependency, registration, capability permissions) is present on the M2 branch; frontend package/lockfile synchronization and URI-safe read/write integration remain outstanding.
 - Locale import currently uses browser FileList and private storage, not native SAF/Files or secondary shared storage.
 - No validation/build/device test has been run. PR #11 remains draft and has not been historically split into replacement PRs.
+
+
+## Backup file import UX slice (2026-11-20)
+- Settings now exposes direct JSON backup-file selection alongside existing clipboard/paste restore. The file size is checked against the 5 MiB backup limit before reading; restoration still uses the existing confirmation and validation/apply flow. This is browser-backed selection and does not yet represent native dialog-plugin URI integration or user-accessible export.
+- Validation remains pending; no build or CI was run.
