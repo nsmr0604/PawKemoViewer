@@ -224,3 +224,8 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Changed imported locale dictionaries to null-prototype objects and excluded `__proto__`, `prototype`, and `constructor` keys from accepted dictionary entries.
 - Commit `1d36f83e`. No build/typecheck/tests run.
 - M2 still needs synchronized native file-picker dependencies/capabilities and generated project verification; M3 remains desktop-only; M6 validation not performed.
+
+
+## Backup import bounds (2026-11-20)
+- Parser now rejects oversized backup payloads (>5 MiB) and overly large follows/seen arrays (>100,000 entries), limiting resource-exhaustion risk during restore.
+- Commit `b6836d80`; no tests/build executed.
