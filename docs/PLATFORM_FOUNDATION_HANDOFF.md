@@ -141,3 +141,8 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 
 ## Native back-navigation correction
 - App's LifecycleService callback now uses the native `canGoBack` signal directly: history back when available, app exit otherwise. This avoids routing based solely on page names and reduces the risk of navigating outside the app when no WebView history exists. Commit `1a670b57`; no validation run.
+
+
+## Backup export filename collision safeguard (2026-11-20)
+- Native `export_file` now uses exclusive file creation (`create_new`) so repeated/concurrent exports with the same timestamp and sanitized filename cannot silently truncate/overwrite an existing export. It retries bounded numbered suffixes and returns an error if no unique path can be allocated.
+- Empty/sanitization-only filenames fall back to `export.txt`. Source-level change in Rust commit `4dc63f5a`; no compilation/tests/device validation performed. Native export is still app-private; this does not resolve M2 user-accessible export.
