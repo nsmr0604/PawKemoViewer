@@ -118,3 +118,12 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - GitHub content search again did not locate generated AndroidManifest/iOS project source or dialog-plugin setup. `docs/BUILD.md` documents `tauri android init` as the generation workflow, suggesting native project scaffolding is reproducible locally rather than committed, but this cannot be verified remotely in this session.
 - Refrained from adding an uncoordinated plugin dependency or native permission/config changes without package-lock synchronization and a reproducible generated-project check; this could introduce build-breaking changes. M2 remains active and this is a dependency/config validation blocker rather than implementation completion.
 - Next action: establish/reproduce `tauri android init` locally and dependency install/lockfile update, then implement picker-based file import/export with scoped capabilities and platform-specific handling; batch validate once several slices are ready.
+
+
+## Native setup recheck — 2026-11-20 (continuation)
+- Refreshed PR metadata: #11 remains open, draft, unmerged. No per-PR build trigger is configured in the current Android workflow; its Android initialization (`npx tauri android init`) occurs after `npm ci` during CI.
+- The workflow's generated Android project is ephemeral and not committed. The reproducible path documented is CI generation; however, this session has no local checkout/npm install/build execution to regenerate it or produce a package-lock update.
+- Rechecked `package.json`, `src-tauri/Cargo.toml`, `tauri.conf.json`, and default capability: no dialog plugin dependency/configuration; mobile export still writes app-private backup files. Capability is core-only.
+- GitHub source search for dialog-plugin symbols returned no hits; search is not proof of absence, but fetched configuration files corroborate no current plugin setup.
+- This continuation deliberately avoids a speculative plugin dependency or source-only picker wiring that would not be lockfile/native-config synchronized. M2 remains unresolved; next prerequisite is a checkout/build-capable environment to run dependency installation, regenerate native scaffolding, and validate plugin capabilities. File-level picker support should be delivered separately from directory grants.
+- No code changes or validation (typecheck/build/device) in this checkpoint.
