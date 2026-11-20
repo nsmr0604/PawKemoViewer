@@ -133,7 +133,7 @@ WebView から Referer を設定できないため、リファラーチェック
 
 ### Full 開発診断: HTTP プロキシ通信ログ
 - Pawchive API (`api_request`) と `pkv://` 経由の外部 HTTP 通信について、送信リクエスト / 受信レスポンスの method・URL・HTTP status・ヘッダーを記録する
-- ヘッダーは1行ずつ記録。Cookie / Set-Cookie / Authorization / Proxy-Authorization / API key / auth token は値を `<redacted>` に置換する
+- ヘッダーは1行ずつ記録。Cookie / Set-Cookie / Authorization / Proxy-Authorization / API key / auth token は値を `<redacted>` に置換する。URL query も token / secret / session / auth / signature 等の値をマスキングする
 - 外部プロキシのテキスト / JSON / XML / HTML 応答本文は既存の Full 本文ロガーで記録。画像などのバイナリ本文は内容を出さず、サイズのみ記録
 - リクエスト本文は現状記録しない。ログイン専用 `login_request` は引き続き対象外
 - Full / Cargo feature `debug-diag` のみ。正式版にはログコードを含めない
