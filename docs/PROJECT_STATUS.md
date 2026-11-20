@@ -324,3 +324,9 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 
 ## 2026-11-20: Secondary locale UI capability gating
 - The secondary-locale import picker is now shown only for the desktop platform family, avoiding a UI affordance on mobile/web where the secondary storage adapter is not implemented.
+
+
+## M2 critical-path kickoff (2026-11-20)
+- Re-audit confirmed mobile export still writes to private app-data backup storage; mobile has no selected-file picker contract. HTML file inputs used for locale import are not native SAF/Files support.
+- M2 is now the critical-path milestone. The implementation plan is to introduce explicit selected-file open/save abstractions with cancel/error semantics, integrate Tauri v2 native picker dependencies and capabilities with synchronized lockfiles/generated native setup, then migrate backup, locale and log workflows.
+- No source behavior changed in this kickoff checkpoint because npm dependency synchronization, native generation and build/test tooling are unavailable in this session. Avoid reporting native file access as implemented until those checks are reproducible.
