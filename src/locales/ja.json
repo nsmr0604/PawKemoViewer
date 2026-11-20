@@ -251,7 +251,7 @@
   "settings.testFail": "❌ 失敗{{status}}: {{msg}}",
   "settings.httpStatus": " (HTTP {{st}})",
   "settings.noLog": "(ログはまだありません)",
-  "settings.diagnostics": "診断",
+  "settings.diagnostics": "開発・診断",
   "settings.logTitle": "ログ",
   "settings.logDesc": "通信エラー・未処理エラーを記録しています (最大 400 件、{{count}} 件保持)。接続できない・ログインに失敗する際の切り分けに使えます。",
   "settings.show": "表示",
