@@ -969,6 +969,24 @@ fn export_log(
     Ok(path.to_string_lossy().to_string())
 }
 
+
+/// Save a user-selected file through the native dialog. Cancellation is non-error.
+#[tauri::command]
+fn save_user_file(app: tauri::AppHandle, file_name: String, text: String) -> Result<String, String> {
+    use std::io::Write;
+    let safe: String = file_name.chars().map(|ch| if ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '-') { ch } else { '_' }).collect();
+    let safe = if safe.trim_matches(['_', '.']).is_empty() { "export.txt".to_string() } else { safe };
+    let path = tauri_plugin_dialog::DialogExt::dialog(&app)
+        .file()
+        .set_file_name(&safe)
+        .save_file();
+    let Some(path) = path else { return Ok("キャンセル".to_string()); };
+    let path = path.into_path().map_err(|e| e.to_string())?;
+    let mut file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+    file.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// 汎用テキストファイル書き出し (バックアップ等)。
 /// %APPDATA%/backup/ に保存する。ファイル名は安全な文字のみ許可
 #[tauri::command]
@@ -1367,6 +1385,7 @@ pub fn run() {
                 login_request,
                 export_log,
                 export_file,
+                save_user_file,
                 fetch_creator_icon,
                 creator_icon_cache_info,
                 clear_creator_icon_cache,
