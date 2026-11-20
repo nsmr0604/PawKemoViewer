@@ -8,9 +8,9 @@ repository = ""
 edition = "2024"
 rust-version = "1.90"
 
-# デバッグ診断コードのビルド時注入フラグ (src/debug.ts の DEBUG_DIAG と対)。
-# テスト用ビルドでのみ --features debug-diag を付ける。リリースビルドでは無効のまま。
-# Rust 側の診断コードは #[cfg(feature = "debug-diag")] で書く
+# デバッグビルド向け詳細トレースのフラグ。
+# 開発用のログ操作コマンドは製品版の設定トグルからも利用するため常時登録し、
+# HTTP request/method/status 等の詳細 println! のみ #[cfg(feature = "debug-diag")] で囲む。
 [features]
 debug-diag = []
 
