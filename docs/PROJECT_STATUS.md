@@ -16,7 +16,7 @@
 ## Next
 1. Implement user-accessible secondary storage/export picker on Android and iOS.
 2. Locale private-primary plus accessible-secondary overlay/import, without replacing private primary.
-3. Route log dump export through FileExportService.
+3. ~~Route log dump export through FileExportService.~~ (completed; Settings diagnostic export now uses runtime service)
 4. Continue migrating feature consumers to runtime contracts.
 5. Batch validation; avoid per-commit Android build runs.
 
@@ -24,3 +24,8 @@
 ## Latest increment
 - Removed duplicated platform-runtime import and corrected backup export consumer to use the injected FileExportService rather than direct Rust invoke. This also makes the Web export fallback reachable for backups.
 - This is a source-level correction only; build/typecheck and runtime checks remain unverified.
+
+
+## Latest increment
+- Settings log-dump export migrated from direct `export_log` Rust invocation to the runtime FileExportService, sharing the same platform boundary as backup export.
+- Build/typecheck/device validation remains unconfirmed.
