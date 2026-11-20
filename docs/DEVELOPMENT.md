@@ -1,6 +1,6 @@
 # PawKemoViewer 開発ガイド
 
-PawKemoViewer (v0.3.1) の開発者向けドキュメント。
+PawKemoViewer (v0.4.0) の開発者向けドキュメント。
 
 - 対象読者: 開発参加者・ビルド担当者・コントリビューター
 - ユーザー向け情報は [README.md](../README.md) を参照
@@ -9,7 +9,7 @@ PawKemoViewer (v0.3.1) の開発者向けドキュメント。
 ## アーキテクチャ
 
 ```text
-React 19 (TypeScript + Vite)
+React 18.3.1 (TypeScript + Vite)
   ↓  invoke() (Tauri v2 コマンド)
 Rust (reqwest / rustls)
   ↓  HTTPS
@@ -27,7 +27,7 @@ pawchive.pw / *.pawchive.pw
 
 | 層 | 技术 | 備考 |
 |---|---|---|
-| UI | React 19 + TypeScript (strict) | 関数コンポーネント・hooks のみ |
+| UI | React 18.3.1 + TypeScript (strict) | 関数コンポーネント・hooks のみ |
 | バンドラ | Vite 6 | PWA プラグイン不使用 |
 | ランタイム | Tauri 2 | identifier `com.nsmr0604.pawkemoviewer` |
 | バックエンド | Rust (edition 2024) + reqwest | `default-features = false` + rustls-tls (OpenSSL 不使用) |
@@ -44,10 +44,12 @@ src/                    フロントエンド
   favstate.ts           お気に入り投稿の共有状態
   backup.ts             バックアップ書き出し/読み込み
   log.ts                アプリ内ログ (リングバッファ)
-  debug.ts              デバッグ診断フラグ (VITE_DEBUG_DIAG)
+  buildFlags.ts         ビルド時機能フラグ (VITE_DEBUG_DIAG)
+  debug.ts              開発項目が有効な場合の Tauri ログ操作
+  debug-log.ts          詳細ログ分割 (デバッグビルドのみ動的ロード)
   router.ts / hooks.ts / platform.ts / history.ts / types.ts / styles.css
   components.tsx        共通 UI (PostCard / PostRow / PostGrid / Thumb / CreatorAvatar / ErrorBox / fmtDate ほか)
-  components/           FollowButton / NavigationRail
+  components/           FollowButton / NavigationRail / DeveloperDiagnostics (Lite) / DeveloperFullDiagnostics (Full: debug only)
   pages/                Home / Creators / CreatorPage / PostPage / Favorites / Login / Settings
 src-tauri/
   src/lib.rs            Rust 実装 (コマンド・pkv:// プロキシ)
@@ -67,7 +69,8 @@ docs/                   本ドキュメント群
 ```bash
 npm install          # 依存
 npm run dev          # Vite 開発サーバ (localhost:5173)
-npm run tauri:dev    # Tauri 開発実行
+npm run tauri:dev    # Tauri 開発実行 (Cargo feature debug-diag)
+npm run tauri:android:dev # Android 開発実行 (Cargo feature debug-diag)
 npm run build        # 型検査 + 本番ビルド
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag   # 診断ビルド
@@ -96,8 +99,10 @@ SSRF 対策 (内部アドレス拒否) あり。fanbox / patreon のホストは
 Referer は投稿の正規 URL (canonical) を優先して付与する。
 
 ### デバッグ診断コードはビルド時フラグ注入
-`VITE_DEBUG_DIAG=1` (フロント) / cargo feature `debug-diag` (Rust) でのみ有効。
-**リリースビルドからはコード自体が分離される** (実行時判定は使わない)。詳細は AGENTS.md 参照。
+`VITE_DEBUG_DIAG=1` (フロント) / Cargo feature `debug-diag` (Rust) をデバッグビルドで常に指定する。
+通常の `tauri:dev` / `tauri:android:dev` と CI の debug ビルドで有効。正式リリースではフロントフラグを `0`、Cargo feature を指定しない。
+Lite はセッションIDの手動入力・検証・保存で、製品版にも含めて設定トグルから利用可能。Full は詳細ログ・ログフォルダ操作・バックアップJSONダンプで、フロント DEBUG_DIAG と Rust `#[cfg(feature = "debug-diag")]` の双方により製品版からコンパイル除外する。
+製品版に残すログは基本的な uncaught error / unhandled rejection / API 失敗の method・path・HTTP status のみ。レスポンス本文や詳細トレースは保存しない。
 
 ## ストレージ構成 (v0.3.0 のキー体系)
 
@@ -144,3 +149,13 @@ Referer は投稿の正規 URL (canonical) を優先して付与する。
 - Rust: https://www.rust-lang.org
 - React: https://react.dev / Vite: https://vitejs.dev
 - pawchive API 仕様: [API.md](API.md) および Swagger UI (https://pawchive.pw/api/schema)
+
+
+### Lite / Full 開発機能
+- Lite: セッションIDの手動入力・検証・保存。製品版にも含み、設定の開発項目トグルで表示する
+- Full: 詳細ログ、ログフォルダ操作、バックアップJSONダンプ。フロント DEBUG_DIAG と Rust `#[cfg(feature = "debug-diag")]` によるデバッグビルド専用で、正式版にはコンパイルしない
+- 詳細 API レスポンス本文のログも Full のみ。製品版では method / path / HTTP status の基本情報に限定する
+
+
+### Android API logcat (Full only)
+Android の Full デバッグビルドでは Rust の `api_request` がリクエスト開始・HTTP status・レスポンス本文を logcat に出す。本文は約 3 KB 単位で分割する。認証Cookie / session ID / Authorization / login form credentials は出力せず、ログイン処理は対象外。Tauri log plugin の Android Stdout target を使い、製品版では Cargo feature `debug-diag` 無しのため出力コード自体をコンパイルしない。

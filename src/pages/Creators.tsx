@@ -20,7 +20,16 @@ import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../histo
 import { normalizeCreatorQuery } from "../db"
 import { t } from "../i18n"
 
-/** API レスポンス → 索引行 (パック v2: slug / favorited を保持) */
+/** API の日時値 (Unix 秒/ミリ秒または ISO 文字列) を比較用数値へ変換 */
+function toTimestamp(value: number | string | undefined): number {
+  if (value === undefined || value === "") return 0
+  const numeric = Number(value)
+  if (Number.isFinite(numeric)) return numeric
+  const parsed = Date.parse(String(value))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+/** API レスポンス → 索引行 (slug / 人気度 / 更新日を保持) */
 function toRow(c: PawCreator): CreatorRow {
   const slug = (c.public_id || "").toLowerCase()
   return {
@@ -30,13 +39,18 @@ function toRow(c: PawCreator): CreatorRow {
     name: c.name,
     nameLower: (c.name || "").toLowerCase(),
     ...(slug ? { publicId: c.public_id, publicIdLower: slug } : {}),
-    ...(c.favorited ? { favorited: c.favorited } : {}),
+    ...(c.favorited !== undefined ? { favorited: Number(c.favorited) || 0 } : {}),
+    ...(c.updated !== undefined ? { updated: toTimestamp(c.updated) } : {}),
+    ...(c.indexed !== undefined ? { indexed: toTimestamp(c.indexed) } : {}),
   }
 }
 
 export function CreatorsPage() {
   const [q, setQ] = useState("")
   const [rows, setRows] = useState<CreatorRow[]>([])
+  const [serviceFilter, setServiceFilter] = useState<"all" | "fanbox" | "patreon">("all")
+  const [sortBy, setSortBy] = useState<"updated" | "popular" | "name">("updated")
+  const [visibleCount, setVisibleCount] = useState(60)
   const [ready, setReady] = useState(false)
   const [building, setBuilding] = useState(false)
   const [built, setBuilt] = useState<number | null>(null) // 構築済み件数 (進捗表示)
@@ -46,6 +60,7 @@ export function CreatorsPage() {
   const [postLink, setPostLink] = useState<{ service: string; creatorId: string; postId: string; name: string } | null>(null)
   const qRef = useRef(q)
   qRef.current = q
+  const searchSeq = useRef(0)
 
   // クリップボードの URL 検出 (JHenTai の Check Gallery URL in Clipboard 参考)
   useEffect(() => {
@@ -66,7 +81,9 @@ export function CreatorsPage() {
 
   // メモリ索引から即時検索 (構築途中でも部分結果を表示)
   const runSearch = useCallback(async (value: string) => {
-    const res = await searchCreators(value)
+    const seq = ++searchSeq.current
+    const res = await searchCreators(value, 100000)
+    if (seq !== searchSeq.current) return
     setRows(res)
     // fanbox 投稿 URL 貼り付け (@{slug}/posts/{id} 両パターン) → 直接開けるリンクを出す
     const norm = normalizeCreatorQuery(value)
@@ -95,9 +112,9 @@ export function CreatorsPage() {
         // 移行: slug 付き per-row 索引 (v2 で構築済み) があれば API 不要でパック化。
         // 無ければ (未構築 or v1) API から取得して構築
         const legacy = count > 0 ? await getAllCreatorRows() : []
-        const hasSlug = legacy.length > 0 && legacy[0].publicIdLower !== undefined
+        const hasCurrentFields = legacy.length > 0 && legacy.every((row) => row.publicIdLower !== undefined && row.updated !== undefined)
         let total: number
-        if (hasSlug) {
+        if (hasCurrentFields) {
           invalidateCreatorIndex()
           await saveCreators(legacy)
           total = legacy.length
@@ -126,6 +143,7 @@ export function CreatorsPage() {
   const onSearch = useCallback(
     async (value: string) => {
       setQ(value)
+      setVisibleCount(60)
       await runSearch(value)
     },
     [runSearch],
@@ -140,6 +158,15 @@ export function CreatorsPage() {
       setHistory(getSearchHistory())
     }
   }
+
+  const visibleRows = rows
+    .filter((row) => serviceFilter === "all" || row.service === serviceFilter)
+    .sort((a, b) => {
+      if (sortBy === "updated") return (b.updated || 0) - (a.updated || 0) || (b.favorited || 0) - (a.favorited || 0)
+      if (sortBy === "popular") return (b.favorited || 0) - (a.favorited || 0) || (b.updated || 0) - (a.updated || 0)
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+    })
+  const displayedRows = visibleRows.slice(0, visibleCount)
 
   return (
     <div className="page">
@@ -200,6 +227,31 @@ export function CreatorsPage() {
           </button>
         </div>
       )}
+      <div className="creator-list-controls">
+        <div className="home-filter-group">
+          <span className="small text-muted">{t("creators.serviceFilter")}</span>
+          <div className="tag-chips">
+            {(["all", "fanbox", "patreon"] as const).map((service) => (
+              <button key={service} type="button"
+                className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
+                aria-pressed={serviceFilter === service}
+                onClick={() => { setServiceFilter(service); setVisibleCount(60) }}>
+                {service === "all" ? t("creators.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="home-filter-group">
+          <label className="small text-muted" htmlFor="creator-sort">{t("creators.sortBy")}</label>
+          <select id="creator-sort" className="input" value={sortBy}
+            onChange={(e) => { setSortBy(e.target.value as typeof sortBy); setVisibleCount(60) }}>
+            <option value="updated">{t("creators.sortUpdated")}</option>
+            <option value="popular">{t("creators.sortPopular")}</option>
+            <option value="name">{t("creators.sortName")}</option>
+          </select>
+        </div>
+        <div className="small text-muted">{t("creators.resultCount", { shown: displayedRows.length, total: visibleRows.length })}</div>
+      </div>
       <div className="hint-row">
         <span>
           {building && built !== null
@@ -222,6 +274,7 @@ export function CreatorsPage() {
                 await saveCreators(mapped)
                 setBuilt(mapped.length)
                 await runSearch(q)
+                setVisibleCount(60)
               } catch (e) {
                 setError(e)
               } finally {
@@ -235,7 +288,7 @@ export function CreatorsPage() {
       </div>
       {building && built === null && <Spinner label={t("creators.loading")} />}
       {error !== null && <ErrorBox error={error} onRetry={() => onSearch(q)} />}
-      {ready && rows.length === 0 && !building && <Empty text={t("creators.empty")} />}
+      {ready && visibleRows.length === 0 && !building && <Empty text={t("creators.empty")} />}
       <div className="hint-row">
         {postLink && (
           <div className="clipboard-banner" style={{ width: "100%" }}>
@@ -255,11 +308,20 @@ export function CreatorsPage() {
         )}
       </div>
       <div className="creator-list">
-        {rows.map((r) => (
+        {displayedRows.map((r) => (
           <div
             key={r.key}
             className={`creator-row${isFollowed(r.service, r.id) ? " is-followed" : ""}`}
             onClick={() => navigate(`/creator/${r.service}/${r.id}`)}
+            role="button"
+            tabIndex={0}
+            aria-label={r.name}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                navigate(`/creator/${r.service}/${r.id}`)
+              }
+            }}
           >
             <CreatorAvatar service={r.service} id={r.id} name={r.name} />
             <div className="creator-row-main">
@@ -275,6 +337,13 @@ export function CreatorsPage() {
           </div>
         ))}
       </div>
+      {visibleCount < visibleRows.length && (
+        <div className="hint-row">
+          <button className="btn" onClick={() => setVisibleCount((n) => Math.min(n + 60, visibleRows.length))}>
+            {t("creators.showMore", { count: Math.min(60, visibleRows.length - visibleCount) })}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

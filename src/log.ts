@@ -2,11 +2,11 @@
 // アプリ内ログ (リングバッファ)
 //
 // 参考: JHenTai (起動ごとの構造化ログ) / EhViewer (自己診断・ログダンプ)。
-// API 失敗 (source chain: URL/ステータス/本文抜粋) も残し、初回ログイン POST
+// 製品版は基本情報、デバッグ版は詳細レスポンスも記録し、初回ログイン POST
 // 失敗などの切り分けに使う。設定 → 診断 から閲覧・書き出しできる。
 // ---------------------------------------------------------------------------
 
-import { DEBUG_DIAG, debugAppendLog } from "./debug"
+import { DEBUG_DIAG } from "./buildFlags"
 
 export interface LogEntry {
   ts: number
@@ -16,8 +16,6 @@ export interface LogEntry {
 
 const MAX_ENTRIES = 400
 const MAX_MSG_LEN = 2000
-/** 分割記録 (logLong) の 1 エントリあたりの文字数 */
-const CHUNK_LEN = 1800
 
 const entries: LogEntry[] = []
 
@@ -38,13 +36,16 @@ export function logError(msg: string) {
 }
 
 function push(level: LogEntry["level"], msg: string) {
+  // Lite はエラーのみ保持する。info / warn は Full 専用。
+  if (!DEBUG_DIAG && level !== "error") return
   if (msg.length > MAX_MSG_LEN) msg = msg.slice(0, MAX_MSG_LEN) + "…"
   const entry: LogEntry = { ts: Date.now(), level, msg }
   entries.push(entry)
   if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES)
-  // PC 向けデバッグ: ログ行をファイル (app_data/logs/debug-app.log) へ常時追記する。
-  // DEBUG_DIAG 定数はリリースビルドで false に畳まれ、呼び出しごと分離される
-  debugAppendLog(formatEntry(entry))
+  // 詳細ファイルログはFull 開発診断を含むデバッグビルドだけでロードする。
+  if (DEBUG_DIAG) {
+    void import("./debug").then(({ debugAppendLog }) => debugAppendLog(formatEntry(entry)))
+  }
 }
 
 /** 1 エントリをテキスト化 (ファイルログ・書き出し共通の書式) */
@@ -58,32 +59,21 @@ function formatEntry(e: LogEntry): string {
   return `[${t}] [${e.level}] ${e.msg}`
 }
 
-/** 長文ログの分割記録 (デバッグ診断用)。
- *  backup JSON 全文や長いエラーレスポンスを失わずに
- *  リングバッファへ入れるため MAX_MSG_LEN ごとに分割する */
-export function logLong(level: LogEntry["level"], msg: string) {
-  if (msg.length <= CHUNK_LEN) {
-    push(level, msg)
-    return
-  }
-  const chunks = Math.ceil(msg.length / CHUNK_LEN)
-  for (let i = 0; i < chunks; i++) {
-    push(
-      level,
-      `[part ${i + 1}/${chunks}] ${msg.slice(i * CHUNK_LEN, (i + 1) * CHUNK_LEN)}`,
-    )
-  }
-}
-
 /** API リクエスト失敗の記録 (source chain)。
- *  DEBUG_DIAG ビルドでは本文/URL 全文を失わずに記録する */
+ *  Full 開発診断を含むデバッグビルドでは詳細情報も記録する */
 export function logApiFailure(path: string, method: string, message: string) {
   if (DEBUG_DIAG) {
     push("error", `API失敗 ${method} ${path} (詳細下記)`)
-    logLong("error", message)
-  } else {
-    push("error", `API失敗 ${method} ${path} → ${message}`)
+    void import("./debug-log").then(({ splitDebugLog }) => {
+      for (const part of splitDebugLog(message)) push("error", part)
+    })
+    return
   }
+
+  // Lite は API の宛先とレスポンス本文だけを保持する。
+  const body = message.match(/BODY=([\s\S]*)/)?.[1]
+  const destination = `https://pawchive.pw/api/v1/${path.replace(/^\//, "")}`
+  push("error", body !== undefined ? `API_ERROR destination=${destination} body=${body}` : `API_ERROR destination=${destination}`)
 }
 
 /** 古い順の全エントリ */

@@ -119,15 +119,7 @@ export function LoginPage() {
             {t("login.register")}
           </a>
         </div>
-        <div className="login-links">
-          <span
-            className="link"
-            onClick={() => navigate("/settings")}
-            role="button"
-          >
-            {t("login.sessionManual")}
-          </span>
-        </div>
+
         {appVersion && (
           <div className="login-version small">PawKemoViewer v{displayAppVersion(appVersion)}</div>
         )}

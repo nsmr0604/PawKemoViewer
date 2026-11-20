@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { api, getSettings, updateSettings } from "../api"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { api, getSettings, updateSettings, SETTINGS_CHANGED_EVENT } from "../api"
 import type { PawPost } from "../types"
 import { PostGrid, ErrorBox } from "../components"
 import { useNavigate } from "../router"
@@ -21,9 +21,16 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   const [input, setInput] = useState(q)
   const [viewMode, setViewMode] = useState<"grid" | "list">(getSettings().postViewMode)
   const [history, setHistory] = useState<string[]>(getSearchHistory)
+  const [serviceFilter, setServiceFilter] = useState<"all" | "fanbox" | "patreon">("all")
+  const [excludeAiPosts, setExcludeAiPosts] = useState<boolean>(getSettings().excludeAiPosts)
   const reqSeq = useRef(0)
   const tooShort = q.length > 0 && q.length < MIN_QUERY
-  const scrollKey = `home:${q}`
+  const scrollKey = `home:${q}:service=${serviceFilter}:excludeAi=${excludeAiPosts}`
+  const filteredPosts = useMemo(() => posts.filter((post) =>
+    serviceFilter === "all" || post.service === serviceFilter,
+  ), [posts, serviceFilter])
+  const hasActiveFilters = serviceFilter !== "all"
+
 
   const toggleViewMode = (mode: "grid" | "list") => {
     setViewMode(mode)
@@ -36,6 +43,10 @@ export function HomePage({ query }: { query: URLSearchParams }) {
     setOffset(0)
     setDone(false)
     setError(null)
+    // クエリ切替/画面離脱後に前の検索結果が遅れて反映されるのを防ぐ。
+    return () => {
+      reqSeq.current += 1
+    }
   }, [q])
 
   const load = useCallback(
@@ -57,6 +68,18 @@ export function HomePage({ query }: { query: URLSearchParams }) {
     },
     [q],
   )
+
+  useEffect(() => {
+    const syncSettings = () => {
+      const next = getSettings().excludeAiPosts
+      if (next !== excludeAiPosts) {
+        setExcludeAiPosts(next)
+        load(0, true)
+      }
+    }
+    window.addEventListener(SETTINGS_CHANGED_EVENT, syncSettings)
+    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, syncSettings)
+  }, [excludeAiPosts, load])
 
   useEffect(() => {
     if (tooShort) return
@@ -115,6 +138,29 @@ export function HomePage({ query }: { query: URLSearchParams }) {
           </button>
         </div>
       )}
+      <section className="home-filters" aria-label={t("home.filters")}>
+        <div className="home-filter-group">
+          <span className="small text-muted">{t("home.serviceFilter")}</span>
+          <div className="tag-chips">
+            {(["all", "fanbox", "patreon"] as const).map((service) => (
+              <button key={service} type="button"
+                className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
+                aria-pressed={serviceFilter === service}
+                onClick={() => setServiceFilter(service)}>
+                {service === "all" ? t("home.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+              </button>
+            ))}
+          </div>
+        </div>
+        {hasActiveFilters && (
+          <div className="hint-row">
+            <span className="small text-muted">{t("home.filteredCount", { shown: filteredPosts.length, total: posts.length })}</span>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
+              setServiceFilter("all")
+            }}>{t("home.clearFilters")}</button>
+          </div>
+        )}
+      </section>
       <div className="view-mode-bar">
         {tooShort && <div className="hint-row">{t("home.tooShort")}</div>}
         {q && !tooShort && (
@@ -147,14 +193,14 @@ export function HomePage({ query }: { query: URLSearchParams }) {
       {error !== null && <ErrorBox error={error} onRetry={() => load(offset, offset === 0)} />}
       {!tooShort && (
         <PostGrid
-          posts={posts}
+          posts={filteredPosts}
           loading={loading}
           done={done}
           viewMode={viewMode}
           onEndReached={loading || done ? undefined : () => load(offset + PAGE, false)}
         />
       )}
-      {!loading && !error && posts.length === 0 && done && (
+      {!loading && !error && filteredPosts.length === 0 && done && (
         <div className="empty">{t("home.empty")}</div>
       )}
     </div>

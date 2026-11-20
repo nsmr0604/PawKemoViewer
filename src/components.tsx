@@ -140,22 +140,22 @@ export function PostGrid({ posts, onEndReached, loading, done, newIds, viewMode 
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    const handler = () => check()
+    let frame = 0
+    const handler = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        check()
+      })
+    }
     window.addEventListener("scroll", handler, { passive: true })
-    window.addEventListener("resize", handler)
+    window.addEventListener("resize", handler, { passive: true })
     return () => {
       window.removeEventListener("scroll", handler)
       window.removeEventListener("resize", handler)
+      if (frame) cancelAnimationFrame(frame)
     }
   }, [check])
-
-  // 環境によっては scroll イベントが発火しない (非表示ウィンドウ等) ため、
-  // 低頻度のポーリングでも末尾到達を判定する (getBoundingClientRect 1回のみで軽量)
-  useEffect(() => {
-    if (!onEndReached) return
-    const iv = setInterval(check, 700)
-    return () => clearInterval(iv)
-  }, [check, onEndReached])
 
   // ロード完了後にもう一度判定 (セントリーポジションが残っていれば連続ロード)
   useEffect(() => {
@@ -290,7 +290,16 @@ export function PostCard({ post, isNew }: { post: PawPost; isNew?: boolean }) {
   // フォロー中クリエイター / お気に入り投稿のマーク (pawchive の ☆ / ★ と同期)
   const marks = usePostMarks(post.service, post.user, post.id)
   return (
-    <div className={`post-card${marks.faved ? " is-fav" : ""}${marks.followed ? " is-follow" : ""}`} onClick={onClick}>
+    <div className={`post-card${marks.faved ? " is-fav" : ""}${marks.followed ? " is-follow" : ""}`} onClick={onClick}
+      role="button"
+      tabIndex={0}
+      aria-label={post.title || t("common.untitled")}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick()
+        }
+      }}>
       <div className="post-card-thumb">
         <Thumb file={files[0]} />
         {isNew && <span className="badge-new">NEW</span>}
@@ -321,7 +330,16 @@ export function PostRow({ post, isNew }: { post: PawPost; isNew?: boolean }) {
   const imageCount = files.length
   const marks = usePostMarks(post.service, post.user, post.id)
   return (
-    <div className={`post-row-item${marks.faved ? " is-fav" : ""}${marks.followed ? " is-follow" : ""}`} onClick={onClick}>
+    <div className={`post-row-item${marks.faved ? " is-fav" : ""}${marks.followed ? " is-follow" : ""}`} onClick={onClick}
+      role="button"
+      tabIndex={0}
+      aria-label={post.title || t("common.untitled")}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick()
+        }
+      }}>
       <div className="post-row-thumb">
         <Thumb file={files[0]} />
         {imageCount > 1 && <span className="badge-count-mini">🖼{imageCount}</span>}

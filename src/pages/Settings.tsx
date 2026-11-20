@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
 import { invoke } from "@tauri-apps/api/core"
 import { getSettings, updateSettings, api, apiStatus } from "../api"
@@ -8,9 +8,8 @@ import {
   clearLog,
   formatLog,
   logInfo,
-  logLong,
 } from "../log"
-import { DEBUG_DIAG, debugOpenLogFolder } from "../debug"
+import { DEBUG_DIAG } from "../buildFlags"
 import { navigate } from "../router"
 import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
@@ -27,7 +26,9 @@ import {
   type LocaleInfo,
 } from "../i18n"
 import { displayAppVersion } from "../version"
+const DeveloperFullDiagnostics = DEBUG_DIAG ? lazy(() => import("../components/DeveloperFullDiagnostics").then((module) => ({ default: module.DeveloperFullDiagnostics }))) : null
 
+const DeveloperLiteTools = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -47,18 +48,18 @@ function fmtTs(ms: number | undefined): string {
 export function SettingsPage() {
   const s = getSettings()
 
-  const [sessionKey, setSessionKey] = useState(s.sessionKey)
   const [theme, setTheme] = useState<"dark" | "light">(s.theme)
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(s.layoutMode || "auto")
   const [noImageMode, setNoImageModeState] = useState<boolean>(s.noImageMode || false)
   const [proxyImages, setProxyImagesState] = useState<boolean>(s.proxyImages || false)
   const [postFileListMode, setPostFileListModeState] = useState<boolean>(s.postFileListMode || false)
   const [excludeFanboxCover, setExcludeFanboxCoverState] = useState<boolean>(s.excludeFanboxCover || false)
+  const [excludeAiPosts, setExcludeAiPostsState] = useState<boolean>(s.excludeAiPosts || false)
   const [locale, setLocaleState] = useState<Locale>(s.locale || "ja")
   const [iconCache, setIconCache] = useState<{ count: number; bytes: number } | null>(null)
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
-  const [saved, setSaved] = useState(false)
-  const [testResult, setTestResult] = useState<string | null>(null)
+  const [loginStatus, setLoginStatus] = useState<"checking" | "loggedIn" | "loggedOut" | "unknown">(s.sessionKey ? "checking" : "loggedOut")
+  const [developerToolsEnabled, setDeveloperToolsEnabled] = useState(s.developerToolsEnabled || false)
   const [version, setVersion] = useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
   const [cache, setCache] = useState<CreatorCacheInfo | null>(null)
@@ -80,11 +81,34 @@ export function SettingsPage() {
     creatorIconInfo().then(setIconCache).catch(() => setIconCache(null))
   }, [])
 
-  const save = () => {
-    updateSettings({ sessionKey: sessionKey.trim() })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
+  // 保存済みセッションを検証し、セッション変更後も表示を更新する。
+  useEffect(() => {
+    let active = true
+    let lastSessionKey = getSettings().sessionKey
+    const verifySession = (force = false) => {
+      const sessionKey = getSettings().sessionKey
+      if (!force && sessionKey === lastSessionKey) return
+      lastSessionKey = sessionKey
+      if (!sessionKey) {
+        setLoginStatus("loggedOut")
+        return
+      }
+      setLoginStatus("checking")
+      api.accountFavorites("artist", sessionKey, false).then(() => {
+        if (active) setLoginStatus("loggedIn")
+      }).catch((e) => {
+        if (!active) return
+        setLoginStatus(apiStatus(e) === 401 ? "loggedOut" : "unknown")
+      })
+    }
+    verifySession(true)
+    const onSettingsChanged = () => verifySession()
+    window.addEventListener("pawkemo-settings-changed", onSettingsChanged)
+    return () => {
+      active = false
+      window.removeEventListener("pawkemo-settings-changed", onSettingsChanged)
+    }
+  }, [])
 
   const applyTheme = (value: "dark" | "light") => {
     setTheme(value)
@@ -115,6 +139,11 @@ export function SettingsPage() {
   const toggleExcludeFanboxCover = (val: boolean) => {
     setExcludeFanboxCoverState(val)
     updateSettings({ excludeFanboxCover: val })
+  }
+
+  const toggleExcludeAiPosts = (val: boolean) => {
+    setExcludeAiPostsState(val)
+    updateSettings({ excludeAiPosts: val })
   }
 
   // 言語ファイルを読み込んでから設定に保存する。
@@ -203,12 +232,7 @@ export function SettingsPage() {
       }
       setBackupResult(t("settings.exported", { path, clip }))
       logInfo("バックアップを書き出しました")
-      // デバッグ診断ビルド (VITE_DEBUG_DIAG=1) 限定: バックアップ JSON 全文を
-      // 診断ログへ出力する (実機では app_data_dir が取り出せず・クリップボードも
-      // adb から読めないためログ経由が最短。リリースビルドでは分離される)
-      if (DEBUG_DIAG) {
-        logLong("info", "DEBUG BACKUP DUMP (デバッグ診断ビルド限定・下記全文):\n" + buildBackup())
-      }
+
     } catch (e) {
       setBackupResult(t("settings.exportFailed", { msg: e instanceof Error ? e.message : String(e) }))
     }
@@ -242,25 +266,6 @@ export function SettingsPage() {
     }
   }
 
-  const testSession = async () => {
-    setTestResult(t("settings.testing"))
-    try {
-      // 保存前の入力値をそのまま検証する (保存済み設定とは分離)。
-      await api.accountFavorites("artist", sessionKey.trim())
-      setTestResult(t("settings.testOk"))
-    } catch (e) {
-      const st = apiStatus(e)
-      setTestResult(
-        st === 401
-          ? t("settings.testInvalid")
-          : t("settings.testFail", {
-              status: st !== null ? t("settings.httpStatus", { st }) : "",
-              msg: e instanceof Error ? e.message : String(e),
-            }),
-      )
-    }
-  }
-
   const doClearCache = async () => {
     await clearCreatorCache()
     setCache({ count: 0, bytes: 0, fetchedAt: undefined })
@@ -291,59 +296,31 @@ export function SettingsPage() {
   return (
     <div className="page settings">
       <h2>{t("settings.title")}</h2>
+      <p className="settings-intro">{t("settings.intro")}</p>
 
-      {/* ------------------------------------------------ デバッグ診断 (ビルド時フラグ注入・リリースでは分離) */}
-      {DEBUG_DIAG && (
-        <div className="settings-section">
-          <div className="section-label">{t("settings.diagTitle")}</div>
-
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.diagFlag")}</span>
-              <small>{t("settings.diagFlagDesc")}</small>
-            </div>
-            <code className="small">DEBUG_DIAG=on</code>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.logFolder")}</span>
-              <small>{t("settings.logFolderDesc")}</small>
-            </div>
-            <button
-              className="btn"
-              onClick={() =>
-                debugOpenLogFolder()
-                  .then((p) => setLogResult(t("settings.folderResult", { path: p })))
-                  .catch((e) => setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) })))
-              }
-            >
-              {t("settings.open")}
-            </button>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.backupDump")}</span>
-              <small>{t("settings.backupDumpDesc")}</small>
-            </div>
-            <button
-              className="btn"
-              onClick={() => {
-                logLong("info", "DEBUG BACKUP DUMP (手動ダンプ・下記全文):\n" + buildBackup())
-                setLogResult(t("settings.dumped"))
-              }}
-            >
-              {t("settings.dump")}
-            </button>
-          </div>
-
-          {logResult && <span className="small">{logResult}</span>}
-        </div>
-      )}
+      <nav className="settings-nav" aria-label={t("settings.sections")}>
+        {[
+          ["settings-account", t("settings.accountTitle")],
+          ["settings-display", t("settings.displayTitle")],
+          ["settings-post", t("settings.postTitle")],
+          ["settings-connection", t("settings.navConnection")],
+          ["settings-data", t("settings.navBackup")],
+          ["settings-cache", t("settings.navStorage")],
+          ["settings-diagnostics", t("settings.diagnostics")],
+          ["settings-info", t("settings.info")],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
 
       {/* ------------------------------------------------ アカウント */}
-      <div className="settings-section">
+      <div id="settings-account" className="settings-section">
         <div className="section-label">{t("settings.accountTitle")}</div>
 
         <div className="settings-actions">
@@ -353,31 +330,20 @@ export function SettingsPage() {
           <small className="small">{t("settings.loginHint")}</small>
         </div>
 
-        <label className="field">
-          <span>{t("settings.sessionLabel")}</span>
-          <input
-            type="password"
-            value={sessionKey}
-            onChange={(e) => setSessionKey(e.target.value)}
-            placeholder={t("settings.sessionPlaceholder")}
-          />
-          <small>{t("settings.sessionHelp")}</small>
-          <button className="btn" onClick={testSession}>
-            {t("settings.testSession")}
-          </button>
-          {testResult && <span className="small">{testResult}</span>}
-        </label>
-
-        <div className="settings-actions">
-          <button className="btn btn-primary" onClick={save}>
-            {t("settings.save")}
-          </button>
-          {saved && <span className="ok">{t("settings.saved")}</span>}
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.loginStatus")}</span>
+            <small>{t("settings.loginStatusDesc")}</small>
+          </div>
+          <span className={loginStatus === "loggedIn" ? "ok" : "small"} role="status" aria-live="polite">
+            {loginStatus === "checking" ? t("settings.loginStatus.checking") : loginStatus === "loggedIn" ? t("settings.loginStatus.loggedIn") : loginStatus === "loggedOut" ? t("settings.loginStatus.loggedOut") : t("settings.loginStatus.unknown")}
+          </span>
         </div>
+
       </div>
 
       {/* ------------------------------------------------ 表示 */}
-      <div className="settings-section">
+      <div id="settings-display" className="settings-section">
         <div className="section-label">{t("settings.displayTitle")}</div>
 
         <div className="setting-item">
@@ -564,7 +530,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 投稿表示 (省データ) */}
-      <div className="settings-section">
+      <div id="settings-post" className="settings-section">
         <div className="section-label">{t("settings.postTitle")}</div>
 
         <div className="setting-item">
@@ -582,6 +548,20 @@ export function SettingsPage() {
 
         <div className="setting-item">
           <div className="setting-text">
+            <span>{t("settings.excludeAiTitle")}</span>
+            <small>{t("settings.excludeAiDesc")}</small>
+          </div>
+          <button
+            className={`btn ${excludeAiPosts ? "btn-primary" : "btn-ghost"}`}
+            aria-pressed={excludeAiPosts}
+            onClick={() => toggleExcludeAiPosts(!excludeAiPosts)}
+          >
+            {excludeAiPosts ? t("settings.excludeAiOn") : t("settings.excludeAiOff")}
+          </button>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
             <span>{t("settings.coverTitle")}</span>
             <small>{t("settings.coverDesc")}</small>
           </div>
@@ -594,28 +574,9 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* ------------------------------------------------ アイコンキャッシュ */}
-      <div className="settings-section">
-        <div className="section-label">{t("settings.iconTitle")}</div>
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>{t("settings.creatorIcon")}</span>
-            <small>
-              {iconCache
-                ? t("settings.iconInfo", { count: iconCache.count.toLocaleString(), size: fmtBytes(iconCache.bytes) })
-                : t("common.loading")}
-            </small>
-          </div>
-          <button className="btn" onClick={doClearIconCache}>
-            {t("settings.clear")}
-          </button>
-        </div>
-      </div>
-
       {/* ------------------------------------------------ 接続 */}
-      <div className="settings-section">
-        <div className="section-label">{t("settings.connection")}</div>
+      <div id="settings-connection" className="settings-section">
+        <div className="section-label">{t("settings.navConnection")}</div>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -637,8 +598,8 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ データ (バックアップ) */}
-      <div className="settings-section">
-        <div className="section-label">{t("settings.dataTitle")}</div>
+      <div id="settings-data" className="settings-section">
+        <div className="section-label">{t("settings.backupSection")}</div>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -693,8 +654,8 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ キャッシュ */}
-      <div className="settings-section">
-        <div className="section-label">{t("settings.cacheTitle")}</div>
+      <div id="settings-cache" className="settings-section">
+        <div className="section-label">{t("settings.storageTitle")}</div>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -709,11 +670,30 @@ export function SettingsPage() {
             {t("settings.clear")}
           </button>
         </div>
+        <div className="setting-subsection">
+        <div className="section-label">{t("settings.iconTitle")}</div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.creatorIcon")}</span>
+            <small>
+              {iconCache
+                ? t("settings.iconInfo", { count: iconCache.count.toLocaleString(), size: fmtBytes(iconCache.bytes) })
+                : t("common.loading")}
+            </small>
+          </div>
+          <button className="btn" onClick={doClearIconCache}>
+            {t("settings.clear")}
+          </button>
+        </div>
+      </div>
       </div>
 
       {/* ------------------------------------------------ 診断 */}
-      <div className="settings-section">
+      <div id="settings-diagnostics" className="settings-section">
         <div className="section-label">{t("settings.diagnostics")}</div>
+
+
 
         <div className="setting-item">
           <div className="setting-text">
@@ -750,7 +730,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 情報 */}
-      <div className="settings-section">
+      <div id="settings-info" className="settings-section">
         <div className="section-label">{t("settings.info")}</div>
 
         <div className="setting-item">
@@ -778,6 +758,38 @@ export function SettingsPage() {
           </div>
           <code className="small">{appVersion ? displayAppVersion(appVersion) : "…"}</code>
         </div>
+
+        {!DEBUG_DIAG && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>{t("settings.developerTools")}</span>
+              <small>{t("settings.developerToolsDesc")}</small>
+            </div>
+            <button
+              className={`btn ${developerToolsEnabled ? "btn-primary" : "btn-ghost"}`}
+              aria-pressed={developerToolsEnabled}
+              onClick={() => {
+                const next = !developerToolsEnabled
+                setDeveloperToolsEnabled(next)
+                updateSettings({ developerToolsEnabled: next })
+              }}
+            >
+              {developerToolsEnabled ? t("settings.developerToolsOn") : t("settings.developerToolsOff")}
+            </button>
+          </div>
+        )}
+
+        {(DEBUG_DIAG || developerToolsEnabled) && (
+          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
+            <DeveloperLiteTools />
+          </Suspense>
+        )}
+
+        {DEBUG_DIAG && DeveloperFullDiagnostics && (
+          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
+            <DeveloperFullDiagnostics />
+          </Suspense>
+        )}
 
         <p className="small">
           {t("settings.aboutNote")}

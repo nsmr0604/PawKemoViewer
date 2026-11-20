@@ -1,6 +1,6 @@
 [package]
 name = "pawkemoviewer"
-version = "0.3.2"
+version = "0.4.0"
 description = "PawKemoViewer"
 authors = ["nsmr0604"]
 license = "MIT"
@@ -8,9 +8,8 @@ repository = ""
 edition = "2024"
 rust-version = "1.90"
 
-# デバッグ診断コードのビルド時注入フラグ (src/debug.ts の DEBUG_DIAG と対)。
-# テスト用ビルドでのみ --features debug-diag を付ける。リリースビルドでは無効のまま。
-# Rust 側の診断コードは #[cfg(feature = "debug-diag")] で書く
+# Full 開発診断のビルドフラグ。
+# 製品版では詳細ログ操作コマンドをコンパイル・登録しない。
 [features]
 debug-diag = []
 

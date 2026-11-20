@@ -57,6 +57,7 @@ DNS フィルタ (AdGuard など) で pawchive.pw が遮断される環境では
 
 ## ドキュメント
 
+- [開発状況・引き継ぎ・改善ロードマップ](docs/PROJECT_STATUS.md): 現在の進捗、未完了作業、重要な設計制約、次の実装候補
 - [開発ガイド](docs/DEVELOPMENT.md): アーキテクチャ、ディレクトリ構成、ストレージ
 - [ビルドガイド](docs/BUILD.md): ローカルビルド、CI、リリース手順
 - [API 仕様](docs/API.md): pawchive API と Tauri コマンドの仕様

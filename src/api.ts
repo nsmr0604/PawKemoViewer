@@ -43,6 +43,10 @@ export interface Settings {
   /** FANBOX の cover.jpeg (作品カバー画像) を投稿ファイルから除外する。
    *  グローバル設定 (投稿を切り替えても維持) */
   excludeFanboxCover: boolean
+  /** サイト全体の投稿一覧・検索で AI 分類の投稿を除外する */
+  excludeAiPosts: boolean
+  /** 製品版で開発項目を表示する (既定 false)。 */
+  developerToolsEnabled: boolean
   /** 表示言語 (既定 ja)。変更すると SETTINGS_CHANGED_EVENT で各画面が再描画される */
   locale: Locale
 }
@@ -73,6 +77,8 @@ function defaultSettings(): Settings {
     proxyImages: false,
     postFileListMode: false,
     excludeFanboxCover: false,
+    excludeAiPosts: false,
+    developerToolsEnabled: false,
     locale: "ja",
   }
 }
@@ -140,19 +146,41 @@ const CACHE_MAX = 150 // キャッシュ最大エントリ数
 
 let activeCount = 0
 let lastStartAt = 0
+let pumpTimer: ReturnType<typeof setTimeout> | null = null
 const waiting: (() => void)[] = []
 
 function pump() {
-  while (activeCount < MAX_CONCURRENT && waiting.length > 0) {
-    const wait = Math.max(0, lastStartAt + MIN_GAP_MS - Date.now())
-    if (wait > 0) {
-      setTimeout(pump, wait)
-      return
+  if (activeCount >= MAX_CONCURRENT || waiting.length === 0) return
+
+  const wait = Math.max(0, lastStartAt + MIN_GAP_MS - Date.now())
+  if (wait > 0) {
+    // enqueue が短時間に続いてもタイマーを重複登録しない。
+    if (pumpTimer === null) {
+      pumpTimer = setTimeout(() => {
+        pumpTimer = null
+        pump()
+      }, wait)
     }
+    return
+  }
+
+  while (activeCount < MAX_CONCURRENT && waiting.length > 0) {
+    // 1 リクエスト開始ごとに最小間隔を守る。次回の pump は完了時に呼ぶ。
+    if (Date.now() < lastStartAt + MIN_GAP_MS) break
     const run = waiting.shift()!
     lastStartAt = Date.now()
     activeCount++
     run()
+  }
+
+  if (waiting.length > 0 && activeCount < MAX_CONCURRENT) {
+    const nextWait = Math.max(0, lastStartAt + MIN_GAP_MS - Date.now())
+    if (nextWait > 0 && pumpTimer === null) {
+      pumpTimer = setTimeout(() => {
+        pumpTimer = null
+        pump()
+      }, nextWait)
+    }
   }
 }
 
@@ -295,6 +323,7 @@ export const api = {
     const p = new URLSearchParams()
     if (opts.q) p.set("q", opts.q)
     if (opts.o) p.set("o", String(opts.o))
+    if (settings.excludeAiPosts) p.set("hide", "(ai)")
     const qs = p.toString()
     return request<PawPost[]>(`/posts${qs ? `?${qs}` : ""}`)
   },
@@ -360,12 +389,16 @@ export const api = {
 
   /** アカウントのお気に入り一覧 type: "post" | "artist"
    *  sessionKey を指定すると、未保存の入力値を使った疎通確認もできる。 */
-  accountFavorites: (type: "post" | "artist", sessionKey = settings.sessionKey) =>
+  accountFavorites: (
+    type: "post" | "artist",
+    sessionKey = settings.sessionKey,
+    useCache = sessionKey === settings.sessionKey,
+  ) =>
     request<AccountFavorite[]>(
       `/account/favorites?type=${type}`,
       undefined,
       sessionKey,
-      sessionKey === settings.sessionKey,
+      useCache,
     ),
 
   favPostAdd: (service: string, creatorId: string, postId: string) =>

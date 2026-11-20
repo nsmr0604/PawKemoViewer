@@ -1,7 +1,7 @@
 {
   "name": "pawkemoviewer",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.4.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -9,8 +9,10 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:dev": "tauri dev --features debug-diag",
+    "tauri:build": "tauri build",
+    "tauri:android:dev": "tauri android dev --features debug-diag",
+    "build:debug": "tsc -b && vite build --mode development"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.5",

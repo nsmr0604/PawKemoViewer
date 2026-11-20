@@ -1,6 +1,6 @@
 # ビルドガイド
 
-PawKemoViewer (v0.3.1) のビルド・パッケージング・CI 構成。
+PawKemoViewer (v0.4.0) のビルド・パッケージング・CI 構成。
 
 ## ビルドフロー (原則: CI 委任)
 
@@ -26,10 +26,10 @@ rolling prerelease "debug-latest" (デバッグビルド)
 
 | プラットフォーム | ファイル例 |
 |---|---|
-| Windows | `PawKemoViewer_0.3.1_x64-setup.exe` / `_x64_en-US.msi` |
-| Linux | `PawKemoViewer_0.3.1_amd64.AppImage` / `_amd64.deb` |
-| macOS | `PawKemoViewer_0.3.1_aarch64.dmg` |
-| Android | `PawKemoViewer_0.3.1_universal.apk` (debug.keystore 署名) |
+| Windows | `PawKemoViewer_0.4.0_x64-setup.exe` / `_x64_en-US.msi` |
+| Linux | `PawKemoViewer_0.4.0_amd64.AppImage` / `_amd64.deb` |
+| macOS | `PawKemoViewer_0.4.0_aarch64.dmg` |
+| Android | `PawKemoViewer_0.4.0_universal.apk` (debug.keystore 署名) |
 
 - 実行ファイル名は `pawkemoviewer` (crate 名由来)。Android packageId は
   `com.nsmr0604.pawkemoviewer`
@@ -42,14 +42,16 @@ rolling prerelease "debug-latest" (デバッグビルド)
 npm install
 npm run build                                  # 型検査 + フロントエンドビルド (dist/)
 cargo check --manifest-path src-tauri/Cargo.toml
-cargo build --manifest-path src-tauri/Cargo.toml                       # debug exe
+cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag # debug exe + diagnostic commands
 cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag # 診断ビルド
-npm run tauri:dev                              # 開発実行 (Vite + Tauri)
+npm run build:debug                            # VITE_DEBUG_DIAG=1 のフロントエンド
+npm run tauri:dev                              # 開発実行 (Vite + Tauri + debug-diag)
+npm run tauri:android:dev                      # Android 開発実行 + debug-diag
 npm run tauri:build                            # ローカルリリースバンドル (通常は不要)
 ```
 
-- デバッグ診断ビルド (PC): `npm run dev` は `.env.development` により
-  `VITE_DEBUG_DIAG` が自動有効。debug exe は
+- デバッグ診断ビルド (PC): `npm run dev` / `npm run tauri:dev` は `.env.development` により
+  `VITE_DEBUG_DIAG` が自動有効。`tauri:dev` は Cargo feature `debug-diag` も指定。debug exe は
   `src-tauri/target/debug/pawkemoviewer.exe`
 - ワークフロー YAML の push 前検証: `npx --yes js-yaml .github/workflows/*.yml`
 
@@ -60,10 +62,11 @@ npm run tauri:build                            # ローカルリリースバン�
 - `prepare` ジョブ: release=true 時は旧 PC アセット削除 / debug 時は
   debug-latest の現行バージョン以外を掃除
 - `VITE_DEBUG_DIAG` は **ジョブレベル env** (tauri-action の beforeBuildCommand 内
-  ビルドにも適用される)
+  ビルドにも適用される)。デバッグ時は `args: --features debug-diag` も渡し、Rust 側の開発コマンド・詳細トレースを注入
 - concurrency: 同一ブランチの新ランが旧ランをキャンセル
 
 ### android.yml (Android Build)
+- デバッグビルド: `npx tauri android build --features debug-diag`。正式リリース: feature 無し
 - `npx tauri android init` → `npx tauri android build` → zipalign + apksigner
   (debug.keystore) → リリース添付
 - `on: pull_request` も発火 (artifact のみ)
@@ -98,3 +101,24 @@ npm run tauri:build                            # ローカルリリースバン�
 - **Android**: WebView 157 / Chrome 157 挙動を前提。debug.keystore は
   Android Studio の debug ビルドと署名が揃う
 - **macOS**: 未署名 (Gatekeeper の右クリック実行が必要)
+
+
+## Lite / Full 開発機能
+- **Lite (製品版にも含む)**: セッションIDの手動入力・検証・保存。製品版では「開発項目」トグルで表示する
+- **Full (デバッグビルド専用)**: 詳細ログファイル追記、ログフォルダを開く、バックアップJSONダンプ、APIレスポンス本文などの詳細診断
+- Full はフロントの VITE_DEBUG_DIAG=1 と Rust Cargo feature debug-diag の両方で有効。正式リリースでは両方を指定せず、UI・Rustコマンド・詳細ログ処理をコンパイル対象から除外する
+- 製品版で Lite を有効にしても Full 機能は有効化されない
+
+
+## Lite / Full 開発機能
+- **Lite (製品版にも含む)**: セッションIDの手動入力・検証・保存。製品版では「開発項目」トグルで表示する
+- **Full (デバッグビルド専用)**: 詳細ログファイル追記、ログフォルダを開く、バックアップJSONダンプ、APIレスポンス本文などの詳細診断
+- Full はフロントの VITE_DEBUG_DIAG=1 と Rust Cargo feature debug-diag の両方で有効。正式リリースでは両方を指定せず、UI・Rustコマンド・詳細ログ処理をコンパイル対象から除外する
+- 製品版で Lite を有効にしても Full 機能は有効化されない
+
+
+### Android API logcat (Full)
+- PR / push の Android デバッグビルドは workflow が `--features debug-diag` を付けるため、API request / response body が logcat に出力される
+- 正式リリース workflow (`inputs.release=true`) は feature を付けず、API本文ログを含めない
+- 実機確認: `adb logcat | grep 'Pawchive::API'` で対象ログを絞り込める (Android logger の実際の tag 表示により grep 文字列は調整)
+- API本文には投稿・アカウント等のデータが含まれる可能性がある。デバッグログを共有する前に内容を確認する
