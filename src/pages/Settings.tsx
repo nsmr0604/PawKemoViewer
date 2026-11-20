@@ -83,8 +83,11 @@ export function SettingsPage() {
   // 保存済みセッションを検証し、セッション変更後も表示を更新する。
   useEffect(() => {
     let active = true
-    const verifySession = () => {
+    let lastSessionKey = getSettings().sessionKey
+    const verifySession = (force = false) => {
       const sessionKey = getSettings().sessionKey
+      if (!force && sessionKey === lastSessionKey) return
+      lastSessionKey = sessionKey
       if (!sessionKey) {
         setLoginStatus("loggedOut")
         return
@@ -97,11 +100,12 @@ export function SettingsPage() {
         setLoginStatus(apiStatus(e) === 401 ? "loggedOut" : "unknown")
       })
     }
-    verifySession()
-    window.addEventListener("pawkemo-settings-changed", verifySession)
+    verifySession(true)
+    const onSettingsChanged = () => verifySession()
+    window.addEventListener("pawkemo-settings-changed", onSettingsChanged)
     return () => {
       active = false
-      window.removeEventListener("pawkemo-settings-changed", verifySession)
+      window.removeEventListener("pawkemo-settings-changed", onSettingsChanged)
     }
   }, [])
 
