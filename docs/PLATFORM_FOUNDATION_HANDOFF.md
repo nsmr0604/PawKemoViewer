@@ -232,3 +232,8 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - Added Rust `tauri-plugin-dialog` dependency, initialized the plugin in Tauri runtime, and granted narrowly scoped dialog open/save capabilities.
 - npm guest package `@tauri-apps/plugin-dialog` and `package-lock.json` synchronization remain pending: this environment cannot execute npm install/lockfile generation. Do not claim the JS plugin is installed or builds are validated until lockfile synchronization is completed.
 - Next slice: add synchronized npm dependency/lockfile, then implement selected-file read/write bridge. Android content URIs require special handling and should not be treated as ordinary filesystem paths; iOS file URI support must likewise be validated. No device/build validation yet.
+
+
+## PR #11 workstream split plan (2026-11-20)
+PR #11 is to be decomposed into a stack of feature branches/commits rather than treated as a single indivisible change. Keep the original PR open as the umbrella tracking item while split branches are prepared; avoid closing or retargeting it until replacement PRs are created and reviewed.
+Suggested sequence: (1) platform contracts/runtime + CI trigger adjustment; (2) native storage resolver and adapters; (3) consumer migration (backup/log/settings); (4) locale storage and import/export; (5) lifecycle/permission migration and validation. Each branch should be based on its predecessor only where dependency requires it, and use independent commits with focused messages. `feature/m2-native-file-dialog` is currently a follow-on branch based on PR #11 head, not yet a clean split of historical PR commits.
