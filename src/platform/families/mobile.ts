@@ -7,6 +7,8 @@ const storage = typeof localStorage !== "undefined" ? {
   remove: (key: string) => localStorage.removeItem(key),
 } : undefined
 
+const sessionStorageService = typeof sessionStorage !== "undefined" ? { get: (key: string) => sessionStorage.getItem(key), set: (key: string, value: string) => sessionStorage.setItem(key, value), remove: (key: string) => sessionStorage.removeItem(key) } : undefined
+
 const logging = { append: (line: string) => { void import("../../debug").then(({ debugAppendLog }) => debugAppendLog(line)) } }
 
 const storageLocations: StorageLocationService = {
@@ -38,5 +40,5 @@ const files: FileExportService = { exportText: (filename, content) => invoke<str
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
-  return { storage, storageLocations, logging, files, locale, clipboard }
+  return { storage, sessionStorage: sessionStorageService, storageLocations, logging, files, locale, clipboard }
 }
