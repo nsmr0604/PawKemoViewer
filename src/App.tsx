@@ -1,4 +1,3 @@
-import { onBackButtonPress, exit } from "@tauri-apps/api/app"
 import { useRoute, navigate } from "./router"
 import { HomePage } from "./pages/Home"
 import { CreatorsPage } from "./pages/Creators"
@@ -12,6 +11,7 @@ import { LoginPage } from "./pages/Login"
 import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
 import { loadLocale, t } from "./i18n"
 import { resolveLayout, type ResolvedLayout } from "./platform"
+import { getPlatformRuntime } from "./platform/runtime"
 import { NavigationRail, NavIcon } from "./components/NavigationRail"
 import { ErrorBox } from "./components"
 
@@ -78,29 +78,17 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [route.path, route.params.id])
 
-  // Android のハードウェア / ジェスチャ back をアプリ内履歴に接続する (Tauri 2.9+)。
-  // ハンドラを登録すると WebView の既定の「戻る / 終了」を行わなくなるため、
-  // canGoBack を見て明示的に history.back() または exit() を呼ぶ。
-  // デスクトップ / ブラウザでは未サポート (Promise が reject される) ので無視する。
+  // 戻る操作は PlatformRuntime の LifecycleService に集約する。
   useEffect(() => {
-    let listener: Awaited<ReturnType<typeof onBackButtonPress>> | null = null
-    let alive = true
-    onBackButtonPress(({ canGoBack }) => {
-      if (canGoBack) history.back()
-      else void exit(0)
+    const lifecycle = getPlatformRuntime().services.lifecycle
+    if (!lifecycle) return
+    return lifecycle.onBackRequested(() => {
+      if (route.path === "post" || route.path === "login" || route.path === "creator") history.back()
+      else void lifecycle.exit().catch(() => {
+        // Web adapter などアプリ終了を提供しない環境では未対応。
+      })
     })
-      .then((l) => {
-        if (alive) listener = l
-        else void l.unregister()
-      })
-      .catch(() => {
-        // 非 Android / 非 Tauri では未サポート
-      })
-    return () => {
-      alive = false
-      if (listener) void listener.unregister()
-    }
-  }, [])
+  }, [route.path])
 
   // デスクトップ向けキーボードショートカット (JHenTai 参考: H/C/F/S/Esc//)
   const handleKeyDown = useCallback(
