@@ -20,13 +20,7 @@ const MAX_MSG_LEN = 2000
 const entries: LogEntry[] = []
 
 function verboseDiagnosticsEnabled(): boolean {
-  if (DEBUG_DIAG) return true
-  try {
-    const settings = JSON.parse(localStorage.getItem("pawkemo-settings") || "{}")
-    return settings.developerToolsEnabled === true
-  } catch {
-    return false
-  }
+  return DEBUG_DIAG
 }
 
 if (DEBUG_DIAG) {
