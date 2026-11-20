@@ -150,3 +150,12 @@
 - No storage keys, schema, DB versions or stored formats changed.
 - M4 is considered complete as a consumer-migration milestone; M6 remains responsible for validation. Native shared storage and locale overlay are M2/M3.
 - Next: M5 lifecycle/permissions audit, only centralizing native-specific behavior where justified by platform differences.
+
+
+## Prioritized unfinished milestones (2026-11-20)
+1. **P1 M2 mobile shared storage** — SAF on Android and Files picker on iOS, backed by native integration, export and import, cancellation/error handling, and durable grants where available. Do not substitute a browser picker.
+2. **P2 M3 locale overlay** — private locale source primary; accessible shared folder/picked locale files secondary with deterministic overlay, validation, and non-destructive import.
+3. **P3 M5 native lifecycle/permissions** — implement platform-specific back/exit and capability permission behavior once native plugin/API setup is located and validated; avoid permission requests without a capability-specific reason.
+4. **P4 M6 validation** — batch typecheck/build/test and device validation after implementation; no per-commit CI runs.
+
+M5 browser-only slice: added lifecycle popstate handler subscription to the Web adapter; native Tauri lifecycle remains unimplemented. Browser exit intentionally rejects as unsupported. This does not complete M5.
