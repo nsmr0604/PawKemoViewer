@@ -1228,6 +1228,43 @@ fn delete_locale_file(app: tauri::AppHandle, code: String) -> Result<bool, Strin
     Ok(true)
 }
 
+
+
+// Foundation storage-location resolver (additive; consumers are migrated separately).
+// Secondary storage is intentionally desktop-only until mobile sharing semantics are
+// implemented and verified per platform. This avoids claiming a user-visible path
+// on Android/iOS where sandbox/Files exposure depends on platform configuration.
+#[tauri::command]
+fn resolve_storage_location(
+    app: tauri::AppHandle,
+    area: String,
+    purpose: String,
+) -> Result<Option<String>, String> {
+    let purpose_dir = match purpose.as_str() {
+        "logs" => "logs",
+        "locales" => "languages",
+        "exports" => "exports",
+        "backup" => "backup",
+        "general" => "",
+        _ => return Err("invalid storage purpose".into()),
+    };
+    let base = match area.as_str() {
+        "primary-private" => app.path().app_data_dir().map_err(|e| e.to_string())?,
+        "secondary-accessible" => {
+            #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+            { app.path().document_dir().map_err(|e| e.to_string())? }
+            #[cfg(any(target_os = "android", target_os = "ios"))]
+            { return Ok(None); }
+            #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux", target_os = "android", target_os = "ios")))]
+            { return Ok(None); }
+        }
+        _ => return Err("invalid storage area".into()),
+    };
+    let path = if purpose_dir.is_empty() { base } else { base.join(purpose_dir) };
+    std::fs::create_dir_all(&path).map_err(|e| e.to_string())?;
+    Ok(Some(path.to_string_lossy().to_string()))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1268,6 +1305,7 @@ pub fn run() {
                 list_locale_files,
                 write_locale_file,
                 delete_locale_file,
+                resolve_storage_location,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している

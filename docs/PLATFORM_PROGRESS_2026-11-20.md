@@ -15,6 +15,12 @@ Stage 0 audit partial. Stage 1 runtime scaffolding and typed service contracts/f
 - Locale loading primary first then secondary overlay; secondary failure must not break startup.
 - Avoid hardcoded paths and destructive migrations.
 
+## Resolver increment (unverified)
+- Added an additive `resolve_storage_location` Tauri command: primary-private uses app-data directory; desktop secondary uses OS document directory; purpose-scoped folders are created.
+- Android/iOS secondary currently returns `None` pending native sharing/document API integration. This deliberately does not equate sandbox paths with user-accessible storage.
+- Existing consumers are not yet migrated to the resolver; command is not yet wired into frontend runtime services.
+- No Rust/frontend build or device verification performed.
+
 ## Limitations
 - Native location resolution not implemented.
 - Desktop/Mobile family factories empty; Web adapter currently localStorage/Clipboard.
