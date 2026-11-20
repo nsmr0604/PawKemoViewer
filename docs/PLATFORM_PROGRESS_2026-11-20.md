@@ -42,3 +42,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 ## Next high-priority storage work blocked pending native layout discovery
 - Expected generated native Android/iOS files were not present at the probed paths. Implementing a SAF / iOS Files picker without locating the configured native project and its plugin/permissions setup would risk an incomplete or broken mobile integration.
 - Log export service migration is complete source-wise; native secondary storage picker and locale overlay remain pending.
+
+
+## Locale service CRUD migration
+- Settings locale creation/deletion now delegates through the PlatformRuntime LocaleService contract instead of invoking native commands directly. Desktop and mobile adapters invoke the native locale commands; Web adapter explicitly reports unsupported write behavior.
+- This is a boundary migration of private locale file management; secondary user-accessible locale overlay remains unimplemented.
+- No build/typecheck/device validation was performed.
