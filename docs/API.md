@@ -103,8 +103,8 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 | `fetch_creator_icon(service, id)` | クリエイターアイコンを取得 + `app_data/icons/{service}_{id}.webp` にキャッシュ → data URL |
 | `creator_icon_cache_info()` | クリエイターアイコンのキャッシュ件数・合計バイト数 |
 | `clear_creator_icon_cache()` | アイコンのディスクキャッシュを消去 |
-| `debug_append_log(text)` | (debug-diag feature のみ) ログ行を `app_data/logs/debug-app.log` に追記 |
-| `debug_open_log_folder()` | (debug-diag feature のみ) ログフォルダをファイラで開く |
+| `debug_append_log(text)` | (Full / debug-diag feature のみ) ログ行を `app_data/logs/debug-app.log` に追記 |
+| `debug_open_log_folder()` | (Full / debug-diag feature のみ) ログフォルダをファイラで開く |
 
 ### pkv:// プロトコル
 WebView から Referer を設定できないため、リファラーチェックがある外部 URL を Rust 側で中継する。
