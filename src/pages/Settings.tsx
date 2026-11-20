@@ -196,7 +196,7 @@ export function SettingsPage() {
     let imported = 0
     const failures: string[] = []
     for (const file of Array.from(files)) {
-      const code = file.name.replace(/\\.json$/i, "")
+      const code = file.name.replace(/\.json$/i, "")
       if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) { failures.push(file.name); continue }
       try {
         const json = await file.text()
@@ -219,7 +219,7 @@ export function SettingsPage() {
     let imported = 0
     const failures: string[] = []
     for (const file of Array.from(files)) {
-      const code = file.name.replace(/\\.json$/i, "")
+      const code = file.name.replace(/\.json$/i, "")
       if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) { failures.push(file.name); continue }
       try {
         const json = await file.text()
