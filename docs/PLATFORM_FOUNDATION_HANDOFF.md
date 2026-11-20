@@ -225,3 +225,10 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - Preferred implementation path is Tauri v2 dialog integration (open/save) with a compatible file read/write adapter, using scoped capabilities and synchronized npm/Cargo dependencies/lockfiles. Generated Android/iOS projects must be regenerated and checked as part of the dependency setup.
 - This kickoff audit identified prerequisites but did not wire a plugin or alter source behavior. Tooling here cannot run npm install, generate native projects, or build/test, so no unsynchronized plugin source changes are being represented as complete.
 - Next implementation slices: (1) reproducible dependency+native scaffolding setup and capability review; (2) file-picker contract/adapters; (3) backup import/export and locale/log workflows routed through selected-file IO; (4) mobile secondary locale overlay; (5) batch verification.
+
+
+## M2 native dialog plugin branch kickoff (2026-11-20)
+- Work is now isolated on `feature/m2-native-file-dialog`, branched from the platform-foundation PR branch.
+- Added Rust `tauri-plugin-dialog` dependency, initialized the plugin in Tauri runtime, and granted narrowly scoped dialog open/save capabilities.
+- npm guest package `@tauri-apps/plugin-dialog` and `package-lock.json` synchronization remain pending: this environment cannot execute npm install/lockfile generation. Do not claim the JS plugin is installed or builds are validated until lockfile synchronization is completed.
+- Next slice: add synchronized npm dependency/lockfile, then implement selected-file read/write bridge. Android content URIs require special handling and should not be treated as ordinary filesystem paths; iOS file URI support must likewise be validated. No device/build validation yet.
