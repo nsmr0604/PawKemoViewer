@@ -11,7 +11,7 @@
 import { invoke } from "@tauri-apps/api/core"
 import { getSettings, updateSettings, type Settings } from "./api"
 import { loadFollows, replaceFollows, type FollowEntry } from "./follows"
-import { setSeen, type SeenEntry } from "./db"\nimport { getPlatformRuntime } from "./platform/runtime"
+import { setSeen, type SeenEntry } from "./db"\nimport { getPlatformRuntime } from "./platform/runtime"\nimport { getPlatformRuntime } from "./platform/runtime"
 
 export const BACKUP_TYPE = "pawkemoviewer-backup"
 const BACKUP_VERSION = 1
