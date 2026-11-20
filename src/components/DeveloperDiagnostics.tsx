@@ -37,19 +37,12 @@ export function DeveloperDiagnostics() {
 
   const dumpBackup = async () => {
     const { splitDebugLog } = await import("../debug-log")
-    for (const part of splitDebugLog("DEBUG BACKUP DUMP:\\n" + buildBackup())) logInfo(part)
+    for (const part of splitDebugLog("DEBUG BACKUP DUMP:\n" + buildBackup())) logInfo(part)
     setLogResult(t("settings.dumped"))
   }
 
   return (
     <>
-      <div className="setting-item">
-        <div className="setting-text">
-          <span>{t("settings.diagFlag")}</span>
-          <small>{t("settings.diagFlagDesc")}</small>
-        </div>
-        <code className="small">DEBUG_DIAG=on</code>
-      </div>
       <div className="setting-subsection">
         <div className="section-label">{t("settings.developerSessionTitle")}</div>
         <p className="small">{t("settings.developerSessionDesc")}</p>
