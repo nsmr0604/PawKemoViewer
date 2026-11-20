@@ -59,3 +59,8 @@
 - Added a Settings file-picker flow for selecting one or multiple locale JSON files. Files are validated with existing locale parser/code checks and copied to app-private locale storage via LocaleService; refresh and currently selected locale are reapplied.
 - This is an import workflow, not persistent shared-directory access. Android SAF/iOS Files integration and secondary-location overlay are still outstanding; picker/WebView behavior is unverified on devices.
 - Failure/skipped files are reported in Settings. No build/typecheck/device verification performed.
+
+
+## Latest increment — Web file-export lifecycle
+- Browser fallback FileExportService now delays object-URL revocation briefly after triggering download, to avoid premature cleanup during browser download handling.
+- This is a source-level mitigation, not verified in browser/device testing.
