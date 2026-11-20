@@ -26,7 +26,7 @@ export interface BackupData {
 }
 
 /** 現在の状態をバックアップ JSON 文字列にする */
-export function buildBackup(): string {
+export async function buildBackup(): Promise<string> {
   const data: BackupData = {
     type: BACKUP_TYPE,
     version: BACKUP_VERSION,
