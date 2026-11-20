@@ -212,3 +212,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Read-state restore now validates key shape against supported services, deduplicates keys, and rejects oversized IDs; timestamps are normalized to finite nonnegative values.
 - Settings restoration applies a per-field validator for booleans/enums/timeout/locale/session-key rather than blindly copying arbitrary values into live settings.
 - Commits `72a52585` and `6581646f`. Source review only; no build/typecheck/test/device verification performed. M2 native picker/SAF/Files and M3 mobile secondary locale remain unresolved.
+
+
+## Locale input hardening increment (2026-11-20)
+- `parseLocaleJson` now rejects payloads larger than 1 MiB, object entry counts above 10,000, keys over 512 characters, and individual translation values over 10,000 characters. It continues to require `locale.name` and at least one additional string entry.
+- This protects both private and desktop-secondary import paths and refresh-time overlay parsing from unnecessarily large payloads. Native Rust listing/writing already enforces its file size bound; this adds frontend validation for picker imports and in-memory parsing.
+- Commit `81cc9571`. Source-only; validation not run. Android SAF/iOS Files picker remains blocked/incomplete.
