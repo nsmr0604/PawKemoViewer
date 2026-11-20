@@ -311,3 +311,14 @@
 - PC Tauri workflow は main push でのみ動作するため、PR 段階での PC ビルド成功を主張しない。マージ後に PC workflow の結果も確認し、失敗時は修正 PR / hotfix を行う。
 - Android 実機 UI 確認と logcat / ログファイルの実機検証は CI ビルド成功とは別項目で、未実施のまま区別して報告する。
 - この項目は従来の「マージしない」「ユーザーの明示指示を待つ」という記述を更新する。今回のユーザー指示により、上記条件達成後の PR #7 マージが承認されている。
+
+
+## 0.4.0 マージ完了・main CI 確認中 (2026-11-20)
+- [x] PR #7 の最新 head `2837c73950bfecc8cfe384584cc104991cb32d35` に対する Android Actions run #248 (`44650764660`) が **success**。Frontend build / Android initialization / APK build / APK signing / artifact upload がすべて成功。
+- [x] 上記 CI 成功を確認後、PR #7 を squash merge。merge commit: `15403e13e3ccfe2c71b722db99242c32cc59602b`。
+- [x] main の `package.json` と `src-tauri/tauri.conf.json` がともに `0.4.0` であることを確認。
+- [ ] main push による Android Build run #249 (`44653227135`) の完了確認。
+- [ ] main push による PC Tauri Build run #250 (`44653227249`) の完了確認。
+- [ ] Wiki Sync run #251 (`44653227178`) の完了確認。
+- 実機 UI / logcat / 永続ログファイルの検証は CI とは別であり、未実施。
+- PR #7 は closed / merged。今後は main の最新 CI と実機検証結果をこの文書に追記する。
