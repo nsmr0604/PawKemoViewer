@@ -134,3 +134,11 @@
 ## Next work
 - Continue auditing platform-specific lifecycle and storage consumers; avoid conflating UI/browser event APIs with OS capability services.
 - Native Android SAF / iOS Files secondary-storage integration and layered locale overlay remain high-priority but require validated native project/plugin configuration.
+
+
+## M4 storage consumer audit checkpoint (2026-11-20)
+- Audited branch implementations of settings, follows, search history, favorites tab, scroll restoration, current-post context, creator/seen database, and icon cache.
+- Main feature storage consumers now use PlatformRuntime storage/session/IndexedDatabase services; direct browser storage references are limited to adapter-absence fallback and pre-runtime/bootstrap defensive access. The fallback is intentionally retained to preserve access when runtime initialization is not yet available.
+- IndexedDB schema, keys, version, and transactions remain in feature modules; the service abstracts opening/upgrade dispatch, not full transaction semantics. This is a partial boundary, not a complete storage-engine abstraction.
+- Avoid broad transaction abstraction changes without validation; next focus is safely removing/isolating unintended direct-storage fallback and documenting intentional browser-only fallbacks.
+- No build/typecheck/device validation was run.
