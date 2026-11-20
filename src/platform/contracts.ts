@@ -15,6 +15,12 @@ export interface KeyValueStorage {
   remove(key: string): void
 }
 
+/** Storage areas are resolved by native platform APIs, not hard-coded paths. */
+export type StorageArea = "primary-private" | "secondary-accessible"
+export interface StorageLocationService {
+  resolve(area: StorageArea, purpose: "logs" | "locales" | "exports" | "backup" | "general"): Promise<string | null>
+}
+
 export interface FileExportService {
   exportText(filename: string, content: string): Promise<string>
 }
@@ -36,6 +42,7 @@ export interface PermissionService {
 /** Service integration points; optional until each migration is completed. */
 export interface PlatformServices {
   storage?: KeyValueStorage
+  storageLocations?: StorageLocationService
   database?: unknown
   network?: unknown
   logging?: unknown

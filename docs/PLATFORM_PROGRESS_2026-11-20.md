@@ -1,31 +1,34 @@
-# Platform Foundation — Interim Handoff (2026-11-20, Stage 1 contracts/family adapters)
+# Platform Foundation — Interim Handoff (2026-11-20, storage location contract)
 
 ## Progress
-Stage 0 audit is partial. Stage 1 now has contract definitions and family-specific service registration entry points.
+Stage 0 audit remains partial. Stage 1 runtime scaffolding and typed service contracts/family dispatch are present on PR #11.
 
 ## This increment
-- Typed service contracts: key/value storage, text export, clipboard, lifecycle, permissions; existing DB/network/log/locale slots remain transitional `unknown` pending focused migration.
-- Web adapter currently implements localStorage and clipboard with defensive failure handling.
-- Desktop and Mobile family factories exist as separate modules, deliberately empty while Native adapters are not wired.
-- Runtime dispatch selects family factories centrally. Family selection: Tauri mobile -> mobile; Tauri desktop -> desktop; non-Tauri -> web.
-- Runtime initializes before UI mount (previous commit).
+- Introduced `StorageLocationService` and `StorageArea` contract to distinguish private primary storage from user-accessible secondary storage, with locations resolved by adapters rather than hardcoded paths.
+- Purpose scopes (`logs`, `locales`, `exports`, `backup`, `general`) let consumers request area-specific locations without depending on OS path conventions.
+- This is contract-only: native path resolution and consumers are not migrated. No data moves and no existing storage is deleted.
 
-## Files in this increment
-`src/platform/contracts.ts`, `src/platform/families/web.ts`, `desktop.ts`, `mobile.ts`, `families/index.ts`, `src/platform/runtime.ts`, `src/platform/index.ts`.
+## Platform storage policy to implement
+- Primary private area: app sandbox/private storage on each platform.
+- Secondary accessible area: user-visible or app-accessible storage, resolved through platform APIs. Android scoped storage constraints apply; iOS Files-visible access is limited to supported sandbox/document APIs.
+- Logs stay in primary private storage during normal operation; explicit log dumps go to secondary accessible area.
+- Locale loading is primary first, then secondary overlay; secondary failures should not prevent startup.
+- Do not hardcode Android external paths or claim unrestricted file-manager access.
 
-## Limitations / risks
-- Web fallback only: localStorage and browser Clipboard; the same web adapter currently applies to non-native browser.
-- Native family service objects intentionally empty; native integrations are not implemented yet.
-- Existing app consumers still use their original code paths. No service migration is complete.
-- This service API currently provides contracts/registration scaffolding only, not platform-specific permission/path guarantees.
-- No CI, build, typecheck or native device tests have been verified.
+## Existing storage
+Rust currently uses Tauri app_data_dir for log files, backup, icon cache and locale file commands. This remains untouched for compatibility. The new contract is not yet wired to Rust.
 
-## Next steps
-1. Test compile and runtime assumptions via CI.
-2. Implement Native storage/file export adapters with explicit scoped paths and OS-specific constraints, avoiding breaking migration.
-3. Begin migration of settings/localStorage consumers only after adapter compatibility and preservation tests.
-4. Continue audit for direct native and browser service use.
-5. Update dated handoff and project status at each checkpoint.
+## Limitations
+- Desktop/Mobile native family adapters are still empty.
+- Web adapter currently implements localStorage and Clipboard only.
+- Existing app consumers remain on legacy code paths.
+- No CI, typecheck, build, or device verification confirmed.
+
+## Next
+1. Verify and design native path/document access APIs and capability permissions for each OS.
+2. Implement location resolver in Rust using Tauri APIs with explicit scope and no destructive migration.
+3. Route log dump, locale overlay/import/export and backup incrementally.
+4. Update handoff at each checkpoint.
 
 ## PR
-PR #11 draft/open, branch `refactor/platform-foundation-phase1`. No merge authorization received.
+PR #11 draft/open, branch `refactor/platform-foundation-phase1`; not merged.
