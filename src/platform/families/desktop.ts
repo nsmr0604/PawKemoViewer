@@ -14,7 +14,7 @@ const storageLocations: StorageLocationService = {
   },
 }
 
-const locale: LocaleService = { listExternal: async () => { try { return await invoke("list_locale_files") } catch { return null } } }
+const locale: LocaleService = { listExternal: async () => { try { return await invoke<import("../contracts").LocaleFileSet>("list_locale_files") } catch { return null } } }
 
 const files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
 
