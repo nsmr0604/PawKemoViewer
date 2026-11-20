@@ -57,9 +57,16 @@ export function parseBackup(text: string): BackupData {
   if (!b || b.type !== BACKUP_TYPE) {
     throw new Error("PawKemoViewer のバックアップファイルではありません")
   }
+  const version = typeof b.version === "number" ? b.version : 1
+  if (!Number.isInteger(version) || version < 1 || version > BACKUP_VERSION) {
+    throw new Error("未対応のバックアップバージョンです")
+  }
+  if (b.follows && !Array.isArray(b.follows)) throw new Error("フォロー情報の形式が不正です")
+  if (b.seen && !Array.isArray(b.seen)) throw new Error("既読情報の形式が不正です")
+  if (b.settings && (typeof b.settings !== "object" || Array.isArray(b.settings))) throw new Error("設定情報の形式が不正です")
   return {
     type: BACKUP_TYPE,
-    version: typeof b.version === "number" ? b.version : 1,
+    version,
     exportedAt: typeof b.exportedAt === "string" ? b.exportedAt : "",
     settings: (b.settings || {}) as Settings,
     follows: Array.isArray(b.follows) ? (b.follows as FollowEntry[]) : [],
@@ -77,28 +84,54 @@ export async function applyBackup(text: string): Promise<{
   const b = parseBackup(text)
 
   // フォロー (先に妥当性フィルタ)
-  const follows = b.follows.filter(
-    (f) => f && typeof f.service === "string" && typeof f.id === "string",
-  )
+  const followsByKey = new Map<string, FollowEntry>()
+  for (const f of b.follows) {
+    if (!f || (f.service !== "fanbox" && f.service !== "patreon") || typeof f.id !== "string" || !f.id.trim() || f.id.length > 256) continue
+    const entry = { ...f, id: f.id.trim() } as FollowEntry
+    followsByKey.set(`${entry.service}:${entry.id}`, entry)
+  }
+  const follows = [...followsByKey.values()]
   replaceFollows(follows)
 
   // 既読状態はバックアップ内容で一括置換し、途中失敗で部分復元しない
-  const seenEntries: SeenEntry[] = b.seen.filter((s) => s && typeof s.key === "string" && s.key.includes(":")).map((s) => ({
-    key: s.key,
-    lastSeenPostId: typeof s.lastSeenPostId === "string" ? s.lastSeenPostId : "",
-    checkedAt: typeof s.checkedAt === "number" ? s.checkedAt : Date.now(),
-    ...(s.newest && typeof s.newest.id === "string" ? { newest: s.newest } : {}),
-  }))
+  const seenByKey = new Map<string, SeenEntry>()
+  for (const s of b.seen) {
+    if (!s || typeof s.key !== "string" || !/^(fanbox|patreon):[^:]+$/.test(s.key)) continue
+    const [service, id] = s.key.split(":")
+    if (!id || id.length > 256) continue
+    const key = `${service}:${id}`
+    seenByKey.set(key, {
+      key,
+      lastSeenPostId: typeof s.lastSeenPostId === "string" ? s.lastSeenPostId : "",
+      checkedAt: typeof s.checkedAt === "number" && Number.isFinite(s.checkedAt) && s.checkedAt >= 0 ? s.checkedAt : Date.now(),
+      ...(s.newest && typeof s.newest.id === "string" ? { newest: s.newest } : {}),
+    })
+  }
+  const seenEntries: SeenEntry[] = [...seenByKey.values()]
   await replaceSeen(seenEntries)
   const seen = seenEntries.length
 
   // 設定 (sessionKey も含めて復元。ただし空文字は無視して既存を維持)
   const cur = getSettings()
   const patch: Partial<Settings> = {}
+  const validators: Partial<Record<keyof Settings, (value: unknown) => boolean>> = {
+    sessionKey: (v) => typeof v === "string" && v.length <= 8192,
+    theme: (v) => v === "dark" || v === "light",
+    layoutMode: (v) => v === "auto" || v === "desktop" || v === "mobile",
+    noImageMode: (v) => typeof v === "boolean",
+    postViewMode: (v) => v === "grid" || v === "list",
+    timeoutSecs: (v) => typeof v === "number" && Number.isFinite(v) && v >= 1 && v <= 300,
+    proxyImages: (v) => typeof v === "boolean",
+    postFileListMode: (v) => typeof v === "boolean",
+    excludeFanboxCover: (v) => typeof v === "boolean",
+    excludeAiPosts: (v) => typeof v === "boolean",
+    developerToolsEnabled: (v) => typeof v === "boolean",
+    locale: (v) => typeof v === "string" && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(v),
+  }
   for (const [k, v] of Object.entries(b.settings || {})) {
-    if (v === undefined || v === null) continue
-    if (k === "sessionKey" && !(v as string)) continue
-    if (k in cur) (patch as Record<string, unknown>)[k] = v
+    if (v === undefined || v === null || (k === "sessionKey" && !v)) continue
+    const validator = validators[k as keyof Settings]
+    if (validator?.(v)) (patch as Record<string, unknown>)[k] = v
   }
   updateSettings(patch)
 
