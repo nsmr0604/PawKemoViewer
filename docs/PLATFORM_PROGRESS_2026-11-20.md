@@ -229,3 +229,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 ## Backup import bounds (2026-11-20)
 - Parser now rejects oversized backup payloads (>5 MiB) and overly large follows/seen arrays (>100,000 entries), limiting resource-exhaustion risk during restore.
 - Commit `b6836d80`; no tests/build executed.
+
+
+## 2026-11-20: Backup restore robustness follow-up
+- Restore validation now bounds read-state post IDs and cached newest-post metadata fields.
+- Restore now completes the atomic IndexedDB read-state replacement before overwriting follows, avoiding follow-list mutation when the read-state transaction fails.
+- Validation/device testing remains outstanding.
