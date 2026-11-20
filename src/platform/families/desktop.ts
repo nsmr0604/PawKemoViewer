@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
-import type { FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService } from "../contracts"
+import type { ClipboardService, FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService } from "../contracts"
 
 const logging = { append: (line: string) => { void import("../../debug").then(({ debugAppendLog }) => debugAppendLog(line)) } }
 
@@ -20,9 +20,14 @@ const locale: LocaleService = {
   delete: async (code) => await invoke<boolean>("delete_locale_file", { code }),
 }
 
+const clipboard: ClipboardService = {
+  readText: async () => { try { return navigator.clipboard ? await navigator.clipboard.readText() : null } catch { return null } },
+  writeText: async (text) => { try { if (!navigator.clipboard) return false; await navigator.clipboard.writeText(text); return true } catch { return false } },
+}
+
 const files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
 
 /** Desktop family centralizes native path resolution behind the common contract. */
 export function createDesktopServices(): PlatformServices {
-  return { storageLocations, logging, files, locale }
+  return { storageLocations, logging, files, locale, clipboard }
 }
