@@ -35,7 +35,6 @@ static LOGIN_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 
 
 
-#[cfg(feature = "debug-diag")]
 fn safe_log_url(url: &reqwest::Url) -> String {
     let mut safe = url.clone();
     let pairs: Vec<(String, String)> = safe.query_pairs().map(|(k, v)| (k.into_owned(), v.into_owned())).collect();
@@ -209,8 +208,8 @@ async fn api_request(
         }
     }
     .map_err(|e| {
-        log::error!(target: "Pawchive::API", "API_ERROR destination={} error={}", url, e);
-        append_app_log(&app, &format!("API_ERROR destination={} error={}", url, e));
+        log::error!(target: "Pawchive::API", "API_ERROR destination={}", safe_log_url(&reqwest::Url::parse(&url).unwrap()));
+        append_app_log(&app, &format!("API_ERROR destination={}", safe_log_url(&reqwest::Url::parse(&url).unwrap())));
         #[cfg(feature = "debug-diag")]
         full_http_log(&app, "Pawchive::API", &format!("TRANSPORT_ERROR method={} url={} error={}", method, url, e));
         e.to_string()
@@ -228,8 +227,8 @@ async fn api_request(
         .text()
         .await
         .map_err(|e| {
-            log::error!(target: "Pawchive::API", "API_BODY_READ_ERROR destination={} error={}", url, e);
-            append_app_log(&app, &format!("API_BODY_READ_ERROR destination={} error={}", url, e));
+            log::error!(target: "Pawchive::API", "API_BODY_READ_ERROR destination={}", safe_log_url(&reqwest::Url::parse(&url).unwrap()));
+            append_app_log(&app, &format!("API_BODY_READ_ERROR destination={}", safe_log_url(&reqwest::Url::parse(&url).unwrap())));
             #[cfg(feature = "debug-diag")]
             full_http_log(&app, "Pawchive::API", &format!("BODY_READ_ERROR method={} url={} error={}", method, url, e));
             e.to_string()
@@ -242,8 +241,8 @@ async fn api_request(
     }
 
     if !status.is_success() {
-        log::error!(target: "Pawchive::API", "API_ERROR destination={} status={} body={}", url, status, text);
-        append_app_log(&app, &format!("API_ERROR destination={} status={} body={}", url, status, text));
+        log::error!(target: "Pawchive::API", "API_ERROR destination={} body={}", safe_log_url(&reqwest::Url::parse(&url).unwrap()), text);
+        append_app_log(&app, &format!("API_ERROR destination={} body={}", safe_log_url(&reqwest::Url::parse(&url).unwrap()), text));
         return Err(format!("STATUS={} BODY={}", status, text));
     }
 
