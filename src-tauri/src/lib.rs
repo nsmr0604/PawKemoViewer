@@ -57,8 +57,9 @@ async fn api_request(
         path
     );
 
+    // Full: API通信の開始をlogcatへ出力。認証Cookie/ヘッダーは記録しない。
     #[cfg(feature = "debug-diag")]
-    println!("REQUEST => {}", url);
+    log::info!(target: "Pawchive::API", "REQUEST method={} url={}", method, url);
 
     // タイムアウトはユーザー設定 (Settings → 接続)。1〜300 秒にクランプ
     let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(30).clamp(1, 300));
@@ -146,17 +147,28 @@ async fn api_request(
                 .await
         }
     }
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| {
+        #[cfg(feature = "debug-diag")]
+        log::error!(target: "Pawchive::API", "TRANSPORT_ERROR method={} url={} error={}", method, url, e);
+        e.to_string()
+    })?;
 
     let status = response.status();
 
     let text = response
         .text()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            #[cfg(feature = "debug-diag")]
+            log::error!(target: "Pawchive::API", "BODY_READ_ERROR method={} url={} error={}", method, url, e);
+            e.to_string()
+        })?;
 
     #[cfg(feature = "debug-diag")]
-    println!("STATUS => {}", status);
+    {
+        log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={} bytes={}", method, url, status, text.len());
+        log_api_response_body(&text);
+    }
 
     if !status.is_success() {
         // デバッグ用にステータスと本文だけ返す (ヘッダー全文は長大なので省略)
@@ -164,6 +176,30 @@ async fn api_request(
     }
 
     Ok(text)
+}
+
+// Full: レスポンス本文を logcat の1行サイズに収まるよう分割して出力する。
+// UTF-8文字境界を維持し、空レスポンスも明示する。
+#[cfg(feature = "debug-diag")]
+fn log_api_response_body(body: &str) {
+    const MAX_CHUNK_BYTES: usize = 3000;
+    if body.is_empty() {
+        log::info!(target: "Pawchive::API", "RESPONSE_BODY <empty>");
+        return;
+    }
+    let mut chunk = String::new();
+    let mut chunk_index = 0usize;
+    for ch in body.chars() {
+        chunk.push(ch);
+        if chunk.len() >= MAX_CHUNK_BYTES {
+            log::info!(target: "Pawchive::API", "RESPONSE_BODY chunk={} {}", chunk_index, chunk);
+            chunk.clear();
+            chunk_index += 1;
+        }
+    }
+    if !chunk.is_empty() {
+        log::info!(target: "Pawchive::API", "RESPONSE_BODY chunk={} {}", chunk_index, chunk);
+    }
 }
 
 // ---------------------------------------------------------------------------
