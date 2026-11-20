@@ -790,11 +790,6 @@ export function SettingsPage() {
             <DeveloperFullDiagnostics />
           </Suspense>
         )}
-        {DEBUG_DIAG && (
-          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
-            <DeveloperFullDiagnostics />
-          </Suspense>
-        )}
 
         <p className="small">
           {t("settings.aboutNote")}
