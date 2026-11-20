@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
-import { invoke } from "@tauri-apps/api/core"
 import { getSettings, updateSettings, api, apiStatus } from "../api"
 import { clearCreatorCache, creatorCacheInfo, CreatorCacheInfo } from "../db"
 import {
@@ -174,7 +173,7 @@ export function SettingsPage() {
       return
     }
     try {
-      await invoke("write_locale_file", { code, json: localeAddJson })
+      await getPlatformRuntime().services.locale?.write(code, localeAddJson)
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
@@ -191,7 +190,7 @@ export function SettingsPage() {
   const deleteLocale = async (code: string) => {
     if (!window.confirm(t("settings.localeDeleteConfirm", { code }))) return
     try {
-      await invoke("delete_locale_file", { code })
+      await getPlatformRuntime().services.locale?.delete(code)
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
