@@ -12,7 +12,7 @@ PR #11 (`refactor/platform-foundation-phase1`) remains open, draft, unmerged. Br
 
 ## Log architecture audit
 - `src/log.ts`: 400-entry ring, 2000-character message cap, Lite error-only; Full keeps all levels.
-- Full uses dynamic `./debug` import and `debugAppendLog`; `src/debug.ts` invokes native `debug_append_log`.
+- Full file persistence is routed via family `LoggingService`; `src/debug.ts` invokes native `debug_append_log`.
 - Rust app log writes into app data logs; persistence is not yet routed through platform services.
 - Global browser error/rejection listeners remain in `src/log.ts`.
 - Log export/storage consumer migration remains pending.
@@ -23,7 +23,7 @@ PR #11 (`refactor/platform-foundation-phase1`) remains open, draft, unmerged. Br
 - `src/log.ts` now calls platform logging service instead of importing native debug implementation directly. Web logging adapter is no-op for persistent append.
 
 ## Current increment
-Re-inspection corrected documentation to avoid treating the storage resolver as confirmed. This checkpoint does not modify runtime behavior. No migration or destructive data operation has occurred.
+Storage resolver definition and registration were confirmed in Rust; this checkpoint added the typed logging service and routed frontend Full persistence through it. No migration or destructive data operation has occurred.
 
 ## Next
 1. Verify Rust resolver definition and command registration (search the entire Rust file and invoke handler).
