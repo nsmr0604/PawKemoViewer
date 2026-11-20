@@ -224,3 +224,13 @@
 - `docs/BUILD.md`: ビルド・CI・リリース手順
 
 このファイルはローカル専用 `notes/` の代替となる共有可能な要約であり、秘密情報やローカル端末固有の情報は記載しない。
+
+
+## Lite / Full 開発機能の分離 (2026-11-20)
+- [x] Lite: セッションIDの手動入力・API検証・保存。製品版にも含め、既存の「開発項目」トグルで表示
+- [x] Full: 詳細ログファイル追記、ログフォルダを開く、バックアップJSONダンプ、APIレスポンス本文などの詳細ログ
+- [x] Full UI は DEBUG_DIAG が有効なデバッグビルドだけで動的 import / 表示
+- [x] Full の Rust コマンド debug_append_log / debug_open_log_folder は Cargo feature debug-diag の場合だけコンパイル・登録
+- [x] 製品版で Lite を有効にしても Full は含まれず、詳細ログは無効
+- [ ] 最新 Android Actions の成功と正式版構成のビルドを確認
+- [ ] 製品版成果物に Full UI / Rust commands / debug-log が含まれないことを確認
