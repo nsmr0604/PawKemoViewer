@@ -251,7 +251,7 @@
   "settings.testFail": "❌ Failed{{status}}: {{msg}}",
   "settings.httpStatus": " (HTTP {{st}})",
   "settings.noLog": "(No logs yet)",
-  "settings.diagnostics": "Diagnostics",
+  "settings.diagnostics": "Development & diagnostics",
   "settings.logTitle": "Log",
   "settings.logDesc": "Records network and unhandled errors (up to 400, {{count}} kept). Useful for diagnosing connection or login failures.",
   "settings.show": "Show",
