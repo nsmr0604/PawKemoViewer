@@ -296,3 +296,7 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 ## Locale parser safety follow-up (2026-11-20)
 - Locale dictionaries now use null-prototype objects and reject reserved prototype-related JSON keys. Commit `1d36f83e`.
 - This is a parser hardening increment only; validation is pending. M2 native user-accessible storage, M3 mobile overlay, and M6 batch validation remain outstanding.
+
+
+## Backup import resource bounds
+- Added 5 MiB payload limit and 100,000-entry ceilings for follows and seen lists during backup parsing (`b6836d80`). Validation remains pending.
