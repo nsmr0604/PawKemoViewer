@@ -94,7 +94,8 @@ export async function applyBackup(text: string): Promise<{
     followsByKey.set(`${entry.service}:${entry.id}`, entry)
   }
   const follows = [...followsByKey.values()]
-  replaceFollows(follows)
+  // 既読状態の置換を先に完了させる。IndexedDB が失敗した場合はフォローを
+  // 変更せず、復元途中の不整合を最小限にする。
 
   // 既読状態はバックアップ内容で一括置換し、途中失敗で部分復元しない
   const seenByKey = new Map<string, SeenEntry>()
@@ -105,14 +106,22 @@ export async function applyBackup(text: string): Promise<{
     const key = `${service}:${id}`
     seenByKey.set(key, {
       key,
-      lastSeenPostId: typeof s.lastSeenPostId === "string" ? s.lastSeenPostId : "",
+      lastSeenPostId: typeof s.lastSeenPostId === "string" ? s.lastSeenPostId.slice(0, 256) : "",
       checkedAt: typeof s.checkedAt === "number" && Number.isFinite(s.checkedAt) && s.checkedAt >= 0 ? s.checkedAt : Date.now(),
-      ...(s.newest && typeof s.newest.id === "string" ? { newest: s.newest } : {}),
+      ...(s.newest && typeof s.newest === "object" && typeof s.newest.id === "string" && s.newest.id.length > 0 && s.newest.id.length <= 256 ? {
+        newest: {
+          id: s.newest.id,
+          ...(typeof s.newest.title === "string" ? { title: s.newest.title.slice(0, 1024) } : {}),
+          ...(typeof s.newest.published === "string" ? { published: s.newest.published.slice(0, 128) } : {}),
+        },
+      } : {}),
     })
   }
   const seenEntries: SeenEntry[] = [...seenByKey.values()]
   await replaceSeen(seenEntries)
   const seen = seenEntries.length
+  // IndexedDB の復元が成功した後でフォローを更新する。
+  replaceFollows(follows)
 
   // 設定 (sessionKey も含めて復元。ただし空文字は無視して既存を維持)
   const cur = getSettings()
