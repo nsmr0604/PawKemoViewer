@@ -506,3 +506,8 @@ export async function getAllSeen(): Promise<SeenEntry[]> {
 export async function deleteSeen(key: string) {
   await tx("seen", "readwrite", (s) => s.delete(key))
 }
+
+/** Remove all persisted read-state entries (used for full backup restore). */
+export async function clearSeen(): Promise<void> {
+  await tx("seen", "readwrite", (s) => s.clear())
+}
