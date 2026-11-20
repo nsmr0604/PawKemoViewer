@@ -325,5 +325,5 @@
   "settings.developerToolsOff": "表示する",
   "settings.fullDiagnosticsTitle": "Full 開発診断",
   "settings.fullDiagnosticsDesc": "詳細ログ・ログフォルダ操作・バックアップダンプ (デバッグビルド専用)",
-  "settings.fullApiLogcatDesc": "Androidデバッグビルドでは API のリクエスト開始・HTTPステータス・レスポンス本文を logcat に随時出力します。Cookieなどの認証情報とログインフォームは出力しません。"
+  "settings.fullApiLogcatDesc": "Androidデバッグビルドでは Pawchive API と pkv:// 外部プロキシの送受信ヘッダー・HTTPステータス・テキスト応答本文を logcat に記録します。Cookie / Authorization 等の認証値はマスキングし、バイナリ本文はサイズのみ記録します。本文に個人情報が含まれる場合があるためログ共有前に確認してください。"
 }
