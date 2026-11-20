@@ -4,7 +4,7 @@ const logging = { append: (_line: string) => { /* browser runtime has no persist
 
 const files: FileExportService = {
   exportText: async (filename, content) => {
-    const blob = new Blob([content], { type: "application/json;charset=utf-8" })
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     try {
       const anchor = document.createElement("a")
