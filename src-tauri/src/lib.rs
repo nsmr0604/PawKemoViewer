@@ -1230,6 +1230,17 @@ fn delete_locale_file(app: tauri::AppHandle, code: String) -> Result<bool, Strin
 
 
 
+
+// Desktop secondary locale files in the user-accessible Documents area.
+#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
+fn secondary_locale_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> { Ok(app.path().document_dir().map_err(|e| e.to_string())?.join("Pawchive").join("languages")) }
+#[tauri::command]
+fn list_secondary_locale_files(app: tauri::AppHandle) -> Result<LocaleList, String> {
+    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] { let dir=secondary_locale_dir(&app)?; std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?; let mut files=Vec::new(); let mut invalid=Vec::new(); for entry in std::fs::read_dir(&dir).map_err(|e|e.to_string())?.flatten(){ let path=entry.path(); if !path.is_file(){continue;} let name=entry.file_name().to_string_lossy().to_string(); let Some(code)=name.strip_suffix(".json") else {continue}; let too_big=entry.metadata().map(|m|m.len()>LOCALE_MAX_BYTES).unwrap_or(true); if !valid_locale_code(code)||too_big{invalid.push(name);continue;} match std::fs::read_to_string(&path){Ok(json)=>files.push(LocaleFile{code:code.to_string(),json}),Err(_)=>invalid.push(name)} } return Ok(LocaleList{dir:dir.to_string_lossy().to_string(),files,invalid}); }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))] { let _=app; Ok(LocaleList{dir:String::new(),files:Vec::new(),invalid:Vec::new()}) }
+}
+#[tauri::command]
+fn write_secondary_locale_file(app: tauri::AppHandle, code: String, json: String) -> Result<String, String> { if !valid_locale_code(&code){return Err("invalid locale code".into());} if json.len() as u64>LOCALE_MAX_BYTES{return Err("locale file too large".into());} #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] { let dir=secondary_locale_dir(&app)?; std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?; let path=dir.join(format!("{}.json",code)); std::fs::write(&path,json).map_err(|e|e.to_string())?; return Ok(path.to_string_lossy().to_string()); } #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))] {let _=app;Err("secondary locale storage unavailable".into())} }
 // Foundation storage-location resolver (additive; consumers are migrated separately).
 // Secondary storage is intentionally desktop-only until mobile sharing semantics are
 // implemented and verified per platform. This avoids claiming a user-visible path
@@ -1303,6 +1314,8 @@ pub fn run() {
                 creator_icon_cache_info,
                 clear_creator_icon_cache,
                 list_locale_files,
+                list_secondary_locale_files,
+                write_secondary_locale_file,
                 write_locale_file,
                 delete_locale_file,
                 resolve_storage_location,
