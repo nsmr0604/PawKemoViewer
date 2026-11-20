@@ -1,5 +1,7 @@
 import type { PlatformServices } from "../contracts"
 
+const logging = { append: (_line: string) => { /* browser runtime has no persistent log sink */ } }
+
 /** Browser fallback adapter bundle. Services are selectively implemented during migration. */
 export function createWebServices(): PlatformServices {
   return {

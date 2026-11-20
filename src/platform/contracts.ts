@@ -35,6 +35,8 @@ export interface LifecycleService {
   exit(): Promise<void>
 }
 
+export interface LoggingService { append(line: string): void }
+
 export interface PermissionService {
   request(permission: string): Promise<boolean>
 }
@@ -45,7 +47,7 @@ export interface PlatformServices {
   storageLocations?: StorageLocationService
   database?: unknown
   network?: unknown
-  logging?: unknown
+  logging?: LoggingService
   files?: FileExportService
   locale?: unknown
   clipboard?: ClipboardService

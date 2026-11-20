@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core"
 import type { PlatformServices, StorageArea, StorageLocationService } from "../contracts"
 
+const logging = { append: (line: string) => { void import("../../debug").then(({ debugAppendLog }) => debugAppendLog(line)) } }
+
 const storageLocations: StorageLocationService = {
   resolve: async (area: StorageArea, purpose) => {
     // Native private storage is supported; secondary user-accessible locations
@@ -17,5 +19,5 @@ const storageLocations: StorageLocationService = {
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
-  return { storageLocations }
+  return { storageLocations, logging }
 }
