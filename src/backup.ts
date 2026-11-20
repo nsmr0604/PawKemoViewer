@@ -10,7 +10,7 @@
 
 import { getSettings, updateSettings, type Settings } from "./api"
 import { loadFollows, replaceFollows, type FollowEntry } from "./follows"
-import { setSeen, type SeenEntry } from "./db"
+import { setSeen, getAllSeen, type SeenEntry } from "./db"
 import { getPlatformRuntime } from "./platform/runtime"
 
 export const BACKUP_TYPE = "pawkemoviewer-backup"
@@ -33,7 +33,7 @@ export function buildBackup(): string {
     exportedAt: new Date().toISOString(),
     settings: getSettings(),
     follows: loadFollows(),
-    seen: [],
+    seen: await getAllSeen(),
   }
   return JSON.stringify(data, null, 2)
 }
@@ -42,7 +42,7 @@ export function buildBackup(): string {
 export async function exportBackup(): Promise<string> {
   const files = getPlatformRuntime().services.files
   if (!files) throw new Error("File export service unavailable")
-  return files.exportText("pawkemoviewer-backup.json", buildBackup())
+  return files.exportText("pawkemoviewer-backup.json", await buildBackup())
 }
 
 /** バックアップ JSON を検証してパースする */
