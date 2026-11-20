@@ -218,3 +218,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - `parseLocaleJson` now rejects payloads larger than 1 MiB, object entry counts above 10,000, keys over 512 characters, and individual translation values over 10,000 characters. It continues to require `locale.name` and at least one additional string entry.
 - This protects both private and desktop-secondary import paths and refresh-time overlay parsing from unnecessarily large payloads. Native Rust listing/writing already enforces its file size bound; this adds frontend validation for picker imports and in-memory parsing.
 - Commit `81cc9571`. Source-only; validation not run. Android SAF/iOS Files picker remains blocked/incomplete.
+
+
+## Locale parser prototype-key hardening (2026-11-20)
+- Changed imported locale dictionaries to null-prototype objects and excluded `__proto__`, `prototype`, and `constructor` keys from accepted dictionary entries.
+- Commit `1d36f83e`. No build/typecheck/tests run.
+- M2 still needs synchronized native file-picker dependencies/capabilities and generated project verification; M3 remains desktop-only; M6 validation not performed.
