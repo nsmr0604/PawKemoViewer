@@ -159,3 +159,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - GitHub content search again did not locate generated AndroidManifest/iOS project source or dialog-plugin setup. `docs/BUILD.md` documents `tauri android init` as the generation workflow, suggesting native project scaffolding is reproducible locally rather than committed, but this cannot be verified remotely in this session.
 - Refrained from adding an uncoordinated plugin dependency or native permission/config changes without package-lock synchronization and a reproducible generated-project check; this could introduce build-breaking changes. M2 remains active and this is a dependency/config validation blocker rather than implementation completion.
 - Next action: establish/reproduce `tauri android init` locally and dependency install/lockfile update, then implement picker-based file import/export with scoped capabilities and platform-specific handling; batch validate once several slices are ready.
+
+
+## Native setup recheck — continuation
+- Android workflow uses `npm ci`, then regenerates the native Android project with `npx tauri android init`; generated files are not a committed setup baseline.
+- Native dialog plugin not found in inspected dependency/config files. No plugin wiring added without lockfile sync and build environment.
+- M2 (user-directed native import/export and secondary-accessible storage) remains open; source/device validation is not claimed.
