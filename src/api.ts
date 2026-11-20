@@ -57,7 +57,7 @@ export interface Settings {
  *  変更をイベントで通知する (レイアウトモード即時反映バグの再発防止) */
 export const SETTINGS_CHANGED_EVENT = "pawkemo-settings-changed"
 
-function settingsStorage() { return getPlatformRuntime().services.storage ?? localStorage }
+function settingsStorage() { try { return getPlatformRuntime().services.storage ?? localStorage } catch { return localStorage } }
 
 export function loadSettings(): Settings {
   try {
