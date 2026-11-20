@@ -82,8 +82,10 @@ export default function App() {
   useEffect(() => {
     const lifecycle = getPlatformRuntime().services.lifecycle
     if (!lifecycle) return
-    return lifecycle.onBackRequested(() => {
-      if (route.path === "post" || route.path === "login" || route.path === "creator") history.back()
+    return lifecycle.onBackRequested((canGoBack) => {
+      // WebView の履歴がある場合はルート種別に関係なく履歴を戻す。
+      // 履歴がない場合はアプリ終了を試み、外部履歴への誤遷移を防ぐ。
+      if (canGoBack) history.back()
       else void lifecycle.exit().catch(() => {
         // Web adapter などアプリ終了を提供しない環境では未対応。
       })
