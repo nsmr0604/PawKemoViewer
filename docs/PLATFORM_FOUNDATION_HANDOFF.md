@@ -252,3 +252,8 @@ Suggested sequence: (1) platform contracts/runtime + CI trigger adjustment; (2) 
 1. Synchronize `@tauri-apps/plugin-dialog` into package.json/package-lock.json (using npm, not hand-editing lock metadata), and add a platform-neutral picker service contract.
 2. Add native file reading/writing that handles selected URIs safely on Android/iOS, then wire locale import and backup/log export.
 3. Add a user-visible secondary locale overlay on mobile only after a supported URI storage mechanism is verified.
+
+
+## Backup file import UX slice (2026-11-20)
+- Settings now exposes direct JSON backup-file selection alongside existing clipboard/paste restore. The file size is checked against the 5 MiB backup limit before reading; restoration still uses the existing confirmation and validation/apply flow. This is browser-backed selection and does not yet represent native dialog-plugin URI integration or user-accessible export.
+- Validation remains pending; no build or CI was run.
