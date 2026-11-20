@@ -189,6 +189,28 @@ export function SettingsPage() {
     await applyLocale(locale)
   }
 
+  const importLocaleFiles = async (files: FileList | null) => {
+    if (!files?.length) return
+    const service = getPlatformRuntime().services.locale
+    if (!service) { setLocaleMsg(t("settings.failedMsg", { msg: "Locale service unavailable" })); return }
+    let imported = 0
+    const failures: string[] = []
+    for (const file of Array.from(files)) {
+      const code = file.name.replace(/\\.json$/i, "")
+      if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) { failures.push(file.name); continue }
+      try {
+        const json = await file.text()
+        if (!parseLocaleJson(json)) { failures.push(file.name); continue }
+        await service.write(code, json)
+        imported++
+      } catch { failures.push(file.name) }
+    }
+    await refreshLocales()
+    setLocaleList(availableLocales())
+    setLocaleMsg(failures.length ? `Imported ${imported}; skipped ${failures.join(", ")}` : `Imported ${imported} locale file(s)`)
+    await applyLocale(locale)
+  }
+
   const deleteLocale = async (code: string) => {
     if (!window.confirm(t("settings.localeDeleteConfirm", { code }))) return
     try {
@@ -391,6 +413,16 @@ export function SettingsPage() {
           <button className="btn" onClick={() => setLocaleAddOpen((v) => !v)}>
             {t("settings.localeAddButton")}
           </button>
+        </div>
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>Import locale JSON files</span>
+            <small>Select one or more JSON files from the device; validated files are copied into the app's private locale storage.</small>
+          </div>
+          <label className="btn">
+            Choose files
+            <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
+          </label>
         </div>
 
         {localeAddOpen && (
