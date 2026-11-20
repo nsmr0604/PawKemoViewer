@@ -325,5 +325,6 @@
   "settings.developerToolsOff": "Show",
   "settings.fullDiagnosticsTitle": "Full developer diagnostics",
   "settings.fullDiagnosticsDesc": "Detailed logs, log-folder access, and backup dump (debug builds only)",
-  "settings.fullApiLogcatDesc": "Android debug builds log request/response headers, HTTP status, and text response bodies for Pawchive API and pkv:// external proxy traffic. Cookie/Authorization and similar credential values are redacted; binary bodies are size-only. Response bodies may contain personal data, so review logs before sharing."
+  "settings.fullApiLogcatDesc": "Android debug builds log request/response headers, HTTP status, and text response bodies for Pawchive API and pkv:// external proxy traffic. Cookie/Authorization and similar credential values are redacted; binary bodies are size-only. Response bodies may contain personal data, so review logs before sharing.",
+  "favorites.syncFailed": "Follow sync failed: {msg}"
 }
