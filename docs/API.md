@@ -138,3 +138,11 @@ WebView から Referer を設定できないため、リファラーチェック
 - リクエスト本文は現状記録しない。ログイン専用 `login_request` は引き続き対象外
 - Full / Cargo feature `debug-diag` のみ。正式版にはログコードを含めない
 - 本文には個人情報・投稿情報等が含まれる可能性があるため、ログを外部共有する前に内容を確認すること
+
+
+### Lite / Full ログ保存先と記録範囲
+- 共通ログファイルはアプリデータディレクトリの `logs/pawchive.log`。Lite / Full のネイティブ通信ログを追記する
+- Lite: エラーのみ。Pawchive API エラーでは宛先 URL とレスポンス本文のみを記録。通信失敗 / 本文読取失敗は宛先のみ。外部プロキシはエラーのみ記録
+- Full: Pawchive API と `pkv://` 外部プロキシの request / response、method / URL / status / ヘッダー / テキスト応答本文 / 通信エラーを logcat と同じ `pawchive.log` に記録
+- Full は `debug-diag` feature のみ。正式版では Full 詳細ログ処理をコンパイルしない。Lite のエラー記録は製品版でも有効
+- Cookie / Authorization / token / session / API key 等のヘッダー値と URL query の credential 値はマスキングする
