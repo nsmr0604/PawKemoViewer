@@ -355,3 +355,9 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - The Rust plugin/capability wiring and the existing HTML file input have not been build- or device-verified. Local network/package registry access was unavailable in the prior work session, so lockfile synchronization must be done with npm in a network-enabled checkout rather than hand-editing package-lock.
 - Next M2 slice: add and lock the official JS dialog plugin dependency, implement open/save dialog flows behind `FileExportService` and a corresponding import contract, then verify Android content-URI and iOS file-URL read/write semantics before claiming SAF/Files support. Folder-persistent grants remain a separate, unresolved capability.
 - Keep PR #11 open and Draft; do not trigger per-commit CI/builds. No build, typecheck, CI or device test is claimed in this checkpoint.
+
+## M2 checkpoint — native save-dialog slice
+- Added Rust command `save_user_file`, using Tauri dialog plugin native Save UI and writing selected destination. Registered the command.
+- Mobile and desktop `FileExportService.exportText` now route to this save dialog, so backup export and log export destinations are user-selected rather than silently app-private. Web adapter remains browser-download behavior.
+- Dialog cancellation currently returns a Japanese cancellation string; caller-side UI handling is a follow-up refinement. Import still uses HTML file picker and does not yet implement URI persistence or SAF folder grants.
+- Commits: `f289149` Rust command/registration; `8424707` mobile adapter; `59f3ea0` desktop adapter. Build/device verification remains pending, and frontend dialog plugin dependency/lockfile remains absent.
