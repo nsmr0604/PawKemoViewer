@@ -1,4 +1,4 @@
-import type { FileExportService, LocaleService, PlatformServices, IndexedDatabaseService} from "../contracts"
+import type { FileExportService, LocaleService, PlatformServices, IndexedDatabaseService, LifecycleService} from "../contracts"
 
 const indexedDatabase: IndexedDatabaseService = { open: (name, version, upgrade) => new Promise((resolve, reject) => { if (typeof indexedDB === "undefined") { reject(new Error("IndexedDB unavailable")); return } const request = indexedDB.open(name, version); request.onupgradeneeded = () => upgrade(request.result); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); request.onblocked = () => reject(new Error("IndexedDB upgrade blocked")) }) }
 
@@ -30,10 +30,24 @@ const locale: LocaleService = {
   delete: async () => false,
 }
 
+const lifecycle: LifecycleService = {
+  onBackRequested: (handler) => {
+    if (typeof window === "undefined") return () => {}
+    const onPopState = () => {
+      handler()
+      window.history.pushState({ pawchiveBackGuard: true }, "", window.location.href)
+    }
+    window.history.pushState({ pawchiveBackGuard: true }, "", window.location.href)
+    window.addEventListener("popstate", onPopState)
+    return () => window.removeEventListener("popstate", onPopState)
+  },
+  exit: async () => { throw new Error("Exit is not supported by the browser platform adapter") },
+}
+
 /** Browser fallback adapter bundle. Services are selectively implemented during migration. */
 export function createWebServices(): PlatformServices {
   return {
-    indexedDatabase, sessionStorage: sessionStorageService,
+    indexedDatabase, sessionStorage: sessionStorageService, lifecycle,
     storage: typeof localStorage !== "undefined" ? {
       get: (key) => localStorage.getItem(key),
       set: (key, value) => localStorage.setItem(key, value),
