@@ -322,5 +322,7 @@
   "settings.developerTools": "開発項目",
   "settings.developerToolsDesc": "通常は非表示です。必要な場合のみ開発・診断用の操作を表示します。",
   "settings.developerToolsOn": "表示中",
-  "settings.developerToolsOff": "表示する"
+  "settings.developerToolsOff": "表示する",
+  "settings.fullDiagnosticsTitle": "Full 開発診断",
+  "settings.fullDiagnosticsDesc": "詳細ログ・ログフォルダ操作・バックアップダンプ (デバッグビルド専用)"
 }
