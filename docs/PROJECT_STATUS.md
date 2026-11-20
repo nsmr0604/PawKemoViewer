@@ -196,3 +196,10 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - i18n refresh now loads private external locale dictionaries, then secondary dictionaries; shared entries override private entries and bundled dictionaries (including ja), preserving bundled Japanese fallback. Invalid shared dictionaries are skipped and reported in invalid file list.
 - Secondary writing/listing is service-level, not yet surfaced as a dedicated Settings import/export flow. M2 remains incomplete; M3 partial.
 - Source changes only; no build, typecheck or runtime validation.
+
+
+## M3 follow-up — secondary locale import UI (2026-11-20)
+- Settings now has a distinct import action for the secondary user-accessible locale destination, routed through `LocaleService.writeSecondary`; it does not overwrite the private locale files.
+- File names/code and JSON contents are validated before write, import failures are collected, and locale dictionaries refresh after the batch.
+- The desktop adapter currently provides this operation (Documents/Pawchive/languages). Platforms without the secondary writer show an unsupported message. This is a file-picker import UX, not a persistent folder grant or SAF/iOS directory access.
+- Source-only change; no build/typecheck/runtime verification performed. M2 mobile storage remains a priority and incomplete.
