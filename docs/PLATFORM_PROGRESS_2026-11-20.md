@@ -277,3 +277,10 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 ## Backup file import UX slice (2026-11-20)
 - Settings now exposes direct JSON backup-file selection alongside existing clipboard/paste restore. The file size is checked against the 5 MiB backup limit before reading; restoration still uses the existing confirmation and validation/apply flow. This is browser-backed selection and does not yet represent native dialog-plugin URI integration or user-accessible export.
 - Validation remains pending; no build or CI was run.
+
+## Continuation checkpoint — 2026-11-20 (M2 native dialog integration)
+- Rechecked `feature/m2-native-file-dialog`: Rust `tauri-plugin-dialog = "2"` dependency, plugin registration, and `dialog:allow-open` / `dialog:allow-save` capability permissions are present. Settings backup restore currently accepts one selected JSON file via the WebView `input[type=file]`, enforces a 5 MiB file-size limit before reading, and then reuses the existing validated restore flow.
+- The frontend `@tauri-apps/plugin-dialog` dependency is not present in `package.json` or `package-lock.json`; no frontend dialog API is called. Therefore this is not yet a native dialog integration, and the current backup export still uses the app-private `export_file` command. Do not describe either as user-accessible shared-storage export.
+- The Rust plugin/capability wiring and the existing HTML file input have not been build- or device-verified. Local network/package registry access was unavailable in the prior work session, so lockfile synchronization must be done with npm in a network-enabled checkout rather than hand-editing package-lock.
+- Next M2 slice: add and lock the official JS dialog plugin dependency, implement open/save dialog flows behind `FileExportService` and a corresponding import contract, then verify Android content-URI and iOS file-URL read/write semantics before claiming SAF/Files support. Folder-persistent grants remain a separate, unresolved capability.
+- Keep PR #11 open and Draft; do not trigger per-commit CI/builds. No build, typecheck, CI or device test is claimed in this checkpoint.
