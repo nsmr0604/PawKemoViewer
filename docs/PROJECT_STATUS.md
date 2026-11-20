@@ -281,3 +281,6 @@
 - [ ] 実機で `logs/pawchive.log` の追記、再起動後の保持、logcat とファイルの内容一致を確認
 
 > 実装コミット: 共通ファイルロガー `8815e58`、Lite API エラー / Full HTTP トレース統合 `31ed2db`、Lite API 出力の宛先・本文限定 `d3e139c`、URL parse の panic 回避 `86e2ffc`。CI / 実機確認は未実施。
+
+
+> Lite ログ範囲の追加調整 (2026-11-20): `src/log.ts` で Lite の info / warn を破棄し、エラーのみリングバッファへ保持。API失敗の表示内容も宛先 URL + レスポンス本文のみに限定。実装 `0d06f2c`、正規表現修正 `6d83fde`。
