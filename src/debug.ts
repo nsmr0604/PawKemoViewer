@@ -18,13 +18,10 @@ import { invoke } from "@tauri-apps/api/core"
 // ---------------------------------------------------------------------------
 
 /** ビルド時に注入されるデバッグ診断フラグ (リリースビルドでは false 定数) */
-export const DEBUG_DIAG = import.meta.env.VITE_DEBUG_DIAG === "1"
-
 /** ログ行を PC 側ファイル (app_data/logs/debug-app.log) へ追記する。
  *  Rust 側 debug_append_log は debug-diag feature のビルドにのみ存在するため、
  *  呼び出しは DEBUG_DIAG ビルドからのみ行う (実装は lib.rs 参照) */
 export function debugAppendLog(line: string): void {
-  if (!DEBUG_DIAG) return
   invoke("debug_append_log", { text: line }).catch(() => {
     /* ファイルログ失敗は無視 (リングバッファと UI 表示は生きている) */
   })
