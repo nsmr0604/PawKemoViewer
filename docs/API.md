@@ -121,3 +121,11 @@ WebView から Referer を設定できないため、リファラーチェック
 - `AccountFavorite`: PawPost を Partial 継承 + faved_seq (type=post は PawPost 全フィールド)
 - `PawCreator`: id / public_id / service / name / indexed / updated / favorited. Creator list caches updated / indexed / favorited in index v3 to support client-side sorting.
 - `PawRevision extends PawPost` + revision_id
+
+
+### Full 開発診断: Android API logcat
+- Cargo feature `debug-diag` が有効な Android デバッグビルドでは、`api_request` のリクエスト開始 (method / URL)、HTTP status、レスポンス本文を `log::info!` で出力する。Tauri log plugin の Android Stdout target が logcat に転送する
+- レスポンス本文は UTF-8 文字境界を維持して約 3 KB ごとに分割し、大きな JSON も追跡できる
+- 通信エラー / レスポンス本文読取エラーも記録する
+- Cookie / Authorization ヘッダー / session ID / ログインID・パスワードは出力しない。ログイン専用 `login_request` は対象外
+- 製品版では `debug-diag` feature が無いため、ログ出力コード自体をコンパイルしない
