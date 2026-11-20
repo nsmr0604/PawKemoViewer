@@ -322,3 +322,13 @@
 - [ ] Wiki Sync run #251 (`44653227178`) の完了確認。
 - 実機 UI / logcat / 永続ログファイルの検証は CI とは別であり、未実施。
 - PR #7 は closed / merged。今後は main の最新 CI と実機検証結果をこの文書に追記する。
+
+
+## Platform Foundation ongoing handoff (2026-11-20)
+
+- Cross-platform foundation project started as Stage 0 audit; no runtime refactor is implemented yet.
+- Interim handoff: `docs/PLATFORM_PROGRESS_2026-11-20.md`; audit: `docs/PLATFORM_AUDIT.md` on PR #11.
+- PR #11 open/draft, docs-only, branch `refactor/platform-foundation-phase1`, head `9b196f004eae05873f86f19585c54c51d1fb37cf`. Do not merge without authorization.
+- Audited entry points include `src/platform.ts`, App/API/DB/log/debug/backup/i18n/icons/follows/history/router/hooks/favstate/debug-log and DeveloperDiagnostics, plus Rust `src-tauri/src/lib.rs`.
+- Next: complete call-site and OS API inventory before Stage 1 contracts and centralized Desktop/Mobile runtime/adapters. Preserve existing data and network behavior. Build/device verification remains unperformed for this audit.
+- Intermediate handoff docs will be dated/versioned to maintain continuity.
