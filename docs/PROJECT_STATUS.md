@@ -1,6 +1,6 @@
 # Project Status & Roadmap
 
-> 最終更新: 2026-11-20 09:56 JST  
+> 最終更新: 2026-11-20 10:15 JST  
 > この文書は、ローカル環境の `notes/` や過去の会話を参照できない開発者・エージェントが、Pawchive の現状と次の作業を把握するための共有引き継ぎです。  
 > 状態が変わったら、このファイルを実装・CI の実態に合わせて更新してください。
 
@@ -301,3 +301,13 @@
 - [x] request body は logcat と app_data/logs/pawchive.log の両方へ出力
 - [ ] Rust / Android debug build の CI 完了確認と実機ログ検証が必要
 - Note: api_request の現行 Tauri command は GET/POST/DELETE の method を受け取るが payload 引数を持たず、現状の API POST は空 body。将来 payload 引数が追加された場合は同じ request-body logger に接続すること。
+
+
+## 0.4.0 リリース準備・マージ条件 (2026-11-20)
+- ユーザー指示により、PR #7 の全変更をアプリバージョン **0.4.0** として main に統合する。
+- `package.json` / `src-tauri/Cargo.toml` / `src-tauri/tauri.conf.json` の version を 0.4.0 に統一。関連する BUILD / DEVELOPMENT / API ドキュメントの表記と成果物例も 0.4.0 に更新。
+- マージ条件: 0.4.0 に更新した最新 PR head に対する必須 GitHub Actions が正常完了することを確認してから PR #7 を main にマージする。実行中・未取得・cancelled は成功と扱わない。
+- PR #7 は Android run #244 (ID: 44650139575) が進行中。これはバージョン更新前の run であり、最終マージ条件を満たさない。0.4.0 更新コミット後の run を改めて確認する。
+- PC Tauri workflow は main push でのみ動作するため、PR 段階での PC ビルド成功を主張しない。マージ後に PC workflow の結果も確認し、失敗時は修正 PR / hotfix を行う。
+- Android 実機 UI 確認と logcat / ログファイルの実機検証は CI ビルド成功とは別項目で、未実施のまま区別して報告する。
+- この項目は従来の「マージしない」「ユーザーの明示指示を待つ」という記述を更新する。今回のユーザー指示により、上記条件達成後の PR #7 マージが承認されている。
