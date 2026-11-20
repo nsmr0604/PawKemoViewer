@@ -187,7 +187,7 @@ async fn api_request(
     #[cfg(feature = "debug-diag")]
     {
         log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={} bytes={}", method, url, status, text.len());
-        log_api_response_body(&text);
+        log_http_response_body("Pawchive::API", &text);
     }
 
     if !status.is_success() {
@@ -201,10 +201,10 @@ async fn api_request(
 // Full: レスポンス本文を logcat の1行サイズに収まるよう分割して出力する。
 // UTF-8文字境界を維持し、空レスポンスも明示する。
 #[cfg(feature = "debug-diag")]
-fn log_api_response_body(body: &str) {
+fn log_http_response_body(target: &str, body: &str) {
     const MAX_CHUNK_BYTES: usize = 3000;
     if body.is_empty() {
-        log::info!(target: "Pawchive::API", "RESPONSE_BODY <empty>");
+        log::info!(target: target, "RESPONSE_BODY <empty>");
         return;
     }
     let mut chunk = String::new();
@@ -212,7 +212,7 @@ fn log_api_response_body(body: &str) {
     for ch in body.chars() {
         chunk.push(ch);
         if chunk.len() >= MAX_CHUNK_BYTES {
-            log::info!(target: "Pawchive::API", "RESPONSE_BODY chunk={} {}", chunk_index, chunk);
+            log::info!(target: target, "RESPONSE_BODY chunk={} {}", chunk_index, chunk);
             chunk.clear();
             chunk_index += 1;
         }
@@ -736,7 +736,7 @@ fn pkv_proxy_fetch(
     if ct.contains("text/html") && !is_direct_host(&host) {
         let html = resp.text().unwrap_or_default();
         #[cfg(feature = "debug-diag")]
-        log_api_response_body(&html);
+        log_http_response_body("Pawchive::Proxy", &html);
         let self_referer = format!("{}://{}/", target.scheme(), host);
         let out = transform_html(&html, &target, &self_referer);
         return Response::builder()
@@ -766,7 +766,7 @@ fn pkv_proxy_fetch(
     #[cfg(feature = "debug-diag")]
     if ct.starts_with("text/") || ct.contains("json") || ct.contains("xml") || ct.contains("javascript") {
         if let Ok(text) = std::str::from_utf8(&bytes) {
-            log_api_response_body(text);
+            log_http_response_body("Pawchive::Proxy", text);
         } else {
             log::info!(target: "Pawchive::Proxy", "RESPONSE_BODY <non-utf8 text payload; {} bytes>", bytes.len());
         }
