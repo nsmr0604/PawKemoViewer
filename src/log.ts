@@ -36,6 +36,8 @@ export function logError(msg: string) {
 }
 
 function push(level: LogEntry["level"], msg: string) {
+  // Lite はエラーのみ保持する。info / warn は Full 専用。
+  if (!DEBUG_DIAG && level !== "error") return
   if (msg.length > MAX_MSG_LEN) msg = msg.slice(0, MAX_MSG_LEN) + "…"
   const entry: LogEntry = { ts: Date.now(), level, msg }
   entries.push(entry)
@@ -68,9 +70,10 @@ export function logApiFailure(path: string, method: string, message: string) {
     return
   }
 
-  // 製品版ではレスポンス本文・内部スタックを保存せず、基本情報だけを残す。
-  const status = message.match(/STATUS=(\d{3})/)?.[1]
-  push("error", `API失敗 ${method} ${path}${status ? ` (HTTP ${status})` : ""}`)
+  // Lite は API の宛先とレスポンス本文だけを保持する。
+  const body = message.match(/BODY=([\\s\\S]*)/)?.[1]
+  const destination = `https://pawchive.pw/api/v1/${path.replace(/^\\//, "")}`
+  push("error", body !== undefined ? `API_ERROR destination=${destination} body=${body}` : `API_ERROR destination=${destination}`)
 }
 
 /** 古い順の全エントリ */
