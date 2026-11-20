@@ -1158,6 +1158,38 @@ fn clear_creator_icon_cache(app: tauri::AppHandle) -> Result<u64, String> {
 
 const LOCALE_MAX_BYTES: u64 = 1024 * 1024;
 
+// Write locale JSON to a sibling temp file and rename only after the full write.
+// This prevents readers from observing a truncated locale file after interruption.
+fn atomic_locale_write(path: &std::path::Path, contents: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    static NEXT_TEMP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let parent = path.parent().ok_or_else(|| "locale path has no parent".to_string())?;
+    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    let mut temp = None;
+    for _ in 0..20 {
+        let n = NEXT_TEMP.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let candidate = parent.join(format!(".locale-{}-{}.tmp", std::process::id(), n));
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&candidate) {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(contents).and_then(|_| file.sync_all()) {
+                    let _ = std::fs::remove_file(&candidate);
+                    return Err(e.to_string());
+                }
+                temp = Some(candidate);
+                break;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    let temp = temp.ok_or_else(|| "could not allocate locale temp file".to_string())?;
+    if let Err(e) = std::fs::rename(&temp, path) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(e.to_string());
+    }
+    Ok(())
+}
+
 fn locale_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("locales"))
 }
@@ -1223,7 +1255,7 @@ fn write_locale_file(app: tauri::AppHandle, code: String, json: String) -> Resul
     let dir = locale_dir(&app)?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{}.json", code));
-    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    atomic_locale_write(&path, json.as_bytes())?;
     Ok(path.to_string_lossy().to_string())
 }
 
@@ -1252,7 +1284,7 @@ fn list_secondary_locale_files(app: tauri::AppHandle) -> Result<LocaleList, Stri
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))] { let _=app; Ok(LocaleList{dir:String::new(),files:Vec::new(),invalid:Vec::new()}) }
 }
 #[tauri::command]
-fn write_secondary_locale_file(app: tauri::AppHandle, code: String, json: String) -> Result<String, String> { if !valid_locale_code(&code){return Err("invalid locale code".into());} if json.len() as u64>LOCALE_MAX_BYTES{return Err("locale file too large".into());} #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] { let dir=secondary_locale_dir(&app)?; std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?; let path=dir.join(format!("{}.json",code)); std::fs::write(&path,json).map_err(|e|e.to_string())?; return Ok(path.to_string_lossy().to_string()); } #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))] {let _=app;Err("secondary locale storage unavailable".into())} }
+fn write_secondary_locale_file(app: tauri::AppHandle, code: String, json: String) -> Result<String, String> { if !valid_locale_code(&code){return Err("invalid locale code".into());} if json.len() as u64>LOCALE_MAX_BYTES{return Err("locale file too large".into());} #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] { let dir=secondary_locale_dir(&app)?; std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?; let path=dir.join(format!("{}.json",code)); atomic_locale_write(&path,json.as_bytes())?; return Ok(path.to_string_lossy().to_string()); } #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))] {let _=app;Err("secondary locale storage unavailable".into())} }
 // Foundation storage-location resolver (additive; consumers are migrated separately).
 // Secondary storage is intentionally desktop-only until mobile sharing semantics are
 // implemented and verified per platform. This avoids claiming a user-visible path
