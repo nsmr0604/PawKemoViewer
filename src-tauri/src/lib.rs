@@ -37,6 +37,9 @@ static LOGIN_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 
 fn safe_log_url(url: &reqwest::Url) -> String {
     let mut safe = url.clone();
+    // URL user-info is also credential material; never include it in diagnostics.
+    let _ = safe.set_username("");
+    let _ = safe.set_password(None);
     let pairs: Vec<(String, String)> = safe.query_pairs().map(|(k, v)| (k.into_owned(), v.into_owned())).collect();
     if !pairs.is_empty() {
         safe.set_query(None);
@@ -44,7 +47,7 @@ fn safe_log_url(url: &reqwest::Url) -> String {
             let mut query = safe.query_pairs_mut();
             for (key, value) in pairs {
                 let lower = key.to_ascii_lowercase();
-                let sensitive = ["token", "secret", "session", "auth", "api_key", "apikey", "signature", "sig", "credential"]
+                let sensitive = ["token", "secret", "session", "auth", "api_key", "apikey", "signature", "sig", "credential", "password", "passwd", "jwt"]
                     .iter()
                     .any(|needle| lower.contains(needle));
                 query.append_pair(&key, if sensitive { "<redacted>" } else { &value });
@@ -86,7 +89,7 @@ fn log_http_headers(app: &tauri::AppHandle, target: &str, direction: &str, heade
             lower.as_str(),
             "authorization" | "proxy-authorization" | "cookie" | "set-cookie"
                 | "x-api-key" | "x-auth-token" | "authentication-info"
-        ) || ["token", "secret", "session", "cookie", "auth", "api-key"]
+        ) || ["token", "secret", "session", "cookie", "auth", "api-key", "password", "passwd", "jwt"]
             .iter()
             .any(|needle| lower.contains(needle));
         let rendered = if sensitive {
@@ -211,7 +214,7 @@ async fn api_request(
         log::error!(target: "Pawchive::API", "API_ERROR destination={}", reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()));
         append_app_log(&app, &format!("API_ERROR destination={}", reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into())));
         #[cfg(feature = "debug-diag")]
-        full_http_log(&app, "Pawchive::API", &format!("TRANSPORT_ERROR method={} url={} error={}", method, url, e));
+        full_http_log(&app, "Pawchive::API", &format!("TRANSPORT_ERROR method={} url={} error={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), e));
         e.to_string()
     })?;
 
@@ -230,7 +233,7 @@ async fn api_request(
             log::error!(target: "Pawchive::API", "API_BODY_READ_ERROR destination={}", reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()));
             append_app_log(&app, &format!("API_BODY_READ_ERROR destination={}", reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into())));
             #[cfg(feature = "debug-diag")]
-            full_http_log(&app, "Pawchive::API", &format!("BODY_READ_ERROR method={} url={} error={}", method, url, e));
+            full_http_log(&app, "Pawchive::API", &format!("BODY_READ_ERROR method={} url={} error={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), e));
             e.to_string()
         })?;
 
