@@ -32,3 +32,8 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 ## 2026-11-20 additional correction
 - Backup export now consistently calls the runtime `FileExportService`, removing the duplicated import and direct Tauri invocation. The web adapter's download implementation is therefore used as well.
 - No build or runtime validation was performed in this increment.
+
+
+## Additional increment
+- Settings log dump export is migrated from direct Rust invocation to FileExportService. The Web adapter now exports generic text as `text/plain` rather than JSON MIME.
+- No compilation or device checks were run.
