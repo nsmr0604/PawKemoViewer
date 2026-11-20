@@ -386,12 +386,16 @@ export const api = {
 
   /** アカウントのお気に入り一覧 type: "post" | "artist"
    *  sessionKey を指定すると、未保存の入力値を使った疎通確認もできる。 */
-  accountFavorites: (type: "post" | "artist", sessionKey = settings.sessionKey) =>
+  accountFavorites: (
+    type: "post" | "artist",
+    sessionKey = settings.sessionKey,
+    useCache = sessionKey === settings.sessionKey,
+  ) =>
     request<AccountFavorite[]>(
       `/account/favorites?type=${type}`,
       undefined,
       sessionKey,
-      sessionKey === settings.sessionKey,
+      useCache,
     ),
 
   favPostAdd: (service: string, creatorId: string, postId: string) =>
