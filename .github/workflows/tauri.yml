@@ -141,3 +141,4 @@ jobs:
           releaseDraft: false
           prerelease: ${{ inputs.release != true }}
           args: ${{ inputs.release == true && '' || '--features debug-diag' }}
+          args: ${{ inputs.release == true && '' || '--features debug-diag' }}
