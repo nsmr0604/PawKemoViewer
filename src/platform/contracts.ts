@@ -21,7 +21,7 @@ export interface StorageLocationService {
   resolve(area: StorageArea, purpose: "logs" | "locales" | "exports" | "backup" | "general"): Promise<string | null>
 }
 
-export interface FileExportService {
+export interface LocaleFileSet { dir: string; files: { code: string; json: string }[]; invalid: string[] }\nexport interface LocaleService { listExternal(): Promise<LocaleFileSet | null> }\n\nexport interface FileExportService {
   exportText(filename: string, content: string): Promise<string>
 }
 
@@ -49,7 +49,7 @@ export interface PlatformServices {
   network?: unknown
   logging?: LoggingService
   files?: FileExportService
-  locale?: unknown
+  locale?: LocaleService
   clipboard?: ClipboardService
   lifecycle?: LifecycleService
   permissions?: PermissionService
