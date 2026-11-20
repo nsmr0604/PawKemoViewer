@@ -42,10 +42,11 @@ rolling prerelease "debug-latest" (デバッグビルド)
 npm install
 npm run build                                  # 型検査 + フロントエンドビルド (dist/)
 cargo check --manifest-path src-tauri/Cargo.toml
-cargo build --manifest-path src-tauri/Cargo.toml                       # debug exe
+cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag # debug exe + diagnostic commands
 cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag # 診断ビルド
 npm run build:debug                            # VITE_DEBUG_DIAG=1 のフロントエンド
-npm run tauri:dev                              # 開発実行 (Vite + Tauri)
+npm run tauri:dev                              # 開発実行 (Vite + Tauri + debug-diag)
+npm run tauri:android:dev                      # Android 開発実行 + debug-diag
 npm run tauri:build                            # ローカルリリースバンドル (通常は不要)
 ```
 
