@@ -116,8 +116,6 @@ async fn api_request(
         }
     }
 
-    #[cfg(feature = "debug-diag")]
-    println!("METHOD => {}", method);
 
     let response = match method.as_str() {
         "POST" => {
