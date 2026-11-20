@@ -10,7 +10,7 @@ import {
 } from "../log"
 import { DEBUG_DIAG } from "../buildFlags"
 import { navigate } from "../router"
-import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
+import { getPlatformName, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
 import { clearIconCache, creatorIconInfo } from "../icons"
 import {
