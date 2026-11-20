@@ -181,3 +181,9 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - `parseLocaleJson` now rejects payloads larger than 1 MiB, object entry counts above 10,000, keys over 512 characters, and individual translation values over 10,000 characters. It continues to require `locale.name` and at least one additional string entry.
 - This protects both private and desktop-secondary import paths and refresh-time overlay parsing from unnecessarily large payloads. Native Rust listing/writing already enforces its file size bound; this adds frontend validation for picker imports and in-memory parsing.
 - Commit `81cc9571`. Source-only; validation not run. Android SAF/iOS Files picker remains blocked/incomplete.
+
+
+## Locale parser security follow-up (2026-11-20)
+- Locale parser now builds dictionaries with a null prototype and skips reserved prototype-related keys (`__proto__`, `prototype`, `constructor`) to avoid mutating object prototypes when importing JSON.
+- Commit `1d36f83e`. Source review only; validation not run.
+- Roadmap next remains M2 native user-accessible file flows (SAF / Files), with M3 mobile overlay and M6 validation also open. No plugin dependency/native scaffolding was added because package lock/native generation/build could not be synchronized or verified in this environment.
