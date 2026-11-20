@@ -26,6 +26,7 @@ import {
   type LocaleInfo,
 } from "../i18n"
 import { displayAppVersion } from "../version"
+import { DeveloperFullDiagnostics } from "../components/DeveloperFullDiagnostics"
 
 const DeveloperLiteTools = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
 function fmtBytes(n: number): string {
@@ -781,6 +782,11 @@ export function SettingsPage() {
         {(DEBUG_DIAG || developerToolsEnabled) && (
           <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
             <DeveloperLiteTools />
+          </Suspense>
+        )}
+        {DEBUG_DIAG && (
+          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
+            <DeveloperFullDiagnostics />
           </Suspense>
         )}
 
