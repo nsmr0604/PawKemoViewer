@@ -229,8 +229,8 @@ export function SettingsPage() {
       const path = await exportBackup()
       let clip = ""
       try {
-        await navigator.clipboard.writeText(buildBackup())
-        clip = t("settings.clipCopied")
+        const clipboard = getPlatformRuntime().services.clipboard
+        if (clipboard && await clipboard.writeText(buildBackup())) clip = t("settings.clipCopied")
       } catch {
         /* クリップボード失敗は無視 (ファイル保存で十分) */
       }
@@ -243,7 +243,7 @@ export function SettingsPage() {
   }
 
   const doImportFromClipboard = async () => {
-    const text = await readClipboardTextSafe()
+    const text = await getPlatformRuntime().services.clipboard?.readText()
     if (!text) {
       setBackupResult(t("settings.clipEmpty"))
       return
