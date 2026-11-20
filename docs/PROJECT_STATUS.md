@@ -300,3 +300,9 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 
 ## Backup import resource bounds
 - Added 5 MiB payload limit and 100,000-entry ceilings for follows and seen lists during backup parsing (`b6836d80`). Validation remains pending.
+
+
+## 2026-11-20: Backup restore robustness follow-up
+- Restore validation now bounds read-state post IDs and cached newest-post metadata fields.
+- Restore now completes the atomic IndexedDB read-state replacement before overwriting follows, avoiding follow-list mutation when the read-state transaction fails.
+- Validation/device testing remains outstanding.
