@@ -237,3 +237,18 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 ## PR #11 workstream split plan (2026-11-20)
 PR #11 is to be decomposed into a stack of feature branches/commits rather than treated as a single indivisible change. Keep the original PR open as the umbrella tracking item while split branches are prepared; avoid closing or retargeting it until replacement PRs are created and reviewed.
 Suggested sequence: (1) platform contracts/runtime + CI trigger adjustment; (2) native storage resolver and adapters; (3) consumer migration (backup/log/settings); (4) locale storage and import/export; (5) lifecycle/permission migration and validation. Each branch should be based on its predecessor only where dependency requires it, and use independent commits with focused messages. `feature/m2-native-file-dialog` is currently a follow-on branch based on PR #11 head, not yet a clean split of historical PR commits.
+
+
+## M2 implementation continuation checkpoint (2026-11-20)
+
+- Reviewed Settings locale import implementation: it currently consumes browser `FileList` and stores imported locale JSON into the private LocaleService. This remains a fallback path, not an Android SAF/iOS Files native picker.
+- Re-reviewed the native dialog plugin integration on this branch: Cargo dependency, builder registration, and open/save capability permissions are present, but frontend dialog API dependency and lockfile synchronization are not. Therefore no frontend dialog invocation was added in this checkpoint to avoid leaving a package/lock mismatch.
+- The native dialog plugin is not yet wired to import/export workflows. Mobile save still targets private app storage; dialog-selected URI semantics require an explicit platform-safe reader/writer before migration.
+- Workstream separation: M2 remains a follow-on branch atop PR #11; no replacement PRs or historical split of PR #11 have been created. Keep PR #11 open and draft while restructuring.
+- Validation: no build, typecheck, device test, or CI run performed.
+
+## Next safe implementation slice
+
+1. Synchronize `@tauri-apps/plugin-dialog` into package.json/package-lock.json (using npm, not hand-editing lock metadata), and add a platform-neutral picker service contract.
+2. Add native file reading/writing that handles selected URIs safely on Android/iOS, then wire locale import and backup/log export.
+3. Add a user-visible secondary locale overlay on mobile only after a supported URI storage mechanism is verified.
