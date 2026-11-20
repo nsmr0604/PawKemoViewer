@@ -63,3 +63,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Successful imports refresh locale catalog and reapply active locale. Failures are reported as skipped filenames.
 - This is not yet a secondary shared storage location or SAF/document-picker persistent grant. Device validation remains outstanding.
 - Next: native Android SAF/iOS Files integration research and secondary locale overlay design; avoid asserting native folder access until confirmed.
+
+
+## Web export reliability checkpoint
+- Adjusted browser FileExportService cleanup to revoke generated object URLs after a short delay instead of synchronously in the download-click path, reducing the risk of invalidating the URL before browser download handling consumes it.
+- Source change only; download behavior is not device/browser verified.
+- Native Android SAF/iOS document-picker integration remains blocked on verified plugin/native project setup. Avoid presenting the HTML picker as shared-storage access.
