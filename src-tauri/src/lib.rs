@@ -33,6 +33,26 @@ static LOGIN_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .expect("failed to initialize login HTTP client")
 });
 
+
+// Full diagnostics: dump HTTP headers while masking credentials and session material.
+#[cfg(feature = "debug-diag")]
+fn log_http_headers(target: &str, direction: &str, headers: &reqwest::header::HeaderMap) {
+    for (name, value) in headers.iter() {
+        let key = name.as_str();
+        let sensitive = matches!(
+            key,
+            "authorization" | "proxy-authorization" | "cookie" | "set-cookie"
+                | "x-api-key" | "x-auth-token" | "authentication-info"
+        );
+        let rendered = if sensitive {
+            "<redacted>".to_string()
+        } else {
+            value.to_str().unwrap_or("<non-utf8>").to_string()
+        };
+        log::info!(target: target, "{}_HEADER {}: {}", direction, key, rendered);
+    }
+}
+
 static PROXY_HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
         .user_agent(
@@ -105,17 +125,13 @@ async fn api_request(
 
     if let Some(session) = session_key {
         if !session.is_empty() {
-            let cookie =
-                format!("session={}", session);
-
-            headers.insert(
-                COOKIE,
-                HeaderValue::from_str(&cookie)
-                    .map_err(|e| e.to_string())?,
-            );
+            let cookie = format!("session={}", session);
+            headers.insert(COOKIE, HeaderValue::from_str(&cookie).map_err(|e| e.to_string())?);
         }
     }
 
+    #[cfg(feature = "debug-diag")]
+    log_http_headers("Pawchive::API", "REQUEST", &headers);
 
     let response = match method.as_str() {
         "POST" => {
@@ -152,6 +168,12 @@ async fn api_request(
     })?;
 
     let status = response.status();
+
+    #[cfg(feature = "debug-diag")]
+    {
+        log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={}", method, url, status);
+        log_http_headers("Pawchive::API", "RESPONSE", response.headers());
+    }
 
     let text = response
         .text()
@@ -677,12 +699,32 @@ fn pkv_proxy_fetch(
             .body(b);
     }
 
-    let resp = match rb.send() {
+    // Build once so Full diagnostics can inspect the exact outgoing request headers.
+    let request = match rb.build() {
         Ok(r) => r,
-        Err(e) => return bad(502, &format!("upstream: {}", e)),
+        Err(e) => return bad(502, &format!("request build: {}", e)),
+    };
+    #[cfg(feature = "debug-diag")]
+    {
+        log::info!(target: "Pawchive::Proxy", "REQUEST method={} url={}", request.method(), request.url());
+        log_http_headers("Pawchive::Proxy", "REQUEST", request.headers());
+    }
+
+    let resp = match client.execute(request) {
+        Ok(r) => r,
+        Err(e) => {
+            #[cfg(feature = "debug-diag")]
+            log::error!(target: "Pawchive::Proxy", "TRANSPORT_ERROR url={} error={}", target, e);
+            return bad(502, &format!("upstream: {}", e));
+        }
     };
 
     let status = resp.status();
+    #[cfg(feature = "debug-diag")]
+    {
+        log::info!(target: "Pawchive::Proxy", "RESPONSE url={} status={}", target, status);
+        log_http_headers("Pawchive::Proxy", "RESPONSE", resp.headers());
+    }
     let ct = resp
         .headers()
         .get(header::CONTENT_TYPE)
@@ -693,6 +735,8 @@ fn pkv_proxy_fetch(
     // 外部 (direct 以外) ホストの HTML ページ: base 注入 + リンク/リソースのプロキシ化
     if ct.contains("text/html") && !is_direct_host(&host) {
         let html = resp.text().unwrap_or_default();
+        #[cfg(feature = "debug-diag")]
+        log_api_response_body(&html);
         let self_referer = format!("{}://{}/", target.scheme(), host);
         let out = transform_html(&html, &target, &self_referer);
         return Response::builder()
@@ -719,6 +763,16 @@ fn pkv_proxy_fetch(
         }
     }
     let bytes = resp.bytes().unwrap_or_default();
+    #[cfg(feature = "debug-diag")]
+    if ct.starts_with("text/") || ct.contains("json") || ct.contains("xml") || ct.contains("javascript") {
+        if let Ok(text) = std::str::from_utf8(&bytes) {
+            log_api_response_body(text);
+        } else {
+            log::info!(target: "Pawchive::Proxy", "RESPONSE_BODY <non-utf8 text payload; {} bytes>", bytes.len());
+        }
+    } else {
+        log::info!(target: "Pawchive::Proxy", "RESPONSE_BODY <binary omitted; {} bytes>", bytes.len());
+    }
     b.body(bytes.to_vec()).unwrap()
 }
 
