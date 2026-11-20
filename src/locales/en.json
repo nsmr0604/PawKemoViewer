@@ -310,5 +310,13 @@
   "creators.sortPopular": "Popularity",
   "creators.sortName": "Name",
   "creators.resultCount": "Showing {{shown}} / {{total}}",
-  "creators.showMore": "Show {{count}} more"
+  "creators.showMore": "Show {{count}} more",
+  "settings.loginStatus": "Login status",
+  "settings.loginStatusDesc": "Checks the session for your Pawchive account.",
+  "settings.loginStatus.checking": "Checking…",
+  "settings.loginStatus.loggedIn": "Logged in",
+  "settings.loginStatus.loggedOut": "Not logged in / invalid session",
+  "settings.loginStatus.unknown": "Could not verify (check your connection)",
+  "settings.developerSessionTitle": "Developer: session ID login",
+  "settings.developerSessionDesc": "For development and diagnostics when normal login is unavailable. Enter the pawchive.pw session cookie value to test and save it."
 }
