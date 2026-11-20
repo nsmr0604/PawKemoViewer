@@ -39,6 +39,7 @@ const BUNDLED_LOADERS: Record<string, () => Promise<{ default: Dict }>> = {
 const BUNDLED_NAMES: Record<string, string> = { ja: "日本語", en: "English" }
 
 const external = new Map<string, Dict>()
+const secondary = new Map<string, Dict>()
 let externalDir = ""
 let invalidFiles: string[] = []
 
@@ -74,6 +75,7 @@ export function parseLocaleJson(text: string): Dict | null {
 /** 外部ファイルを再スキャンする (app_data/locales)。ブラウザ実行などでは何もしない */
 export async function refreshLocales(): Promise<void> {
   external.clear()
+  secondary.clear()
   invalidFiles = []
   try {
     const res = await getPlatformRuntime().services.locale?.listExternal()
@@ -92,6 +94,14 @@ export async function refreshLocales(): Promise<void> {
   } catch {
     // Tauri 以外の実行環境では外部ファイルは無い (同梱の言語のみ)
   }
+  try {
+    const res = await getPlatformRuntime().services.locale?.listSecondary?.()
+    if (res) for (const f of res.files) {
+      const dict = parseLocaleJson(f.json)
+      if (dict) secondary.set(f.code, dict)
+      else { invalidFiles.push(`secondary:${f.code}.json`); logWarn(`共有言語ファイルを読み込めません: ${f.code}.json`) }
+    }
+  } catch { /* optional secondary area */ }
   // 外部の ja.json による上書きを反映する
   i18n.addResourceBundle("ja", "translation", (await dictionaryFor("ja")) ?? BASE_JA, true, true)
 }
@@ -101,8 +111,8 @@ export function availableLocales(): LocaleInfo[] {
   const codes = new Set<string>(["ja", ...Object.keys(BUNDLED_LOADERS), ...external.keys()])
   return [...codes].map((code) => ({
     code,
-    name: external.get(code)?.["locale.name"] || BUNDLED_NAMES[code] || code,
-    external: external.has(code),
+    name: secondary.get(code)?.["locale.name"] || external.get(code)?.["locale.name"] || BUNDLED_NAMES[code] || code,
+    external: external.has(code) || secondary.has(code),
   }))
 }
 
@@ -119,8 +129,9 @@ async function dictionaryFor(code: string): Promise<Dict | null> {
   const bundled: Dict | null =
     code === "ja" ? BASE_JA : BUNDLED_LOADERS[code] ? (await BUNDLED_LOADERS[code]()).default : null
   const ext = external.get(code) ?? null
-  if (!bundled && !ext) return null
-  return { ...(bundled ?? {}), ...(ext ?? {}) }
+  const shared = secondary.get(code) ?? null
+  if (!bundled && !ext && !shared) return null
+  return { ...(bundled ?? {}), ...(ext ?? {}), ...(shared ?? {}) }
 }
 
 /** 言語を読み込んで適用する。未知・失敗は日本語へフォールバックし、適用された言語を返す */
