@@ -49,7 +49,7 @@ src/                    フロントエンド
   debug-log.ts          詳細ログ分割 (デバッグビルドのみ動的ロード)
   router.ts / hooks.ts / platform.ts / history.ts / types.ts / styles.css
   components.tsx        共通 UI (PostCard / PostRow / PostGrid / Thumb / CreatorAvatar / ErrorBox / fmtDate ほか)
-  components/           FollowButton / NavigationRail / DeveloperDiagnostics (デバッグビルド常時 / 製品版は設定トグル)
+  components/           FollowButton / NavigationRail / DeveloperDiagnostics (Lite) / DeveloperFullDiagnostics (Full: debug only)
   pages/                Home / Creators / CreatorPage / PostPage / Favorites / Login / Settings
 src-tauri/
   src/lib.rs            Rust 実装 (コマンド・pkv:// プロキシ)
@@ -101,7 +101,7 @@ Referer は投稿の正規 URL (canonical) を優先して付与する。
 ### デバッグ診断コードはビルド時フラグ注入
 `VITE_DEBUG_DIAG=1` (フロント) / Cargo feature `debug-diag` (Rust) をデバッグビルドで常に指定する。
 通常の `tauri:dev` / `tauri:android:dev` と CI の debug ビルドで有効。正式リリースではフロントフラグを `0`、Cargo feature を指定しない。
-開発用画面・詳細ログ・ログフォルダ操作・開発用 Tauri コマンドは別チャンク / `#[cfg(feature = "debug-diag")]` に分離し、製品版には含めない。
+Lite はセッションIDの手動入力・検証・保存で、製品版にも含めて設定トグルから利用可能。Full は詳細ログ・ログフォルダ操作・バックアップJSONダンプで、フロント DEBUG_DIAG と Rust `#[cfg(feature = "debug-diag")]` の双方により製品版からコンパイル除外する。
 製品版に残すログは基本的な uncaught error / unhandled rejection / API 失敗の method・path・HTTP status のみ。レスポンス本文や詳細トレースは保存しない。
 
 ## ストレージ構成 (v0.3.0 のキー体系)
