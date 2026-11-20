@@ -267,3 +267,5 @@
 
 
 > 最新追記 (2026-11-20): HTTP プロキシ通信ログを追加。Rust 実装 `ac32792`、ヘッダー秘匿値の追加マスキング `2b69049`、ロケール説明 `ca0d064` / `fc10fdc`。PR #7 head `fc10fdc` に対する Android Actions run #225 (`44648823060`) は確認時点で build job in progress。成功未確認。
+
+> URL秘匿値対策 (2026-11-20): Full ログに出す URL の query parameter も token / secret / session / auth / api_key / signature 等のキーを検出して値をマスキング。実装コミット `f3f91df`。
