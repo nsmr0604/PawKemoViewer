@@ -188,3 +188,7 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 ## Backup data completeness (2026-11-20)
 - Backup serialization now asynchronously reads the IndexedDB `seen` store (`getAllSeen`) and includes those entries instead of exporting an always-empty list. File export and clipboard backup paths await serialization.
 - Commits `b2705004` (`backup.ts`) and `23f58276` (Settings clipboard callsite). No build/tests performed; M2 native shared-file selection/export remains outstanding.
+
+
+## Backup async declaration follow-up
+- Corrected the `buildBackup` signature to `async`/`Promise<string>` to match its IndexedDB await. Source commit `a2a1efba`. This is a source inspection correction; compilation is still not verified.
