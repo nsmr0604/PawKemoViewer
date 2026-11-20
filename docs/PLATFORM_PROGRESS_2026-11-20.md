@@ -27,3 +27,8 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 3. Log dump export through FileExportService.
 4. Clipboard, lifecycle, permission service integration.
 5. Continue consumer migration and batch validation.
+
+
+## 2026-11-20 additional correction
+- Backup export now consistently calls the runtime `FileExportService`, removing the duplicated import and direct Tauri invocation. The web adapter's download implementation is therefore used as well.
+- No build or runtime validation was performed in this increment.
