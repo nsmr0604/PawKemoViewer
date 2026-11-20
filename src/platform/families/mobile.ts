@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core"
-import type { ClipboardService, FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService } from "../contracts"
+import type { ClipboardService, FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService , IndexedDatabaseService} from "../contracts"
+
+const indexedDatabase: IndexedDatabaseService = { open: (name, version, upgrade) => new Promise((resolve, reject) => { if (typeof indexedDB === "undefined") { reject(new Error("IndexedDB unavailable")); return } const request = indexedDB.open(name, version); request.onupgradeneeded = () => upgrade(request.result); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); request.onblocked = () => reject(new Error("IndexedDB upgrade blocked")) }) }
 
 const storage = typeof localStorage !== "undefined" ? {
   get: (key: string) => localStorage.getItem(key),
@@ -40,5 +42,5 @@ const files: FileExportService = { exportText: (filename, content) => invoke<str
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
-  return { storage, sessionStorage: sessionStorageService, storageLocations, logging, files, locale, clipboard }
+  return { indexedDatabase, storage, sessionStorage: sessionStorageService, storageLocations, logging, files, locale, clipboard }
 }
