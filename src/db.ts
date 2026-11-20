@@ -1,4 +1,5 @@
-// IndexedDB ヘルパー: クリエイターキャッシュと未読管理\nimport { getPlatformRuntime } from "./platform/runtime"
+// IndexedDB ヘルパー: クリエイターキャッシュと未読管理
+import { getPlatformRuntime } from "./platform/runtime"
 // 注意: DB_NAME は v0.3.0 (PawKemoViewer 改名) で "pawkemoviewer" に変更。
 // v0.2.x からの引継ぎは バックアップ書き出し→読み込み で行う
 
