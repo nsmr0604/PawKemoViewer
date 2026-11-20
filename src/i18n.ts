@@ -68,9 +68,9 @@ export function parseLocaleJson(text: string): Dict | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
   const entries = Object.entries(raw as Record<string, unknown>)
   if (entries.length > 10000) return null
-  const dict: Dict = {}
+  const dict: Dict = Object.create(null) as Dict
   for (const [k, v] of entries) {
-    if (!k || k.length > 512) continue
+    if (!k || k.length > 512 || k === "__proto__" || k === "prototype" || k === "constructor") continue
     if (typeof v === "string" && v.length <= 10000) dict[k] = v
   }
   if (!dict["locale.name"]?.trim()) return null
