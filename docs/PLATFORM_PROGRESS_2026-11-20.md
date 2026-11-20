@@ -1,31 +1,30 @@
-# Platform Foundation — Interim Handoff (2026-11-20, reconciliation checkpoint)
+# Platform Foundation — Interim Handoff (2026-11-20)
 
-## Verified branch state
-PR #11 remains draft/open/unmerged on `refactor/platform-foundation-phase1`. Inspected head previously: `e3ead3cfaf69510fd6d323604a24e2992707ed0f`.
+## Branch
+PR #11 (`refactor/platform-foundation-phase1`) remains open, draft, unmerged. Branch head before this documentation checkpoint was `9ac1799a93e2d99c1ac3b9e8422b06ca411d60b6`.
 
-## Implemented and confirmed in source
-- Stage 1 contracts/runtime/family dispatch.
-- Web adapter localStorage and clipboard.
-- Desktop and Mobile family factories expose storage-location resolution via Tauri invoke.
-- Mobile factory refuses secondary-accessible resolution (returns null).
+## Confirmed scaffolding
+- Typed platform contracts, runtime initialization and family selection.
+- Web localStorage/clipboard adapter.
+- Desktop and Mobile adapters invoke `resolve_storage_location`; Mobile returns null for secondary-accessible.
+- Rust resolver command is not confirmed in inspected `src-tauri/src/lib.rs`, so frontend invoke may fail; treat as unresolved, not complete.
+- Current workflow `.github/workflows/android.yml` has no `pull_request` trigger. It triggers on filtered pushes to main and workflow_dispatch. PR commit builds therefore should not trigger automatically.
 
-## Important reconciliation
-Earlier conversational updates described a Rust `resolve_storage_location` command and related commits. The actual inspected `src-tauri/src/lib.rs` at current branch head does not show that command in inspected content; GitHub code search also returned no indexed match. Therefore, the command's existence is **not verified** and frontend invocation may currently fail at runtime. Do not rely on that resolver as implemented until full Rust command registration and body are confirmed and/or added.
+## Log architecture audit
+- `src/log.ts`: 400-entry ring, 2000-character message cap, Lite error-only; Full keeps all levels.
+- Full uses dynamic `./debug` import and `debugAppendLog`; `src/debug.ts` invokes native `debug_append_log`.
+- Rust app log writes into app data logs; persistence is not yet routed through platform services.
+- Global browser error/rejection listeners remain in `src/log.ts`.
+- Log export/storage consumer migration remains pending.
 
-The storage resolver contract and family adapter invocation remain transitional; existing consumers are not migrated. No native storage migration, data migration, or destructive operation has been performed.
+## Current increment
+Re-inspection corrected documentation to avoid treating the storage resolver as confirmed. This checkpoint does not modify runtime behavior. No migration or destructive data operation has occurred.
 
-## Logging audit findings
-- `src/log.ts` maintains a bounded in-memory ring (400 entries, max message length 2000).
-- Lite retains error entries only; Full diagnostics retains info/warn/error.
-- Full diagnostic entries dynamically invoke `debugAppendLog`; `src/debug.ts` calls the native debug command.
-- Global browser error and unhandled rejection listeners currently reside in `src/log.ts`.
-- Rust appends diagnostics to app-data/logs in inspected source; debug command behavior still requires further inspection.
-- Log export and persistent log handling are not migrated to platform services yet.
-
-## Next safe increment
-1. Verify Rust command definition and command registration, workflow file, locale/export consumers, and debug-feature gating before claiming resolver or build behavior.
-2. Introduce typed logging service contract/adapters without changing Lite/Full policy or log output semantics.
-3. Migrate log file persistence and export only after platform service APIs are verified.
+## Next
+1. Verify Rust resolver definition and command registration (search the entire Rust file and invoke handler).
+2. Confirm command availability under release vs debug-diag cfg.
+3. Design typed LoggingService contract and adapters, then migrate `src/log.ts` only while preserving Lite/Full semantics.
+4. Later route dump export through secondary accessible location/document picker.
 
 ## Verification
-No build/typecheck/CI/device verification confirmed. Do not merge PR #11 without explicit user approval.
+No build, typecheck, CI, or device verification confirmed. Do not merge without explicit approval.
