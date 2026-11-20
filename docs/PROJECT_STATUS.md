@@ -27,6 +27,16 @@
 - PC 向け Tauri workflow は現状 main への push でのみ実行される。PR #7 では PC ビルド未検証。マージして CI を起動してはならない。ユーザーの明示指示を待つ
 - 実機での UI/UX の視覚確認は未完了
 
+## ビルドフラグによる開発機能の分離 (2026-11-20)
+- [x] フロントエンドの `DEBUG_DIAG` を `src/buildFlags.ts` に分離。`VITE_DEBUG_DIAG=1` のときだけ開発用チャンクを動的ロード
+- [x] 開発用セッションID入力・検証・保存、詳細ログフォルダ操作、バックアップJSONダンプを `DeveloperDiagnostics.tsx` へ分離。製品版では lazy import 自体をビルド時に除去
+- [x] 長文ログ分割を `debug-log.ts` へ分離し、詳細APIレスポンスログとファイルログをデバッグビルドだけでロード
+- [x] 製品版ログは基本的な uncaught error / unhandled rejection / API失敗 (method/path/HTTP status) に限定。APIレスポンス本文や詳細スタックは記録しない
+- [x] Rust の `debug_append_log` / `debug_open_log_folder` は既存 Cargo feature `debug-diag` のみで定義・登録。request/method/status/icon URL の `println!` も同 feature で囲み、製品版から除外
+- [x] PC / Android の CI debug ビルドで `--features debug-diag` を注入。正式リリースは `VITE_DEBUG_DIAG=0` + Cargo feature 無し
+- [x] `npm run tauri:dev` / `npm run tauri:android:dev` も `debug-diag` feature を指定。Vite `.env.development` でフロント診断を常時有効
+- [ ] PR #7 の Android / PC Actions でフロント・Rust双方の feature 分岐をビルド確認。PC PR workflow は未設定のため、PR段階ではAndroidのみ検証可能
+- [ ] 製品版ビルド成果物を展開し、DeveloperDiagnostics / debug-log / debug Tauri commands が含まれないことを確認
 ## 2. PR #7 で実施した内容
 
 ### ログイン導線・開発者向け認証 (2026-11-20)
