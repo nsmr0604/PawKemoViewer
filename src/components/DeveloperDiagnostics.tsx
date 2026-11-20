@@ -1,15 +1,11 @@
 import { useState } from "react"
 import { api, apiStatus, getSettings, updateSettings } from "../api"
-import { buildBackup } from "../backup"
-import { debugOpenLogFolder } from "../debug"
 import { t } from "../i18n"
-import { logInfo } from "../log"
 
 export function DeveloperDiagnostics() {
   const [sessionKey, setSessionKey] = useState(getSettings().sessionKey)
   const [saved, setSaved] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
-  const [logResult, setLogResult] = useState<string | null>(null)
 
   const saveSession = () => {
     updateSettings({ sessionKey: sessionKey.trim() })
@@ -35,11 +31,7 @@ export function DeveloperDiagnostics() {
     }
   }
 
-  const dumpBackup = async () => {
-    const { splitDebugLog } = await import("../debug-log")
-    for (const part of splitDebugLog("DEBUG BACKUP DUMP:\n" + buildBackup())) logInfo(part)
-    setLogResult(t("settings.dumped"))
-  }
+
 
   return (
     <>
@@ -58,21 +50,6 @@ export function DeveloperDiagnostics() {
           {testResult && <span className="small" role="status">{testResult}</span>}
         </div>
       </div>
-      <div className="setting-item">
-        <div className="setting-text">
-          <span>{t("settings.logFolder")}</span>
-          <small>{t("settings.logFolderDesc")}</small>
-        </div>
-        <button className="btn" onClick={() => void debugOpenLogFolder().then((path) => setLogResult(t("settings.folderResult", { path }))).catch((error) => setLogResult(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) })))}>{t("settings.open")}</button>
-      </div>
-      <div className="setting-item">
-        <div className="setting-text">
-          <span>{t("settings.backupDump")}</span>
-          <small>{t("settings.backupDumpDesc")}</small>
-        </div>
-        <button className="btn" onClick={() => void dumpBackup()}>{t("settings.dump")}</button>
-      </div>
-      {logResult && <span className="small" role="status">{logResult}</span>}
     </>
   )
 }
