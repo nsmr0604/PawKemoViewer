@@ -125,3 +125,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Corrected escaped newline sequences that had been inadvertently written as literal characters in imports/comments and the web platform adapter, restoring normal source line structure.
 - Normalized adapter type-import punctuation.
 - Build/typecheck is still unverified; treat these corrections as source-level fixes pending CI validation.
+
+
+## Transaction lifecycle follow-up
+- `src/db.ts` helper now waits for transaction completion for success and handles error/abort paths.
+- Icon-cache IDB read helper in `src/icons.ts` also waits for completion. Schema and keys are unchanged.
+- Audit still pending for remaining direct storage/browser API use and native shared-storage integration; no validation claimed.
