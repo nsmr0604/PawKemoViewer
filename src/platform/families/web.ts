@@ -13,7 +13,9 @@ const files: FileExportService = {
       anchor.click()
       return filename
     } finally {
-      URL.revokeObjectURL(url)
+      // Browser download handling is asynchronous; immediate revocation can invalidate
+      // the URL before the browser has consumed it.
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     }
   },
 }
