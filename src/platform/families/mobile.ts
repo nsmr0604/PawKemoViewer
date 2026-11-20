@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
-import type { FileExportService, PlatformServices, StorageArea, StorageLocationService } from "../contracts"
+import type { FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService } from "../contracts"
 
 const logging = { append: (line: string) => { void import("../../debug").then(({ debugAppendLog }) => debugAppendLog(line)) } }
 
@@ -17,9 +17,9 @@ const storageLocations: StorageLocationService = {
   },
 }
 
-const files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
+const locale: LocaleService = { listExternal: async () => { try { return await invoke("list_locale_files") } catch { return null } } }\n\nconst files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
-  return { storageLocations, logging, files }
+  return { storageLocations, logging, files, locale }
 }
