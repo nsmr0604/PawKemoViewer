@@ -71,8 +71,8 @@ export function logApiFailure(path: string, method: string, message: string) {
   }
 
   // Lite は API の宛先とレスポンス本文だけを保持する。
-  const body = message.match(/BODY=([\\s\\S]*)/)?.[1]
-  const destination = `https://pawchive.pw/api/v1/${path.replace(/^\\//, "")}`
+  const body = message.match(/BODY=([\s\S]*)/)?.[1]
+  const destination = `https://pawchive.pw/api/v1/${path.replace(/^\//, "")}`
   push("error", body !== undefined ? `API_ERROR destination=${destination} body=${body}` : `API_ERROR destination=${destination}`)
 }
 
