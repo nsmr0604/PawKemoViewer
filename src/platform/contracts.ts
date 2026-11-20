@@ -24,6 +24,8 @@ export interface StorageLocationService {
 export interface LocaleFileSet { dir: string; files: { code: string; json: string }[]; invalid: string[] }
 export interface LocaleService {
   listExternal(): Promise<LocaleFileSet | null>
+  listSecondary?(): Promise<LocaleFileSet | null>
+  writeSecondary?(code: string, json: string): Promise<void>
   write(code: string, json: string): Promise<void>
   delete(code: string): Promise<boolean>
 }
