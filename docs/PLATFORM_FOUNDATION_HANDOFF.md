@@ -216,3 +216,12 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 
 ## 2026-11-20: Secondary locale UI capability gating
 - The secondary-locale import picker is now shown only for the desktop platform family, avoiding a UI affordance on mobile/web where the secondary storage adapter is not implemented.
+
+
+## M2 bottleneck work kickoff — native file-picker integration boundary (2026-11-20)
+- Roadmap priority reaffirmed: M2 user-directed file import/export for Android SAF and iOS Files is the critical path; M3 mobile locale overlay depends on it.
+- Current adapter exposes only `exportText` writing to app-private storage via `export_file`; no open/save picker contract or native user-selected destination exists. Existing HTML locale input remains distinct and cannot be treated as SAF/Files implementation.
+- Before wiring native picker behavior, establish a dedicated file-picker contract with operations for opening a selected file and selecting a save destination, cancellation as a non-error result, and explicit failure reporting. Keep platform implementations distinct; avoid directory access assumptions and permissions broader than selected-file access.
+- Preferred implementation path is Tauri v2 dialog integration (open/save) with a compatible file read/write adapter, using scoped capabilities and synchronized npm/Cargo dependencies/lockfiles. Generated Android/iOS projects must be regenerated and checked as part of the dependency setup.
+- This kickoff audit identified prerequisites but did not wire a plugin or alter source behavior. Tooling here cannot run npm install, generate native projects, or build/test, so no unsynchronized plugin source changes are being represented as complete.
+- Next implementation slices: (1) reproducible dependency+native scaffolding setup and capability review; (2) file-picker contract/adapters; (3) backup import/export and locale/log workflows routed through selected-file IO; (4) mobile secondary locale overlay; (5) batch verification.
