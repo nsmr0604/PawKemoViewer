@@ -13,8 +13,8 @@ PR #11 `refactor/platform-foundation-phase1` is open and draft. No merge or buil
 ## Current limitations
 - Locale files remain private app-data only; secondary accessible locale overlays/import/export are not implemented.
 - Android/iOS user-accessible export/file picker/share adapters are pending.
-- Log dump export migration is pending.
-- Clipboard native adapter, LifecycleService, PermissionService remain incomplete.
+- Log dump export migration is complete through FileExportService.
+- ClipboardService integrated for desktop/mobile/web; native WebView clipboard behavior remains unverified. LifecycleService and PermissionService remain incomplete.
 - Existing feature consumers remain to be migrated.
 - No build, typecheck, CI, or device verification confirmed. No destructive migration.
 
@@ -25,7 +25,7 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 1. Establish safe platform-specific secondary-storage semantics (Android/iOS).
 2. Locale secondary overlay and developer JSON import.
 3. Log dump export through FileExportService.
-4. Clipboard, lifecycle, permission service integration.
+4. Clipboard integration is completed for Settings backup operations; lifecycle and permission service integration remain.
 5. Continue consumer migration and batch validation.
 
 
@@ -48,3 +48,11 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Settings locale creation/deletion now delegates through the PlatformRuntime LocaleService contract instead of invoking native commands directly. Desktop and mobile adapters invoke the native locale commands; Web adapter explicitly reports unsupported write behavior.
 - This is a boundary migration of private locale file management; secondary user-accessible locale overlay remains unimplemented.
 - No build/typecheck/device validation was performed.
+
+
+## M1 checkpoint — Clipboard boundary integration
+- Desktop and mobile family adapters expose ClipboardService; reads return null and writes false on capability or permission failure.
+- Settings backup copy and import-from-clipboard use runtime clipboard instead of direct navigator access.
+- Browser clipboard adapter remains explicit.
+- No build/typecheck/device verification performed.
+- Roadmap order recorded in PROJECT_STATUS.md: capability migrations → accessible secondary storage → layered locale → persistence consumers → lifecycle/permissions → batch validation.
