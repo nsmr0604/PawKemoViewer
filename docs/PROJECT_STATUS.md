@@ -77,3 +77,9 @@
 - Bootstrap reloads persisted settings after platform runtime initialization, so the runtime adapter is available before settings are applied to locale/UI.
 - Existing settings key and JSON schema remain unchanged. No data migration or destructive operation.
 - Validation remains pending.
+
+
+## Session-storage boundary increment
+- Added a distinct `SessionStorageService` contract and wired desktop/mobile/web adapters to the existing WebView/browser `sessionStorage` implementation.
+- Scroll restoration (`src/hooks.ts`) now reads, writes, and removes its scroll map through the session-storage service. The session-only semantics and key remain unchanged; this does not claim native or cross-session storage.
+- Validation is pending (no build/typecheck/device checks run).
