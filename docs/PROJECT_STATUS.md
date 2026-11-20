@@ -33,3 +33,9 @@
 
 ## Secondary storage investigation
 - Native generated Android/iOS project files were not available at the expected `src-tauri/gen/...` paths; native user-accessible storage implementation needs locating the generated/configured native project structure and confirming plugin/permissions before modifying it.
+
+
+## Locale service CRUD migration
+- Settings locale creation/deletion now delegates through the PlatformRuntime LocaleService contract instead of invoking native commands directly. Desktop and mobile adapters invoke the native locale commands; Web adapter explicitly reports unsupported write behavior.
+- This is a boundary migration of private locale file management; secondary user-accessible locale overlay remains unimplemented.
+- No build/typecheck/device validation was performed.
