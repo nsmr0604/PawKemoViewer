@@ -26,6 +26,7 @@ import {
   type LocaleInfo,
 } from "../i18n"
 import { displayAppVersion } from "../version"
+import { getPlatformRuntime } from "../platform/runtime"
 const DeveloperFullDiagnostics = DEBUG_DIAG ? lazy(() => import("../components/DeveloperFullDiagnostics").then((module) => ({ default: module.DeveloperFullDiagnostics }))) : null
 
 const DeveloperLiteTools = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
@@ -276,7 +277,7 @@ export function SettingsPage() {
 
   const exportLog = async () => {
     try {
-      const path = await invoke<string>("export_log", { text: formatLog() })
+      const files = getPlatformRuntime().services.files\n      if (!files) throw new Error("File export service unavailable")\n      const path = await files.exportText("pawchive-log.txt", formatLog())
       setLogResult(t("settings.exported", { path, clip: "" }))
     } catch (e) {
       setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
