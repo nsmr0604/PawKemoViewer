@@ -337,3 +337,9 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - Added Rust `tauri-plugin-dialog` dependency, initialized the plugin in Tauri runtime, and granted narrowly scoped dialog open/save capabilities.
 - npm guest package `@tauri-apps/plugin-dialog` and `package-lock.json` synchronization remain pending: this environment cannot execute npm install/lockfile generation. Do not claim the JS plugin is installed or builds are validated until lockfile synchronization is completed.
 - Next slice: add synchronized npm dependency/lockfile, then implement selected-file read/write bridge. Android content URIs require special handling and should not be treated as ordinary filesystem paths; iOS file URI support must likewise be validated. No device/build validation yet.
+
+
+### M2 follow-up audit
+- Native dialog plugin wiring (Rust dependency, registration, capability permissions) is present on the M2 branch; frontend package/lockfile synchronization and URI-safe read/write integration remain outstanding.
+- Locale import currently uses browser FileList and private storage, not native SAF/Files or secondary shared storage.
+- No validation/build/device test has been run. PR #11 remains draft and has not been historically split into replacement PRs.
