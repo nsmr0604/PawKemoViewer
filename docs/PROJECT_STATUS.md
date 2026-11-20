@@ -10,8 +10,8 @@
 - アプリ: PawKemoViewer (pawchive.pw の非公式クライアント)
 - 技術構成: React 18 + TypeScript + Vite + Tauri 2 + Rust + reqwest
 - 対象: Windows / Linux / macOS / Android
-- main の既知バージョン: `0.3.2`
-- 現在の作業 PR: [#7 UX/UI刷新と通信・描画処理の効率化](https://github.com/nsmr0604/pawchive/pull/7)
+- main の現行バージョン: `0.4.0`
+- 現在の作業 PR: なし (PR #7 は 0.4.0 として merge 済み)
   - ブランチ: `improve/ux-ui-codebase`
   - 直近の追加機能: 設定画面の情報設計を整理し、キャッシュ項目を統合。ホーム投稿一覧のサービスフィルターと公式 `hide=(ai)` AI除外、クリエイター一覧の更新日 / 人気 / 名前ソートとサービスフィルター。ホームの任意タグフィルターは実装しない。Android CIで検出されたCreators.tsxの日時パース型エラーを修正
   - 直近の実装修正: 認証状態表示・開発者向けセッション設定 `0b0de94` / `22c9403`、未キャッシュ認証検証 `d9d870e` / `67f8805`、IDログイン文言・引き継ぎ更新 `a30455a` 以降。Creators.tsx の日時パース修正 `3f06879` も含む
@@ -195,7 +195,7 @@
 | PR #4 / `e4f0908` | PC 同一バージョンビルドのクリーンアップ | main に統合済み |
 | PR #5 / `d0868b0` | TypeScript ビルド修正 | main に統合済み。Android / PC Actions 成功確認済み |
 | PR #6 | サムネイル優先表示、FANBOX cover.jpeg 除外、pkv proxy 制御修正 | この文書作成時点の統合状態は要確認。PR / main を確認すること |
-| PR #7 | UX/UI 刷新、通信・描画効率化、直近 7 日のフォロー新着表示と既読キャッシュ改善 | Open。検証中。未マージ |
+| PR #7 | UX/UI 刷新、通信・描画効率化、直近 7 日のフォロー新着表示と既読キャッシュ改善 | 0.4.0 として main に統合済み |
 
 ※ PR #6 の状態や PR #7 の CI は時間とともに変わるため、作業開始時に GitHub で必ず再確認する。
 
@@ -322,3 +322,13 @@
 - [ ] Wiki Sync run #251 (`44653227178`) の完了確認。
 - 実機 UI / logcat / 永続ログファイルの検証は CI とは別であり、未実施。
 - PR #7 は closed / merged。今後は main の最新 CI と実機検証結果をこの文書に追記する。
+
+
+## 2026-11-20 作業引き継ぎ更新
+- [x] PR #7 は merge commit `15403e13e3ccfe2c71b722db99242c32cc59602b` にて main へ統合済み。
+- [x] main push CI: Android run `44653227135` success (Frontend / Android APK build / signing / artifact upload)。
+- [x] PC run `44653227249` success (macOS 15 / Ubuntu 24.04 / Windows Tauri build)。
+- [x] Wiki Sync run `44653227178` success。
+- [ ] 実機でログファイル保持・Full logcat・Lite のエラー制限・pkv通信を検証。
+- [ ] フォロー同期の失敗状態/再試行UXと旧 local-only `toggleFollow` 呼び出し経路を監査。同期元は Pawchive canonical を維持。
+- [ ] 投稿詳細の初期表示速度を計測し、データ取得と描画の重複を調査。
