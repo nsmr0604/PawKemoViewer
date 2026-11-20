@@ -4,9 +4,20 @@
 
 Consolidate cross-platform operations behind common interfaces while retaining platform-specific execution in adapters. Supported targets: Windows, macOS, Linux, Android and iOS. This is a migration target; this document does not claim the refactor is already implemented.
 
-## Dependency direction
+## Target architecture: common -> platform-family intermediate -> OS adapter
 
-UI and domain modules -> common services/interfaces -> platform adapter contracts -> target-specific adapters. Common/domain code must not import OS APIs, Tauri plugins, platform-specific paths or native command details directly.
+The current code has some responsive desktop/mobile UI branching, but the repository does **not yet implement a consistent desktop/mobile intermediate processing layer**. `src/platform.ts` currently mostly detects UA, resolves layout, and handles clipboard text; platform-specific responsibilities remain scattered across TypeScript and Rust command implementations. Treat the whole codebase as a refactor target.
+
+Target dependency direction is a four-tier structure:
+
+1. **Common UI and domain**: pages/components, translation merging, domain workflows and state logic.
+2. **Common foundation**: stable services/contracts for storage, logging, cache/database, networking, permissions, file exports, clipboard, lifecycle, capability reporting.
+3. **Platform-family intermediate layers**: Desktop runtime (shared Windows/macOS/Linux behavior and APIs) and Mobile runtime (shared Android/iOS behavior, mobile lifecycle and permission/file-sharing contracts). Each implements the common contracts and encapsulates family-specific differences.
+4. **OS-specific adapters**: Windows, macOS, Linux, Android and iOS implementations where APIs, paths, permission policies, native integrations or behavior differ.
+
+Common UI/domain/foundation must not import OS APIs, Tauri plugins, platform-specific paths or native command details directly. Platform-family layers must not contain OS-specific branching beyond routing through explicit OS adapters/capabilities. The OS adapters are the only layer that should execute native/platform-specific details.
+
+Keep adapter selection centralized in bootstrap/capability resolution; do not proliferate duplicated UA detection or scattered `if Android` checks.
 
 The existing `src/platform.ts` platform detection and layout helpers remain a compatibility entry point initially; gradually move capability and adapter selection into a platform bootstrap without duplicating platform detection.
 
@@ -51,3 +62,21 @@ Each step should be independently reviewable and tested; no platform migration s
 - Preserve PKV host restrictions, Referer/UA rules, SSRF safeguards and log redaction.
 - Keep debug diagnostics build-gated; do not leak credentials/session secrets.
 - Keep platform-specific paths/API calls inside adapter modules.
+
+
+## Current-code audit (main snapshot examined 2026-11-20)
+
+Observed partial separation is inconsistent and not a complete family-layer architecture:
+
+- `src/platform.ts`: UA detection (`getPlatform`), mobile/Desktop classification, layout resolution and clipboard-read helper. It does not provide a desktop/mobile processing intermediate layer.
+- `src/api.ts`: direct Tauri `invoke("api_request")`, settings stored directly in `localStorage`, request scheduling and in-memory GET cache coupled in the module.
+- `src/db.ts`: direct IndexedDB access and schema/open/transaction logic in the domain-facing module.
+- `src/log.ts`: memory ring-buffer logging and direct dynamic-import routing to debug file logging.
+- `src/follows.ts`, `src/history.ts`, and settings: direct `localStorage` use.
+- `src/i18n.ts`: invokes native `list_locale_files`; locale loading and overlay logic otherwise lives in TypeScript.
+- `src/backup.ts`: directly invokes native `export_file`.
+- `src/debug.ts` and diagnostics UI: native log-file operations and export/open-folder commands.
+- `src-tauri/src/lib.rs`: API/login HTTP clients, PKV HTTP executor/protocol, app-data log writing, backup export, icon cache, locale files and debug log operations are grouped into a large Rust module rather than platform/family adapter modules.
+- Responsive desktop/mobile UI and Android back handling exist in `App.tsx`, but are not a general processing layer that owns platform-dependent services.
+
+This inventory is an initial audit, not exhaustive; continue repository-wide import/call-site mapping during implementation and expand tests before migrating behavior.
