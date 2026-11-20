@@ -253,3 +253,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 
 ## 2026-11-20: Secondary locale UI capability gating
 - The secondary-locale import picker is now shown only for the desktop platform family, avoiding a UI affordance on mobile/web where the secondary storage adapter is not implemented.
+
+
+## Bottleneck-focused work kickoff — M2 (2026-11-20)
+- Highest-priority blocker confirmed: user-accessible Android SAF/iOS Files operations are absent; existing mobile backup export is app-private only.
+- Implementation direction: selected-file open/save abstraction, Tauri v2 picker integration with minimal scoped permissions, explicit cancellation and error handling; migrate backup and logs, then locale secondary overlay.
+- This checkpoint is a source/config audit and plan update, not native picker implementation. Dependency lockfile sync, generated project setup and build/device validation remain prerequisites in the current tool-limited environment.
