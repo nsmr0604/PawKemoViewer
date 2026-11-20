@@ -6,6 +6,7 @@ import { loadFollows, removeFollow, syncFollowsWithAccount } from "../follows"
 import { ErrorBox, Empty, PostGrid, fmtDate, CreatorAvatar } from "../components"
 import { navigate } from "../router"
 import { t } from "../i18n"
+import { getPlatformRuntime } from "../platform/runtime"
 
 /** NEW を表示する投稿の公開日時の範囲 (直近 7 日)。 */
 const NEW_POST_WINDOW_MS = 7 * 24 * 60 * 60_000
@@ -48,12 +49,12 @@ export function FavoritesPage() {
   const { sessionKey } = getSettings()
   // 選択タブを保存しておき、次回起動時に復元する (FANBOX Viewer「ホーム既定タブ」型)
   const [tab, setTabState] = useState<"follows" | "account">(() => {
-    const t = localStorage.getItem("pawkemo-fav-tab")
+    const t = (getPlatformRuntime().services.storage ?? localStorage).get("pawkemo-fav-tab")
     return t === "account" ? "account" : "follows"
   })
   const setTab = (t: "follows" | "account") => {
     setTabState(t)
-    localStorage.setItem("pawkemo-fav-tab", t)
+    (getPlatformRuntime().services.storage ?? localStorage).set("pawkemo-fav-tab", t)
   }
   const [follows, setFollows] = useState<FollowState[]>([])
   const [accountFavs, setAccountFavs] = useState<AccountFavorite[] | null>(null)
