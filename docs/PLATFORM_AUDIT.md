@@ -98,3 +98,9 @@ Browser APIs that are inherently UI interaction (DOM, resize, keyboard, scroll a
 ### Audit caveat
 
 This audit is based on selected module source inspection and text pattern checks, not a full AST scan. Dynamic invocations, indirect imports, other browser API usage and all Rust platform branches still need to be examined before Stage 1 service migration.
+
+
+## Current branch audit follow-up (PR #11)
+- IndexedDB opening is behind the platform adapter; transaction operations remain feature-owned.
+- Two transaction helpers were tightened to await transaction completion (creator database generic helper and icon-cache reads), with explicit abort/error handling.
+- This remains a selective inspection, not a comprehensive AST/static scan. Direct native commands, browser UI APIs, and all remaining storage consumers require further audit.
