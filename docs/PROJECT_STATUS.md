@@ -277,3 +277,11 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - App now registers the platform back-request listener once at component mount rather than recreating it on every route path change. This reduces listener churn and avoids repeated asynchronous native registration/unregistration races during navigation.
 - The callback still uses the platform-provided `canGoBack` signal; when history is unavailable it invokes the adapter exit operation. No change to platform-specific exit behavior.
 - Source-level correction only. No build, typecheck, automated test, or device verification was run. M2 shared-storage integration and remaining lifecycle/permissions validation remain open.
+
+
+## Backup restore validation increment (2026-11-20)
+- Backup parsing now rejects malformed top-level settings/follows/seen types and unsupported future or invalid versions, while retaining compatibility for version 1 payloads.
+- Restore normalizes/deduplicates follow entries, restricts imported services to FANBOX/Patreon, bounds identifiers and display names, and fills missing creator names safely.
+- Read-state restore now validates key shape against supported services, deduplicates keys, and rejects oversized IDs; timestamps are normalized to finite nonnegative values.
+- Settings restoration applies a per-field validator for booleans/enums/timeout/locale/session-key rather than blindly copying arbitrary values into live settings.
+- Commits `72a52585` and `6581646f`. Source review only; no build/typecheck/test/device verification performed. M2 native picker/SAF/Files and M3 mobile secondary locale remain unresolved.
