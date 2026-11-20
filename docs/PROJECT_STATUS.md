@@ -107,3 +107,8 @@
 - Creator icon cache database (`pawkemo-icons`) now opens through PlatformRuntime's IndexedDatabaseService instead of calling IndexedDB directly.
 - Creator-cache DB opening resets its cached promise on failure, allowing retry, and closes the connection on versionchange to avoid blocking upgrades.
 - These are source changes only; build and runtime validation remain pending. Other IndexedDB transaction operations remain within feature modules.
+
+
+## Icon database retry correction
+- Icon-cache database open failures no longer remain cached as a rejected promise; subsequent calls may retry. The DB connection also closes on versionchange.
+- Validation remains pending.
