@@ -124,3 +124,13 @@
 - The shared transaction helper in `src/db.ts` now captures request results but resolves successful operations only after the transaction's `complete` event. Transaction error/abort reject paths are explicit.
 - Icon-cache reads similarly wait for transaction completion, rather than resolving on request success alone.
 - This reduces the risk of reporting write/read operations complete before the transaction lifecycle settles. Source-only change; validation remains unconfirmed.
+
+
+## Latest implementation checkpoint — IndexedDB transaction semantics
+- Generic creator/seen/meta transaction helper waits for the IndexedDB transaction `complete` event before resolving, and explicitly rejects transaction errors/aborts.
+- Icon-cache reads and writes likewise handle transaction lifecycle events rather than treating request success alone as operation completion.
+- No schema or persistence-key changes. Build/typecheck/device validation has not been run.
+
+## Next work
+- Continue auditing platform-specific lifecycle and storage consumers; avoid conflating UI/browser event APIs with OS capability services.
+- Native Android SAF / iOS Files secondary-storage integration and layered locale overlay remain high-priority but require validated native project/plugin configuration.
