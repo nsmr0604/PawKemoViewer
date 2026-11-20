@@ -114,3 +114,8 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - The icon cache (`pawkemo-icons`) was moved to the IndexedDatabaseService adapter boundary, so both the creator search/seen database and icon-cache database opening are now platform-mediated.
 - The creator DB open promise is cleared after failure to permit retry; its connection closes on versionchange. This does not migrate transaction code or change DB schemas.
 - Validation has not yet been performed. Next work remains transaction-service boundaries, native shared-storage (Android SAF / iOS Files), layered locale, and remaining consumer audit.
+
+
+## Icon database retry correction
+- Icon-cache database open failures no longer remain cached as a rejected promise; subsequent calls may retry. The DB connection also closes on versionchange.
+- Validation remains pending.
