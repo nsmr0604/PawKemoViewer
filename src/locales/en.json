@@ -318,5 +318,9 @@
   "settings.loginStatus.loggedOut": "Not logged in / invalid session",
   "settings.loginStatus.unknown": "Could not verify (check your connection)",
   "settings.developerSessionTitle": "Developer: session ID login",
-  "settings.developerSessionDesc": "For development and diagnostics when normal login is unavailable. Enter the pawchive.pw session cookie value to test and save it."
+  "settings.developerSessionDesc": "For development and diagnostics when normal login is unavailable. Enter the pawchive.pw session cookie value to test and save it.",
+  "settings.developerTools": "Developer tools",
+  "settings.developerToolsDesc": "Hidden by default. Show development and diagnostic controls only when needed.",
+  "settings.developerToolsOn": "Visible",
+  "settings.developerToolsOff": "Show"
 }
