@@ -248,3 +248,6 @@
 - [x] `debug-diag` feature で全出力コードを cfg 制御し、正式版ビルドから除外
 - [ ] Android debug APK を実機で起動し、`adb logcat` で request / response body を確認
 - [ ] Android release build (feature 無し) で Full ログコードが無いことをビルド確認
+
+
+> Android API logcat 実装追記 (2026-11-20): `src-tauri/src/lib.rs` の `api_request` に Full 限定の request / response body / HTTP status / transport error ログを追加。Tauri log plugin の Android Stdout target を使用し、約3 KB の UTF-8 chunk 単位で出力。Cookie / session ID / Authorization / login form credentials は出力対象外。debug APK の logcat 実機確認と正式版ビルド確認は未実施。実装コミット `d7ec9d9`、Structured logger への整理 `cbea913`。
