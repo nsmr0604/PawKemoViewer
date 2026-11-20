@@ -17,7 +17,7 @@ import { initReactI18next } from "react-i18next"
 import { invoke } from "@tauri-apps/api/core"
 // 日本語は静的 import (JS に埋め込み)。外部ファイルや言語ファイルの喪失に依存しない
 import ja from "./locales/ja.json"
-import { logWarn } from "./log"
+import { logWarn } from "./log"\nimport { getPlatformRuntime } from "./platform/runtime"
 
 export type Locale = string
 type Dict = Record<string, string>
