@@ -292,3 +292,12 @@
 - [x] API transport error / response body read error の Full ログもサニタイズ済み URL を使用
 - [ ] この修正を含む最新 Android Actions の完了結果を確認
 - [ ] Android 実機で Lite / Full のログファイル・logcat・秘匿値マスキングを確認
+
+
+## Full HTTP request body diagnostics (2026-11-20)
+- [x] Full は pkv proxy の outgoing POST body も記録。text / JSON / form-urlencoded はチャンク分割し、password / passwd / token / secret / session / auth / credential / API key / JWT 等をマスキング
+- [x] Pawchive login POST は request headers / redacted form body / response headers / response body を記録。username/password の値は記録しない
+- [x] ログイン後の session validation API request / response と creator icon request / response headers を Full ログ対象に追加
+- [x] request body は logcat と app_data/logs/pawchive.log の両方へ出力
+- [ ] Rust / Android debug build の CI 完了確認と実機ログ検証が必要
+- Note: api_request の現行 Tauri command は GET/POST/DELETE の method を受け取るが payload 引数を持たず、現状の API POST は空 body。将来 payload 引数が追加された場合は同じ request-body logger に接続すること。
