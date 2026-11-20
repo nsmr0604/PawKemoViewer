@@ -243,3 +243,7 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 ## Locale import correction
 - Fixed `.json` filename extension parsing for both app-private and secondary locale file import handlers; ordinary selected locale filenames now yield the locale code before validation. Commit `5792d089`.
 - Source-level only; validation unconfirmed.
+
+
+## Secondary locale validation reporting fix
+- The refresh flow now includes invalid secondary-area filenames reported by the native listing service (prefixed `secondary:`), rather than silently dropping those listing-level errors. Commit `ccbf20dc`; validation unconfirmed.
