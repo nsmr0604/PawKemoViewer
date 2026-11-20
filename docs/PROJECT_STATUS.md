@@ -231,3 +231,10 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - GitHub content search again did not locate generated AndroidManifest/iOS project source or dialog-plugin setup. `docs/BUILD.md` documents `tauri android init` as the generation workflow, suggesting native project scaffolding is reproducible locally rather than committed, but this cannot be verified remotely in this session.
 - Refrained from adding an uncoordinated plugin dependency or native permission/config changes without package-lock synchronization and a reproducible generated-project check; this could introduce build-breaking changes. M2 remains active and this is a dependency/config validation blocker rather than implementation completion.
 - Next action: establish/reproduce `tauri android init` locally and dependency install/lockfile update, then implement picker-based file import/export with scoped capabilities and platform-specific handling; batch validate once several slices are ready.
+
+
+## Continuation checkpoint — native picker setup
+- PR #11 remains open/draft/unmerged. Current Android workflow runs `npx tauri android init` during CI; generated native project files are ephemeral.
+- Dialog plugin is not configured in the fetched package/Cargo/Tauri/capability files. Mobile export remains app-private.
+- Safe native picker implementation still requires synchronized package-lock/dependency and generated platform configuration; no speculative dependency wiring was committed.
+- M2 remains highest priority; build/typecheck/device validation unconfirmed.
