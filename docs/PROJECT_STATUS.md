@@ -326,9 +326,9 @@
 
 ## Platform Foundation ongoing handoff (2026-11-20)
 
-- Stage 0 audit is partial; Stage 1 bootstrap scaffolding has been added on PR #11 (contracts, runtime descriptor/family selection, initialization before UI mount). Service consumers have not migrated.
+- Stage 0 audit is partial; Stage 1 now includes typed contracts for storage, file export, clipboard, lifecycle, permissions, family service factories, a Web localStorage/clipboard adapter, and central family dispatch. Native family factories remain empty and consumers have not migrated.
 - Interim handoff: `docs/PLATFORM_PROGRESS_2026-11-20.md`; audit: `docs/PLATFORM_AUDIT.md` on PR #11.
 - PR #11 open/draft, docs-only, branch `refactor/platform-foundation-phase1`, head is updated on each progress commit. Do not merge without authorization.
 - Audited entry points include `src/platform.ts`, App/API/DB/log/debug/backup/i18n/icons/follows/history/router/hooks/favstate/debug-log and DeveloperDiagnostics, plus Rust `src-tauri/src/lib.rs`.
-- Next: verify scaffold compile assumptions; refine typed service contracts, wire family runtimes/adapters, then migrate consumers gradually. Preserve data/network behavior. CI/device verification remains unperformed for these changes.
+- Next: compile/test assumptions in CI, implement native scoped storage/export adapters, then migrate consumers gradually. Preserve data/network behavior. CI/device verification remains unperformed for these changes.
 - Intermediate handoff docs will be dated/versioned to maintain continuity. No CI/build/device success claimed.
