@@ -22,7 +22,7 @@ export interface StorageLocationService {
 }
 
 export interface LocaleFileSet { dir: string; files: { code: string; json: string }[]; invalid: string[] }
-export interface LocaleService { listExternal(): Promise<LocaleFileSet | null> }
+export interface LocaleService {\n  listExternal(): Promise<LocaleFileSet | null>\n  write(code: string, json: string): Promise<void>\n  delete(code: string): Promise<boolean>\n}
 
 export interface FileExportService {
   exportText(filename: string, content: string): Promise<string>
