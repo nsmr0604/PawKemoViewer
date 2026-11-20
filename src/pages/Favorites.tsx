@@ -275,7 +275,8 @@ export function FavoritesPage() {
       {tab === "follows" && (
         <>
           <div className="hint-row">
-            <span>{t("favorites.desc")}</span>\n            {syncResult && <span role="status">{syncResult}</span>
+            <span>{t("favorites.desc")}</span>
+            {syncResult && <span role="status">{syncResult}</span>}
             <button
               className="btn"
               disabled={checking}
