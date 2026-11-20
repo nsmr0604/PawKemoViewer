@@ -16,13 +16,13 @@
   - 直近の追加機能: 設定画面の情報設計を整理し、キャッシュ項目を統合。ホーム投稿一覧のサービスフィルターと公式 `hide=(ai)` AI除外、クリエイター一覧の更新日 / 人気 / 名前ソートとサービスフィルター。ホームの任意タグフィルターは実装しない。Android CIで検出されたCreators.tsxの日時パース型エラーを修正
   - 直近の実装修正: 認証状態表示・開発者向けセッション設定 `0b0de94` / `22c9403`、未キャッシュ認証検証 `d9d870e` / `67f8805`、IDログイン文言・引き継ぎ更新 `a30455a` 以降。Creators.tsx の日時パース修正 `3f06879` も含む
   - AI除外は初期値 OFF。設定を localStorage / バックアップに保存し、ホームの一覧・検索 API に適用
-  - 旧 head `cf48a4e` の Android Actions run `44640938963` は failure。`src/pages/Creators.tsx:28` の `Date.parse(string | number)` 型エラーで Frontend build が停止したため、修正コミット `3f06879` で `Date.parse(String(value))` に変更。後続のAndroid Actions run `44644558325` (run #154、SHA `67f8805`) は次のpushに伴い一度cancelledとなったため、build job `135984151754` を再実行。2026-11-20 の再確認時点で in_progress。認証変更を含むビルド成功は未確定
-  - 状態: Open。2026-11-20 時点の最新HEAD `5885984` で GitHub API は `mergeable=true` を返却。競合は現時点で検出されていない
+  - 旧 head `cf48a4e` の Android Actions run `44640938963` は failure。`src/pages/Creators.tsx:28` の `Date.parse(string | number)` 型エラーで Frontend build が停止したため、修正コミット `3f06879` で `Date.parse(String(value))` に変更。後続の認証・ビルド分離変更に伴うAndroid run #161 / #165 / #168 / #170 / #172 は後続pushでcancelled。最新 run #173 (`44645386866`, SHA `cd3e141`) は pending。最新変更を含むCI成功は未確認
+  - 状態: Open。2026-11-20 時点の最新HEAD `cd3e141` で GitHub API は `mergeable=true` を返却。競合は現時点で検出されていない
   - バージョン番号は変更していない
   - **マージしないこと。ユーザーから明示的な依頼があるまで PR は open のままにする。**
 - PR #7 の Android Actions: [run 44634915879](https://github.com/nsmr0604/pawchive/actions/runs/44634915879)
   - 対象 SHA はドキュメント追加前の `8036d31bf7aa8f88583e154378551a6c3cc493b0`
-  - PR run `44644558325` (run #154) はcancelled後に build job を再実行中。結果確認が必要
+  - 最新 run #173 (`44645386866`) は pending。完了後に TypeScript / Android / Cargo feature の成否を確認
   - 成功・失敗は確定していない。作業開始時に Actions の最新状態を確認すること
 - PC 向け Tauri workflow は現状 main への push でのみ実行される。PR #7 では PC ビルド未検証。マージして CI を起動してはならない。ユーザーの明示指示を待つ
 - 実機での UI/UX の視覚確認は未完了
@@ -35,8 +35,9 @@
 - [x] Rust の `debug_append_log` / `debug_open_log_folder` は既存 Cargo feature `debug-diag` のみで定義・登録。request/method/status/icon URL の `println!` も同 feature で囲み、製品版から除外
 - [x] PC / Android の CI debug ビルドで `--features debug-diag` を注入。正式リリースは `VITE_DEBUG_DIAG=0` + Cargo feature 無し
 - [x] `npm run tauri:dev` / `npm run tauri:android:dev` も `debug-diag` feature を指定。Vite `.env.development` でフロント診断を常時有効
-- [ ] PR #7 の Android / PC Actions でフロント・Rust双方の feature 分岐をビルド確認。PC PR workflow は未設定のため、PR段階ではAndroidのみ検証可能
+- [ ] Android Actions run #173 (`44645386866`) でフロント・Rust双方の feature 分岐をビルド確認。PC PR workflow は未設定のため、PR段階ではAndroidのみ検証可能
 - [ ] 製品版ビルド成果物を展開し、DeveloperDiagnostics / debug-log / debug Tauri commands が含まれないことを確認
+
 ## 2. PR #7 で実施した内容
 
 ### ログイン導線・開発者向け認証 (2026-11-20)
