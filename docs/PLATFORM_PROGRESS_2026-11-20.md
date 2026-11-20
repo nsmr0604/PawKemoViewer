@@ -21,9 +21,15 @@ Stage 0 audit partial. Stage 1 runtime scaffolding and typed service contracts/f
 - Existing consumers are not yet migrated to the resolver; command is not yet wired into frontend runtime services.
 - No Rust/frontend build or device verification performed.
 
+## Frontend family wiring increment
+- Desktop and Mobile family adapters now expose `StorageLocationService` and call the Rust resolver through Tauri `invoke`.
+- Mobile adapter intentionally refuses secondary-accessible requests and returns `null`; primary-private requests use the Rust command.
+- Resolver failures are handled as `null` with a warning, keeping consumers responsible for fallback.
+- Consumer migration is still pending. No build/typecheck/device verification performed.
+
 ## Limitations
 - Native location resolution not implemented.
-- Desktop/Mobile family factories empty; Web adapter currently localStorage/Clipboard.
+- Desktop/Mobile adapters now expose scoped resolver (mobile secondary unavailable); Web adapter currently localStorage/Clipboard.
 - Consumer migration pending.
 - No CI/build/typecheck/device verification confirmed. With pull_request trigger disabled, PR builds must be manually dispatched or wait for main push.
 
