@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import { invoke } from "@tauri-apps/api/core"
-import { logError } from "./log"
+import { logError } from "./log"\nimport { getPlatformRuntime } from "./platform/runtime"
 
 const DB_NAME = "pawkemo-icons"
 const STORE = "icons"
@@ -26,15 +26,10 @@ const memory = new Map<string, string | null>()
 const inflight = new Map<string, Promise<string | null>>()
 
 function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(STORE)) {
-        req.result.createObjectStore(STORE)
-      }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+  const service = getPlatformRuntime().services.indexedDatabase
+  if (!service) return Promise.reject(new Error("IndexedDB platform service unavailable"))
+  return service.open(DB_NAME, 1, (database) => {
+    if (!database.objectStoreNames.contains(STORE)) database.createObjectStore(STORE)
   })
 }
 
