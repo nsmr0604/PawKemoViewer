@@ -45,3 +45,10 @@ Unfinished roadmap ordered by impact and dependencies:
 4. M6 batch validation.
 
 Browser-only lifecycle slice was implemented: web adapter can subscribe to popstate as a back-navigation event and explicitly rejects unsupported exit. Native lifecycle remains outstanding. No test/build performed.
+
+
+## Re-audit notes
+- `src/App.tsx` already registers Tauri `onBackButtonPress` for Android and calls history.back() or exit(0), unregistering on cleanup. M5 should consolidate/integrate this into the LifecycleService contract rather than duplicate it.
+- `src/platform/families/web.ts` popstate listener service exists but currently no app consumer wires it.
+- Native secondary shared storage remains unavailable; current `resolve_storage_location` returns null on mobile.
+- `src/i18n.ts` loads private external locale JSON over bundled locale dictionaries; secondary accessible folder overlay is not yet implemented.
