@@ -79,7 +79,7 @@ export function useScrollMemory(key: string, ready: boolean) {
       const map = readMap()
       delete map[prevKey.current]
       try {
-        sessionStorage.setItem(SCROLL_KEY, JSON.stringify(map))
+        (getPlatformRuntime().services.sessionStorage ?? sessionStorage).set(SCROLL_KEY, JSON.stringify(map))
       } catch {
         /* ignore */
       }
