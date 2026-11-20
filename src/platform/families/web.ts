@@ -18,7 +18,11 @@ const files: FileExportService = {
   },
 }
 
-const locale: LocaleService = { listExternal: async () => null }
+const locale: LocaleService = {
+  listExternal: async () => null,
+  write: async () => { throw new Error("External locale storage unavailable in browser runtime") },
+  delete: async () => false,
+}
 
 /** Browser fallback adapter bundle. Services are selectively implemented during migration. */
 export function createWebServices(): PlatformServices {
