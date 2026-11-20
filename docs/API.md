@@ -149,3 +149,9 @@ WebView から Referer を設定できないため、リファラーチェック
 
 
 - Lite のアプリ内ログリングバッファも error のみを保持し、API 失敗は宛先 URL と `BODY=` のレスポンス本文のみを表示する。info / warn は Lite では破棄する。
+
+
+#### ログの秘匿情報マスキング
+- Full の URL ログでは query の token / secret / session / auth / signature / password / passwd / jwt 等の値を置換し、URL user-info も除去する
+- HTTP ヘッダーでは Cookie / Set-Cookie / Authorization / Proxy-Authorization / token / session / auth / API key / password 等に該当する値を置換する
+- ログ本文には個人情報・投稿データが含まれる可能性があり、認証情報のマスキングとは別に共有前の確認が必要
