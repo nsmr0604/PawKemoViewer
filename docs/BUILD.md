@@ -115,3 +115,10 @@ npm run tauri:build                            # ローカルリリースバン�
 - **Full (デバッグビルド専用)**: 詳細ログファイル追記、ログフォルダを開く、バックアップJSONダンプ、APIレスポンス本文などの詳細診断
 - Full はフロントの VITE_DEBUG_DIAG=1 と Rust Cargo feature debug-diag の両方で有効。正式リリースでは両方を指定せず、UI・Rustコマンド・詳細ログ処理をコンパイル対象から除外する
 - 製品版で Lite を有効にしても Full 機能は有効化されない
+
+
+### Android API logcat (Full)
+- PR / push の Android デバッグビルドは workflow が `--features debug-diag` を付けるため、API request / response body が logcat に出力される
+- 正式リリース workflow (`inputs.release=true`) は feature を付けず、API本文ログを含めない
+- 実機確認: `adb logcat | grep 'Pawchive::API'` で対象ログを絞り込める (Android logger の実際の tag 表示により grep 文字列は調整)
+- API本文には投稿・アカウント等のデータが含まれる可能性がある。デバッグログを共有する前に内容を確認する
