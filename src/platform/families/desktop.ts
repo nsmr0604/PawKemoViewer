@@ -25,6 +25,8 @@ const storageLocations: StorageLocationService = {
 }
 
 const locale: LocaleService = {
+  listSecondary: async () => { try { return await invoke<import("../contracts").LocaleFileSet>("list_secondary_locale_files") } catch { return null } },
+  writeSecondary: async (code, json) => { await invoke("write_secondary_locale_file", { code, json }) },
   listExternal: async () => { try { return await invoke<import("../contracts").LocaleFileSet>("list_locale_files") } catch { return null } },
   write: async (code, json) => { await invoke("write_locale_file", { code, json }) },
   delete: async (code) => await invoke<boolean>("delete_locale_file", { code }),
