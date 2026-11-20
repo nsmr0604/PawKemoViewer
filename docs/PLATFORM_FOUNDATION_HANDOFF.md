@@ -198,3 +198,8 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - Restore validation now bounds read-state post IDs and cached newest-post metadata fields.
 - Restore now completes the atomic IndexedDB read-state replacement before overwriting follows, avoiding follow-list mutation when the read-state transaction fails.
 - Validation/device testing remains outstanding.
+
+
+## 2026-11-20: Atomic locale writes
+- Native locale writes now stage into a unique sibling temporary file, flush it, then rename to the destination; both private and desktop secondary locale paths use the helper.
+- Intended to avoid partially written locale JSON if interrupted. Runtime/build compatibility still needs validation, especially platform-specific rename replacement behavior.
