@@ -14,15 +14,15 @@
 - 現在の作業 PR: [#7 UX/UI刷新と通信・描画処理の効率化](https://github.com/nsmr0604/pawchive/pull/7)
   - ブランチ: `improve/ux-ui-codebase`
   - 直近の追加機能: 設定画面の情報設計を整理し、キャッシュ項目を統合。ホーム投稿一覧のサービスフィルターと公式 `hide=(ai)` AI除外、クリエイター一覧の更新日 / 人気 / 名前ソートとサービスフィルター。ホームの任意タグフィルターは実装しない。Android CIで検出されたCreators.tsxの日時パース型エラーを修正
-  - 直近の実装修正: 設定画面再編成 `fa0542f98b63e4f6414cc00b0f94d70039faedab`、日本語/英語・引き継ぎ更新 `89d835fd99bd0f96564e4c50467ea5b5bc2ec69b`。Creators.tsx の日時パース修正 `3f06879` も含む
+  - 直近の実装修正: 認証状態表示・開発者向けセッション設定 `0b0de94` / `22c9403`、未キャッシュ認証検証 `d9d870e` / `67f8805`、IDログイン文言・引き継ぎ更新 `a30455a` 以降。Creators.tsx の日時パース修正 `3f06879` も含む
   - AI除外は初期値 OFF。設定を localStorage / バックアップに保存し、ホームの一覧・検索 API に適用
-  - 旧 head `cf48a4e` の Android Actions run `44640938963` は failure。`src/pages/Creators.tsx:28` の `Date.parse(string | number)` 型エラーで Frontend build が停止したため、修正コミット `3f06879` で `Date.parse(String(value))` に変更。ドキュメント更新を含む head `589c855` の Android Actions run `44641284559` は確認時点で in_progress。完了後に最新HEADのCIを再確認する
-  - 状態: Open。最新HEAD `89d835f` で GitHub API は `mergeable=true` を返却。競合は現時点で検出されていない
+  - 旧 head `cf48a4e` の Android Actions run `44640938963` は failure。`src/pages/Creators.tsx:28` の `Date.parse(string | number)` 型エラーで Frontend build が停止したため、修正コミット `3f06879` で `Date.parse(String(value))` に変更。後続のAndroid Actions run `44644558325` (run #154、SHA `67f8805`) は次のpushに伴いAndroid SDK setup中にcancelled。認証変更を含むビルド成功は未確認
+  - 状態: Open。2026-11-20 時点の最新HEAD `5885984` で GitHub API は `mergeable=true` を返却。競合は現時点で検出されていない
   - バージョン番号は変更していない
   - **マージしないこと。ユーザーから明示的な依頼があるまで PR は open のままにする。**
 - PR #7 の Android Actions: [run 44634915879](https://github.com/nsmr0604/pawchive/actions/runs/44634915879)
   - 対象 SHA はドキュメント追加前の `8036d31bf7aa8f88583e154378551a6c3cc493b0`
-  - 2026-11-20 時点の前回確認では `in_progress`。ドキュメントのみの後続コミットに対する新しい run は確認できていない
+  - 直近のPR run `44644558325` (run #154) はcancelled。最新HEADに対する成功runは未確認
   - 成功・失敗は確定していない。作業開始時に Actions の最新状態を確認すること
 - PC 向け Tauri workflow は現状 main への push でのみ実行される。PR #7 では PC ビルド未検証。マージして CI を起動してはならない。ユーザーの明示指示を待つ
 - 実機での UI/UX の視覚確認は未完了
