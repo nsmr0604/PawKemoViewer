@@ -69,7 +69,7 @@ export function logApiFailure(path: string, method: string, message: string) {
   }
 
   // 製品版ではレスポンス本文・内部スタックを保存せず、基本情報だけを残す。
-  const status = message.match(/STATUS=(\\d{3})/)?.[1]
+  const status = message.match(/STATUS=(\d{3})/)?.[1]
   push("error", `API失敗 ${method} ${path}${status ? ` (HTTP ${status})` : ""}`)
 }
 
