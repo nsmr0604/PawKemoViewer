@@ -69,3 +69,11 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Adjusted browser FileExportService cleanup to revoke generated object URLs after a short delay instead of synchronously in the download-click path, reducing the risk of invalidating the URL before browser download handling consumes it.
 - Source change only; download behavior is not device/browser verified.
 - Native Android SAF/iOS document-picker integration remains blocked on verified plugin/native project setup. Avoid presenting the HTML picker as shared-storage access.
+
+
+## Incremental persistence service migration — follows and search history
+- Desktop and mobile family adapters now expose the same synchronous key/value service over their WebView localStorage backing, matching the current persistence behavior while creating an explicit migration seam.
+- `follows.ts` now reads/writes follow mirror and account-migration marker through the platform storage service (fallback remains localStorage if runtime storage is absent).
+- `history.ts` now uses the platform storage service for search-history read/write/delete.
+- This is an adapter-boundary migration, not a move into native app-private database/storage; the underlying persistence backend remains localStorage.
+- Validation not performed (build/typecheck/device).
