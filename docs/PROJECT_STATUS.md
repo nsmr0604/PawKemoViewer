@@ -70,3 +70,10 @@
 - Desktop/mobile adapter bundles expose the key/value service backed by the existing WebView localStorage.
 - Follow mirror/migration marker and search-history operations now use that service instead of direct localStorage calls.
 - Existing backend semantics/data location are unchanged; this is not a native storage migration. Validation remains pending.
+
+
+## Latest increment — settings storage migration
+- Settings persistence now routes through the platform key/value storage service with a guarded localStorage fallback for pre-bootstrap access.
+- Bootstrap reloads persisted settings after platform runtime initialization, so the runtime adapter is available before settings are applied to locale/UI.
+- Existing settings key and JSON schema remain unchanged. No data migration or destructive operation.
+- Validation remains pending.
