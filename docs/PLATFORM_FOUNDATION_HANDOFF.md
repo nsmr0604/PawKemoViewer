@@ -192,3 +192,9 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 ## Backup import resource bounds (2026-11-20)
 - Backup parser rejects payloads above 5 MiB and arrays exceeding 100,000 follows or seen entries before restore work.
 - Commit `b6836d80`. Source-only, no validation performed.
+
+
+## 2026-11-20: Backup restore robustness follow-up
+- Restore validation now bounds read-state post IDs and cached newest-post metadata fields.
+- Restore now completes the atomic IndexedDB read-state replacement before overwriting follows, avoiding follow-list mutation when the read-state transaction fails.
+- Validation/device testing remains outstanding.
