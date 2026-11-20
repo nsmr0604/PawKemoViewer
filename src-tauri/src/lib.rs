@@ -57,6 +57,7 @@ async fn api_request(
         path
     );
 
+    #[cfg(feature = "debug-diag")]
     println!("REQUEST => {}", url);
 
     // タイムアウトはユーザー設定 (Settings → 接続)。1〜300 秒にクランプ
@@ -114,6 +115,7 @@ async fn api_request(
         }
     }
 
+    #[cfg(feature = "debug-diag")]
     println!("METHOD => {}", method);
 
     let response = match method.as_str() {
@@ -153,6 +155,7 @@ async fn api_request(
         .await
         .map_err(|e| e.to_string())?;
 
+    #[cfg(feature = "debug-diag")]
     println!("STATUS => {}", status);
 
     if !status.is_success() {
@@ -305,6 +308,7 @@ async fn fetch_creator_icon(
     }
 
     let url = format!("https://pawchive.pw/icons/{}/{}", service, id);
+    #[cfg(feature = "debug-diag")]
     println!("ICON REQUEST => {}", url);
 
     let client = reqwest::Client::builder()
