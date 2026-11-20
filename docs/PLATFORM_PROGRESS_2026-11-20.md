@@ -77,3 +77,10 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - `history.ts` now uses the platform storage service for search-history read/write/delete.
 - This is an adapter-boundary migration, not a move into native app-private database/storage; the underlying persistence backend remains localStorage.
 - Validation not performed (build/typecheck/device).
+
+
+## Incremental settings persistence migration
+- `src/api.ts` settings reads/writes now use the platform KeyValueStorage service, with a guarded fallback when the runtime is not initialized.
+- Bootstrap explicitly reloads settings once runtime adapters are initialized, preventing the module-load ordering issue from causing settings to remain at defaults.
+- Preserves existing `pawkemo-settings` key and JSON format; no destructive migration.
+- Build/typecheck/device validation remains unverified.
