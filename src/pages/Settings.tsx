@@ -199,11 +199,12 @@ export function SettingsPage() {
       const code = file.name.replace(/\.json$/i, "")
       if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) { failures.push(file.name); continue }
       try {
+        if (file.size > 1024 * 1024) { failures.push(file.name + " (1 MiB超過)"); continue }
         const json = await file.text()
-        if (!parseLocaleJson(json)) { failures.push(file.name); continue }
+        if (!parseLocaleJson(json)) { failures.push(file.name + " (JSON形式不正)"); continue }
         await service.write(code, json)
         imported++
-      } catch { failures.push(file.name) }
+      } catch { failures.push(file.name + " (保存失敗)") }
     }
     await refreshLocales()
     setLocaleList(availableLocales())
@@ -222,11 +223,12 @@ export function SettingsPage() {
       const code = file.name.replace(/\.json$/i, "")
       if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) { failures.push(file.name); continue }
       try {
+        if (file.size > 1024 * 1024) { failures.push(file.name + " (1 MiB超過)"); continue }
         const json = await file.text()
-        if (!parseLocaleJson(json)) { failures.push(file.name); continue }
+        if (!parseLocaleJson(json)) { failures.push(file.name + " (JSON形式不正)"); continue }
         await service.writeSecondary(code, json)
         imported++
-      } catch { failures.push(file.name) }
+      } catch { failures.push(file.name + " (保存失敗)") }
     }
     await refreshLocales()
     setLocaleList(availableLocales())
