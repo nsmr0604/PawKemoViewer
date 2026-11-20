@@ -165,3 +165,8 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Android workflow uses `npm ci`, then regenerates the native Android project with `npx tauri android init`; generated files are not a committed setup baseline.
 - Native dialog plugin not found in inspected dependency/config files. No plugin wiring added without lockfile sync and build environment.
 - M2 (user-directed native import/export and secondary-accessible storage) remains open; source/device validation is not claimed.
+
+
+## Locale import correction
+- Fixed `.json` filename extension parsing for both app-private and secondary locale file import handlers; ordinary selected locale filenames now yield the locale code before validation. Commit `5792d089`.
+- Source-level only; validation unconfirmed.
