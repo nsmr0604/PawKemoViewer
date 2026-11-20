@@ -320,3 +320,7 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 
 ## 2026-11-20: Locale import bounds and diagnostics
 - Settings import flows for private and secondary locale JSON now reject files larger than 1 MiB before reading, and report per-file validation/save failure reasons.
+
+
+## 2026-11-20: Secondary locale UI capability gating
+- The secondary-locale import picker is now shown only for the desktop platform family, avoiding a UI affordance on mobile/web where the secondary storage adapter is not implemented.
