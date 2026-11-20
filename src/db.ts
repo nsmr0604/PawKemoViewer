@@ -1,4 +1,4 @@
-// IndexedDB ヘルパー: クリエイターキャッシュと未読管理
+// IndexedDB ヘルパー: クリエイターキャッシュと未読管理\nimport { getPlatformRuntime } from "./platform/runtime"
 // 注意: DB_NAME は v0.3.0 (PawKemoViewer 改名) で "pawkemoviewer" に変更。
 // v0.2.x からの引継ぎは バックアップ書き出し→読み込み で行う
 
@@ -12,22 +12,16 @@ let dbPromise: Promise<IDBDatabase> | null = null
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise
   dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      const db = req.result
+    const service = getPlatformRuntime().services.indexedDatabase
+    if (!service) { reject(new Error("IndexedDB platform service unavailable")); return }
+    service.open(DB_NAME, DB_VERSION, (db) => {
       if (!db.objectStoreNames.contains("creators")) {
         const s = db.createObjectStore("creators", { keyPath: "key" })
         s.createIndex("name", "nameLower")
       }
-      if (!db.objectStoreNames.contains("seen")) {
-        db.createObjectStore("seen", { keyPath: "key" })
-      }
-      if (!db.objectStoreNames.contains("meta")) {
-        db.createObjectStore("meta", { keyPath: "key" })
-      }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+      if (!db.objectStoreNames.contains("seen")) db.createObjectStore("seen", { keyPath: "key" })
+      if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" })
+    }).then(resolve, reject)
   })
   return dbPromise
 }
