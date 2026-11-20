@@ -1,6 +1,12 @@
 import { invoke } from "@tauri-apps/api/core"
 import type { ClipboardService, FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService } from "../contracts"
 
+const storage = typeof localStorage !== "undefined" ? {
+  get: (key: string) => localStorage.getItem(key),
+  set: (key: string, value: string) => localStorage.setItem(key, value),
+  remove: (key: string) => localStorage.removeItem(key),
+} : undefined
+
 const logging = { append: (line: string) => { void import("../../debug").then(({ debugAppendLog }) => debugAppendLog(line)) } }
 
 const storageLocations: StorageLocationService = {
@@ -29,5 +35,5 @@ const files: FileExportService = { exportText: (filename, content) => invoke<str
 
 /** Desktop family centralizes native path resolution behind the common contract. */
 export function createDesktopServices(): PlatformServices {
-  return { storageLocations, logging, files, locale, clipboard }
+  return { storage, storageLocations, logging, files, locale, clipboard }
 }
