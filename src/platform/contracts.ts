@@ -48,10 +48,13 @@ export interface PermissionService {
   request(permission: string): Promise<boolean>
 }
 
+export interface IndexedDatabaseService { open(name: string, version: number, upgrade: (db: IDBDatabase) => void): Promise<IDBDatabase> }
+
 /** Service integration points; optional until each migration is completed. */
 export interface SessionStorageService { get(key: string): string | null; set(key: string, value: string): void; remove(key: string): void }
 
 export interface PlatformServices {
+  indexedDatabase?: IndexedDatabaseService
   sessionStorage?: SessionStorageService
   storage?: KeyValueStorage
   storageLocations?: StorageLocationService
