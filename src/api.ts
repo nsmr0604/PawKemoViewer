@@ -45,6 +45,8 @@ export interface Settings {
   excludeFanboxCover: boolean
   /** サイト全体の投稿一覧・検索で AI 分類の投稿を除外する */
   excludeAiPosts: boolean
+  /** 製品版で開発項目を表示する (既定 false)。 */
+  developerToolsEnabled: boolean
   /** 表示言語 (既定 ja)。変更すると SETTINGS_CHANGED_EVENT で各画面が再描画される */
   locale: Locale
 }
@@ -76,6 +78,7 @@ function defaultSettings(): Settings {
     postFileListMode: false,
     excludeFanboxCover: false,
     excludeAiPosts: false,
+    developerToolsEnabled: false,
     locale: "ja",
   }
 }
