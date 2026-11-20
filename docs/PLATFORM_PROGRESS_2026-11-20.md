@@ -90,3 +90,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Added a distinct `SessionStorageService` contract and wired desktop/mobile/web adapters to the existing WebView/browser `sessionStorage` implementation.
 - Scroll restoration (`src/hooks.ts`) now reads, writes, and removes its scroll map through the session-storage service. The session-only semantics and key remain unchanged; this does not claim native or cross-session storage.
 - Validation is pending (no build/typecheck/device checks run).
+
+
+## Latest persistence consumer increment
+- FollowButton creator-name enrichment now writes the follow mirror through the PlatformRuntime key/value storage service.
+- Favorites page remembered-tab read/write now also uses the service. Keys and values are unchanged; fallback localStorage remains for adapter absence.
+- This does not alter IndexedDB schema or native storage behavior. Validation remains pending.
