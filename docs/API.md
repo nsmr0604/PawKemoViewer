@@ -129,3 +129,12 @@ WebView から Referer を設定できないため、リファラーチェック
 - 通信エラー / レスポンス本文読取エラーも記録する
 - Cookie / Authorization ヘッダー / session ID / ログインID・パスワードは出力しない。ログイン専用 `login_request` は対象外
 - 製品版では `debug-diag` feature が無いため、ログ出力コード自体をコンパイルしない
+
+
+### Full 開発診断: HTTP プロキシ通信ログ
+- Pawchive API (`api_request`) と `pkv://` 経由の外部 HTTP 通信について、送信リクエスト / 受信レスポンスの method・URL・HTTP status・ヘッダーを記録する
+- ヘッダーは1行ずつ記録。Cookie / Set-Cookie / Authorization / Proxy-Authorization / API key / auth token は値を `<redacted>` に置換する
+- 外部プロキシのテキスト / JSON / XML / HTML 応答本文は既存の Full 本文ロガーで記録。画像などのバイナリ本文は内容を出さず、サイズのみ記録
+- リクエスト本文は現状記録しない。ログイン専用 `login_request` は引き続き対象外
+- Full / Cargo feature `debug-diag` のみ。正式版にはログコードを含めない
+- 本文には個人情報・投稿情報等が含まれる可能性があるため、ログを外部共有する前に内容を確認すること
