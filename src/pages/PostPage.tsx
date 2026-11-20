@@ -14,6 +14,7 @@ import { navigate } from "../router"
 import { FollowButton } from "../components/FollowButton"
 import { logError, logInfo, logWarn } from "../log"
 import { t as tr } from "../i18n"
+import { getPlatformRuntime } from "../platform/runtime"
 
 export function PostPage({
   service,
@@ -149,7 +150,7 @@ export function PostPage({
       openedAt: new Date().toISOString(),
     }
     try {
-      sessionStorage.setItem("pawkemo-current-post-context", JSON.stringify(contextRecord))
+      getPlatformRuntime().services.sessionStorage?.set("pawkemo-current-post-context", JSON.stringify(contextRecord))
     } catch {
       // sessionStorage が利用できない環境でも画面表示は継続する。
     }
