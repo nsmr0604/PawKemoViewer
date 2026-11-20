@@ -710,6 +710,50 @@ export function SettingsPage() {
       {/* ------------------------------------------------ 診断 */}
       <div id="settings-diagnostics" className="settings-section">
         <div className="section-label">{t("settings.diagnostics")}</div>
+        {DEBUG_DIAG && (
+          <>
+            <div className="setting-item">
+              <div className="setting-text">
+                <span>{t("settings.diagFlag")}</span>
+                <small>{t("settings.diagFlagDesc")}</small>
+              </div>
+              <code className="small">DEBUG_DIAG=on</code>
+            </div>
+            <div className="setting-subsection">
+              <div className="section-label">{t("settings.developerSessionTitle")}</div>
+              <p className="small">{t("settings.developerSessionDesc")}</p>
+              <label className="field">
+                <span>{t("settings.sessionLabel")}</span>
+                <input type="password" value={sessionKey} onChange={(e) => setSessionKey(e.target.value)} placeholder={t("settings.sessionPlaceholder")} autoComplete="off" />
+                <small>{t("settings.sessionHelp")}</small>
+              </label>
+              <div className="settings-actions">
+                <button className="btn" onClick={testSession}>{t("settings.testSession")}</button>
+                <button className="btn btn-primary" onClick={save}>{t("settings.save")}</button>
+                {saved && <span className="ok">{t("settings.saved")}</span>}
+                {testResult && <span className="small" role="status">{testResult}</span>}
+              </div>
+            </div>
+            <div className="setting-item">
+              <div className="setting-text">
+                <span>{t("settings.logFolder")}</span>
+                <small>{t("settings.logFolderDesc")}</small>
+              </div>
+              <button className="btn" onClick={() => debugOpenLogFolder().then((p) => setLogResult(t("settings.folderResult", { path: p }))).catch((e) => setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) })))}>{t("settings.open")}</button>
+            </div>
+            <div className="setting-item">
+              <div className="setting-text">
+                <span>{t("settings.backupDump")}</span>
+                <small>{t("settings.backupDumpDesc")}</small>
+              </div>
+              <button className="btn" onClick={() => {
+                logLong("info", "DEBUG BACKUP DUMP (manual dump):\\n" + buildBackup())
+                setLogResult(t("settings.dumped"))
+              }}>{t("settings.dump")}</button>
+            </div>
+          </>
+        )}
+
 
         <div className="setting-item">
           <div className="setting-text">
