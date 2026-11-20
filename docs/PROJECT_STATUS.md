@@ -316,3 +316,7 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 ## 2026-11-20: Locale rename replacement compatibility
 - Atomic locale-write helper now includes a fallback for platforms (notably Windows) where rename cannot replace an existing destination: it removes the old file and retries the staged rename, cleaning up temporary files on failure.
 - This fallback has a brief non-atomic replacement window; platform testing is still required.
+
+
+## 2026-11-20: Locale import bounds and diagnostics
+- Settings import flows for private and secondary locale JSON now reject files larger than 1 MiB before reading, and report per-file validation/save failure reasons.
