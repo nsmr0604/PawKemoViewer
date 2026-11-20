@@ -8,9 +8,8 @@ repository = ""
 edition = "2024"
 rust-version = "1.90"
 
-# デバッグビルド向け詳細トレースのフラグ。
-# 開発用のログ操作コマンドは製品版の設定トグルからも利用するため常時登録し、
-# HTTP request/method/status 等の詳細 println! のみ #[cfg(feature = "debug-diag")] で囲む。
+# Full 開発診断のビルドフラグ。
+# 製品版では詳細ログ操作コマンドをコンパイル・登録しない。
 [features]
 debug-diag = []
 
