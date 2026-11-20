@@ -269,3 +269,15 @@
 > 最新追記 (2026-11-20): HTTP プロキシ通信ログを追加。Rust 実装 `ac32792`、ヘッダー秘匿値の追加マスキング `2b69049`、ロケール説明 `ca0d064` / `fc10fdc`。PR #7 head `fc10fdc` に対する Android Actions run #225 (`44648823060`) は確認時点で build job in progress。成功未確認。
 
 > URL秘匿値対策 (2026-11-20): Full ログに出す URL の query parameter も token / secret / session / auth / api_key / signature 等のキーを検出して値をマスキング。実装コミット `f3f91df`。
+
+## Lite / Full ネイティブ通信ログ・ファイル保存 (2026-11-20)
+- [x] `app_data/logs/pawchive.log` にネイティブ通信ログを追記する共通ロガーを追加
+- [x] Lite はエラーのみ。Pawchive API のエラーは宛先 URL とレスポンス本文のみ、接続失敗 / 本文読取失敗は宛先のみを logcat とファイルへ記録
+- [x] Lite の外部 `pkv://` プロキシはエラーのみ記録
+- [x] Full は Pawchive API / 外部プロキシの request / response / method / URL / status / 全ヘッダー / テキスト本文 / 通信エラーを logcat と `pawchive.log` の両方へ記録
+- [x] Full 詳細ログは `debug-diag` feature に限定。Lite エラー記録は製品版でも利用
+- [x] 秘匿ヘッダーと URL query の認証値はマスキング
+- [ ] Android debug build / release build でログ出力と feature 除外を確認
+- [ ] 実機で `logs/pawchive.log` の追記、再起動後の保持、logcat とファイルの内容一致を確認
+
+> 実装コミット: 共通ファイルロガー `8815e58`、Lite API エラー / Full HTTP トレース統合 `31ed2db`、Lite API 出力の宛先・本文限定 `d3e139c`、URL parse の panic 回避 `86e2ffc`。CI / 実機確認は未実施。
