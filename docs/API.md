@@ -146,3 +146,6 @@ WebView から Referer を設定できないため、リファラーチェック
 - Full: Pawchive API と `pkv://` 外部プロキシの request / response、method / URL / status / ヘッダー / テキスト応答本文 / 通信エラーを logcat と同じ `pawchive.log` に記録
 - Full は `debug-diag` feature のみ。正式版では Full 詳細ログ処理をコンパイルしない。Lite のエラー記録は製品版でも有効
 - Cookie / Authorization / token / session / API key 等のヘッダー値と URL query の credential 値はマスキングする
+
+
+- Lite のアプリ内ログリングバッファも error のみを保持し、API 失敗は宛先 URL と `BODY=` のレスポンス本文のみを表示する。info / warn は Lite では破棄する。
