@@ -34,6 +34,27 @@ static LOGIN_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 });
 
 
+
+#[cfg(feature = "debug-diag")]
+fn safe_log_url(url: &reqwest::Url) -> String {
+    let mut safe = url.clone();
+    let pairs: Vec<(String, String)> = safe.query_pairs().map(|(k, v)| (k.into_owned(), v.into_owned())).collect();
+    if !pairs.is_empty() {
+        safe.set_query(None);
+        {
+            let mut query = safe.query_pairs_mut();
+            for (key, value) in pairs {
+                let lower = key.to_ascii_lowercase();
+                let sensitive = ["token", "secret", "session", "auth", "api_key", "apikey", "signature", "sig", "credential"]
+                    .iter()
+                    .any(|needle| lower.contains(needle));
+                query.append_pair(&key, if sensitive { "<redacted>" } else { &value });
+            }
+        }
+    }
+    safe.to_string()
+}
+
 // Full diagnostics: dump HTTP headers while masking credentials and session material.
 #[cfg(feature = "debug-diag")]
 fn log_http_headers(target: &str, direction: &str, headers: &reqwest::header::HeaderMap) {
@@ -82,7 +103,7 @@ async fn api_request(
 
     // Full: API通信の開始をlogcatへ出力。認証Cookie/ヘッダーは記録しない。
     #[cfg(feature = "debug-diag")]
-    log::info!(target: "Pawchive::API", "REQUEST method={} url={}", method, url);
+    log::info!(target: "Pawchive::API", "REQUEST method={} url={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()));
 
     // タイムアウトはユーザー設定 (Settings → 接続)。1〜300 秒にクランプ
     let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(30).clamp(1, 300));
@@ -174,7 +195,7 @@ async fn api_request(
 
     #[cfg(feature = "debug-diag")]
     {
-        log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={}", method, url, status);
+        log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), status);
         log_http_headers("Pawchive::API", "RESPONSE", response.headers());
     }
 
@@ -709,7 +730,7 @@ fn pkv_proxy_fetch(
     };
     #[cfg(feature = "debug-diag")]
     {
-        log::info!(target: "Pawchive::Proxy", "REQUEST method={} url={}", request.method(), request.url());
+        log::info!(target: "Pawchive::Proxy", "REQUEST method={} url={}", request.method(), safe_log_url(request.url()));
         log_http_headers("Pawchive::Proxy", "REQUEST", request.headers());
     }
 
@@ -725,7 +746,7 @@ fn pkv_proxy_fetch(
     let status = resp.status();
     #[cfg(feature = "debug-diag")]
     {
-        log::info!(target: "Pawchive::Proxy", "RESPONSE url={} status={}", target, status);
+        log::info!(target: "Pawchive::Proxy", "RESPONSE url={} status={}", safe_log_url(&target), status);
         log_http_headers("Pawchive::Proxy", "RESPONSE", resp.headers());
     }
     let ct = resp
