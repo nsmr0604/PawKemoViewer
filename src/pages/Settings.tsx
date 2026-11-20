@@ -275,7 +275,7 @@ export function SettingsPage() {
       let clip = ""
       try {
         const clipboard = getPlatformRuntime().services.clipboard
-        if (clipboard && await clipboard.writeText(buildBackup())) clip = t("settings.clipCopied")
+        if (clipboard && await clipboard.writeText(await buildBackup())) clip = t("settings.clipCopied")
       } catch {
         /* クリップボード失敗は無視 (ファイル保存で十分) */
       }
