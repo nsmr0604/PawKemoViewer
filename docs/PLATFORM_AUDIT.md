@@ -64,3 +64,37 @@ Other Rust responsibilities visible in lib.rs:
 - Inspect icons.ts, favstate.ts, router.ts, hooks.ts and settings state for browser/native dependencies.
 - Categorize OS branches in Rust and enumerate filesystem / process / clipboard / lifecycle capabilities.
 - Build a dependency map before adding interfaces, so adapter selection is centralized and no service duplicates capability detection.
+
+
+## Follow-up audit (20 Nov 2026)
+
+### Confirmed frontend command call-sites
+
+| Source | Command(s) |
+|---|---|
+| src/api.ts | api_request |
+| src/debug.ts | debug_append_log, debug_open_log_folder |
+| src/backup.ts | export_file |
+| src/i18n.ts | list_locale_files; locale write/delete operations should be checked for dynamic invocation forms |
+| src/icons.ts | fetch_creator_icon, clear_creator_icon_cache, creator_icon_cache_info |
+| src/App.tsx | Tauri app plugin imports onBackButtonPress, exit (not registered custom commands) |
+
+### Browser/platform APIs confirmed in selected modules
+
+- App.tsx: window width/resize, event listeners, theme document attribute, scroll reset, querySelector for search focus, keyboard handling, app back-button/exit plugin.
+- api.ts: localStorage for API-related settings and CustomEvent dispatch; request scheduler/cache logic remains within this module at this audit stage.
+- db.ts: IndexedDB open and persistent database operations.
+- log.ts: window error and unhandled rejection listeners.
+- follows.ts: localStorage data and migration flag, window event dispatch.
+- history.ts: localStorage read/write/remove.
+- icons.ts: IndexedDB and native icon-cache commands.
+- router.ts: hashchange listener; hooks.ts: scroll event and scroll restore; favstate.ts: window custom event.
+- DeveloperDiagnostics.tsx: window timeout for UI feedback.
+
+### Important architecture distinction
+
+Browser APIs that are inherently UI interaction (DOM, resize, keyboard, scroll and hash navigation) are not automatically OS adapters. They should remain in UI/navigation hooks or receive a common UI-facing abstraction if platform-family behavior differs. Persistence, file access, native commands, networking, permission and lifecycle integrations belong behind common service contracts and family/OS adapters.
+
+### Audit caveat
+
+This audit is based on selected module source inspection and text pattern checks, not a full AST scan. Dynamic invocations, indirect imports, other browser API usage and all Rust platform branches still need to be examined before Stage 1 service migration.
