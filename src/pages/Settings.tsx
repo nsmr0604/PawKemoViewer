@@ -173,7 +173,9 @@ export function SettingsPage() {
       return
     }
     try {
-      await getPlatformRuntime().services.locale?.write(code, localeAddJson)
+      const localeService = getPlatformRuntime().services.locale
+      if (!localeService) throw new Error("Locale service unavailable")
+      await localeService.write(code, localeAddJson)
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
@@ -190,7 +192,9 @@ export function SettingsPage() {
   const deleteLocale = async (code: string) => {
     if (!window.confirm(t("settings.localeDeleteConfirm", { code }))) return
     try {
-      await getPlatformRuntime().services.locale?.delete(code)
+      const localeService = getPlatformRuntime().services.locale
+      if (!localeService) throw new Error("Locale service unavailable")
+      await localeService.delete(code)
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
@@ -276,7 +280,9 @@ export function SettingsPage() {
 
   const exportLog = async () => {
     try {
-      const files = getPlatformRuntime().services.files\n      if (!files) throw new Error("File export service unavailable")\n      const path = await files.exportText("pawchive-log.txt", formatLog())
+      const files = getPlatformRuntime().services.files
+      if (!files) throw new Error("File export service unavailable")
+      const path = await files.exportText("pawchive-log.txt", formatLog())
       setLogResult(t("settings.exported", { path, clip: "" }))
     } catch (e) {
       setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
