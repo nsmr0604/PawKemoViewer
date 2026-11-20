@@ -322,3 +322,10 @@
 - [ ] Wiki Sync run #251 (`44653227178`) の完了確認。
 - 実機 UI / logcat / 永続ログファイルの検証は CI とは別であり、未実施。
 - PR #7 は closed / merged。今後は main の最新 CI と実機検証結果をこの文書に追記する。
+
+
+## Platform common foundation refactor (2026-11-20)
+- User requirement: abstract all platform-dependent operations (storage, logging, database/cache, networking, permissions, export/share, clipboard/environment) behind a common foundation and implement actual OS work in platform adapters for desktop, Android and iOS.
+- Primary is private app storage; Secondary is optional user-accessible storage. Supplemental language files load Primary then Secondary with Secondary overriding keys. Android Secondary is app-specific external storage under Android/data; iOS Secondary must be Files-accessible; desktop Secondary user-accessible. Normal logs remain Primary, dump exports Secondary. Developer-only JSON import UI, release hides import UI but continues reading Secondary language files.
+- Added architecture/migration plan document `docs/PLATFORM_ABSTRACTION.md`. This is specification/roadmap only; no application code refactor is complete yet.
+- Migration must be incremental and data-safe; preserve reqwest direct networking, API scheduler/cache, Favorites cooldown, canonical follow sync, PKV policy/redaction and Tauri camelCase.

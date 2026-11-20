@@ -159,3 +159,8 @@ Lite はセッションIDの手動入力・検証・保存で、製品版にも�
 
 ### Android API logcat (Full only)
 Android の Full デバッグビルドでは Rust の `api_request` がリクエスト開始・HTTP status・レスポンス本文を logcat に出す。本文は約 3 KB 単位で分割する。認証Cookie / session ID / Authorization / login form credentials は出力せず、ログイン処理は対象外。Tauri log plugin の Android Stdout target を使い、製品版では Cargo feature `debug-diag` 無しのため出力コード自体をコンパイルしない。
+
+
+## Cross-platform foundation and adapter migration
+
+See [PLATFORM_ABSTRACTION.md](PLATFORM_ABSTRACTION.md) for the target architecture, common contracts, Primary/Secondary semantics and phased migration. Platform-specific filesystem, logging sinks, DB persistence, HTTP execution, permissions and export/share operations should be behind adapters; common/domain code must depend only on common contracts. The migration is not yet implemented and must preserve current data and behavior.
