@@ -57,6 +57,8 @@ i18n.use(initReactI18next).init({
 
 /** 言語ファイルを検証して辞書にする。不正なら null */
 export function parseLocaleJson(text: string): Dict | null {
+  // Keep locale import/overlay parsing bounded to avoid oversized or pathological JSON.
+  if (typeof text !== "string" || text.length > 1024 * 1024) return null
   let raw: unknown
   try {
     raw = JSON.parse(text)
@@ -64,9 +66,12 @@ export function parseLocaleJson(text: string): Dict | null {
     return null
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
+  const entries = Object.entries(raw as Record<string, unknown>)
+  if (entries.length > 10000) return null
   const dict: Dict = {}
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof v === "string") dict[k] = v
+  for (const [k, v] of entries) {
+    if (!k || k.length > 512) continue
+    if (typeof v === "string" && v.length <= 10000) dict[k] = v
   }
   if (!dict["locale.name"]?.trim()) return null
   return Object.keys(dict).length > 1 ? dict : null
