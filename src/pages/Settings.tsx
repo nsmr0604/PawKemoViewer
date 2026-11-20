@@ -90,7 +90,7 @@ export function SettingsPage() {
       return () => { active = false }
     }
     setLoginStatus("checking")
-    api.accountFavorites("artist").then(() => {
+    api.accountFavorites("artist", s.sessionKey, false).then(() => {
       if (active) setLoginStatus("loggedIn")
     }).catch((e) => {
       if (!active) return
