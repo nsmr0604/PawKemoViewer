@@ -52,7 +52,8 @@ function idbPut(db: IDBDatabase, key: string, rec: IconRecord): Promise<void> {
     const tx = db.transaction(STORE, "readwrite")
     tx.objectStore(STORE).put(rec, key)
     tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.onerror = () => reject(tx.error || new Error("Icon cache transaction failed"))
+    tx.onabort = () => reject(tx.error || new Error("Icon cache transaction aborted"))
   })
 }
 
