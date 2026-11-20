@@ -22,7 +22,7 @@ PR: #11 refactor/platform-foundation-phase1
 1. M1 platform boundary consumer coverage — largely migrated; validation still outstanding.
 2. M2 native user-accessible storage — SAF and Files/document picker, persistent grants, cancellation/error handling.
 3. M3 locale layered loading — private primary, secondary overlay/import, validation.
-4. M4 persistence migration — selective migration/audit ongoing; maintain keys/schema and preserve compatibility fallbacks.
+4. M4 persistence migration — [x] consumer audit/selective boundary migration complete; retain keys/schema and compatibility fallbacks. Validation deferred to M6.
 5. M5 lifecycle/permissions — add centralized handling only for native-specific capabilities.
 6. M6 batch validation — typecheck/build/tests/device checks. Keep CI suppressed for every individual PR commit.
 
@@ -31,3 +31,7 @@ No build, typecheck, CI success, or device testing is asserted by this handoff.
 
 ## Latest checkpoint
 The storage consumer audit found no new feature path needing immediate invasive migration. Current next task is locate native plugin/project setup and identify supported Android/iOS file-access integration points before implementing M2.
+
+
+## Milestone advance
+M4 consumer migration has been marked complete in `docs/PROJECT_STATUS.md`; next milestone is M5. Investigation confirmed `src-tauri/tauri.conf.json` and Cargo config, but native generated project layouts were not yet established by this check. Mobile adapter still has no lifecycle service and secondary storage returns null. Avoid implementing SAF/Files via generic browser picker.
