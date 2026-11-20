@@ -332,3 +332,11 @@
 - [ ] 実機でログファイル保持・Full logcat・Lite のエラー制限・pkv通信を検証。
 - [ ] フォロー同期の失敗状態/再試行UXと旧 local-only `toggleFollow` 呼び出し経路を監査。同期元は Pawchive canonical を維持。
 - [ ] 投稿詳細の初期表示速度を計測し、データ取得と描画の重複を調査。
+
+
+## フォロー同期エラー表示修正 (2026-11-20)
+- [x] フォロー一覧タブの自動アカウント同期失敗を、従来は投稿お気に入りタブ側でのみ表示する `accountErr` に設定していたためユーザーから見えない問題を修正。
+- [x] 同期失敗はフォロータブの同期ステータス欄にエラー内容を表示し、成功メッセージと同じ場所で可視化。
+- [x] 日本語 / 英語の `favorites.syncFailed` を追加。
+- [ ] 最新 Android Actions にて Frontend / Android build を確認。直接 main にコミットしたため各 push で run が起動するが concurrency により旧 run はキャンセルされ、最新 head の結果のみ確認する。
+- [ ] local-only `toggleFollow` の呼び出元監査は継続。現時点で `follows.ts` 内に定義が残り、全呼び出経路の確認は未完了。
