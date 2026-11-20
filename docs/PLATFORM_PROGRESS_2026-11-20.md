@@ -174,3 +174,7 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 
 ## Secondary locale listing error reporting
 - Added surfacing of secondary storage's listing-invalid entries in locale diagnostics, with `secondary:` labels. Commit `ccbf20dc`. No build/typecheck/test performed.
+
+
+## M5 lifecycle follow-up
+- Back-handler now uses the platform-reported `canGoBack` state, invoking history.back only when available and otherwise attempting app exit. Commit `1a670b57`; no build/test validation.
