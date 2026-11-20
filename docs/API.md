@@ -155,3 +155,11 @@ WebView から Referer を設定できないため、リファラーチェック
 - Full の URL ログでは query の token / secret / session / auth / signature / password / passwd / jwt 等の値を置換し、URL user-info も除去する
 - HTTP ヘッダーでは Cookie / Set-Cookie / Authorization / Proxy-Authorization / token / session / auth / API key / password 等に該当する値を置換する
 - ログ本文には個人情報・投稿データが含まれる可能性があり、認証情報のマスキングとは別に共有前の確認が必要
+
+
+#### Full のリクエスト本文ログ
+- Full は pkv proxy の POST request body を含め、HTTP request body を logcat と `app_data/logs/pawchive.log` に記録する
+- Pawchive のログイン POST はフォーム本文の構造を記録するが、username / password は値を伏せる
+- ログイン後の session validation と creator icon fetch も Full の通信トレース対象
+- form-urlencoded / JSON の password・token・secret・session・auth・credential・API key・JWT 等はマスキングする
+- 現行 `api_request` は request body 引数を持たないため、API POST は現状空 body。API payload 対応を追加する場合は Full body logger への接続も必要
