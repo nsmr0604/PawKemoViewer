@@ -127,3 +127,8 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - GitHub source search for dialog-plugin symbols returned no hits; search is not proof of absence, but fetched configuration files corroborate no current plugin setup.
 - This continuation deliberately avoids a speculative plugin dependency or source-only picker wiring that would not be lockfile/native-config synchronized. M2 remains unresolved; next prerequisite is a checkout/build-capable environment to run dependency installation, regenerate native scaffolding, and validate plugin capabilities. File-level picker support should be delivered separately from directory grants.
 - No code changes or validation (typecheck/build/device) in this checkpoint.
+
+
+## Locale import filename fix — 2026-11-20
+- Corrected both private and secondary locale file import handlers to strip the `.json` extension with a properly escaped regex. Previously the over-escaped pattern failed to remove the extension for ordinary filenames, causing code validation to reject selected files such as `fr.json`.
+- This is a narrow source fix (commit `5792d089`). No build/typecheck or device validation was run. Native mobile shared-file picker remains blocked and separate from this HTML picker.
