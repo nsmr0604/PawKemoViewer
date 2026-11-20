@@ -64,3 +64,9 @@
 ## Latest increment — Web file-export lifecycle
 - Browser fallback FileExportService now delays object-URL revocation briefly after triggering download, to avoid premature cleanup during browser download handling.
 - This is a source-level mitigation, not verified in browser/device testing.
+
+
+## Latest increment — Key/value service consumers
+- Desktop/mobile adapter bundles expose the key/value service backed by the existing WebView localStorage.
+- Follow mirror/migration marker and search-history operations now use that service instead of direct localStorage calls.
+- Existing backend semantics/data location are unchanged; this is not a native storage migration. Validation remains pending.
