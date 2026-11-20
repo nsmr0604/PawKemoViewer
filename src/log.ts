@@ -45,7 +45,7 @@ function push(level: LogEntry["level"], msg: string) {
   entries.push(entry)
   if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES)
   // 詳細ファイルログはデバッグビルド、または製品版で開発項目を有効にした場合だけロードする。
-  if (verboseDiagnosticsEnabled()) {
+  if (DEBUG_DIAG) {
     void import("./debug").then(({ debugAppendLog }) => debugAppendLog(formatEntry(entry)))
   }
 }
