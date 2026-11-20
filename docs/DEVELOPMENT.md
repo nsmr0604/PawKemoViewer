@@ -27,7 +27,7 @@ pawchive.pw / *.pawchive.pw
 
 | 層 | 技术 | 備考 |
 |---|---|---|
-| UI | React 19 + TypeScript (strict) | 関数コンポーネント・hooks のみ |
+| UI | React 18.3.1 + TypeScript (strict) | 関数コンポーネント・hooks のみ |
 | バンドラ | Vite 6 | PWA プラグイン不使用 |
 | ランタイム | Tauri 2 | identifier `com.nsmr0604.pawkemoviewer` |
 | バックエンド | Rust (edition 2024) + reqwest | `default-features = false` + rustls-tls (OpenSSL 不使用) |
@@ -44,10 +44,12 @@ src/                    フロントエンド
   favstate.ts           お気に入り投稿の共有状態
   backup.ts             バックアップ書き出し/読み込み
   log.ts                アプリ内ログ (リングバッファ)
-  debug.ts              デバッグ診断フラグ (VITE_DEBUG_DIAG)
+  buildFlags.ts         ビルド時機能フラグ (VITE_DEBUG_DIAG)
+  debug.ts              デバッグビルド専用 Tauri ログ操作
+  debug-log.ts          詳細ログ分割 (デバッグビルドのみ動的ロード)
   router.ts / hooks.ts / platform.ts / history.ts / types.ts / styles.css
   components.tsx        共通 UI (PostCard / PostRow / PostGrid / Thumb / CreatorAvatar / ErrorBox / fmtDate ほか)
-  components/           FollowButton / NavigationRail
+  components/           FollowButton / NavigationRail / DeveloperDiagnostics (デバッグビルドのみ)
   pages/                Home / Creators / CreatorPage / PostPage / Favorites / Login / Settings
 src-tauri/
   src/lib.rs            Rust 実装 (コマンド・pkv:// プロキシ)
@@ -67,7 +69,8 @@ docs/                   本ドキュメント群
 ```bash
 npm install          # 依存
 npm run dev          # Vite 開発サーバ (localhost:5173)
-npm run tauri:dev    # Tauri 開発実行
+npm run tauri:dev    # Tauri 開発実行 (Cargo feature debug-diag)
+npm run tauri:android:dev # Android 開発実行 (Cargo feature debug-diag)
 npm run build        # 型検査 + 本番ビルド
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag   # 診断ビルド
@@ -96,8 +99,10 @@ SSRF 対策 (内部アドレス拒否) あり。fanbox / patreon のホストは
 Referer は投稿の正規 URL (canonical) を優先して付与する。
 
 ### デバッグ診断コードはビルド時フラグ注入
-`VITE_DEBUG_DIAG=1` (フロント) / cargo feature `debug-diag` (Rust) でのみ有効。
-**リリースビルドからはコード自体が分離される** (実行時判定は使わない)。詳細は AGENTS.md 参照。
+`VITE_DEBUG_DIAG=1` (フロント) / Cargo feature `debug-diag` (Rust) をデバッグビルドで常に指定する。
+通常の `tauri:dev` / `tauri:android:dev` と CI の debug ビルドで有効。正式リリースではフロントフラグを `0`、Cargo feature を指定しない。
+開発用画面・詳細ログ・ログフォルダ操作・開発用 Tauri コマンドは別チャンク / `#[cfg(feature = "debug-diag")]` に分離し、製品版には含めない。
+製品版に残すログは基本的な uncaught error / unhandled rejection / API 失敗の method・path・HTTP status のみ。レスポンス本文や詳細トレースは保存しない。
 
 ## ストレージ構成 (v0.3.0 のキー体系)
 
