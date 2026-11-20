@@ -251,3 +251,16 @@
 
 
 > Android API logcat 実装追記 (2026-11-20): `src-tauri/src/lib.rs` の `api_request` に Full 限定の request / response body / HTTP status / transport error ログを追加。Tauri log plugin の Android Stdout target を使用し、約3 KB の UTF-8 chunk 単位で出力。Cookie / session ID / Authorization / login form credentials は出力対象外。debug APK の logcat 実機確認と正式版ビルド確認は未実施。実装コミット `d7ec9d9`、Structured logger への整理 `cbea913`。
+
+
+## HTTP プロキシ通信ヘッダーログ (Full / 2026-11-20)
+- [x] Pawchive API `api_request`: 送信リクエスト / 受信レスポンスのヘッダーを Full logcat に記録
+- [x] 外部 `pkv://` プロキシ: 実際に送信する reqwest Request の method / URL / ヘッダー、および応答 status / 全ヘッダーを記録
+- [x] Cookie / Set-Cookie / Authorization / Proxy-Authorization / API key / auth token の値をマスキング
+- [x] 外部 HTML / text / JSON / XML のレスポンス本文を記録。バイナリ本文は内容を記録せずサイズのみ記録
+- [x] リクエスト本文は記録しない。ログインフォームを扱う `login_request` は対象外
+- [x] すべて Cargo feature `debug-diag` でコンパイル制御し、正式版から除外
+- [ ] Android 実機で Pawchive API と FANBOX / Patreon の両方を通信させ、ヘッダーの出力と秘匿値マスキングを確認
+- [ ] Rust / Android CI の最新 head 結果を確認
+
+> 2026-11-20 追記: 実装コミット `ac32792`、ログターゲットと本文ロガーの整理 `d0e84a3`。実機確認・CI確認は未実施。レスポンス本文には個人情報や投稿データが含まれ得るため、ログ共有前に確認すること。
