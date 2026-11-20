@@ -19,6 +19,16 @@ const MAX_MSG_LEN = 2000
 
 const entries: LogEntry[] = []
 
+function verboseDiagnosticsEnabled(): boolean {
+  if (DEBUG_DIAG) return true
+  try {
+    const settings = JSON.parse(localStorage.getItem("pawkemo-settings") || "{}")
+    return settings.developerToolsEnabled === true
+  } catch {
+    return false
+  }
+}
+
 if (DEBUG_DIAG) {
   push("info", "debug 診断フラグ有効 (VITE_DEBUG_DIAG=1・ビルド時注入)")
 }
@@ -41,7 +51,7 @@ function push(level: LogEntry["level"], msg: string) {
   entries.push(entry)
   if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES)
   // 詳細ファイルログはデバッグビルド専用チャンクへ分離する。
-  if (DEBUG_DIAG) {
+  if (verboseDiagnosticsEnabled()) {
     void import("./debug").then(({ debugAppendLog }) => debugAppendLog(formatEntry(entry)))
   }
 }
@@ -60,7 +70,7 @@ function formatEntry(e: LogEntry): string {
 /** API リクエスト失敗の記録 (source chain)。
  *  DEBUG_DIAG ビルドでは本文/URL 全文を失わずに記録する */
 export function logApiFailure(path: string, method: string, message: string) {
-  if (DEBUG_DIAG) {
+  if (verboseDiagnosticsEnabled()) {
     push("error", `API失敗 ${method} ${path} (詳細下記)`)
     void import("./debug-log").then(({ splitDebugLog }) => {
       for (const part of splitDebugLog(message)) push("error", part)
