@@ -44,8 +44,9 @@
 - [x] 製品版では「開発項目」トグルを既定OFFで表示し、ON時だけ開発項目を展開。設定は `developerToolsEnabled` として保存
 - [x] セッションIDの手動入力・検証・保存を製品版でも利用可能にし、保存時の設定変更イベントでログイン状態を再検証
 - [x] Rust の `debug_append_log` / `debug_open_log_folder` は製品版にも登録。UIは既定で非表示とし、トグルON時にだけ操作可能
+- [x] 開発項目トグルは `developerToolsEnabled` として通常設定に永続化。セッションID保存時は設定変更イベントでログイン状態を再検証し、無関係な設定変更では再検証しない
 - [x] 製品版ではトグルOFFなら基本エラーログのみ。トグルON時は詳細ログ・API応答情報を動的ロードしてファイルへ追記
-- [ ] Android CIで TypeScript / Rust / Android build を確認
+- [ ] 最新PR head `0175cb0` の Android CIで TypeScript / Rust / Android build を確認
 - [ ] 製品版でトグルOFF時に開発項目が隠れ、ON時にセッションIDログインとログ操作が動くことを実機確認
 ## 2. PR #7 で実施した内容
 
