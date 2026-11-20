@@ -173,3 +173,9 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - Contract now carries `canGoBack` in callback, preventing app-level guessing about navigation state.
 - Web lifecycle registration is intentionally inert to avoid synthesizing browser-history loops; browser navigation remains browser/router-owned and browser exit is unsupported.
 - Source changes only. No typecheck/build/device test; M5 remains incomplete pending native integration validation and other platform lifecycle needs.
+
+## M2 native picker research checkpoint (2026-11-20)
+- Confirmed Tauri v2 dialog plugin supports native file open/save on Android and iOS; mobile dialogs return content URI (Android) or file URI (iOS), and mobile directory picker is not supported. This can provide user-directed individual-file import/export, but not persistent folder access or an always-mounted secondary directory.
+- Tauri filesystem plugin is sandbox-restricted by default on Android/iOS and requires capability scope/permissions; do not grant broad path access as a shortcut.
+- This repository branch does not include the expected generated native Android manifest/capability project paths in the fetchable tree/search results. Package lock and generated native setup remain to be inspected locally.
+- No plugin/dependency change was made yet: adding native plugins without updating lockfile and verifying capability/native generated setup would leave a potentially broken PR. M2 is still incomplete. Next implementation slice: native dialog-driven file export/import (rather than folder access), then native directory/persistent access only if platform-specific support is available.
