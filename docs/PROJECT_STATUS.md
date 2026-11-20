@@ -330,3 +330,10 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - Re-audit confirmed mobile export still writes to private app-data backup storage; mobile has no selected-file picker contract. HTML file inputs used for locale import are not native SAF/Files support.
 - M2 is now the critical-path milestone. The implementation plan is to introduce explicit selected-file open/save abstractions with cancel/error semantics, integrate Tauri v2 native picker dependencies and capabilities with synchronized lockfiles/generated native setup, then migrate backup, locale and log workflows.
 - No source behavior changed in this kickoff checkpoint because npm dependency synchronization, native generation and build/test tooling are unavailable in this session. Avoid reporting native file access as implemented until those checks are reproducible.
+
+
+## M2 native dialog plugin branch kickoff (2026-11-20)
+- Work is now isolated on `feature/m2-native-file-dialog`, branched from the platform-foundation PR branch.
+- Added Rust `tauri-plugin-dialog` dependency, initialized the plugin in Tauri runtime, and granted narrowly scoped dialog open/save capabilities.
+- npm guest package `@tauri-apps/plugin-dialog` and `package-lock.json` synchronization remain pending: this environment cannot execute npm install/lockfile generation. Do not claim the JS plugin is installed or builds are validated until lockfile synchronization is completed.
+- Next slice: add synchronized npm dependency/lockfile, then implement selected-file read/write bridge. Android content URIs require special handling and should not be treated as ordinary filesystem paths; iOS file URI support must likewise be validated. No device/build validation yet.
