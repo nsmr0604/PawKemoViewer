@@ -96,10 +96,13 @@ export async function refreshLocales(): Promise<void> {
   }
   try {
     const res = await getPlatformRuntime().services.locale?.listSecondary?.()
-    if (res) for (const f of res.files) {
-      const dict = parseLocaleJson(f.json)
-      if (dict) secondary.set(f.code, dict)
-      else { invalidFiles.push(`secondary:${f.code}.json`); logWarn(`共有言語ファイルを読み込めません: ${f.code}.json`) }
+    if (res) {
+      invalidFiles.push(...res.invalid.map((name) => `secondary:${name}`))
+      for (const f of res.files) {
+        const dict = parseLocaleJson(f.json)
+        if (dict) secondary.set(f.code, dict)
+        else { invalidFiles.push(`secondary:${f.code}.json`); logWarn(`共有言語ファイルを読み込めません: ${f.code}.json`) }
+      }
     }
   } catch { /* optional secondary area */ }
   // 外部の ja.json による上書きを反映する
