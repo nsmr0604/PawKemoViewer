@@ -56,3 +56,10 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Browser clipboard adapter remains explicit.
 - No build/typecheck/device verification performed.
 - Roadmap order recorded in PROJECT_STATUS.md: capability migrations → accessible secondary storage → layered locale → persistence consumers → lifecycle/permissions → batch validation.
+
+
+## M2 incremental checkpoint — locale JSON import picker
+- Settings now offers multi-file JSON selection; existing locale-code and dictionary validation is applied before writing via LocaleService into private locale storage.
+- Successful imports refresh locale catalog and reapply active locale. Failures are reported as skipped filenames.
+- This is not yet a secondary shared storage location or SAF/document-picker persistent grant. Device validation remains outstanding.
+- Next: native Android SAF/iOS Files integration research and secondary locale overlay design; avoid asserting native folder access until confirmed.
