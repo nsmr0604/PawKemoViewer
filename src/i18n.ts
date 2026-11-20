@@ -108,11 +108,11 @@ export async function refreshLocales(): Promise<void> {
 
 /** 選択できる言語の一覧 (同梱 + 外部)。日本語を先頭に */
 export function availableLocales(): LocaleInfo[] {
-  const codes = new Set<string>(["ja", ...Object.keys(BUNDLED_LOADERS), ...external.keys()])
+  const codes = new Set<string>(["ja", ...Object.keys(BUNDLED_LOADERS), ...external.keys(), ...secondary.keys()])
   return [...codes].map((code) => ({
     code,
     name: secondary.get(code)?.["locale.name"] || external.get(code)?.["locale.name"] || BUNDLED_NAMES[code] || code,
-    external: external.has(code) || secondary.has(code),
+    external: external.has(code),
   }))
 }
 
