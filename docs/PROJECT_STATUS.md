@@ -1,6 +1,6 @@
 # Project Status & Roadmap
 
-> 最終更新: 2026-11-20  
+> 最終更新: 2026-11-20 09:56 JST  
 > この文書は、ローカル環境の `notes/` や過去の会話を参照できない開発者・エージェントが、Pawchive の現状と次の作業を把握するための共有引き継ぎです。  
 > 状態が変わったら、このファイルを実装・CI の実態に合わせて更新してください。
 
@@ -284,3 +284,11 @@
 
 
 > Lite ログ範囲の追加調整 (2026-11-20): `src/log.ts` で Lite の info / warn を破棄し、エラーのみリングバッファへ保持。API失敗の表示内容も宛先 URL + レスポンス本文のみに限定。実装 `0d06f2c`、正規表現修正 `6d83fde`。
+
+
+## 通信ログのマスキング追加確認 (2026-11-20)
+- [x] Full の API / 外部 pkv プロキシ URL ログは query の token / secret / session / auth / signature 等に加え、password / passwd / jwt をマスキング
+- [x] URL user-info の username / password もログ出力前に除去
+- [x] API transport error / response body read error の Full ログもサニタイズ済み URL を使用
+- [ ] この修正を含む最新 Android Actions の完了結果を確認
+- [ ] Android 実機で Lite / Full のログファイル・logcat・秘匿値マスキングを確認
