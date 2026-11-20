@@ -39,11 +39,14 @@ static LOGIN_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
 fn log_http_headers(target: &str, direction: &str, headers: &reqwest::header::HeaderMap) {
     for (name, value) in headers.iter() {
         let key = name.as_str();
+        let lower = key.to_ascii_lowercase();
         let sensitive = matches!(
-            key,
+            lower.as_str(),
             "authorization" | "proxy-authorization" | "cookie" | "set-cookie"
                 | "x-api-key" | "x-auth-token" | "authentication-info"
-        );
+        ) || ["token", "secret", "session", "cookie", "auth", "api-key"]
+            .iter()
+            .any(|needle| lower.contains(needle));
         let rendered = if sensitive {
             "<redacted>".to_string()
         } else {
