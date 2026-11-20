@@ -4,9 +4,9 @@
 Stage 0 audit remains partial. Stage 1 runtime scaffolding and typed service contracts/family dispatch are present on PR #11.
 
 ## This increment
-- Introduced `StorageLocationService` and `StorageArea` contract to distinguish private primary storage from user-accessible secondary storage, with locations resolved by adapters rather than hardcoded paths.
-- Purpose scopes (`logs`, `locales`, `exports`, `backup`, `general`) let consumers request area-specific locations without depending on OS path conventions.
-- This is contract-only: native path resolution and consumers are not migrated. No data moves and no existing storage is deleted.
+- Introduced `StorageLocationService` and `StorageArea` contract distinguishing primary private storage from user-accessible secondary storage, with locations resolved by adapters rather than hardcoded paths.
+- Purpose scopes (`logs`, `locales`, `exports`, `backup`, `general`) let consumers request area-specific locations.
+- Contract-only: native path resolution and consumers are not migrated. No data moves and no existing storage is deleted.
 
 ## Platform storage policy to implement
 - Primary private area: app sandbox/private storage on each platform.
@@ -16,7 +16,7 @@ Stage 0 audit remains partial. Stage 1 runtime scaffolding and typed service con
 - Do not hardcode Android external paths or claim unrestricted file-manager access.
 
 ## Existing storage
-Rust currently uses Tauri app_data_dir for log files, backup, icon cache and locale file commands. This remains untouched for compatibility. The new contract is not yet wired to Rust.
+Rust currently uses Tauri app_data_dir for log files, backup, icon cache and locale file commands. This remains untouched for compatibility. The new contract is not wired to Rust.
 
 ## Limitations
 - Desktop/Mobile native family adapters are still empty.
@@ -25,7 +25,7 @@ Rust currently uses Tauri app_data_dir for log files, backup, icon cache and loc
 - No CI, typecheck, build, or device verification confirmed.
 
 ## Next
-1. Verify and design native path/document access APIs and capability permissions for each OS.
+1. Verify/design native path/document access APIs and capability permissions for each OS.
 2. Implement location resolver in Rust using Tauri APIs with explicit scope and no destructive migration.
 3. Route log dump, locale overlay/import/export and backup incrementally.
 4. Update handoff at each checkpoint.
