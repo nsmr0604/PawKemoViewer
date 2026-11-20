@@ -1183,9 +1183,21 @@ fn atomic_locale_write(path: &std::path::Path, contents: &[u8]) -> Result<(), St
         }
     }
     let temp = temp.ok_or_else(|| "could not allocate locale temp file".to_string())?;
-    if let Err(e) = std::fs::rename(&temp, path) {
-        let _ = std::fs::remove_file(&temp);
-        return Err(e.to_string());
+    if let Err(first_error) = std::fs::rename(&temp, path) {
+        // Windows rename may not replace an existing destination.
+        if path.exists() {
+            if let Err(remove_error) = std::fs::remove_file(path) {
+                let _ = std::fs::remove_file(&temp);
+                return Err(format!("replace locale destination failed (rename: {}; remove: {})", first_error, remove_error));
+            }
+            if let Err(rename_error) = std::fs::rename(&temp, path) {
+                let _ = std::fs::remove_file(&temp);
+                return Err(rename_error.to_string());
+            }
+        } else {
+            let _ = std::fs::remove_file(&temp);
+            return Err(first_error.to_string());
+        }
     }
     Ok(())
 }
