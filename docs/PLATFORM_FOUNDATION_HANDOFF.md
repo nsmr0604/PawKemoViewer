@@ -60,3 +60,9 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - App consumer calls history.back() when native stack can go back, otherwise lifecycle exit.
 - Web lifecycle hook is inert; browser navigation remains owned by browser/router and exit is unsupported.
 - Validation has not been run; milestone remains open.
+
+## M2 native picker research checkpoint (2026-11-20)
+- Confirmed Tauri v2 dialog plugin supports native file open/save on Android and iOS; mobile dialogs return content URI (Android) or file URI (iOS), and mobile directory picker is not supported. This can provide user-directed individual-file import/export, but not persistent folder access or an always-mounted secondary directory.
+- Tauri filesystem plugin is sandbox-restricted by default on Android/iOS and requires capability scope/permissions; do not grant broad path access as a shortcut.
+- This repository branch does not include the expected generated native Android manifest/capability project paths in the fetchable tree/search results. Package lock and generated native setup remain to be inspected locally.
+- No plugin/dependency change was made yet: adding native plugins without updating lockfile and verifying capability/native generated setup would leave a potentially broken PR. M2 is still incomplete. Next implementation slice: native dialog-driven file export/import (rather than folder access), then native directory/persistent access only if platform-specific support is available.
