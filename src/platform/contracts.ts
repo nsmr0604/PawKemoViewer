@@ -49,7 +49,10 @@ export interface PermissionService {
 }
 
 /** Service integration points; optional until each migration is completed. */
+export interface SessionStorageService { get(key: string): string | null; set(key: string, value: string): void; remove(key: string): void }
+
 export interface PlatformServices {
+  sessionStorage?: SessionStorageService
   storage?: KeyValueStorage
   storageLocations?: StorageLocationService
   database?: unknown
