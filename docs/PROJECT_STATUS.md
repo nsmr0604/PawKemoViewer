@@ -89,3 +89,9 @@
 - FollowButton creator-name enrichment now writes the follow mirror through the PlatformRuntime key/value storage service.
 - Favorites page remembered-tab read/write now also uses the service. Keys and values are unchanged; fallback localStorage remains for adapter absence.
 - This does not alter IndexedDB schema or native storage behavior. Validation remains pending.
+
+
+## Session storage consumer increment
+- PostPage's session-scoped current-post context now uses the platform SessionStorageService instead of directly accessing sessionStorage. Existing key, JSON shape and session lifetime are preserved. Adapter absence is handled without blocking page display.
+- Remaining direct sessionStorage references are concentrated in scroll restoration (already service-migrated) and any platform adapter implementation; no IndexedDB schema change in this increment.
+- Build and runtime validation not performed.
