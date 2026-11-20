@@ -104,6 +104,7 @@ fn log_http_headers(app: &tauri::AppHandle, target: &str, direction: &str, heade
 // Full: request body is logged to both logcat and the persistent diagnostics file.
 #[cfg(feature = "debug-diag")]
 fn log_http_request_body(app: &tauri::AppHandle, target: &str, content_type: Option<&str>, body: &[u8]) {
+    use base64::Engine as _;
     if body.is_empty() {
         full_http_log(app, target, "REQUEST_BODY <empty>");
         return;
@@ -330,7 +331,7 @@ pub struct LoginResult {
 }
 
 #[tauri::command]
-async fn login_request(username: String, password: String, timeout_secs: Option<u64>) -> Result<LoginResult, String> {
+async fn login_request(app: tauri::AppHandle, username: String, password: String, timeout_secs: Option<u64>) -> Result<LoginResult, String> {
     if username.is_empty() || password.is_empty() {
         return Ok(LoginResult {
             ok: false,
