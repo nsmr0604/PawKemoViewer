@@ -37,7 +37,7 @@ const clipboard: ClipboardService = {
   writeText: async (text) => { try { if (!navigator.clipboard) return false; await navigator.clipboard.writeText(text); return true } catch { return false } },
 }
 
-const files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
+const files: FileExportService = { exportText: (filename, content) => invoke<string>("save_user_file", { fileName: filename, text: content }) }
 
 /** Desktop family centralizes native path resolution behind the common contract. */
 export function createDesktopServices(): PlatformServices {
