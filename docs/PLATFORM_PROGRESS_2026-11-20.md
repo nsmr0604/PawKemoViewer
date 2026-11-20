@@ -178,3 +178,8 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 
 ## M5 lifecycle follow-up
 - Back-handler now uses the platform-reported `canGoBack` state, invoking history.back only when available and otherwise attempting app exit. Commit `1a670b57`; no build/test validation.
+
+
+## Backup export filename collision safeguard (2026-11-20)
+- Native `export_file` now uses exclusive file creation (`create_new`) so repeated/concurrent exports with the same timestamp and sanitized filename cannot silently truncate/overwrite an existing export. It retries bounded numbered suffixes and returns an error if no unique path can be allocated.
+- Empty/sanitization-only filenames fall back to `export.txt`. Source-level change in Rust commit `4dc63f5a`; no compilation/tests/device validation performed. Native export is still app-private; this does not resolve M2 user-accessible export.
