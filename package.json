@@ -11,7 +11,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev --features debug-diag",
     "tauri:build": "tauri build",
-    "tauri:android:dev": "tauri android dev --features debug-diag"
+    "tauri:android:dev": "tauri android dev --features debug-diag",
+    "build:debug": "tsc -b && vite build --mode development"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.5",
