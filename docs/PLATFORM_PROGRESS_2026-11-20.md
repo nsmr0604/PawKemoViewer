@@ -84,3 +84,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Bootstrap explicitly reloads settings once runtime adapters are initialized, preventing the module-load ordering issue from causing settings to remain at defaults.
 - Preserves existing `pawkemo-settings` key and JSON format; no destructive migration.
 - Build/typecheck/device validation remains unverified.
+
+
+## Session-storage boundary increment
+- Added a distinct `SessionStorageService` contract and wired desktop/mobile/web adapters to the existing WebView/browser `sessionStorage` implementation.
+- Scroll restoration (`src/hooks.ts`) now reads, writes, and removes its scroll map through the session-storage service. The session-only semantics and key remain unchanged; this does not claim native or cross-session storage.
+- Validation is pending (no build/typecheck/device checks run).
