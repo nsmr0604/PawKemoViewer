@@ -2,7 +2,7 @@
 // アプリ内ログ (リングバッファ)
 //
 // 参考: JHenTai (起動ごとの構造化ログ) / EhViewer (自己診断・ログダンプ)。
-// API 失敗 (source chain: URL/ステータス/本文抜粋) も残し、初回ログイン POST
+// 製品版は基本情報、デバッグ版は詳細レスポンスも記録し、初回ログイン POST
 // 失敗などの切り分けに使う。設定 → 診断 から閲覧・書き出しできる。
 // ---------------------------------------------------------------------------
 
@@ -72,6 +72,7 @@ export function logApiFailure(path: string, method: string, message: string) {
   const status = message.match(/STATUS=(\\d{3})/)?.[1]
   push("error", `API失敗 ${method} ${path}${status ? ` (HTTP ${status})` : ""}`)
 }
+
 /** 古い順の全エントリ */
 export function getLogEntries(): LogEntry[] {
   return [...entries]
