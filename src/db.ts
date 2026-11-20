@@ -507,7 +507,16 @@ export async function deleteSeen(key: string) {
   await tx("seen", "readwrite", (s) => s.delete(key))
 }
 
-/** Remove all persisted read-state entries (used for full backup restore). */
-export async function clearSeen(): Promise<void> {
-  await tx("seen", "readwrite", (s) => s.clear())
+/** Replace the complete read-state set atomically (backup restore). */
+export async function replaceSeen(entries: SeenEntry[]): Promise<void> {
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction("seen", "readwrite")
+    const store = t.objectStore("seen")
+    store.clear()
+    for (const entry of entries) store.put(entry)
+    t.oncomplete = () => resolve()
+    t.onerror = () => reject(t.error)
+    t.onabort = () => reject(t.error || new Error("既読状態の復元に失敗しました"))
+  })
 }
