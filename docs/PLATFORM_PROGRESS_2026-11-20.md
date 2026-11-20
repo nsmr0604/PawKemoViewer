@@ -108,3 +108,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Added `IndexedDatabaseService` contract and implementations for desktop/mobile/web family adapters. The adapter owns opening IndexedDB and upgrade callback dispatch; it does not alter storage engine or data format.
 - `src/db.ts` now requests database opening through PlatformRuntime. Database name (`pawkemoviewer`), version (1), object stores/index, pack encoding, transactions and existing data remain unchanged.
 - This is an adapter-boundary migration only; IDB transactions/query functions remain in `src/db.ts`. No validation/build/device testing has been run; follow-up must inspect for type/build errors before advancing.
+
+
+## IndexedDB follow-up checkpoint
+- The icon cache (`pawkemo-icons`) was moved to the IndexedDatabaseService adapter boundary, so both the creator search/seen database and icon-cache database opening are now platform-mediated.
+- The creator DB open promise is cleared after failure to permit retry; its connection closes on versionchange. This does not migrate transaction code or change DB schemas.
+- Validation has not yet been performed. Next work remains transaction-service boundaries, native shared-storage (Android SAF / iOS Files), layered locale, and remaining consumer audit.
