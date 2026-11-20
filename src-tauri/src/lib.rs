@@ -101,6 +101,48 @@ fn log_http_headers(app: &tauri::AppHandle, target: &str, direction: &str, heade
     }
 }
 
+// Full: request body is logged to both logcat and the persistent diagnostics file.
+#[cfg(feature = "debug-diag")]
+fn log_http_request_body(app: &tauri::AppHandle, target: &str, content_type: Option<&str>, body: &[u8]) {
+    if body.is_empty() {
+        full_http_log(app, target, "REQUEST_BODY <empty>");
+        return;
+    }
+    let Some(text) = std::str::from_utf8(body).ok() else {
+        let encoded = base64::engine::general_purpose::STANDARD.encode(body);
+        full_http_log(app, target, &format!("REQUEST_BODY_BASE64 {}", encoded));
+        return;
+    };
+    let mut safe = text.to_string();
+    let ct = content_type.unwrap_or("").to_ascii_lowercase();
+    if ct.contains("application/x-www-form-urlencoded") {
+        safe = safe.split('&').map(|part| {
+            let (key, value) = part.split_once('=').unwrap_or((part, ""));
+            let decoded_key = percent_decode(key).to_ascii_lowercase();
+            let secret = ["password", "passwd", "token", "secret", "session", "auth", "credential", "api_key", "apikey", "jwt"]
+                .iter().any(|needle| decoded_key.contains(needle));
+            format!("{}={}", key, if secret { "<redacted>" } else { value })
+        }).collect::<Vec<_>>().join("&");
+    } else if ct.contains("json") || safe.trim_start().starts_with('{') || safe.trim_start().starts_with('[') {
+        let re = Regex::new(r#"(?i)("(?:[^"]*(?:password|passwd|token|secret|session|auth|credential|api[_-]?key|jwt)[^"]*)"[ ]*:[ ]*)("(?:\\\\.|[^"])*"|[^,}\\]]+)"#).unwrap();
+        safe = re.replace_all(&safe, "$1\"<redacted>\"").into_owned();
+    }
+    const MAX_CHUNK_BYTES: usize = 3000;
+    let mut chunk = String::new();
+    let mut index = 0usize;
+    for ch in safe.chars() {
+        chunk.push(ch);
+        if chunk.len() >= MAX_CHUNK_BYTES {
+            full_http_log(app, target, &format!("REQUEST_BODY chunk={} {}", index, chunk));
+            chunk.clear();
+            index += 1;
+        }
+    }
+    if !chunk.is_empty() {
+        full_http_log(app, target, &format!("REQUEST_BODY chunk={} {}", index, chunk));
+    }
+}
+
 static PROXY_HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
         .user_agent(
@@ -321,6 +363,13 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
         ("location", "/login"),
     ];
 
+    #[cfg(feature = "debug-diag")]
+    {
+        full_http_log(&app, "Pawchive::Login", "REQUEST method=POST url=https://pawchive.pw/account/login");
+        log_http_headers(&app, "Pawchive::Login", "REQUEST", &headers);
+        log_http_request_body(&app, "Pawchive::Login", Some("application/x-www-form-urlencoded"), b"username=<redacted>&password=<redacted>&location=%2Flogin");
+    }
+
     let resp = client
         .post("https://pawchive.pw/account/login")
         .headers(headers)
@@ -328,7 +377,17 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
         .timeout(timeout)
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            #[cfg(feature = "debug-diag")]
+            full_http_log(&app, "Pawchive::Login", &format!("TRANSPORT_ERROR url=https://pawchive.pw/account/login error={}", e));
+            e.to_string()
+        })?;
+
+    #[cfg(feature = "debug-diag")]
+    {
+        full_http_log(&app, "Pawchive::Login", &format!("RESPONSE status={}", resp.status()));
+        log_http_headers(&app, "Pawchive::Login", "RESPONSE", resp.headers());
+    }
 
     let mut session: Option<String> = None;
     for sc in resp.headers().get_all(SET_COOKIE) {
@@ -436,13 +495,22 @@ async fn fetch_creator_icon(
     headers.insert(REFERER, HeaderValue::from_static("https://pawchive.pw/"));
     headers.insert(ORIGIN, HeaderValue::from_static("https://pawchive.pw"));
 
+    #[cfg(feature = "debug-diag")]
+    {
+        full_http_log(&app, "Pawchive::Icon", &format!("REQUEST method=GET url={}", safe_log_url(&reqwest::Url::parse(&url).unwrap())));
+        log_http_headers(&app, "Pawchive::Icon", "REQUEST", &headers);
+    }
     let resp = client
         .get(&url)
         .headers(headers)
         .timeout(std::time::Duration::from_secs(15))
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            #[cfg(feature = "debug-diag")]
+            full_http_log(&app, "Pawchive::Icon", &format!("TRANSPORT_ERROR url={} error={}", safe_log_url(&reqwest::Url::parse(&url).unwrap()), e));
+            e.to_string()
+        })?;
 
     let status = resp.status();
     // アイコンが存在しないクリエイターは 204 (実測)。
@@ -458,7 +526,14 @@ async fn fetch_creator_icon(
     if !ct.starts_with("image/") {
         return Ok(None);
     }
+    #[cfg(feature = "debug-diag")]
+    {
+        full_http_log(&app, "Pawchive::Icon", &format!("RESPONSE url={} status={}", safe_log_url(&reqwest::Url::parse(&url).unwrap()), status));
+        log_http_headers(&app, "Pawchive::Icon", "RESPONSE", resp.headers());
+    }
     let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    #[cfg(feature = "debug-diag")]
+    full_http_log(&app, "Pawchive::Icon", &format!("RESPONSE_BODY <binary omitted; {} bytes>", bytes.len()));
     if bytes.is_empty() {
         return Ok(None);
     }
@@ -763,6 +838,11 @@ fn pkv_proxy_fetch(
     {
         full_http_log(app, "Pawchive::Proxy", &format!("REQUEST method={} url={}", request.method(), safe_log_url(request.url())));
         log_http_headers(app, "Pawchive::Proxy", "REQUEST", request.headers());
+        if let Some(request_body) = request.body().and_then(|b| b.as_bytes()) {
+            log_http_request_body(app, "Pawchive::Proxy", request.headers().get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()), request_body);
+        } else {
+            full_http_log(app, "Pawchive::Proxy", "REQUEST_BODY <empty>");
+        }
     }
 
     let resp = match client.execute(request) {
