@@ -15,6 +15,7 @@ import type {
   PawFile,
 } from "./types"
 import { logApiFailure } from "./log"
+import { getPlatformRuntime } from "./platform/runtime"
 
 // ---------------------------------------------------------------------------
 // 設定
@@ -56,9 +57,11 @@ export interface Settings {
  *  変更をイベントで通知する (レイアウトモード即時反映バグの再発防止) */
 export const SETTINGS_CHANGED_EVENT = "pawkemo-settings-changed"
 
+function settingsStorage() { return getPlatformRuntime().services.storage ?? localStorage }
+
 export function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
+    const raw = settingsStorage().get(SETTINGS_KEY)
     if (raw) return { ...defaultSettings(), ...JSON.parse(raw) }
   } catch {
     /* ignore */
@@ -84,10 +87,15 @@ function defaultSettings(): Settings {
 }
 
 export function saveSettings(s: Settings) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s))
+  try { settingsStorage().set(SETTINGS_KEY, JSON.stringify(s)) } catch { /* unavailable storage */ }
 }
 
 let settings: Settings = loadSettings()
+
+/** Reload settings after runtime adapter initialization so the service boundary is used. */
+export function initializeSettingsStorage() {
+  settings = loadSettings()
+}
 
 export function getSettings(): Settings {
   return settings
