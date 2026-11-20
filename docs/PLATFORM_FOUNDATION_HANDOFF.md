@@ -137,3 +137,7 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 ## Secondary locale invalid-file reporting correction
 - i18n refresh now also collects the native secondary directory listing's `invalid` filenames, prefixing them with `secondary:` so malformed names/oversized files are visible in Settings diagnostics alongside parse-invalid files.
 - Commit `ccbf20dc`. Source-level change; validation not run.
+
+
+## Native back-navigation correction
+- App's LifecycleService callback now uses the native `canGoBack` signal directly: history back when available, app exit otherwise. This avoids routing based solely on page names and reduces the risk of navigating outside the app when no WebView history exists. Commit `1a670b57`; no validation run.
