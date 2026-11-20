@@ -126,7 +126,7 @@ async fn api_request(
 
     // Full: API通信の開始をlogcatへ出力。認証Cookie/ヘッダーは記録しない。
     #[cfg(feature = "debug-diag")]
-    log::info!(target: "Pawchive::API", "REQUEST method={} url={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()));
+    full_http_log(&app, "Pawchive::API", &format!("REQUEST method={} url={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into())));
 
     // タイムアウトはユーザー設定 (Settings → 接続)。1〜300 秒にクランプ
     let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(30).clamp(1, 300));
@@ -209,8 +209,10 @@ async fn api_request(
         }
     }
     .map_err(|e| {
+        log::error!(target: "Pawchive::API", "API_ERROR destination={} error={}", url, e);
+        append_app_log(&app, &format!("API_ERROR destination={} error={}", url, e));
         #[cfg(feature = "debug-diag")]
-        log::error!(target: "Pawchive::API", "TRANSPORT_ERROR method={} url={} error={}", method, url, e);
+        full_http_log(&app, "Pawchive::API", &format!("TRANSPORT_ERROR method={} url={} error={}", method, url, e));
         e.to_string()
     })?;
 
@@ -218,7 +220,7 @@ async fn api_request(
 
     #[cfg(feature = "debug-diag")]
     {
-        log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), status);
+        full_http_log(&app, "Pawchive::API", &format!("RESPONSE method={} url={} status={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), status));
         log_http_headers(&app, "Pawchive::API", "RESPONSE", response.headers());
     }
 
@@ -226,19 +228,22 @@ async fn api_request(
         .text()
         .await
         .map_err(|e| {
+            log::error!(target: "Pawchive::API", "API_BODY_READ_ERROR destination={} error={}", url, e);
+            append_app_log(&app, &format!("API_BODY_READ_ERROR destination={} error={}", url, e));
             #[cfg(feature = "debug-diag")]
-            log::error!(target: "Pawchive::API", "BODY_READ_ERROR method={} url={} error={}", method, url, e);
+            full_http_log(&app, "Pawchive::API", &format!("BODY_READ_ERROR method={} url={} error={}", method, url, e));
             e.to_string()
         })?;
 
     #[cfg(feature = "debug-diag")]
     {
-        log::info!(target: "Pawchive::API", "RESPONSE method={} url={} status={} bytes={}", method, url, status, text.len());
+        full_http_log(&app, "Pawchive::API", &format!("RESPONSE method={} url={} status={} bytes={}", method, reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), status, text.len()));
         log_http_response_body(&app, "Pawchive::API", &text);
     }
 
     if !status.is_success() {
-        // デバッグ用にステータスと本文だけ返す (ヘッダー全文は長大なので省略)
+        log::error!(target: "Pawchive::API", "API_ERROR destination={} status={} body={}", url, status, text);
+        append_app_log(&app, &format!("API_ERROR destination={} status={} body={}", url, status, text));
         return Err(format!("STATUS={} BODY={}", status, text));
     }
 
@@ -754,23 +759,31 @@ fn pkv_proxy_fetch(
     };
     #[cfg(feature = "debug-diag")]
     {
-        log::info!(target: "Pawchive::Proxy", "REQUEST method={} url={}", request.method(), safe_log_url(request.url()));
+        full_http_log(app, "Pawchive::Proxy", &format!("REQUEST method={} url={}", request.method(), safe_log_url(request.url())));
         log_http_headers(app, "Pawchive::Proxy", "REQUEST", request.headers());
     }
 
     let resp = match client.execute(request) {
         Ok(r) => r,
         Err(e) => {
+            let message = format!("PROXY_ERROR destination={} error={}", safe_log_url(&target), e);
+            log::error!(target: "Pawchive::Proxy", "{}", message);
+            append_app_log(app, &message);
             #[cfg(feature = "debug-diag")]
-            log::error!(target: "Pawchive::Proxy", "TRANSPORT_ERROR url={} error={}", target, e);
+            full_http_log(app, "Pawchive::Proxy", &format!("TRANSPORT_ERROR url={} error={}", safe_log_url(&target), e));
             return bad(502, &format!("upstream: {}", e));
         }
     };
 
     let status = resp.status();
+    if !status.is_success() {
+        let message = format!("PROXY_ERROR destination={} status={}", safe_log_url(&target), status);
+        log::error!(target: "Pawchive::Proxy", "{}", message);
+        append_app_log(app, &message);
+    }
     #[cfg(feature = "debug-diag")]
     {
-        log::info!(target: "Pawchive::Proxy", "RESPONSE url={} status={}", safe_log_url(&target), status);
+        full_http_log(app, "Pawchive::Proxy", &format!("RESPONSE url={} status={}", safe_log_url(&target), status));
         log_http_headers(app, "Pawchive::Proxy", "RESPONSE", resp.headers());
     }
     let ct = resp
