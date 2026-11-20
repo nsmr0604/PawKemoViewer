@@ -290,6 +290,20 @@ export function SettingsPage() {
     }
   }
 
+  const importBackupFile = async (file: File | null) => {
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setBackupResult("バックアップファイルが大きすぎます (5 MiB上限)")
+      return
+    }
+    try {
+      const content = await file.text()
+      await doImport(content)
+    } catch (e) {
+      setBackupResult(t("settings.importFailed", { msg: e instanceof Error ? e.message : String(e) }))
+    }
+  }
+
   const doImportFromClipboard = async () => {
     const text = await getPlatformRuntime().services.clipboard?.readText()
     if (!text) {
@@ -694,6 +708,10 @@ export function SettingsPage() {
             <small>{t("settings.importDesc")}</small>
           </div>
           <div className="settings-actions">
+            <label className="btn">
+              バックアップファイルを選択
+              <input type="file" accept=".json,application/json" hidden onChange={(e) => { void importBackupFile(e.target.files?.[0] ?? null); e.currentTarget.value = "" }} />
+            </label>
             <button className="btn" onClick={doImportFromClipboard}>
               {t("settings.importClipboard")}
             </button>
