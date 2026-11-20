@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
-import type { PlatformServices, StorageArea, StorageLocationService } from "../contracts"
+import type { FileExportService, PlatformServices, StorageArea, StorageLocationService } from "../contracts"
 
 const logging = { append: (line: string) => { void import("../../debug").then(({ debugAppendLog }) => debugAppendLog(line)) } }
 
@@ -14,7 +14,9 @@ const storageLocations: StorageLocationService = {
   },
 }
 
+const files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
+
 /** Desktop family centralizes native path resolution behind the common contract. */
 export function createDesktopServices(): PlatformServices {
-  return { storageLocations, logging }
+  return { storageLocations, logging, files }
 }
