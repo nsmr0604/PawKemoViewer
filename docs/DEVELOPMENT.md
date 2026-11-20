@@ -45,11 +45,11 @@ src/                    フロントエンド
   backup.ts             バックアップ書き出し/読み込み
   log.ts                アプリ内ログ (リングバッファ)
   buildFlags.ts         ビルド時機能フラグ (VITE_DEBUG_DIAG)
-  debug.ts              デバッグビルド専用 Tauri ログ操作
+  debug.ts              開発項目が有効な場合の Tauri ログ操作
   debug-log.ts          詳細ログ分割 (デバッグビルドのみ動的ロード)
   router.ts / hooks.ts / platform.ts / history.ts / types.ts / styles.css
   components.tsx        共通 UI (PostCard / PostRow / PostGrid / Thumb / CreatorAvatar / ErrorBox / fmtDate ほか)
-  components/           FollowButton / NavigationRail / DeveloperDiagnostics (デバッグビルドのみ)
+  components/           FollowButton / NavigationRail / DeveloperDiagnostics (デバッグビルド常時 / 製品版は設定トグル)
   pages/                Home / Creators / CreatorPage / PostPage / Favorites / Login / Settings
 src-tauri/
   src/lib.rs            Rust 実装 (コマンド・pkv:// プロキシ)
