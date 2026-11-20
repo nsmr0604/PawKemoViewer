@@ -237,3 +237,14 @@
 
 
 > 2026-11-20 追記: Lite / Full の分離は上記の現行実装を正とする。以前の「製品版トグルで Full 診断も有効化」「Rust診断コマンドを製品版にも登録」という説明は無効。現行 PR head では Android run #202 より後に追加コミットがあり、head に対応する Actions 実行は未確認。
+
+
+## Android API logcat (Full 開発機能 / 2026-11-20)
+- [x] Rust `api_request` の開始時に HTTP method / URL を logcat へ出力
+- [x] レスポンス受信後に HTTP status / 本文サイズ / 本文を出力。本文は UTF-8 境界を維持して約 3 KB ごとに分割
+- [x] 接続エラーとレスポンス本文読取エラーも出力
+- [x] Tauri log plugin の Android Stdout target を使用 (`log::info!` / `log::error!`)
+- [x] Cookie / session ID / Authorization / ログインフォームの認証情報は出力しない。login_request はログ対象外
+- [x] `debug-diag` feature で全出力コードを cfg 制御し、正式版ビルドから除外
+- [ ] Android debug APK を実機で起動し、`adb logcat` で request / response body を確認
+- [ ] Android release build (feature 無し) で Full ログコードが無いことをビルド確認
