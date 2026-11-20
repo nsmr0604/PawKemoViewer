@@ -256,3 +256,8 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 ## Backup export filename collision safeguard (2026-11-20)
 - Native `export_file` now uses exclusive file creation (`create_new`) so repeated/concurrent exports with the same timestamp and sanitized filename cannot silently truncate/overwrite an existing export. It retries bounded numbered suffixes and returns an error if no unique path can be allocated.
 - Empty/sanitization-only filenames fall back to `export.txt`. Source-level change in Rust commit `4dc63f5a`; no compilation/tests/device validation performed. Native export is still app-private; this does not resolve M2 user-accessible export.
+
+
+## Backup data completeness (2026-11-20)
+- Backup serialization now asynchronously reads the IndexedDB `seen` store (`getAllSeen`) and includes those entries instead of exporting an always-empty list. File export and clipboard backup paths await serialization.
+- Commits `b2705004` (`backup.ts`) and `23f58276` (Settings clipboard callsite). No build/tests performed; M2 native shared-file selection/export remains outstanding.
