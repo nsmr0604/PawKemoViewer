@@ -159,3 +159,9 @@
 4. **P4 M6 validation** — batch typecheck/build/test and device validation after implementation; no per-commit CI runs.
 
 M5 browser-only slice: added lifecycle popstate handler subscription to the Web adapter; native Tauri lifecycle remains unimplemented. Browser exit intentionally rejects as unsupported. This does not complete M5.
+
+
+## M5 re-audit correction (2026-11-20)
+- Rechecked App.tsx: Android native hardware/gesture back handling already exists directly via Tauri `onBackButtonPress` and `exit`, unregistering its listener on unmount. This existing behavior is not yet routed through LifecycleService; therefore M5 is a refactor/integration gap, not missing basic Android back behavior.
+- Browser lifecycle adapter was added in the previous increment but is not yet consumed by App.tsx. Avoid treating it as app-level back behavior until wired to a consumer and validated.
+- Current M2 blocker: repository tree/native plugin configuration needs further inspection; avoid speculative dependency additions.
