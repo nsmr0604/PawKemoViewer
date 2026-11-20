@@ -335,7 +335,7 @@ export function SettingsPage() {
             <small>{t("settings.loginStatusDesc")}</small>
           </div>
           <span className={loginStatus === "loggedIn" ? "ok" : "small"} role="status" aria-live="polite">
-            {t("settings.loginStatus." + loginStatus)}
+            {loginStatus === "checking" ? t("settings.loginStatus.checking") : loginStatus === "loggedIn" ? t("settings.loginStatus.loggedIn") : loginStatus === "loggedOut" ? t("settings.loginStatus.loggedOut") : t("settings.loginStatus.unknown")}
           </span>
         </div>
 
