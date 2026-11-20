@@ -6,7 +6,7 @@ const lifecycle: LifecycleService = {
   onBackRequested: (handler) => {
     let active = true
     let listener: Awaited<ReturnType<typeof onBackButtonPress>> | null = null
-    void onBackButtonPress(({ canGoBack }) => { if (active) handler() }).then((registered) => {
+    void onBackButtonPress(({ canGoBack }) => { if (active) handler(canGoBack) }).then((registered) => {
       if (active) listener = registered
       else void registered.unregister()
     }).catch((error) => console.warn("Native back listener registration failed", error))
