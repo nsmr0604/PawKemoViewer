@@ -204,7 +204,7 @@ export function FavoritesPage() {
         await checkNew(false)
       })
       .catch((e) => {
-        if (active) setAccountErr(e)
+        if (active) setSyncResult(t("favorites.syncFailed", { msg: e instanceof Error ? e.message : String(e) }))
       })
     return () => {
       active = false
@@ -275,7 +275,7 @@ export function FavoritesPage() {
       {tab === "follows" && (
         <>
           <div className="hint-row">
-            <span>{t("favorites.desc")}</span>
+            <span>{t("favorites.desc")}</span>\n            {syncResult && <span role="status">{syncResult}</span>
             <button
               className="btn"
               disabled={checking}
@@ -395,7 +395,7 @@ export function FavoritesPage() {
               </button>
             )}
           </div>
-          {syncResult && <div className="hint-row">{syncResult}</div>}
+          
           {accountErr !== null && <ErrorBox error={accountErr} onRetry={loadAccount} />}
           {accountErr instanceof ApiError && apiStatus(accountErr) === 401 && (
             <div className="error-box">
