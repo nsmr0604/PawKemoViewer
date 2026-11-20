@@ -1,5 +1,7 @@
 import type { FileExportService, LocaleService, PlatformServices } from "../contracts"
 
+const sessionStorageService = typeof sessionStorage !== "undefined" ? { get: (key: string) => sessionStorage.getItem(key), set: (key: string, value: string) => sessionStorage.setItem(key, value), remove: (key: string) => sessionStorage.removeItem(key) } : undefined
+
 const logging = { append: (_line: string) => { /* browser runtime has no persistent log sink */ } }
 
 const files: FileExportService = {
@@ -29,6 +31,7 @@ const locale: LocaleService = {
 /** Browser fallback adapter bundle. Services are selectively implemented during migration. */
 export function createWebServices(): PlatformServices {
   return {
+    sessionStorage: sessionStorageService,
     storage: typeof localStorage !== "undefined" ? {
       get: (key) => localStorage.getItem(key),
       set: (key, value) => localStorage.setItem(key, value),
