@@ -187,3 +187,8 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - Locale parser now builds dictionaries with a null prototype and skips reserved prototype-related keys (`__proto__`, `prototype`, `constructor`) to avoid mutating object prototypes when importing JSON.
 - Commit `1d36f83e`. Source review only; validation not run.
 - Roadmap next remains M2 native user-accessible file flows (SAF / Files), with M3 mobile overlay and M6 validation also open. No plugin dependency/native scaffolding was added because package lock/native generation/build could not be synchronized or verified in this environment.
+
+
+## Backup import resource bounds (2026-11-20)
+- Backup parser rejects payloads above 5 MiB and arrays exceeding 100,000 follows or seen entries before restore work.
+- Commit `b6836d80`. Source-only, no validation performed.
