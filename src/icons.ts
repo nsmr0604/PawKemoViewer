@@ -38,8 +38,12 @@ function idbGet(db: IDBDatabase, key: string): Promise<IconRecord | undefined> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly")
     const r = tx.objectStore(STORE).get(key)
-    r.onsuccess = () => resolve(r.result as IconRecord | undefined)
+    let result: IconRecord | undefined
+    r.onsuccess = () => { result = r.result as IconRecord | undefined }
     r.onerror = () => reject(r.error)
+    tx.oncomplete = () => resolve(result)
+    tx.onerror = () => reject(tx.error || new Error("Icon cache transaction failed"))
+    tx.onabort = () => reject(tx.error || new Error("Icon cache transaction aborted"))
   })
 }
 
