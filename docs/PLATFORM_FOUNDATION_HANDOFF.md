@@ -132,3 +132,8 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 ## Locale import filename fix — 2026-11-20
 - Corrected both private and secondary locale file import handlers to strip the `.json` extension with a properly escaped regex. Previously the over-escaped pattern failed to remove the extension for ordinary filenames, causing code validation to reject selected files such as `fr.json`.
 - This is a narrow source fix (commit `5792d089`). No build/typecheck or device validation was run. Native mobile shared-file picker remains blocked and separate from this HTML picker.
+
+
+## Secondary locale invalid-file reporting correction
+- i18n refresh now also collects the native secondary directory listing's `invalid` filenames, prefixing them with `secondary:` so malformed names/oversized files are visible in Settings diagnostics alongside parse-invalid files.
+- Commit `ccbf20dc`. Source-level change; validation not run.
