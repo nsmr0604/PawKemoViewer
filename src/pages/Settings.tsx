@@ -27,9 +27,7 @@ import {
 } from "../i18n"
 import { displayAppVersion } from "../version"
 
-const DeveloperDiagnostics = DEBUG_DIAG
-  ? lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
-  : null
+const DeveloperDiagnostics = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -60,6 +58,7 @@ export function SettingsPage() {
   const [iconCache, setIconCache] = useState<{ count: number; bytes: number } | null>(null)
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
   const [loginStatus, setLoginStatus] = useState<"checking" | "loggedIn" | "loggedOut" | "unknown">(s.sessionKey ? "checking" : "loggedOut")
+  const [developerToolsEnabled, setDeveloperToolsEnabled] = useState(s.developerToolsEnabled || false)
   const [version, setVersion] = useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
   const [cache, setCache] = useState<CreatorCacheInfo | null>(null)
@@ -81,22 +80,31 @@ export function SettingsPage() {
     creatorIconInfo().then(setIconCache).catch(() => setIconCache(null))
   }, [])
 
-  // 保存済みセッションを検証し、期限切れのキーをログイン済みと誤表示しない。
+  // 保存済みセッションを検証し、セッション変更後も表示を更新する。
   useEffect(() => {
     let active = true
-    if (!s.sessionKey) {
-      setLoginStatus("loggedOut")
-      return () => { active = false }
+    const verifySession = () => {
+      const sessionKey = getSettings().sessionKey
+      if (!sessionKey) {
+        setLoginStatus("loggedOut")
+        return
+      }
+      setLoginStatus("checking")
+      api.accountFavorites("artist", sessionKey, false).then(() => {
+        if (active) setLoginStatus("loggedIn")
+      }).catch((e) => {
+        if (!active) return
+        setLoginStatus(apiStatus(e) === 401 ? "loggedOut" : "unknown")
+      })
     }
-    setLoginStatus("checking")
-    api.accountFavorites("artist", s.sessionKey, false).then(() => {
-      if (active) setLoginStatus("loggedIn")
-    }).catch((e) => {
-      if (!active) return
-      setLoginStatus(apiStatus(e) === 401 ? "loggedOut" : "unknown")
-    })
-    return () => { active = false }
-  }, [s.sessionKey])
+    verifySession()
+    window.addEventListener("pawkemo-settings-changed", verifySession)
+    return () => {
+      active = false
+      window.removeEventListener("pawkemo-settings-changed", verifySession)
+    }
+  }, [])
+
   const applyTheme = (value: "dark" | "light") => {
     setTheme(value)
     updateSettings({ theme: value })
@@ -219,12 +227,7 @@ export function SettingsPage() {
       }
       setBackupResult(t("settings.exported", { path, clip }))
       logInfo("バックアップを書き出しました")
-      // デバッグ診断ビルド (VITE_DEBUG_DIAG=1) 限定: バックアップ JSON 全文を
-      // 診断ログへ出力する (実機では app_data_dir が取り出せず・クリップボードも
-      // adb から読めないためログ経由が最短。リリースビルドでは分離される)
-      if (DEBUG_DIAG) {
-        logLong("info", "DEBUG BACKUP DUMP (デバッグ診断ビルド限定・下記全文):\n" + buildBackup())
-      }
+
     } catch (e) {
       setBackupResult(t("settings.exportFailed", { msg: e instanceof Error ? e.message : String(e) }))
     }
@@ -684,11 +687,7 @@ export function SettingsPage() {
       {/* ------------------------------------------------ 診断 */}
       <div id="settings-diagnostics" className="settings-section">
         <div className="section-label">{t("settings.diagnostics")}</div>
-        {DEBUG_DIAG && DeveloperDiagnostics && (
-          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
-            <DeveloperDiagnostics />
-          </Suspense>
-        )}
+
 
 
         <div className="setting-item">
@@ -754,6 +753,32 @@ export function SettingsPage() {
           </div>
           <code className="small">{appVersion ? displayAppVersion(appVersion) : "…"}</code>
         </div>
+
+        {!DEBUG_DIAG && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>{t("settings.developerTools")}</span>
+              <small>{t("settings.developerToolsDesc")}</small>
+            </div>
+            <button
+              className={`btn ${developerToolsEnabled ? "btn-primary" : "btn-ghost"}`}
+              aria-pressed={developerToolsEnabled}
+              onClick={() => {
+                const next = !developerToolsEnabled
+                setDeveloperToolsEnabled(next)
+                updateSettings({ developerToolsEnabled: next })
+              }}
+            >
+              {developerToolsEnabled ? t("settings.developerToolsOn") : t("settings.developerToolsOff")}
+            </button>
+          </div>
+        )}
+
+        {(DEBUG_DIAG || developerToolsEnabled) && (
+          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
+            <DeveloperDiagnostics />
+          </Suspense>
+        )}
 
         <p className="small">
           {t("settings.aboutNote")}
