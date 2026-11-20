@@ -118,3 +118,9 @@
 - Corrected escaped newline sequences that had been inadvertently written as literal characters in imports/comments and the web platform adapter, restoring normal source line structure.
 - Normalized adapter type-import punctuation.
 - Build/typecheck is still unverified; treat these corrections as source-level fixes pending CI validation.
+
+
+## IndexedDB transaction reliability checkpoint
+- The shared transaction helper in `src/db.ts` now captures request results but resolves successful operations only after the transaction's `complete` event. Transaction error/abort reject paths are explicit.
+- Icon-cache reads similarly wait for transaction completion, rather than resolving on request success alone.
+- This reduces the risk of reporting write/read operations complete before the transaction lifecycle settles. Source-only change; validation remains unconfirmed.
