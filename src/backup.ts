@@ -87,7 +87,7 @@ export async function applyBackup(text: string): Promise<{
   const followsByKey = new Map<string, FollowEntry>()
   for (const f of b.follows) {
     if (!f || (f.service !== "fanbox" && f.service !== "patreon") || typeof f.id !== "string" || !f.id.trim() || f.id.length > 256) continue
-    const entry = { ...f, id: f.id.trim() } as FollowEntry
+    const entry: FollowEntry = { service: f.service, id: f.id.trim(), name: typeof f.name === "string" && f.name.trim() ? f.name.trim().slice(0, 512) : f.id.trim() }
     followsByKey.set(`${entry.service}:${entry.id}`, entry)
   }
   const follows = [...followsByKey.values()]
