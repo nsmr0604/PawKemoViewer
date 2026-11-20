@@ -155,3 +155,7 @@ Lite はセッションIDの手動入力・検証・保存で、製品版にも�
 - Lite: セッションIDの手動入力・検証・保存。製品版にも含み、設定の開発項目トグルで表示する
 - Full: 詳細ログ、ログフォルダ操作、バックアップJSONダンプ。フロント DEBUG_DIAG と Rust `#[cfg(feature = "debug-diag")]` によるデバッグビルド専用で、正式版にはコンパイルしない
 - 詳細 API レスポンス本文のログも Full のみ。製品版では method / path / HTTP status の基本情報に限定する
+
+
+### Android API logcat (Full only)
+Android の Full デバッグビルドでは Rust の `api_request` がリクエスト開始・HTTP status・レスポンス本文を logcat に出す。本文は約 3 KB 単位で分割する。認証Cookie / session ID / Authorization / login form credentials は出力せず、ログイン処理は対象外。Tauri log plugin の Android Stdout target を使い、製品版では Cargo feature `debug-diag` 無しのため出力コード自体をコンパイルしない。
