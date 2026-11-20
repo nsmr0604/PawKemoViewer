@@ -247,3 +247,7 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 
 ## Secondary locale validation reporting fix
 - The refresh flow now includes invalid secondary-area filenames reported by the native listing service (prefixed `secondary:`), rather than silently dropping those listing-level errors. Commit `ccbf20dc`; validation unconfirmed.
+
+
+## M5 back-navigation robustness
+- App now honors the native lifecycle callback's `canGoBack` value, rather than checking a subset of route names. If history is available it navigates back; otherwise it attempts native exit. Source change commit `1a670b57`; build/runtime validation pending.
