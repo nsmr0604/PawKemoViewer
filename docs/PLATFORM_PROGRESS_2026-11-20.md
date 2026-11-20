@@ -192,3 +192,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 
 ## Backup async declaration follow-up
 - Corrected the `buildBackup` signature to `async`/`Promise<string>` to match its IndexedDB await. Source commit `a2a1efba`. This is a source inspection correction; compilation is still not verified.
+
+
+## Read-state restore integrity improvement (2026-11-20)
+- Added IndexedDB `replaceSeen` which clears and inserts the complete read-state set in a single transaction, so backup restore is replacement semantics and atomic instead of retaining stale rows or partially applying sequential writes.
+- Backup restore validates basic entry shape and uses `replaceSeen`. Commits `191286f6` (initial clear API), `8fe38b4e` (restore integration), `fd621eb0` (atomic transaction), `429d8b6d` (final integration).
+- Source review only; no build/test validation. Native SAF/Files milestone remains uncompleted.
