@@ -8,10 +8,10 @@
 // 注意: セッションキーは復元完結性のため含める (端末ローカルの JSON のみ)。
 // ログや notes には絶対に出力しないこと。
 
-import { invoke } from "@tauri-apps/api/core"
 import { getSettings, updateSettings, type Settings } from "./api"
 import { loadFollows, replaceFollows, type FollowEntry } from "./follows"
-import { setSeen, type SeenEntry } from "./db"\nimport { getPlatformRuntime } from "./platform/runtime"\nimport { getPlatformRuntime } from "./platform/runtime"
+import { setSeen, type SeenEntry } from "./db"
+import { getPlatformRuntime } from "./platform/runtime"
 
 export const BACKUP_TYPE = "pawkemoviewer-backup"
 const BACKUP_VERSION = 1
@@ -40,11 +40,9 @@ export function buildBackup(): string {
 
 /** バックアップをファイルに書き出し (Rust 側で %APPDATA%/backup/) */
 export async function exportBackup(): Promise<string> {
-  const path = await invoke<string>("export_file", {
-    fileName: "pawkemoviewer-backup.json",
-    text: buildBackup(),
-  })
-  return path
+  const files = getPlatformRuntime().services.files
+  if (!files) throw new Error("File export service unavailable")
+  return files.exportText("pawkemoviewer-backup.json", buildBackup())
 }
 
 /** バックアップ JSON を検証してパースする */
