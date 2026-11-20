@@ -1,6 +1,6 @@
 # ビルドガイド
 
-PawKemoViewer (v0.3.2) のビルド・パッケージング・CI 構成。
+PawKemoViewer (v0.4.0) のビルド・パッケージング・CI 構成。
 
 ## ビルドフロー (原則: CI 委任)
 
@@ -26,10 +26,10 @@ rolling prerelease "debug-latest" (デバッグビルド)
 
 | プラットフォーム | ファイル例 |
 |---|---|
-| Windows | `PawKemoViewer_0.3.1_x64-setup.exe` / `_x64_en-US.msi` |
-| Linux | `PawKemoViewer_0.3.1_amd64.AppImage` / `_amd64.deb` |
-| macOS | `PawKemoViewer_0.3.1_aarch64.dmg` |
-| Android | `PawKemoViewer_0.3.1_universal.apk` (debug.keystore 署名) |
+| Windows | `PawKemoViewer_0.4.0_x64-setup.exe` / `_x64_en-US.msi` |
+| Linux | `PawKemoViewer_0.4.0_amd64.AppImage` / `_amd64.deb` |
+| macOS | `PawKemoViewer_0.4.0_aarch64.dmg` |
+| Android | `PawKemoViewer_0.4.0_universal.apk` (debug.keystore 署名) |
 
 - 実行ファイル名は `pawkemoviewer` (crate 名由来)。Android packageId は
   `com.nsmr0604.pawkemoviewer`
