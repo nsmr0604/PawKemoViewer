@@ -39,3 +39,17 @@
 - Settings locale creation/deletion now delegates through the PlatformRuntime LocaleService contract instead of invoking native commands directly. Desktop and mobile adapters invoke the native locale commands; Web adapter explicitly reports unsupported write behavior.
 - This is a boundary migration of private locale file management; secondary user-accessible locale overlay remains unimplemented.
 - No build/typecheck/device validation was performed.
+
+
+## Platform foundation milestone roadmap (sequence)
+- **M1 capability boundary coverage:** clipboard and file export, locale CRUD, log routing consumers migrated. Clipboard integration is now completed for backup copy/paste via runtime service (desktop/mobile/web adapters).
+- **M2 user-accessible storage:** investigate and implement Android SAF and iOS Files/document-picker access, including persistent grants and cancellation/error handling; no native implementation yet.
+- **M3 layered locale loading:** private locale files primary; secondary user-accessible locale files overlay/override, safe import/export and validation.
+- **M4 storage/persistence migration:** inventory and migrate localStorage/IndexedDB consumers selectively without changing keys or schema.
+- **M5 lifecycle/permissions and remaining native integrations:** centralize only genuinely platform-dependent behavior.
+- **M6 batch validation:** typecheck/build, targeted tests and device checks where available; keep PR build automation disabled per-commit.
+
+### M1 latest checkpoint
+- Desktop/mobile runtime adapters now provide ClipboardService using browser-webview clipboard capability, returning null/false on failure (no exception propagation).
+- Settings backup copy and clipboard import now use the runtime service, including browser adapter.
+- No build or platform validation has been run; permission behavior may vary by OS/WebView.
