@@ -251,3 +251,8 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 
 ## M5 back-navigation robustness
 - App now honors the native lifecycle callback's `canGoBack` value, rather than checking a subset of route names. If history is available it navigates back; otherwise it attempts native exit. Source change commit `1a670b57`; build/runtime validation pending.
+
+
+## Backup export filename collision safeguard (2026-11-20)
+- Native `export_file` now uses exclusive file creation (`create_new`) so repeated/concurrent exports with the same timestamp and sanitized filename cannot silently truncate/overwrite an existing export. It retries bounded numbered suffixes and returns an error if no unique path can be allocated.
+- Empty/sanitization-only filenames fall back to `export.txt`. Source-level change in Rust commit `4dc63f5a`; no compilation/tests/device validation performed. Native export is still app-private; this does not resolve M2 user-accessible export.
