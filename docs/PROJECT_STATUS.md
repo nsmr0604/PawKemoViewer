@@ -45,7 +45,7 @@
 - **M1 capability boundary coverage:** clipboard and file export, locale CRUD, log routing consumers migrated. Clipboard integration is now completed for backup copy/paste via runtime service (desktop/mobile/web adapters).
 - **M2 user-accessible storage:** investigate and implement Android SAF and iOS Files/document-picker access, including persistent grants and cancellation/error handling; no native implementation yet.
 - **M3 layered locale loading:** private locale files primary; secondary user-accessible locale files overlay/override, safe import/export and validation.
-- **M4 storage/persistence migration:** inventory and migrate localStorage/IndexedDB consumers selectively without changing keys or schema.
+- **M4 storage/persistence migration:** [x] consumer inventory and selective service migration completed (compatibility fallback retained; IndexedDB transaction layer remains feature-owned). Validation deferred to M6.
 - **M5 lifecycle/permissions and remaining native integrations:** centralize only genuinely platform-dependent behavior.
 - **M6 batch validation:** typecheck/build, targeted tests and device checks where available; keep PR build automation disabled per-commit.
 
@@ -142,3 +142,11 @@
 - IndexedDB schema, keys, version, and transactions remain in feature modules; the service abstracts opening/upgrade dispatch, not full transaction semantics. This is a partial boundary, not a complete storage-engine abstraction.
 - Avoid broad transaction abstraction changes without validation; next focus is safely removing/isolating unintended direct-storage fallback and documenting intentional browser-only fallbacks.
 - No build/typecheck/device validation was run.
+
+
+## M4 milestone completion (audit + consumer boundary, validation deferred)
+- Completed the targeted audit of persistence consumers and their runtime service routing; retained compatibility fallback paths where runtime services may not yet be initialized/available.
+- IndexedDB remains intentionally split: opening/upgrade is routed through IndexedDatabaseService, while transactions remain feature-owned.
+- No storage keys, schema, DB versions or stored formats changed.
+- M4 is considered complete as a consumer-migration milestone; M6 remains responsible for validation. Native shared storage and locale overlay are M2/M3.
+- Next: M5 lifecycle/permissions audit, only centralizing native-specific behavior where justified by platform differences.
