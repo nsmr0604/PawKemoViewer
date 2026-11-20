@@ -259,3 +259,10 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Highest-priority blocker confirmed: user-accessible Android SAF/iOS Files operations are absent; existing mobile backup export is app-private only.
 - Implementation direction: selected-file open/save abstraction, Tauri v2 picker integration with minimal scoped permissions, explicit cancellation and error handling; migrate backup and logs, then locale secondary overlay.
 - This checkpoint is a source/config audit and plan update, not native picker implementation. Dependency lockfile sync, generated project setup and build/device validation remain prerequisites in the current tool-limited environment.
+
+
+## M2 native dialog plugin branch kickoff (2026-11-20)
+- Work is now isolated on `feature/m2-native-file-dialog`, branched from the platform-foundation PR branch.
+- Added Rust `tauri-plugin-dialog` dependency, initialized the plugin in Tauri runtime, and granted narrowly scoped dialog open/save capabilities.
+- npm guest package `@tauri-apps/plugin-dialog` and `package-lock.json` synchronization remain pending: this environment cannot execute npm install/lockfile generation. Do not claim the JS plugin is installed or builds are validated until lockfile synchronization is completed.
+- Next slice: add synchronized npm dependency/lockfile, then implement selected-file read/write bridge. Android content URIs require special handling and should not be treated as ordinary filesystem paths; iOS file URI support must likewise be validated. No device/build validation yet.
