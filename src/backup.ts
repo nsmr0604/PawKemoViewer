@@ -47,6 +47,7 @@ export async function exportBackup(): Promise<string> {
 
 /** バックアップ JSON を検証してパースする */
 export function parseBackup(text: string): BackupData {
+  if (typeof text !== "string" || text.length > 5 * 1024 * 1024) throw new Error("バックアップファイルが大きすぎます")
   let j: unknown
   try {
     j = JSON.parse(text)
@@ -62,7 +63,9 @@ export function parseBackup(text: string): BackupData {
     throw new Error("未対応のバックアップバージョンです")
   }
   if (b.follows && !Array.isArray(b.follows)) throw new Error("フォロー情報の形式が不正です")
+  if (Array.isArray(b.follows) && b.follows.length > 100000) throw new Error("フォロー情報が多すぎます")
   if (b.seen && !Array.isArray(b.seen)) throw new Error("既読情報の形式が不正です")
+  if (Array.isArray(b.seen) && b.seen.length > 100000) throw new Error("既読情報が多すぎます")
   if (b.settings && (typeof b.settings !== "object" || Array.isArray(b.settings))) throw new Error("設定情報の形式が不正です")
   return {
     type: BACKUP_TYPE,
