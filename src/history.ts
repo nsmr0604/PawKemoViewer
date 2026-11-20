@@ -1,4 +1,5 @@
 // 検索履歴 (localStorage)。JHenTai / EhViewer の検索履歴チップ相当。
+import { getPlatformRuntime } from "./platform/runtime"
 // 投稿検索 (Home) とクリエイター検索 (Creators) で共用する。
 
 const KEY = "pawkemo-search-history"
