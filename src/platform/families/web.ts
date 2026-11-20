@@ -1,4 +1,4 @@
-import type { FileExportService, PlatformServices } from "../contracts"
+import type { FileExportService, LocaleService, PlatformServices } from "../contracts"
 
 const logging = { append: (_line: string) => { /* browser runtime has no persistent log sink */ } }
 
@@ -18,7 +18,7 @@ const files: FileExportService = {
   },
 }
 
-/** Browser fallback adapter bundle. Services are selectively implemented during migration. */
+const locale: LocaleService = { listExternal: async () => null }\n\n/** Browser fallback adapter bundle. Services are selectively implemented during migration. */
 export function createWebServices(): PlatformServices {
   return {
     storage: typeof localStorage !== "undefined" ? {
@@ -26,7 +26,7 @@ export function createWebServices(): PlatformServices {
       set: (key, value) => localStorage.setItem(key, value),
       remove: (key) => localStorage.removeItem(key),
     } : undefined,
-    files,
+    files,\n    locale,
     clipboard: {
       readText: async () => {
         try { return typeof navigator !== "undefined" && navigator.clipboard ? await navigator.clipboard.readText() : null }
