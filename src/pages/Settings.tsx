@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
 import { invoke } from "@tauri-apps/api/core"
 import { getSettings, updateSettings, api, apiStatus } from "../api"
@@ -8,9 +8,8 @@ import {
   clearLog,
   formatLog,
   logInfo,
-  logLong,
 } from "../log"
-import { DEBUG_DIAG, debugOpenLogFolder } from "../debug"
+import { DEBUG_DIAG } from "../buildFlags"
 import { navigate } from "../router"
 import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
@@ -28,6 +27,9 @@ import {
 } from "../i18n"
 import { displayAppVersion } from "../version"
 
+const DeveloperDiagnostics = DEBUG_DIAG
+  ? lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
+  : null
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -47,7 +49,6 @@ function fmtTs(ms: number | undefined): string {
 export function SettingsPage() {
   const s = getSettings()
 
-  const [sessionKey, setSessionKey] = useState(s.sessionKey)
   const [theme, setTheme] = useState<"dark" | "light">(s.theme)
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(s.layoutMode || "auto")
   const [noImageMode, setNoImageModeState] = useState<boolean>(s.noImageMode || false)
@@ -58,8 +59,6 @@ export function SettingsPage() {
   const [locale, setLocaleState] = useState<Locale>(s.locale || "ja")
   const [iconCache, setIconCache] = useState<{ count: number; bytes: number } | null>(null)
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
-  const [saved, setSaved] = useState(false)
-  const [testResult, setTestResult] = useState<string | null>(null)
   const [loginStatus, setLoginStatus] = useState<"checking" | "loggedIn" | "loggedOut" | "unknown">(s.sessionKey ? "checking" : "loggedOut")
   const [version, setVersion] = useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
@@ -98,12 +97,6 @@ export function SettingsPage() {
     })
     return () => { active = false }
   }, [s.sessionKey])
-  const save = () => {
-    updateSettings({ sessionKey: sessionKey.trim() })
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
   const applyTheme = (value: "dark" | "light") => {
     setTheme(value)
     updateSettings({ theme: value })
@@ -262,25 +255,6 @@ export function SettingsPage() {
       setTimeout(() => window.location.reload(), 900)
     } catch (e) {
       setBackupResult(t("settings.importFailed", { msg: e instanceof Error ? e.message : String(e) }))
-    }
-  }
-
-  const testSession = async () => {
-    setTestResult(t("settings.testing"))
-    try {
-      // 保存前の入力値をそのまま検証する (保存済み設定とは分離)。
-      await api.accountFavorites("artist", sessionKey.trim())
-      setTestResult(t("settings.testOk"))
-    } catch (e) {
-      const st = apiStatus(e)
-      setTestResult(
-        st === 401
-          ? t("settings.testInvalid")
-          : t("settings.testFail", {
-              status: st !== null ? t("settings.httpStatus", { st }) : "",
-              msg: e instanceof Error ? e.message : String(e),
-            }),
-      )
     }
   }
 
@@ -710,48 +684,10 @@ export function SettingsPage() {
       {/* ------------------------------------------------ 診断 */}
       <div id="settings-diagnostics" className="settings-section">
         <div className="section-label">{t("settings.diagnostics")}</div>
-        {DEBUG_DIAG && (
-          <>
-            <div className="setting-item">
-              <div className="setting-text">
-                <span>{t("settings.diagFlag")}</span>
-                <small>{t("settings.diagFlagDesc")}</small>
-              </div>
-              <code className="small">DEBUG_DIAG=on</code>
-            </div>
-            <div className="setting-subsection">
-              <div className="section-label">{t("settings.developerSessionTitle")}</div>
-              <p className="small">{t("settings.developerSessionDesc")}</p>
-              <label className="field">
-                <span>{t("settings.sessionLabel")}</span>
-                <input type="password" value={sessionKey} onChange={(e) => setSessionKey(e.target.value)} placeholder={t("settings.sessionPlaceholder")} autoComplete="off" />
-                <small>{t("settings.sessionHelp")}</small>
-              </label>
-              <div className="settings-actions">
-                <button className="btn" onClick={testSession}>{t("settings.testSession")}</button>
-                <button className="btn btn-primary" onClick={save}>{t("settings.save")}</button>
-                {saved && <span className="ok">{t("settings.saved")}</span>}
-                {testResult && <span className="small" role="status">{testResult}</span>}
-              </div>
-            </div>
-            <div className="setting-item">
-              <div className="setting-text">
-                <span>{t("settings.logFolder")}</span>
-                <small>{t("settings.logFolderDesc")}</small>
-              </div>
-              <button className="btn" onClick={() => debugOpenLogFolder().then((p) => setLogResult(t("settings.folderResult", { path: p }))).catch((e) => setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) })))}>{t("settings.open")}</button>
-            </div>
-            <div className="setting-item">
-              <div className="setting-text">
-                <span>{t("settings.backupDump")}</span>
-                <small>{t("settings.backupDumpDesc")}</small>
-              </div>
-              <button className="btn" onClick={() => {
-                logLong("info", "DEBUG BACKUP DUMP (manual dump):\\n" + buildBackup())
-                setLogResult(t("settings.dumped"))
-              }}>{t("settings.dump")}</button>
-            </div>
-          </>
+        {DEBUG_DIAG && DeveloperDiagnostics && (
+          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
+            <DeveloperDiagnostics />
+          </Suspense>
         )}
 
 
