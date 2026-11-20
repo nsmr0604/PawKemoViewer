@@ -998,11 +998,23 @@ fn export_file(
         })
         .collect();
 
-    let name = format!("{}_{}", chrono_free_name(), safe);
-    let path = dir.join(&name);
-    let mut f = std::fs::File::create(&path).map_err(|e| e.to_string())?;
-    f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
-    Ok(path.to_string_lossy().to_string())
+    let safe = if safe.trim_matches(['_', '.']).is_empty() { "export.txt".to_string() } else { safe };
+    // create_new prevents silently overwriting an earlier export with the same
+    // timestamp/name (including concurrent export calls).
+    for attempt in 0..100u32 {
+        let suffix = if attempt == 0 { String::new() } else { format!("_{}", attempt) };
+        let name = format!("{}_{}{}", chrono_free_name(), suffix, safe);
+        let path = dir.join(&name);
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(mut f) => {
+                f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+                return Ok(path.to_string_lossy().to_string());
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    Err("could not allocate a unique export filename".into())
 }
 
 /// ファイル名用タイムスタンプ (追加依存を入れずに生成)
