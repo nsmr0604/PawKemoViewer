@@ -149,3 +149,9 @@ Lite はセッションIDの手動入力・検証・保存で、製品版にも�
 - Rust: https://www.rust-lang.org
 - React: https://react.dev / Vite: https://vitejs.dev
 - pawchive API 仕様: [API.md](API.md) および Swagger UI (https://pawchive.pw/api/schema)
+
+
+### Lite / Full 開発機能
+- Lite: セッションIDの手動入力・検証・保存。製品版にも含み、設定の開発項目トグルで表示する
+- Full: 詳細ログ、ログフォルダ操作、バックアップJSONダンプ。フロント DEBUG_DIAG と Rust `#[cfg(feature = "debug-diag")]` によるデバッグビルド専用で、正式版にはコンパイルしない
+- 詳細 API レスポンス本文のログも Full のみ。製品版では method / path / HTTP status の基本情報に限定する
