@@ -77,6 +77,7 @@ export async function refreshLocales(): Promise<void> {
   invalidFiles = []
   try {
     const res = await getPlatformRuntime().services.locale?.listExternal()
+    if (!res) throw new Error("External locale list unavailable")
     externalDir = res.dir
     invalidFiles = [...res.invalid]
     for (const f of res.files) {
