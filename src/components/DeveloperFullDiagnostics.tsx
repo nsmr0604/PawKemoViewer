@@ -18,6 +18,7 @@ export function DeveloperFullDiagnostics() {
       <div className="setting-subsection">
         <div className="section-label">{t("settings.fullDiagnosticsTitle")}</div>
         <p className="small">{t("settings.fullDiagnosticsDesc")}</p>
+        <p className="small">{t("settings.fullApiLogcatDesc")}</p>
       </div>
       <div className="setting-item">
         <div className="setting-text">
