@@ -10,7 +10,7 @@
 
 import { getSettings, updateSettings, type Settings } from "./api"
 import { loadFollows, replaceFollows, type FollowEntry } from "./follows"
-import { setSeen, clearSeen, getAllSeen, type SeenEntry } from "./db"
+import { replaceSeen, getAllSeen, type SeenEntry } from "./db"
 import { getPlatformRuntime } from "./platform/runtime"
 
 export const BACKUP_TYPE = "pawkemoviewer-backup"
@@ -82,18 +82,15 @@ export async function applyBackup(text: string): Promise<{
   )
   replaceFollows(follows)
 
-  // 既読状態はバックアップ内容で置き換える (残存データとの混在を防止)
-  const seenEntries = b.seen.filter((s) => s && typeof s.key === "string" && s.key.includes(":"))
-  await clearSeen()
-  let seen = 0
-  for (const s of seenEntries) {
-    await setSeen(
-      s.key,
-      typeof s.lastSeenPostId === "string" ? s.lastSeenPostId : "",
-      s.newest && typeof s.newest.id === "string" ? s.newest : undefined,
-    )
-    seen++
-  }
+  // 既読状態はバックアップ内容で一括置換し、途中失敗で部分復元しない
+  const seenEntries: SeenEntry[] = b.seen.filter((s) => s && typeof s.key === "string" && s.key.includes(":")).map((s) => ({
+    key: s.key,
+    lastSeenPostId: typeof s.lastSeenPostId === "string" ? s.lastSeenPostId : "",
+    checkedAt: typeof s.checkedAt === "number" ? s.checkedAt : Date.now(),
+    ...(s.newest && typeof s.newest.id === "string" ? { newest: s.newest } : {}),
+  }))
+  await replaceSeen(seenEntries)
+  const seen = seenEntries.length
 
   // 設定 (sessionKey も含めて復元。ただし空文字は無視して既存を維持)
   const cur = getSettings()
