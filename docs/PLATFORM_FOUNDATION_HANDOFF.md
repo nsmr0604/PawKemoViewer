@@ -203,3 +203,8 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 ## 2026-11-20: Atomic locale writes
 - Native locale writes now stage into a unique sibling temporary file, flush it, then rename to the destination; both private and desktop secondary locale paths use the helper.
 - Intended to avoid partially written locale JSON if interrupted. Runtime/build compatibility still needs validation, especially platform-specific rename replacement behavior.
+
+
+## 2026-11-20: Locale rename replacement compatibility
+- Atomic locale-write helper now includes a fallback for platforms (notably Windows) where rename cannot replace an existing destination: it removes the old file and retries the staged rename, cleaning up temporary files on failure.
+- This fallback has a brief non-atomic replacement window; platform testing is still required.
