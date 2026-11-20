@@ -31,16 +31,7 @@ const locale: LocaleService = {
 }
 
 const lifecycle: LifecycleService = {
-  onBackRequested: (handler) => {
-    if (typeof window === "undefined") return () => {}
-    const onPopState = () => {
-      handler()
-      window.history.pushState({ pawchiveBackGuard: true }, "", window.location.href)
-    }
-    window.history.pushState({ pawchiveBackGuard: true }, "", window.location.href)
-    window.addEventListener("popstate", onPopState)
-    return () => window.removeEventListener("popstate", onPopState)
-  },
+  onBackRequested: (_handler) => () => {},
   exit: async () => { throw new Error("Exit is not supported by the browser platform adapter") },
 }
 
