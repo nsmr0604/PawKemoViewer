@@ -10,7 +10,7 @@
 
 import { getSettings, updateSettings, type Settings } from "./api"
 import { loadFollows, replaceFollows, type FollowEntry } from "./follows"
-import { setSeen, getAllSeen, type SeenEntry } from "./db"
+import { setSeen, clearSeen, getAllSeen, type SeenEntry } from "./db"
 import { getPlatformRuntime } from "./platform/runtime"
 
 export const BACKUP_TYPE = "pawkemoviewer-backup"
@@ -82,14 +82,15 @@ export async function applyBackup(text: string): Promise<{
   )
   replaceFollows(follows)
 
-  // 既読状態
+  // 既読状態はバックアップ内容で置き換える (残存データとの混在を防止)
+  const seenEntries = b.seen.filter((s) => s && typeof s.key === "string" && s.key.includes(":"))
+  await clearSeen()
   let seen = 0
-  for (const s of b.seen) {
-    if (!s || typeof s.key !== "string") continue
+  for (const s of seenEntries) {
     await setSeen(
       s.key,
       typeof s.lastSeenPostId === "string" ? s.lastSeenPostId : "",
-      s.newest,
+      s.newest && typeof s.newest.id === "string" ? s.newest : undefined,
     )
     seen++
   }
