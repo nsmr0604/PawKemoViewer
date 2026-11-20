@@ -38,9 +38,14 @@ function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStor
     (db) =>
       new Promise<T>((resolve, reject) => {
         const t = db.transaction(store, mode)
+        let result: T
+        let requestFailed = false
         const req = fn(t.objectStore(store))
-        req.onsuccess = () => resolve(req.result)
-        req.onerror = () => reject(req.error)
+        req.onsuccess = () => { result = req.result }
+        req.onerror = () => { requestFailed = true; reject(req.error) }
+        t.oncomplete = () => { if (!requestFailed) resolve(result) }
+        t.onerror = () => reject(t.error || new Error("IndexedDB transaction failed"))
+        t.onabort = () => reject(t.error || new Error("IndexedDB transaction aborted"))
       }),
   )
 }
