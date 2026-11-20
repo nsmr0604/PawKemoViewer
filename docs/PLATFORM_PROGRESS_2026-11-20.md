@@ -119,3 +119,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 ## Icon database retry correction
 - Icon-cache database open failures no longer remain cached as a rejected promise; subsequent calls may retry. The DB connection also closes on versionchange.
 - Validation remains pending.
+
+
+## Source-integrity correction checkpoint
+- Corrected escaped newline sequences that had been inadvertently written as literal characters in imports/comments and the web platform adapter, restoring normal source line structure.
+- Normalized adapter type-import punctuation.
+- Build/typecheck is still unverified; treat these corrections as source-level fixes pending CI validation.
