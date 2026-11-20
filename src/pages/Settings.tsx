@@ -60,6 +60,7 @@ export function SettingsPage() {
   const [postViewMode, setPostViewModeState] = useState<"grid" | "list">(s.postViewMode || "grid")
   const [saved, setSaved] = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
+  const [loginStatus, setLoginStatus] = useState<"checking" | "loggedIn" | "loggedOut" | "unknown">(s.sessionKey ? "checking" : "loggedOut")
   const [version, setVersion] = useState<string>("")
   const [appVersion, setAppVersion] = useState<string>("")
   const [cache, setCache] = useState<CreatorCacheInfo | null>(null)
@@ -81,6 +82,22 @@ export function SettingsPage() {
     creatorIconInfo().then(setIconCache).catch(() => setIconCache(null))
   }, [])
 
+  // 保存済みセッションを検証し、期限切れのキーをログイン済みと誤表示しない。
+  useEffect(() => {
+    let active = true
+    if (!s.sessionKey) {
+      setLoginStatus("loggedOut")
+      return () => { active = false }
+    }
+    setLoginStatus("checking")
+    api.accountFavorites("artist").then(() => {
+      if (active) setLoginStatus("loggedIn")
+    }).catch((e) => {
+      if (!active) return
+      setLoginStatus(apiStatus(e) === 401 ? "loggedOut" : "unknown")
+    })
+    return () => { active = false }
+  }, [s.sessionKey])
   const save = () => {
     updateSettings({ sessionKey: sessionKey.trim() })
     setSaved(true)
@@ -320,56 +337,6 @@ export function SettingsPage() {
         ))}
       </nav>
 
-      {/* ------------------------------------------------ デバッグ診断 (ビルド時フラグ注入・リリースでは分離) */}
-      {DEBUG_DIAG && (
-        <div className="settings-section">
-          <div className="section-label">{t("settings.diagTitle")}</div>
-
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.diagFlag")}</span>
-              <small>{t("settings.diagFlagDesc")}</small>
-            </div>
-            <code className="small">DEBUG_DIAG=on</code>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.logFolder")}</span>
-              <small>{t("settings.logFolderDesc")}</small>
-            </div>
-            <button
-              className="btn"
-              onClick={() =>
-                debugOpenLogFolder()
-                  .then((p) => setLogResult(t("settings.folderResult", { path: p })))
-                  .catch((e) => setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) })))
-              }
-            >
-              {t("settings.open")}
-            </button>
-          </div>
-
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.backupDump")}</span>
-              <small>{t("settings.backupDumpDesc")}</small>
-            </div>
-            <button
-              className="btn"
-              onClick={() => {
-                logLong("info", "DEBUG BACKUP DUMP (手動ダンプ・下記全文):\n" + buildBackup())
-                setLogResult(t("settings.dumped"))
-              }}
-            >
-              {t("settings.dump")}
-            </button>
-          </div>
-
-          {logResult && <span className="small">{logResult}</span>}
-        </div>
-      )}
-
       {/* ------------------------------------------------ アカウント */}
       <div id="settings-account" className="settings-section">
         <div className="section-label">{t("settings.accountTitle")}</div>
@@ -381,27 +348,16 @@ export function SettingsPage() {
           <small className="small">{t("settings.loginHint")}</small>
         </div>
 
-        <label className="field">
-          <span>{t("settings.sessionLabel")}</span>
-          <input
-            type="password"
-            value={sessionKey}
-            onChange={(e) => setSessionKey(e.target.value)}
-            placeholder={t("settings.sessionPlaceholder")}
-          />
-          <small>{t("settings.sessionHelp")}</small>
-          <button className="btn" onClick={testSession}>
-            {t("settings.testSession")}
-          </button>
-          {testResult && <span className="small">{testResult}</span>}
-        </label>
-
-        <div className="settings-actions">
-          <button className="btn btn-primary" onClick={save}>
-            {t("settings.save")}
-          </button>
-          {saved && <span className="ok">{t("settings.saved")}</span>}
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.loginStatus")}</span>
+            <small>{t("settings.loginStatusDesc")}</small>
+          </div>
+          <span className={loginStatus === "loggedIn" ? "ok" : "small"} role="status" aria-live="polite">
+            {t("settings.loginStatus." + loginStatus)}
+          </span>
         </div>
+
       </div>
 
       {/* ------------------------------------------------ 表示 */}
