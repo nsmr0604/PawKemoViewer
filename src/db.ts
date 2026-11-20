@@ -11,19 +11,25 @@ let dbPromise: Promise<IDBDatabase> | null = null
 
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise
-  dbPromise = new Promise((resolve, reject) => {
-    const service = getPlatformRuntime().services.indexedDatabase
-    if (!service) { reject(new Error("IndexedDB platform service unavailable")); return }
-    service.open(DB_NAME, DB_VERSION, (db) => {
-      if (!db.objectStoreNames.contains("creators")) {
-        const s = db.createObjectStore("creators", { keyPath: "key" })
-        s.createIndex("name", "nameLower")
-      }
-      if (!db.objectStoreNames.contains("seen")) db.createObjectStore("seen", { keyPath: "key" })
-      if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" })
-    }).then(resolve, reject)
+  const service = getPlatformRuntime().services.indexedDatabase
+  if (!service) return Promise.reject(new Error("IndexedDB platform service unavailable"))
+  const opening = service.open(DB_NAME, DB_VERSION, (db) => {
+    if (!db.objectStoreNames.contains("creators")) {
+      const s = db.createObjectStore("creators", { keyPath: "key" })
+      s.createIndex("name", "nameLower")
+    }
+    if (!db.objectStoreNames.contains("seen")) db.createObjectStore("seen", { keyPath: "key" })
+    if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" })
+  }).then((db) => {
+    db.onversionchange = () => db.close()
+    return db
+  }).catch((error) => {
+    // Failed open must not poison the cache permanently; allow later retry.
+    if (dbPromise === opening) dbPromise = null
+    throw error
   })
-  return dbPromise
+  dbPromise = opening
+  return opening
 }
 
 function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
