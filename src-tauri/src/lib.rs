@@ -389,8 +389,19 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
         log_http_headers(&app, "Pawchive::Login", "RESPONSE", resp.headers());
     }
 
+    let login_status = resp.status();
+    let login_headers = resp.headers().clone();
+    #[cfg(feature = "debug-diag")]
+    {
+        full_http_log(&app, "Pawchive::Login", &format!("RESPONSE status={}", login_status));
+        log_http_headers(&app, "Pawchive::Login", "RESPONSE", &login_headers);
+    }
+    let login_body = resp.text().await.unwrap_or_default();
+    #[cfg(feature = "debug-diag")]
+    log_http_response_body(&app, "Pawchive::Login", &login_body);
+
     let mut session: Option<String> = None;
-    for sc in resp.headers().get_all(SET_COOKIE) {
+    for sc in login_headers.get_all(SET_COOKIE) {
         if let Ok(v) = sc.to_str() {
             for part in v.split(';') {
                 if let Some(rest) = part.trim().strip_prefix("session=") {
@@ -407,6 +418,11 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
         vh.insert(USER_AGENT, ua.clone());
         if let Ok(c) = HeaderValue::from_str(&format!("session={}", s)) {
             vh.insert(COOKIE, c);
+            #[cfg(feature = "debug-diag")]
+            {
+                full_http_log(&app, "Pawchive::LoginValidation", "REQUEST method=GET url=https://pawchive.pw/api/v1/account/favorites?type=artist");
+                log_http_headers(&app, "Pawchive::LoginValidation", "REQUEST", &vh);
+            }
             if let Ok(v) = client
                 .get("https://pawchive.pw/api/v1/account/favorites?type=artist")
                 .headers(vh)
@@ -414,7 +430,17 @@ async fn login_request(username: String, password: String, timeout_secs: Option<
                 .send()
                 .await
             {
-                ok = v.status().is_success();
+                let validation_status = v.status();
+                let validation_headers = v.headers().clone();
+                #[cfg(feature = "debug-diag")]
+                {
+                    full_http_log(&app, "Pawchive::LoginValidation", &format!("RESPONSE status={}", validation_status));
+                    log_http_headers(&app, "Pawchive::LoginValidation", "RESPONSE", &validation_headers);
+                }
+                let validation_body = v.text().await.unwrap_or_default();
+                #[cfg(feature = "debug-diag")]
+                log_http_response_body(&app, "Pawchive::LoginValidation", &validation_body);
+                ok = validation_status.is_success();
             }
         }
     }
