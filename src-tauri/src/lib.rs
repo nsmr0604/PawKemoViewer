@@ -790,8 +790,8 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
 // リリースビルド (feature 無し) では分離される (登録自体も行わない)
 // ---------------------------------------------------------------------------
 
-/// フロントエンドのログ行を app_data/logs/debug-app.log へ追記する。
-/// debug-diag feature 無しでは登録されない
+/// Full diagnostics: フロントエンドの詳細ログをファイルへ追記する。
+#[cfg(feature = "debug-diag")]
 #[tauri::command]
 fn debug_append_log(app: tauri::AppHandle, text: String) -> Result<(), String> {
     use std::io::Write;
@@ -812,8 +812,8 @@ fn debug_append_log(app: tauri::AppHandle, text: String) -> Result<(), String> {
     Ok(())
 }
 
-/// ログフォルダ (app_data/logs) を OS のファイラで開く。
-/// debug-diag feature 無しでは登録されない
+/// Full diagnostics: ログフォルダを OS のファイラで開く。
+#[cfg(feature = "debug-diag")]
 #[tauri::command]
 fn debug_open_log_folder(app: tauri::AppHandle) -> Result<String, String> {
     let dir = app
@@ -1012,7 +1012,9 @@ pub fn run() {
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している
+                #[cfg(feature = "debug-diag")]
                 debug_append_log,
+                #[cfg(feature = "debug-diag")]
                 debug_open_log_folder
             ]
         )
