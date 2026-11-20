@@ -38,7 +38,7 @@ export interface ClipboardService {
 }
 
 export interface LifecycleService {
-  onBackRequested(handler: () => void): () => void
+  onBackRequested(handler: (canGoBack: boolean) => void): () => void
   exit(): Promise<void>
 }
 
