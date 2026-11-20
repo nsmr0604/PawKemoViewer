@@ -101,3 +101,9 @@
 - Added `IndexedDatabaseService` contract and implementations for desktop/mobile/web family adapters. The adapter owns opening IndexedDB and upgrade callback dispatch; it does not alter storage engine or data format.
 - `src/db.ts` now requests database opening through PlatformRuntime. Database name (`pawkemoviewer`), version (1), object stores/index, pack encoding, transactions and existing data remain unchanged.
 - This is an adapter-boundary migration only; IDB transactions/query functions remain in `src/db.ts`. No validation/build/device testing has been run; follow-up must inspect for type/build errors before advancing.
+
+
+## IndexedDB migration follow-up
+- Creator icon cache database (`pawkemo-icons`) now opens through PlatformRuntime's IndexedDatabaseService instead of calling IndexedDB directly.
+- Creator-cache DB opening resets its cached promise on failure, allowing retry, and closes the connection on versionchange to avoid blocking upgrades.
+- These are source changes only; build and runtime validation remain pending. Other IndexedDB transaction operations remain within feature modules.
