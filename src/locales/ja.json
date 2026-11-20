@@ -318,5 +318,9 @@
   "settings.loginStatus.loggedOut": "未ログイン / セッション無効",
   "settings.loginStatus.unknown": "確認できません（通信状態を確認してください）",
   "settings.developerSessionTitle": "開発者向けセッションIDログイン",
-  "settings.developerSessionDesc": "通常のログインで問題がある場合の開発・診断用です。pawchive.pw の session Cookie 値を入力してテスト・保存できます。"
+  "settings.developerSessionDesc": "通常のログインで問題がある場合の開発・診断用です。pawchive.pw の session Cookie 値を入力してテスト・保存できます。",
+  "settings.developerTools": "開発項目",
+  "settings.developerToolsDesc": "通常は非表示です。必要な場合のみ開発・診断用の操作を表示します。",
+  "settings.developerToolsOn": "表示中",
+  "settings.developerToolsOff": "表示する"
 }
