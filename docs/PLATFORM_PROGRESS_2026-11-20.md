@@ -170,3 +170,7 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 ## Locale import correction
 - Fixed `.json` filename extension parsing for both app-private and secondary locale file import handlers; ordinary selected locale filenames now yield the locale code before validation. Commit `5792d089`.
 - Source-level only; validation unconfirmed.
+
+
+## Secondary locale listing error reporting
+- Added surfacing of secondary storage's listing-invalid entries in locale diagnostics, with `secondary:` labels. Commit `ccbf20dc`. No build/typecheck/test performed.
