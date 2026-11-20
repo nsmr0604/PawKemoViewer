@@ -52,3 +52,11 @@ Browser-only lifecycle slice was implemented: web adapter can subscribe to popst
 - `src/platform/families/web.ts` popstate listener service exists but currently no app consumer wires it.
 - Native secondary shared storage remains unavailable; current `resolve_storage_location` returns null on mobile.
 - `src/i18n.ts` loads private external locale JSON over bundled locale dictionaries; secondary accessible folder overlay is not yet implemented.
+
+
+## Latest work
+- M5: centralized App back handling via LifecycleService.
+- Contract callback now receives native `canGoBack` state. Mobile adapter bridges Tauri back events and app exit; listener cleanup is included.
+- App consumer calls history.back() when native stack can go back, otherwise lifecycle exit.
+- Web lifecycle hook is inert; browser navigation remains owned by browser/router and exit is unsupported.
+- Validation has not been run; milestone remains open.
