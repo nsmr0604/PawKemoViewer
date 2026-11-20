@@ -27,7 +27,7 @@ import {
 } from "../i18n"
 import { displayAppVersion } from "../version"
 
-const DeveloperDiagnostics = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
+const DeveloperLiteTools = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -780,7 +780,7 @@ export function SettingsPage() {
 
         {(DEBUG_DIAG || developerToolsEnabled) && (
           <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
-            <DeveloperDiagnostics />
+            <DeveloperLiteTools />
           </Suspense>
         )}
 
