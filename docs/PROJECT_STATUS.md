@@ -291,3 +291,8 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - `parseLocaleJson` now rejects payloads larger than 1 MiB, object entry counts above 10,000, keys over 512 characters, and individual translation values over 10,000 characters. It continues to require `locale.name` and at least one additional string entry.
 - This protects both private and desktop-secondary import paths and refresh-time overlay parsing from unnecessarily large payloads. Native Rust listing/writing already enforces its file size bound; this adds frontend validation for picker imports and in-memory parsing.
 - Commit `81cc9571`. Source-only; validation not run. Android SAF/iOS Files picker remains blocked/incomplete.
+
+
+## Locale parser safety follow-up (2026-11-20)
+- Locale dictionaries now use null-prototype objects and reject reserved prototype-related JSON keys. Commit `1d36f83e`.
+- This is a parser hardening increment only; validation is pending. M2 native user-accessible storage, M3 mobile overlay, and M6 batch validation remain outstanding.
