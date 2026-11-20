@@ -101,7 +101,11 @@ jobs:
 
       - name: Build APK
         run: |
-          npx tauri android build
+          if [ "${{ inputs.release }}" = "true" ]; then
+            npx tauri android build
+          else
+            npx tauri android build --features debug-diag
+          fi
 
       - name: Sign APKs (debug keystore / 開発用仮署名)
         # 標準手順の debug.keystore を使用。パスワード "android" は Android SDK の
