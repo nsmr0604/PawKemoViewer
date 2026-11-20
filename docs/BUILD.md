@@ -1,6 +1,6 @@
 # ビルドガイド
 
-PawKemoViewer (v0.3.1) のビルド・パッケージング・CI 構成。
+PawKemoViewer (v0.3.2) のビルド・パッケージング・CI 構成。
 
 ## ビルドフロー (原則: CI 委任)
 
@@ -44,12 +44,13 @@ npm run build                                  # 型検査 + フロントエン�
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo build --manifest-path src-tauri/Cargo.toml                       # debug exe
 cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag # 診断ビルド
+npm run build:debug                            # VITE_DEBUG_DIAG=1 のフロントエンド
 npm run tauri:dev                              # 開発実行 (Vite + Tauri)
 npm run tauri:build                            # ローカルリリースバンドル (通常は不要)
 ```
 
-- デバッグ診断ビルド (PC): `npm run dev` は `.env.development` により
-  `VITE_DEBUG_DIAG` が自動有効。debug exe は
+- デバッグ診断ビルド (PC): `npm run dev` / `npm run tauri:dev` は `.env.development` により
+  `VITE_DEBUG_DIAG` が自動有効。`tauri:dev` は Cargo feature `debug-diag` も指定。debug exe は
   `src-tauri/target/debug/pawkemoviewer.exe`
 - ワークフロー YAML の push 前検証: `npx --yes js-yaml .github/workflows/*.yml`
 
@@ -60,10 +61,11 @@ npm run tauri:build                            # ローカルリリースバン�
 - `prepare` ジョブ: release=true 時は旧 PC アセット削除 / debug 時は
   debug-latest の現行バージョン以外を掃除
 - `VITE_DEBUG_DIAG` は **ジョブレベル env** (tauri-action の beforeBuildCommand 内
-  ビルドにも適用される)
+  ビルドにも適用される)。デバッグ時は `args: --features debug-diag` も渡し、Rust 側の開発コマンド・詳細トレースを注入
 - concurrency: 同一ブランチの新ランが旧ランをキャンセル
 
 ### android.yml (Android Build)
+- デバッグビルド: `npx tauri android build --features debug-diag`。正式リリース: feature 無し
 - `npx tauri android init` → `npx tauri android build` → zipalign + apksigner
   (debug.keystore) → リリース添付
 - `on: pull_request` も発火 (artifact のみ)
