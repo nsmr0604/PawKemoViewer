@@ -1,42 +1,31 @@
-# Platform Foundation — Interim Handoff (2026-11-20, CI trigger + storage scope)
+# Platform Foundation — Interim Handoff (2026-11-20, reconciliation checkpoint)
 
-## Progress
-Stage 0 audit partial. Stage 1 runtime scaffolding and typed service contracts/family dispatch exist on PR #11.
+## Verified branch state
+PR #11 remains draft/open/unmerged on `refactor/platform-foundation-phase1`. Inspected head previously: `e3ead3cfaf69510fd6d323604a24e2992707ed0f`.
 
-## Current increment
-- StorageLocationService / StorageArea contract distinguishes primary-private and secondary-accessible and uses purpose scopes (logs, locales, exports, backup, general).
-- Android workflow: removed pull_request event trigger on this branch so commits to PR #11 will not each start an Android build. Push to main with paths filter and manual workflow_dispatch remain.
-- No runtime or data migration in this increment.
+## Implemented and confirmed in source
+- Stage 1 contracts/runtime/family dispatch.
+- Web adapter localStorage and clipboard.
+- Desktop and Mobile family factories expose storage-location resolution via Tauri invoke.
+- Mobile factory refuses secondary-accessible resolution (returns null).
 
-## Storage policy
-- Primary: app private/sandbox storage.
-- Secondary: user-accessible area resolved using native platform APIs; Android scoped storage and iOS Files constraints respected.
-- Normal logs in primary, log dump explicitly exported to secondary.
-- Locale loading primary first then secondary overlay; secondary failure must not break startup.
-- Avoid hardcoded paths and destructive migrations.
+## Important reconciliation
+Earlier conversational updates described a Rust `resolve_storage_location` command and related commits. The actual inspected `src-tauri/src/lib.rs` at current branch head does not show that command in inspected content; GitHub code search also returned no indexed match. Therefore, the command's existence is **not verified** and frontend invocation may currently fail at runtime. Do not rely on that resolver as implemented until full Rust command registration and body are confirmed and/or added.
 
-## Resolver increment (unverified)
-- Added an additive `resolve_storage_location` Tauri command: primary-private uses app-data directory; desktop secondary uses OS document directory; purpose-scoped folders are created.
-- Android/iOS secondary currently returns `None` pending native sharing/document API integration. This deliberately does not equate sandbox paths with user-accessible storage.
-- Existing consumers are not yet migrated to the resolver; command is not yet wired into frontend runtime services.
-- No Rust/frontend build or device verification performed.
+The storage resolver contract and family adapter invocation remain transitional; existing consumers are not migrated. No native storage migration, data migration, or destructive operation has been performed.
 
-## Frontend family wiring increment
-- Desktop and Mobile family adapters now expose `StorageLocationService` and call the Rust resolver through Tauri `invoke`.
-- Mobile adapter intentionally refuses secondary-accessible requests and returns `null`; primary-private requests use the Rust command.
-- Resolver failures are handled as `null` with a warning, keeping consumers responsible for fallback.
-- Consumer migration is still pending. No build/typecheck/device verification performed.
+## Logging audit findings
+- `src/log.ts` maintains a bounded in-memory ring (400 entries, max message length 2000).
+- Lite retains error entries only; Full diagnostics retains info/warn/error.
+- Full diagnostic entries dynamically invoke `debugAppendLog`; `src/debug.ts` calls the native debug command.
+- Global browser error and unhandled rejection listeners currently reside in `src/log.ts`.
+- Rust appends diagnostics to app-data/logs in inspected source; debug command behavior still requires further inspection.
+- Log export and persistent log handling are not migrated to platform services yet.
 
-## Limitations
-- Native location resolution not implemented.
-- Desktop/Mobile adapters now expose scoped resolver (mobile secondary unavailable); Web adapter currently localStorage/Clipboard.
-- Consumer migration pending.
-- No CI/build/typecheck/device verification confirmed. With pull_request trigger disabled, PR builds must be manually dispatched or wait for main push.
+## Next safe increment
+1. Verify Rust command definition and command registration, workflow file, locale/export consumers, and debug-feature gating before claiming resolver or build behavior.
+2. Introduce typed logging service contract/adapters without changing Lite/Full policy or log output semantics.
+3. Migrate log file persistence and export only after platform service APIs are verified.
 
-## Next
-1. Inspect native directory APIs and permissions before implementing Rust resolver.
-2. Introduce safe native path/document API and centralized family routing.
-3. Migrate locale overlay/export and log dump incrementally.
-
-## PR
-#11 draft/open, branch `refactor/platform-foundation-phase1`, not merged.
+## Verification
+No build/typecheck/CI/device verification confirmed. Do not merge PR #11 without explicit user approval.
