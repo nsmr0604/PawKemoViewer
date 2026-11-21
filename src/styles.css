@@ -219,6 +219,18 @@ body {
   font-size: 20px;
 }
 
+.logo-icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex: none;
+}
+.logo.small .logo-icon {
+  width: 21px;
+  height: 21px;
+}
+
 .detail-bar {
   justify-content: space-between;
 }

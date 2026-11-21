@@ -25,6 +25,7 @@ tauri-build = { version = "2.7.4" }
 # Tauri
 tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
+tauri-plugin-app-icon = "0.1.0"
 
 # Logging
 log = "0.4"

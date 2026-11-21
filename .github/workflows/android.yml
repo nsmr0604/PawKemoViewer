@@ -14,6 +14,9 @@ on:
       - "tsconfig.json"
       - "package.json"
       - "package-lock.json"
+      - "scripts/app-icon/**"
+      - "src-tauri/app-icons.json"
+      - "src-tauri/app-icons/**"
       - ".github/workflows/android.yml"
   workflow_dispatch:
     inputs:
@@ -84,9 +87,25 @@ jobs:
         # ジョブレベル env (VITE_DEBUG_DIAG) を使用
         run: npm run build
 
+      - name: Generate native app icons
+        # src-tauri/icons/ は git 管理外。init 前に dark から生成しておく
+        run: npm run icons:generate
+
       - name: Initialize Android
         run: |
           npx tauri android init
+
+      - name: Apply primary (dark) app icon
+        # gen/android が存在すると tauri icon は生成先 res/ へ直接書き込むため、
+        # init 後に dark を再適用して primary を確実にする
+        run: npx tauri icon src-tauri/app-icons/dark.png
+
+      - name: Generate alternate app icon (light)
+        # 既定アイコンは dark (ic_launcher)。light のみ代替 alias として生成。
+        # テーマ切替は tauri-plugin-app-icon が行う。
+        run: |
+          node scripts/app-icon/generate-android.mjs --config src-tauri/app-icons.json
+          grep -c 'tauri-plugin-app-icon-id' src-tauri/gen/android/app/src/main/AndroidManifest.xml
 
       - name: Build APK
         run: |

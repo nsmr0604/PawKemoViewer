@@ -6,6 +6,7 @@ import { BottomNavigation } from "./BottomNavigation"
 import { NavigationRail, NavIcon } from "./NavigationRail"
 
 interface AppShellProps {
+  headerIcon: string
   layout: ResolvedLayout
   currentPath: string
   followCount: number
@@ -13,7 +14,7 @@ interface AppShellProps {
   children: ReactNode
 }
 
-export function AppShell({ layout, currentPath, followCount, hasSession, children }: AppShellProps) {
+export function AppShell({ headerIcon, layout, currentPath, followCount, hasSession, children }: AppShellProps) {
   const isDetail = currentPath === "post"
   const isLogin = currentPath === "login"
   const isDesktopLayout = layout === "desktop"
@@ -41,7 +42,7 @@ export function AppShell({ layout, currentPath, followCount, hasSession, childre
           <header className="top-bar">
             <div className="top-bar-brand">
               <button type="button" className="logo" onClick={() => navigate("/", true)}>
-                <span aria-hidden="true">🐾</span> PawKemoViewer
+                <img className="logo-icon" src={headerIcon} alt="" /> PawKemoViewer
               </button>
               {pageLabel && <span className="topbar-context">{pageLabel}</span>}
             </div>
@@ -76,7 +77,9 @@ export function AppShell({ layout, currentPath, followCount, hasSession, childre
               <span className="detail-back-label">← {t("common.back")}</span>
               <span className="kbd small">Esc</span>
             </button>
-            <button type="button" className="logo small" onClick={() => navigate("/", true)}>🐾 PawKemoViewer</button>
+            <button type="button" className="logo small" onClick={() => navigate("/", true)}>
+              <img className="logo-icon" src={headerIcon} alt="" /> PawKemoViewer
+            </button>
           </header>
         )}
 
