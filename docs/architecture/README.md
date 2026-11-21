@@ -12,6 +12,8 @@ See the [baseline inventory](inventory.md) for code references and validation, a
 
 See the [application use-case conventions](use-cases.md) for workflow boundaries and cancellation.
 
+See the [repository and infrastructure design](repositories.md) for storage ownership and transport policy.
+
 ## Principles
 - Incremental migrations, behavior-preserving first.
 - Keep platform-specific implementation behind typed contracts.

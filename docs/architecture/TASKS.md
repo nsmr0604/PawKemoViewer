@@ -24,7 +24,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 - [x] **M2.6** Migrate creator listing/profile workflow. Depends: M2.4; can parallelize with M2.5 only if no shared-file conflicts.
 
 ## M3 — Repositories / infrastructure
-- [ ] **M3.1** Repository contract design for one migrated slice. Depends: M2.3.
+- [x] **M3.1** Repository contract design for one migrated slice. Depends: M2.3.
 - [ ] **M3.2** Implement repository and move data-source details for that slice. Depends: M3.1.
 - [ ] **M3.3** Inventory DB ownership and transactions; design schema/transaction boundary. Depends: M0.3.
 - [ ] **M3.4** Separate transport DTO normalization from domain/presentation types for one API path. Depends: M3.1.
