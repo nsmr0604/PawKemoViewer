@@ -411,3 +411,8 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - Backup restore UI now selects the native Rust dialog only for the desktop platform family. Mobile and web use the WebView/browser file-input flow, avoiding a mobile UI button that invoked the intentionally unsupported URI-stub command.
 - Mobile file-input behavior is still unverified on devices and does not constitute SAF URI integration. Export remains unavailable on mobile until URI-aware write integration is completed.
 - Source-only commit `e3d3251`; no build/typecheck/device validation.
+
+
+## Mobile export capability guard (2026-11-21)
+- Mobile FileExportService now fails with a clear URI-integration-pending message before invoking the unsupported Rust save command. This avoids presenting a generic native command failure as though a provider write was attempted.
+- User-selected export remains unimplemented on Android/iOS. Desktop and web paths are unchanged. Source commit `2cf86d3`; no build/typecheck/device validation.
