@@ -10,6 +10,7 @@ import {
 } from "../log"
 import { DEBUG_DIAG } from "../buildFlags"
 import { navigate } from "../router"
+import { Toggle } from "../components"
 import { getPlatformName, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
 import { clearIconCache, creatorIconInfo } from "../icons"
@@ -584,12 +585,13 @@ export function SettingsPage() {
             <span>{t("settings.noImage")}</span>
             <small>{t("settings.noImageDesc")}</small>
           </div>
-          <button
-            className={`btn ${noImageMode ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => toggleNoImageMode(!noImageMode)}
-          >
-            {noImageMode ? t("settings.noImageOn") : t("settings.noImageOff")}
-          </button>
+          <Toggle
+            checked={noImageMode}
+            onChange={toggleNoImageMode}
+            label={t("settings.noImage")}
+            onLabel={t("settings.noImageOn")}
+            offLabel={t("settings.noImageOff")}
+          />
         </div>
 
         <div className="setting-item">
@@ -597,12 +599,13 @@ export function SettingsPage() {
             <span>{t("settings.proxy")}</span>
             <small>{t("settings.proxyDesc")}</small>
           </div>
-          <button
-            className={`btn ${proxyImages ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => toggleProxyImages(!proxyImages)}
-          >
-            {proxyImages ? t("settings.proxyOn") : t("settings.proxyOff")}
-          </button>
+          <Toggle
+            checked={proxyImages}
+            onChange={toggleProxyImages}
+            label={t("settings.proxy")}
+            onLabel={t("settings.proxyOn")}
+            offLabel={t("settings.proxyOff")}
+          />
         </div>
       </div>
 
@@ -615,12 +618,13 @@ export function SettingsPage() {
             <span>{t("settings.fileList")}</span>
             <small>{t("settings.fileListDesc")}</small>
           </div>
-          <button
-            className={`btn ${postFileListMode ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => togglePostFileListMode(!postFileListMode)}
-          >
-            {postFileListMode ? t("settings.fileListOn") : t("settings.fileListOff")}
-          </button>
+          <Toggle
+            checked={postFileListMode}
+            onChange={togglePostFileListMode}
+            label={t("settings.fileList")}
+            onLabel={t("settings.fileListOn")}
+            offLabel={t("settings.fileListOff")}
+          />
         </div>
 
         <div className="setting-item">
@@ -628,13 +632,13 @@ export function SettingsPage() {
             <span>{t("settings.excludeAiTitle")}</span>
             <small>{t("settings.excludeAiDesc")}</small>
           </div>
-          <button
-            className={`btn ${excludeAiPosts ? "btn-primary" : "btn-ghost"}`}
-            aria-pressed={excludeAiPosts}
-            onClick={() => toggleExcludeAiPosts(!excludeAiPosts)}
-          >
-            {excludeAiPosts ? t("settings.excludeAiOn") : t("settings.excludeAiOff")}
-          </button>
+          <Toggle
+            checked={excludeAiPosts}
+            onChange={toggleExcludeAiPosts}
+            label={t("settings.excludeAiTitle")}
+            onLabel={t("settings.excludeAiOn")}
+            offLabel={t("settings.excludeAiOff")}
+          />
         </div>
 
         <div className="setting-item">
@@ -642,12 +646,13 @@ export function SettingsPage() {
             <span>{t("settings.coverTitle")}</span>
             <small>{t("settings.coverDesc")}</small>
           </div>
-          <button
-            className={`btn ${excludeFanboxCover ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => toggleExcludeFanboxCover(!excludeFanboxCover)}
-          >
-            {excludeFanboxCover ? t("settings.coverOn") : t("settings.coverOff")}
-          </button>
+          <Toggle
+            checked={excludeFanboxCover}
+            onChange={toggleExcludeFanboxCover}
+            label={t("settings.coverTitle")}
+            onLabel={t("settings.coverOn")}
+            offLabel={t("settings.coverOff")}
+          />
         </div>
       </div>
 
@@ -842,17 +847,16 @@ export function SettingsPage() {
               <span>{t("settings.developerTools")}</span>
               <small>{t("settings.developerToolsDesc")}</small>
             </div>
-            <button
-              className={`btn ${developerToolsEnabled ? "btn-primary" : "btn-ghost"}`}
-              aria-pressed={developerToolsEnabled}
-              onClick={() => {
-                const next = !developerToolsEnabled
+            <Toggle
+              checked={developerToolsEnabled}
+              onChange={(next) => {
                 setDeveloperToolsEnabled(next)
                 updateSettings({ developerToolsEnabled: next })
               }}
-            >
-              {developerToolsEnabled ? t("settings.developerToolsOn") : t("settings.developerToolsOff")}
-            </button>
+              label={t("settings.developerTools")}
+              onLabel={t("settings.developerToolsOn")}
+              offLabel={t("settings.developerToolsOff")}
+            />
           </div>
         )}
 

@@ -122,6 +122,39 @@ export function Empty({ text = t("common.noData") }: { text?: string }) {
   return <div className="empty">{text}</div>
 }
 
+/** 左右スイッチ型のオン/オフトグル。
+ *  ラベル・状態テキストを明示してオンオフの意味を分かりやすくする。 */
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  onLabel,
+  offLabel,
+}: {
+  checked: boolean
+  onChange: (value: boolean) => void
+  label?: string
+  onLabel?: string
+  offLabel?: string
+}) {
+  const stateText = checked ? (onLabel ?? t("common.on")) : (offLabel ?? t("common.off"))
+  return (
+    <div className="toggle-wrap">
+      <span className={`toggle-state ${checked ? "is-on" : "is-off"}`}>{stateText}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={`toggle-switch ${checked ? "is-on" : ""}`}
+        onClick={() => onChange(!checked)}
+      >
+        <span className="toggle-switch-thumb" />
+      </button>
+    </div>
+  )
+}
+
 /** 無限スクロール用ローダー: scroll イベント + 幾何判定で確実に発火する
  *  (IntersectionObserver は環境によって再発火しないため不採用) */
 export function PostGrid({ posts, onEndReached, loading, done, newIds, viewMode }: PostGridProps) {
