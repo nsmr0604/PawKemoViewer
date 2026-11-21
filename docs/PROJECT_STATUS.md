@@ -373,3 +373,9 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - Replaced the FileExportService string/sentinel return contract with a discriminated result: `{ status: "saved", path }` or `{ status: "cancelled" }`. Native adapters translate the command sentinel into this result; the web adapter returns the saved filename result.
 - Backup export and Settings log export consume the typed result and treat cancellation as a distinct non-success outcome, avoiding string/path ambiguity.
 - Source edits only; no build, typecheck, automated tests, CI or platform/device verification. Dialog plugin npm dependency/lockfile and native open/import path remain pending.
+
+
+## M2 continuation — native backup open picker (2026-11-21)
+- Added Rust `open_user_backup` command with a JSON-filtered native open dialog; it reads selected UTF-8 file contents, caps file size at 5 MiB, and returns None on cancellation.
+- Settings backup restore now calls this command instead of the HTML file input for the backup restore entry point. The existing HTML-based locale import pickers remain.
+- This remains unverified: the dialog plugin's selected-path conversion may differ on mobile/content-URI providers, and no build/typecheck/device test was run. JS plugin package synchronization is still outstanding.
