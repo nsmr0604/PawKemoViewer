@@ -145,6 +145,10 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
   `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`
 - v0.3.0 は破壊的変更 (内部キー・identifier・crate 名の全面改名)。**0.2.x からの
   引継ぎはバックアップ書き出し→読み込み**で行う
+- **デバッグビルドの表示**: `x.y.z(<short commit>)` (例: `0.4.1(6ed682e)`)。
+  CI は `VITE_BUILD_COMMIT=github.sha`、ローカルは `vite.config.ts` が
+  `git rev-parse --short=7 HEAD` を埋め込む。正式リリース
+  (`VITE_BUILD_REV=release`) では commit を表示しない
 
 ## 手動リリース手順 (正式版)
 

@@ -98,6 +98,8 @@ jobs:
       VITE_DEBUG_DIAG: ${{ inputs.release == true && '0' || '1' }}
       # デバッグビルドの表記用ビルド番号 (バージョン番号は変えない)。リリースは 'release'
       VITE_BUILD_REV: ${{ inputs.release == true && 'release' || github.run_number }}
+      # デバッグビルドの版表記 x.y.z(commit) に使うビルド commit
+      VITE_BUILD_COMMIT: ${{ github.sha }}
 
     steps:
       - name: Checkout
