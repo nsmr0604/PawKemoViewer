@@ -4,7 +4,7 @@ import { createDesktopServices, createMobileServices, createWebServices } from "
 
 // Keep native-runtime detection centralized. OS detection alone does not imply Tauri/native access.
 function isNativeRuntime(): boolean {
-  return typeof window !== "undefined" && "__TAURI__" in window
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window
 }
 
 let runtime: PlatformRuntime | null = null
