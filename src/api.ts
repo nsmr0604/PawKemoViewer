@@ -54,11 +54,11 @@ export interface Settings {
  *  変更をイベントで通知する (レイアウトモード即時反映バグの再発防止) */
 export const SETTINGS_CHANGED_EVENT = "pawkemo-settings-changed"
 
-function settingsStorage() { try { return getPlatformRuntime().services.storage ?? localStorage } catch { return localStorage } }
+function settingsStorage() { return getPlatformRuntime().services.storage }
 
 export function loadSettings(): Settings {
   try {
-    const raw = settingsStorage().get(SETTINGS_KEY)
+    const raw = settingsStorage()?.get(SETTINGS_KEY)
     if (raw) return { ...defaultSettings(), ...JSON.parse(raw) }
   } catch {
     /* ignore */
@@ -84,7 +84,7 @@ function defaultSettings(): Settings {
 }
 
 export function saveSettings(s: Settings) {
-  try { settingsStorage().set(SETTINGS_KEY, JSON.stringify(s)) } catch { /* unavailable storage */ }
+  try { settingsStorage()?.set(SETTINGS_KEY, JSON.stringify(s)) } catch { /* unavailable storage */ }
 }
 
 let settings: Settings = loadSettings()

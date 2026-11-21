@@ -21,7 +21,7 @@ type ScrollMap = Record<string, number>
 
 function readMap(): ScrollMap {
   try {
-    return JSON.parse((getPlatformRuntime().services.sessionStorage ?? sessionStorage).get(SCROLL_KEY) || "{}")
+    return JSON.parse(getPlatformRuntime().services.sessionStorage?.get(SCROLL_KEY) || "{}")
   } catch {
     return {}
   }
@@ -31,7 +31,7 @@ export function saveScroll(key: string, y: number) {
   const map = readMap()
   map[key] = Math.round(y)
   try {
-    (getPlatformRuntime().services.sessionStorage ?? sessionStorage).set(SCROLL_KEY, JSON.stringify(map))
+    getPlatformRuntime().services.sessionStorage?.set(SCROLL_KEY, JSON.stringify(map))
   } catch {
     /* ignore */
   }
@@ -79,7 +79,7 @@ export function useScrollMemory(key: string, ready: boolean) {
       const map = readMap()
       delete map[prevKey.current]
       try {
-        (getPlatformRuntime().services.sessionStorage ?? sessionStorage).set(SCROLL_KEY, JSON.stringify(map))
+        getPlatformRuntime().services.sessionStorage?.set(SCROLL_KEY, JSON.stringify(map))
       } catch {
         /* ignore */
       }

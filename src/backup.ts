@@ -85,6 +85,7 @@ export async function applyBackup(text: string): Promise<{
   settings: boolean
 }> {
   const b = parseBackup(text)
+  if (!getPlatformRuntime().services.storage) throw new Error("Follow storage unavailable")
 
   // フォロー (先に妥当性フィルタ)
   const followsByKey = new Map<string, FollowEntry>()

@@ -7,7 +7,11 @@ const CHANGED_EVENT = "pawkemo-follows-changed"
 const MIGRATED_KEY = "pawkemo-follows-migrated-to-account"
 let syncInFlight: Promise<number> | null = null
 
-function storage() { return getPlatformRuntime().services.storage ?? localStorage }
+function storage() {
+  const service = getPlatformRuntime().services.storage
+  if (!service) throw new Error("Follow storage unavailable")
+  return service
+}
 
 export interface FollowEntry {
   service: string
