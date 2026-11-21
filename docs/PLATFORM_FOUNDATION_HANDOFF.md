@@ -310,3 +310,9 @@ Suggested sequence: (1) platform contracts/runtime + CI trigger adjustment; (2) 
 - Additional caution: current Android filesystem-plugin write handling via `content://` save URIs has documented provider metadata/zero-byte-file concerns in plugin issue reports (including cloud-backed providers). Therefore prioritize robust import-read path first; export-write path requires device/provider verification or Android native ContentResolver stream implementation rather than assuming `writeFile` works.
 - No dependency/plugin code was changed in this slice because GitHub content operations did not return the expected M2 ref during initial fetch and package lock/native setup cannot be regenerated or tested here. Branch lookup subsequently confirmed it exists, but working files require careful ref consistency. Do not claim implementation complete.
 - Next: implement URI-aware import reader using plugin FS + npm lock synchronization; investigate Android save URI ContentResolver write and iOS Files export semantics separately. Then migrate locale file imports and log dump/backup export. Build/device verification still pending.
+
+
+## Mobile URI safety change (2026-11-21)
+- Desktop native backup picker/save dialog commands are now compiled only for non-mobile targets.
+- Android/iOS command stubs return explicit unsupported errors rather than attempting `FilePath.into_path()` and `std::fs` against picker URIs. This is a temporary safety limitation; mobile native import/export is intentionally unavailable until URI-aware implementation is integrated.
+- This change prevents misleading path assumptions but is not completion of M2. No build/typecheck/device validation performed.
