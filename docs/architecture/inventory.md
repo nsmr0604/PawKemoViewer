@@ -40,3 +40,24 @@ The [contracts](../../src/platform/contracts.ts) mark all services optional. The
 | `permissions`, `database`, `network` | Absent | Absent | Absent | No consumers. `database` and `network` are typed as `unknown`. |
 
 The runtime already exposes a typed IndexedDB opener. The `database` slot has no established responsibility beyond that boundary. Current transport calls provide evidence for a network boundary, while scheduling, cache and endpoint policy belong to `api.ts`. Before factoring shared adapters, capture missing-service behavior, placement of storage detection (native modules currently evaluate it at import time), and rejection/cleanup behavior for IndexedDB and lifecycle registration.
+
+## M0.3 — Feature and data access
+
+| Feature | Application and data dependencies | Direct access or policy still owned by the feature |
+|---|---|---|
+| Home | `HomePage` → `api.posts`, settings, `history`, `useScrollMemory`, shared grids | Paging, filtering, retry state and route query state |
+| Creator discovery | `CreatorsPage` → `api.creators`, `db.searchCreators` / `saveCreators`, `history`; `CreatorHeader` → profile API and icon helpers | Index refresh and search strategy; `platform.readClipboardTextSafe` calls `navigator.clipboard` directly |
+| Creator profile | `CreatorPage` → `api.creatorPosts`, `CreatorHeader`, `FollowButton`, settings and scroll memory | Paging, sorting and tag selection |
+| Post detail | `PostPage` → post/revisions/comments, original link, favorite and flag API calls; `favstate`, `FollowButton`, icon and media helpers | ID matching, revisions 404 handling, view state, session post context, DOM rendering and attachments; preserve both the validated route and media-host policy |
+| Favorites and follows | `FavoritesPage` → `api.creatorPosts` / `accountFavorites`, `db.getSeen` / `setSeen` / `updateSeenCheck`, `follows`; `favstate` loads account post favorites | Five-minute per-creator cooldown, tab persistence and local/remote synchronization decisions. `FollowButton` also persists follow metadata through runtime storage |
+| Login | `LoginPage` → direct `invoke("login_request")`, Tauri `getVersion`, settings and follow sync | Login orchestration, error presentation and post-login navigation |
+| Settings and diagnostics | `SettingsPage` → settings/account API, cache info and clearing via `db`/`icons`, `i18n`, `backup`, runtime locale/files/clipboard, Tauri `getVersion` | Locale import and size checks, desktop gating, backup interaction, log export. `debug.ts` invokes native log helpers directly |
+| Backup and locales | `backup` uses settings, follows, `db.replaceSeen` and runtime file export. `i18n` uses bundled Japanese, lazy English and runtime locale enumeration | Backup validates and restores read state before updating follows; locale discovery and dictionary merge remain outside adapters |
+| Creator avatars and media | `components.tsx` → `icons.getCreatorIcon`, URL helpers in `api`; post content/media use shared URL policy | `icons` owns in-memory cache, IndexedDB and direct invokes `fetch_creator_icon`, `creator_icon_cache_info`, `clear_creator_icon_cache`. Media uses browser URLs and the registered `pkv` path for eligible external assets |
+
+Persistence and request boundaries:
+
+- `db.ts` opens IndexedDB `pawkemoviewer` (v1) and owns `creators`, `seen`, `meta`, creator pack/index handling and atomic read-state replacement. `icons.ts` owns a separate `pawkemo-icons` database and delegates file caching to Rust.
+- `api.request` invokes `api_request` directly. Preserve the three-request concurrency limit, 250 ms spacing, GET cache TTL of 60 s and 150-entry cap when moving the transport. `apiStatus` extracts the native status from the wrapped error. Rust owns direct reqwest HTTPS.
+- Several consumers use `services.storage ?? localStorage` or the corresponding session fallback, then call adapter-shaped `get`/`set`/`remove` methods. Native Web Storage exposes `getItem`/`setItem`/`removeItem`. This is a source-level mismatch if the fallback runs. Cover absent or inaccessible storage in M1.2/M1.4.
+- Router history, viewport/layout and DOM interactions remain presentation concerns. Creator search and backed-up read state cross persistence and workflow boundaries. Use these ownership distinctions when defining use cases and repositories.
