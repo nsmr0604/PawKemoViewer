@@ -42,6 +42,25 @@ The app ID is `com.nsmr0604.pawkemoviewer.localetest`.
 The candidate permits an [integrated device pass](os-storage.md#integrated-device-pass).
 Device behavior, real provider dialogs and desktop package startup still require validation.
 
+### Desktop candidate 3ec9392
+
+[Actions run 44936122546](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546)
+used `npx tauri build --features debug-diag --bundles <platform-bundle>` on each native runner.
+The downloaded packages passed these inspections:
+
+| Target | Package inspection |
+|---|---|
+| [Windows x64 NSIS](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719098731) | Setup executable has the MZ and PE headers. |
+| [macOS app ZIP](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719364345) | Archive passes ZIP integrity. The bundled Info.plist resolves to the app executable and icon, and reports version 0.5.0. |
+| [Linux amd64 DEB](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719728314) | `dpkg-deb` reports version 0.5.0. Extraction contains the ELF application executable, desktop entry and PNG icons. |
+
+`node --test tests/{platform,application,domain}.test.mjs` passed all 33 tests.
+The same source commit also built the [Android APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488/artifacts/14719793355)
+and [unsigned iPhone/iPad IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488/artifacts/14719957324).
+Inspection confirmed the separate test app ID and locale commands on both, plus Files sharing
+and iPad icon declarations inside the IPA. Desktop installation, app startup, live API/IPC
+and integrated provider checks remain pending.
+
 ## M7.3 — Provisional release readiness
 
 **Current decision: continue validation before release.** The scoped dependency check, browser regressions, public HTTP, Rust compilation and Linux linking provide baseline evidence. The native app, mobile selected-file workflows and release packages need validation.
@@ -50,7 +69,7 @@ Device behavior, real provider dialogs and desktop package startup still require
 |---|---|
 | Release gate | Run the [M5 provider/grant acceptance checks](os-storage.md) on Android and iOS. Integrate only validated adapters, then verify locale catalogue, cancellation and conflict behavior. |
 | Release gate | Run native package builds and startup/smoke on Linux, Windows, macOS, Android and iOS. Include live app IPC and login with authorized test credentials, and verify desktop/mobile navigation using real inputs. |
-| Release gate | Record results for the exact candidate commit. The mobile candidate workflow produced verification artifacts. Desktop packages and live device evidence remain open. |
+| Release gate | Record results for the exact candidate commit. The desktop and mobile candidate workflows produced verification artifacts. Installation and live device behavior remain open. |
 | Follow-up debt | Address creator-pack/metadata atomicity and reopened IndexedDB connection handling separately. Review the documented API cache race and keep request limits intact. |
 | Follow-up debt | Extend boundary coverage to legacy modules after migrating their callers. Track the existing frontend mixed-import and Rust non-diagnostic login warnings. |
 

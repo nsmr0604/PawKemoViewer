@@ -1,6 +1,12 @@
 # Architecture Refactor Status
 
-## Latest validation — M7.2 mobile candidate
+## Latest validation — M7.2 desktop packages
+
+- Candidate `3ec9392` includes the desktop navigation update and PC icon. [Actions run 44936122546](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546) passed for Windows, macOS and Linux. Downloaded packages were inspected for the installer or app executable and bundle metadata. See the [desktop package evidence](stabilization.md#desktop-candidate-3ec9392).
+- The same commit also passed [Android and iOS/iPadOS packaging](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488). All five candidate packages now have evidence tied to one source commit.
+- Added the desktop candidate workflow and updated the validation handoff. The 33 JavaScript tests passed again. Desktop installation and live WebView/IPC smoke, plus the M5.4–M5.5 mobile provider checks, remain open. M7.3 stays provisional.
+
+## Previous validation — M7.2 mobile candidate
 
 - Candidate `2af56d5` on `arch/m7-native-validation` combines the selected-file adapter, secondary language folders, adaptive shell and 0.5.0 icon masters. [Actions run 44934090212](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212) passed for Android and iOS/iPadOS. Both packages were inspected after download.
 - Ran `node --test tests/{platform,application,domain}.test.mjs` (33 passed), `npm run build`, `npm run build:debug`, `python3 tests/ui_layout_smoke.py`, and Linux `cargo check` with and without diagnostics. The Linux diagnostic binary linked with embedded frontend assets. It did not present a usable WebView under Cloud Xvfb.
