@@ -52,7 +52,30 @@ const clipboard: ClipboardService = {
   writeText: async (text) => { try { if (!navigator.clipboard) return false; await navigator.clipboard.writeText(text); return true } catch { return false } },
 }
 
-const files: FileExportService = { exportText: async (filename, content) => {\n  // Mobile native save picker is intentionally disabled until URI-aware writes are integrated.\n  // Reject before invoking the Rust stub so the error clearly reflects the capability gap.\n  throw new Error("モバイルのユーザー指定ファイル保存はURI対応の実装待ちです")\n} }
+const files: FileExportService = {
+  exportText: async (filename, content) => {
+    // Use WebView download handling as a transitional fallback. This does not
+    // provide SAF/Files URI targeting or guarantee provider behavior on devices.
+    if (typeof document === "undefined" || typeof URL === "undefined" || typeof Blob === "undefined") {
+      throw new Error("この環境ではファイルダウンロードを利用できません")
+    }
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    try {
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = filename
+      anchor.style.display = "none"
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      return { status: "saved", path: filename }
+    } finally {
+      // Keep the object URL briefly; WebView download processing is asynchronous.
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500)
+    }
+  },
+}
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
