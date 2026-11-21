@@ -1,6 +1,6 @@
 # API ドキュメント
 
-PawKemoViewer (v0.4.0) の API レイヤ仕様。実装は `src/api.ts`。
+PawKemoViewer (v0.4.1) の API レイヤ仕様。実装は `src/api.ts`。
 
 ## アーキテクチャ
 

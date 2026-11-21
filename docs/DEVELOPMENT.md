@@ -1,6 +1,6 @@
 # PawKemoViewer 開発ガイド
 
-PawKemoViewer (v0.4.0) の開発者向けドキュメント。
+PawKemoViewer (v0.4.1) の開発者向けドキュメント。
 
 - 対象読者: 開発参加者・ビルド担当者・コントリビューター
 - ユーザー向け情報は [README.md](../README.md) を参照

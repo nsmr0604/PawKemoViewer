@@ -10,7 +10,7 @@
 - アプリ: PawKemoViewer (pawchive.pw の非公式クライアント)
 - 技術構成: React 18 + TypeScript + Vite + Tauri 2 + Rust + reqwest
 - 対象: Windows / Linux / macOS / Android
-- main の現行バージョン: `0.4.0`
+- main の現行バージョン: `0.4.1`
 - 現在の作業 PR: なし (PR #7 は 0.4.0 として merge 済み)
   - ブランチ: `improve/ux-ui-codebase`
   - 直近の追加機能: 設定画面の情報設計を整理し、キャッシュ項目を統合。ホーム投稿一覧のサービスフィルターと公式 `hide=(ai)` AI除外、クリエイター一覧の更新日 / 人気 / 名前ソートとサービスフィルター。ホームの任意タグフィルターは実装しない。Android CIで検出されたCreators.tsxの日時パース型エラーを修正
