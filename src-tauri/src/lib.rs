@@ -1375,7 +1375,7 @@ async fn pick_locale_file(app: tauri::AppHandle) -> Result<serde_json::Value, St
 #[cfg(any(target_os = "android", target_os = "ios"))]
 #[tauri::command]
 async fn save_locale_file(app: tauri::AppHandle, code: String, json: String) -> Result<serde_json::Value, String> {
-    if !valid_locale_code(&code) || json.len() > LOCALE_MAX_BYTES {
+    if !valid_locale_code(&code) || json.len() as u64 > LOCALE_MAX_BYTES {
         return Err("Invalid locale export".into());
     }
     run_locale_picker(&app, "exportLocale", serde_json::json!({ "filename": format!("{code}.json"), "json": json })).await
