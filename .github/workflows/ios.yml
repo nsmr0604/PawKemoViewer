@@ -145,6 +145,31 @@ jobs:
           echo "packaged: $out"
           ls -la dist-ios
 
+      - name: Verify iPhone and iPad icons in the IPA
+        run: |
+          python3 - dist-ios/*.ipa <<'PYTHON'
+          import plistlib
+          import sys
+          from zipfile import ZipFile
+
+          with ZipFile(sys.argv[1]) as ipa:
+              info_path, = (
+                  name for name in ipa.namelist()
+                  if name.startswith("Payload/") and name.count("/") == 2
+                  and name.endswith(".app/Info.plist")
+              )
+              info = plistlib.loads(ipa.read(info_path))
+              if set(info["UIDeviceFamily"]) != {1, 2}:
+                  raise SystemExit("The IPA must target both iPhone and iPad")
+              for key in ("CFBundleIcons", "CFBundleIcons~ipad"):
+                  icons = info[key]
+                  if "AppIconLight" not in icons["CFBundleAlternateIcons"]:
+                      raise SystemExit(f"{key} is missing the light alternate icon")
+              ipad_primary = info["CFBundleIcons~ipad"]["CFBundlePrimaryIcon"]
+              if "AppIcon76x76" not in ipad_primary["CFBundleIconFiles"]:
+                  raise SystemExit("The IPA is missing the iPad home screen icon")
+          PYTHON
+
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:

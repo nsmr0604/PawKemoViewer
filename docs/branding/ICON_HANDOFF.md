@@ -75,6 +75,9 @@
   (`scripts/app-icon/generate-ios.mjs`)。既定は dark の `AppIcon.appiconset`。
   `tauri ios init` が作った pbxproj / Info.plist はパッチ前のままなので、
   **生成後に `xcodegen generate` を再実行**して反映する (2026-11-21 修正)。
+- iPhone と iPad は共通の IPA を使用する。iPad 向けのホーム画面用 76×76 pt
+  (152×152 px) と 83.5×83.5 pt (167×167 px) を既定・代替アイコンに生成する。
+  CI では IPA の対象端末と、iPad 用の既定・代替アイコンの登録を確認する。
 - アプリ内左上のロゴも 🐾 テキストから `dark.png` / `light.png` の画像に変更し、
   テーマに合わせて表示を切り替える (`src/App.tsx` / `src/styles.css`)。
 
