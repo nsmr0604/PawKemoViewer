@@ -9,6 +9,10 @@ on:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
+      artifact_only:
+        description: "デバッグ検証用の成果物を Actions にのみ保存"
+        type: boolean
+        default: false
 
 # 同一ブランチの新しい iOS ビルドを優先し、古い実行中ビルドはキャンセルする
 concurrency:
@@ -177,6 +181,7 @@ jobs:
           path: dist-ios/*.ipa
 
       - name: Attach iOS builds to Release
+        if: inputs.release == true || inputs.artifact_only != true
         # push (main) = デバッグビルド → rolling prerelease `debug-latest` へ添付
         # 手動 release=true のみ正式リリース pawkemoviewer-v{VER} へ添付。
         env:
@@ -218,6 +223,7 @@ jobs:
 
           gh release upload "$TAG" dist-ios/*.ipa --clobber \
             || gh release create "$TAG" dist-ios/*.ipa \
+                 --target "$GITHUB_SHA" \
                  $PRERELEASE_FLAG \
                  --title "$TITLE" \
                  --notes-file release-notes.md

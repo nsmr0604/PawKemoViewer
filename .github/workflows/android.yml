@@ -24,6 +24,10 @@ on:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
+      artifact_only:
+        description: "デバッグ検証用の成果物を Actions にのみ保存"
+        type: boolean
+        default: false
 
 # 同一ブランチ/PR の新しいビルドを優先し、古い実行中ビルドはキャンセルする
 concurrency:
@@ -158,7 +162,7 @@ jobs:
         # (旧バージョンのアセットは掃除する)。
         # 手動 release=true のみ正式リリース pawkemoviewer-v{VER} へ添付。
         # PR ビルドは artifact のみ (リリースへは出さない)
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && (inputs.release == true || inputs.artifact_only != true) }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -168,6 +172,7 @@ jobs:
           if [ "${{ inputs.release }}" = "true" ]; then
             gh release upload "pawkemoviewer-v${VER}" dist-apk/*.apk --clobber \
               || gh release create "pawkemoviewer-v${VER}" dist-apk/*.apk \
+                   --target "$GITHUB_SHA" \
                    --title "PawKemoViewer v${VER}" \
                    --notes "Automated build (APK: dev-signed for testing)."
             exit 0

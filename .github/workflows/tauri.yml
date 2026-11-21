@@ -21,6 +21,10 @@ on:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
+      artifact_only:
+        description: "デバッグ検証用の成果物を Actions にのみ保存"
+        type: boolean
+        default: false
 
 # 同一ブランチの新しいPCビルドを優先し、古い実行中ビルドはキャンセルする
 concurrency:
@@ -51,7 +55,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             mapfile -t assets < <(gh release view "$TAG" --json assets --jq '.assets[].name')
             for asset in "${assets[@]}"; do
-              if [[ "$asset" == PawKemoViewer* && "$asset" != *.apk ]]; then
+              if [[ "$asset" == PawKemoViewer* && "$asset" != *.apk && "$asset" != *.ipa ]]; then
                 gh release delete-asset "$TAG" "$asset" --yes
                 echo "removed previous PC asset: $asset"
               fi
@@ -59,7 +63,7 @@ jobs:
           fi
 
       - name: Clean debug prerelease assets (デバッグビルド時)
-        if: ${{ inputs.release != true }}
+        if: ${{ inputs.release != true && inputs.artifact_only != true }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -139,9 +143,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ inputs.release == true && 'pawkemoviewer-v__VERSION__' || 'debug-latest' }}
-          releaseName: ${{ inputs.release == true && 'PawKemoViewer v__VERSION__' || 'PawKemoViewer debug build' }}
+          tagName: ${{ (inputs.release == true || inputs.artifact_only != true) && (inputs.release == true && 'pawkemoviewer-v__VERSION__' || 'debug-latest') || '' }}
+          releaseCommitish: ${{ github.sha }}
+          releaseName: ${{ (inputs.release == true || inputs.artifact_only != true) && (inputs.release == true && 'PawKemoViewer v__VERSION__' || 'PawKemoViewer debug build') || '' }}
           releaseBody: ${{ inputs.release == true && 'Automated release build.' || 'Automated debug build. デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式).' }}
           releaseDraft: false
           prerelease: ${{ inputs.release != true }}
           args: ${{ inputs.release == true && '' || '--features debug-diag' }}
+
+
+      - uses: actions/upload-artifact@v4
+        if: inputs.artifact_only == true && inputs.release != true
+        with:
+          name: PawKemoViewer-debug-${{ matrix.platform }}
+          path: |
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.rpm
+          if-no-files-found: error
