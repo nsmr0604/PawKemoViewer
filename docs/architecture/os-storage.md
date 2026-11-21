@@ -40,7 +40,7 @@ The user reported successful open and export on a device. The retain picker open
 
 [IOSLocalePicker.swift](prototypes/m5/IOSLocalePicker.swift) sketches import/export by copy using UIKit. A single delegate completion returns imported text, export completion, cancellation or failure. The host retains the delegate while presented, stages an export file in the app container, and removes the staged file after completion. The workflow avoids retaining provider handles between operations. For an eventual open-in-place flow, use an explicitly selected security-scoped URL, balance start/stop access and use coordinated I/O. Keep bookmarking out of the first slice.
 
-The Linux Tauri CLI rejects `ios init`; this environment has no Xcode/UIKit SDK. The Swift source needs compilation and execution in a macOS iOS 14+ simulator target or on a device. On that target, embed the helper in a small host view controller and check actual Files providers, copied input, export destination and cancellation. The prototype has no production iOS wiring.
+GitHub Actions built the standalone arm64 device IPA on the `test/ios-files-probe` branch at `e9e59da`. The user confirmed that **Open** and **Export** both worked on an iOS device using that build. Cancellation, oversized or invalid files, other providers and export readback were not reported. The prototype has no production iOS wiring. [Build 44921047747](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44921047747).
 
 ### Unsigned iPhone probe IPA
 
@@ -52,7 +52,7 @@ On macOS with full Xcode selected and the iPhoneOS SDK installed:
 PROBE_OUTPUT=/path/to/writable/output bash docs/architecture/prototypes/m5/build-ios-probe.sh
 ```
 
-The script compiles an arm64 device executable, checks that it has no code-signature load command and packages `Payload/FilesProbe.app` into `PawKemoViewer-Files-Probe-unsigned.ipa`. An unsigned build requires signing before installation on a standard iPhone. The Linux cloud run exercised the shell syntax, plist parsing and missing-Xcode guard. Swift/UIKit compilation and actual IPA packaging still need the macOS run.
+The script compiles an arm64 device executable, checks that it has no code-signature load command and packages `Payload/FilesProbe.app` into `PawKemoViewer-Files-Probe-unsigned.ipa`. An unsigned build requires signing before installation on a standard iPhone. The Linux cloud run exercised the shell syntax, plist parsing and missing-Xcode guard. The macOS Actions run subsequently compiled Swift/UIKit and packaged the IPA successfully.
 
 ## Native acceptance checks before M5.4
 
