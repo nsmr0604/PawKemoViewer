@@ -30,8 +30,9 @@ export interface LocaleService {
   delete(code: string): Promise<boolean>
 }
 
+export type FileExportResult = { status: "saved"; path: string } | { status: "cancelled" }
 export interface FileExportService {
-  exportText(filename: string, content: string): Promise<string>
+  exportText(filename: string, content: string): Promise<FileExportResult>
 }
 
 export interface ClipboardService {
