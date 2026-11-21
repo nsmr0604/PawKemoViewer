@@ -19,16 +19,22 @@ References: [Android SAF](https://developer.android.com/training/data-storage/sh
 
 [AndroidLocalePicker.java](prototypes/m5/AndroidLocalePicker.java) creates open/create intents, keeps the selected content URI opaque, and reads or writes through the provider streams. It bounds UTF-8 payloads to 1 MiB. A cancelled activity result returns no document. The explicitly invoked grant probe intersects the offered read/write flags with the requested modes, and requires the persistable flag before calling the resolver. Normal access is per operation.
 
-Host setup for device verification: wire the helper into a test Activity, launch the returned intents through its activity-result integration, and pass the returned intent to `selectedUri`. Exercise the contract below in a fixture application before exposing a Tauri service. The production app has no new capability or permission.
-
-Cloud checks used Android SDK Platform 35 r02 and Eclipse ECJ 3.40.0. Both downloads were checked against their published SHA-1 digests. With the SDK jar and ECJ available:
+The standalone host is [ProbeActivity.java](prototypes/m5/ProbeActivity.java). It exercises transient open, fixture export, explicit read-grant retention, reopening and release. Grant state is kept in the probe application's private preferences. Build and sign the APK by running [build-android-probe.sh](prototypes/m5/build-android-probe.sh) with JRE 17+, ECJ 3.40.0, Python 3, zip, Android SDK Platform 35 and Android Build Tools 35.0.0. The SDK and compiler downloads were checked against published digests.
 
 ```bash
-java -jar "$ECJ_JAR" -1.8 -bootclasspath "$ANDROID_JAR" -d "$PROBE_CLASSES" docs/architecture/prototypes/m5/Android*.java
-java -cp "$PROBE_CLASSES:$ANDROID_JAR" AndroidGrantProbe
+ANDROID_JAR=/path/to/android-35/android.jar \
+BUILD_TOOLS=/path/to/build-tools/35.0.0 \
+ECJ_JAR=/path/to/ecj.jar PROBE_OUTPUT=/path/to/writable/output \
+bash docs/architecture/prototypes/m5/build-android-probe.sh
+adb install -r /path/to/writable/output/saf-probe.apk
+adb shell am start -n org.pawkemoviewer.safprobe/.ProbeActivity
 ```
 
-Compilation and five grant-mask cases passed. The JVM probe does not exercise URI grants or providers. Tauri Android initialization could not proceed with the existing SDK/NDK configuration. The Cloud environment has no KVM or USB device passthrough and its ADB server cannot create the expected user configuration directory. The Android picker, provider streams, process restart, and revocation remain unverified.
+The script compiles the fixture, runs five grant-mask cases, links and aligns the APK, signs it with a local debug key, and checks its signature. All of these steps passed in Codex Cloud. AAPT2 confirmed the launchable activity and API 23 minimum. The APK is a standalone test application without additional manifest permissions.
+
+Before retaining a different document, release the existing grant. After retaining one, force-stop and relaunch the test package, then use **Read remembered document**. After release, force-stop and relaunch again to test denial without the transient grant from the original selection. Use a disposable fixture and check cancellation, import, export and readback against local and external providers. The probe leaves the remembered URI available for the denial test after release.
+
+Installation, provider I/O and grant lifecycle are unverified. This Cloud container exposes neither USB nor KVM, and its ADB server could not create the expected user configuration directory. No production Tauri capability is added by the standalone APK.
 
 ## M5.3 — iOS Files prototype
 

@@ -39,7 +39,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 
 ## M5 — OS storage and capabilities
 - [x] **M5.1** Document storage capability matrix (private/shared, permissions, persistable grant, file picker) per OS. Depends: M1.2.
-- [ ] **M5.2** Android SAF feasibility prototype and permission/grant tests. Depends: M5.1. **BLOCKED on device/provider validation.** SDK compile and flag-mask checks passed.
+- [ ] **M5.2** Android SAF feasibility prototype and permission/grant tests. Depends: M5.1. **BLOCKED on device/provider validation.** Signed standalone probe APK, manifest check and five JVM flag-mask checks passed.
 - [ ] **M5.3** iOS Files/document picker feasibility prototype. Depends: M5.1. **BLOCKED on macOS/Xcode build and Files validation.**
 - [ ] **M5.4** Implement shared storage adapters on the validated platform(s), task per OS. Depends: M5.2,M5.3.
 - [ ] **M5.5** Locale secondary overlay/import/export, validation and conflict semantics. Depends: M5.4.
