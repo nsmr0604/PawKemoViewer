@@ -399,3 +399,9 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - Dialog-picked Android `content://` and iOS `file://` results require URI-aware handling; direct PathBuf/std::fs assumptions are not portable.
 - Tauri filesystem plugin is the recommended access layer, but Android save-target writes warrant native ContentResolver/device verification due provider close/metadata issues reported for some providers.
 - M2 remains in progress; no implementation or validation is claimed in this checkpoint. Prioritize URI-aware backup import, then locale and export.
+
+
+## Mobile URI safety change (2026-11-21)
+- Desktop native backup picker/save dialog commands are now compiled only for non-mobile targets.
+- Android/iOS command stubs return explicit unsupported errors rather than attempting `FilePath.into_path()` and `std::fs` against picker URIs. This is a temporary safety limitation; mobile native import/export is intentionally unavailable until URI-aware implementation is integrated.
+- This change prevents misleading path assumptions but is not completion of M2. No build/typecheck/device validation performed.
