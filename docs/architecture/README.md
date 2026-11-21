@@ -16,6 +16,8 @@ See the [repository and infrastructure design](repositories.md) for storage owne
 
 See the [domain model boundaries](domain.md) for model ownership and rules.
 
+See the [OS storage capability matrix](os-storage.md) for native validation and picker follow-up.
+
 ## Principles
 - Incremental migrations, behavior-preserving first.
 - Keep platform-specific implementation behind typed contracts.
