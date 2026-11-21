@@ -20,6 +20,8 @@ jobs:
         runner: [windows-latest, macos-15]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 12
+    env:
+      PYTHONIOENCODING: utf-8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
