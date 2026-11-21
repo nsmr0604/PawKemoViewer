@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
+import { invoke } from "@tauri-apps/api/core"
 import { getSettings, updateSettings, api, apiStatus } from "../api"
 import { clearCreatorCache, creatorCacheInfo, CreatorCacheInfo } from "../db"
 import {
@@ -291,6 +292,19 @@ export function SettingsPage() {
 
     } catch (e) {
       setBackupResult(t("settings.exportFailed", { msg: e instanceof Error ? e.message : String(e) }))
+    }
+  }
+
+  const importBackupNative = async () => {
+    try {
+      const content = await invoke<string | null>("open_user_backup")
+      if (content === null) {
+        setBackupResult("バックアップの読み込みをキャンセルしました")
+        return
+      }
+      await doImport(content)
+    } catch (e) {
+      setBackupResult(t("settings.importFailed", { msg: e instanceof Error ? e.message : String(e) }))
     }
   }
 
@@ -716,10 +730,9 @@ export function SettingsPage() {
             <small>{t("settings.importDesc")}</small>
           </div>
           <div className="settings-actions">
-            <label className="btn">
+            <button className="btn" onClick={() => void importBackupNative()}>
               バックアップファイルを選択
-              <input type="file" accept=".json,application/json" hidden onChange={(e) => { void importBackupFile(e.target.files?.[0] ?? null); e.currentTarget.value = "" }} />
-            </label>
+            </button>
             <button className="btn" onClick={doImportFromClipboard}>
               {t("settings.importClipboard")}
             </button>
