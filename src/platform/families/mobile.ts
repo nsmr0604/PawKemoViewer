@@ -61,7 +61,7 @@ export function createMobileServices(os?: PlatformDescriptor["os"]): PlatformSer
     logging,
     files,
     locale,
-    localePicker: os === "android" ? {
+    localePicker: os === "android" || os === "ios" ? {
       ...localePicker,
       saveToAppDirectory: (code, json) => invoke("save_locale_file_to_app_directory", { code, json }),
     } : localePicker,

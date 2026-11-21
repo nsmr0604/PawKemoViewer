@@ -1,6 +1,7 @@
 {
   "settings.localePickerAppFolder": "アプリ用フォルダーに書き出す",
   "settings.localePickerAppFolderDesc": "Android/data 内の Documents/Languages に保存します。同じ言語コードの書き出し済みファイルは更新されます。",
+  "settings.localePickerAppFolderDescIos": "「このiPhone内 / PawKemoViewer / Languages」に保存します。同じ言語コードの書き出し済みファイルは更新されます。",
   "settings.localePickerSavedTo": "保存先: {{path}}",
   "settings.localePickerImportDesc": "JSONを1件選び、検証後にアプリ専用領域へコピーします。",
   "settings.localePickerOpen": "JSONを開く",

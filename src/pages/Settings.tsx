@@ -236,7 +236,10 @@ export function SettingsPage() {
         if (result.kind === "invalid-json") setLocaleMsg(t("settings.localeBadJson"))
         if (result.kind === "saved") {
           if (operation === "export-to-app") await reloadLocales()
-          setLocaleMsg(result.path ? t("settings.localePickerSavedTo", { path: result.path }) : t("settings.localePickerSaved"))
+          const path = result.path && operation === "export-to-app" && platform.os === "ios"
+            ? `${t("settings.localeFolderIos")} / ${result.path}`
+            : result.path
+          setLocaleMsg(path ? t("settings.localePickerSavedTo", { path }) : t("settings.localePickerSaved"))
         }
       }
     } catch (error) {
@@ -493,7 +496,7 @@ export function SettingsPage() {
           <div className="setting-item">
             <div className="setting-text">
               <span>{t("settings.localePickerAppFolder")}</span>
-              <small>{t("settings.localePickerAppFolderDesc")}</small>
+              <small>{t(platform.os === "ios" ? "settings.localePickerAppFolderDescIos" : "settings.localePickerAppFolderDesc")}</small>
             </div>
             <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("export-to-app")}>
               {t("settings.localePickerSave")}

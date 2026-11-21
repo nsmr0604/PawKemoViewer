@@ -346,11 +346,11 @@ test("mobile locale picker routes selected-file IO through native IPC", async (t
   assert.equal(createDesktopServices().localePicker, undefined)
 })
 
-test("app-specific language export is advertised on Android only", async (t) => {
+test("app-specific language export routes Android and iOS to native IPC", async (t) => {
   const { createMobileServices } = await server.ssrLoadModule("/src/platform/families/index.ts")
   const invoke = t.mock.fn(async () => ({ kind: "saved", path: "/app/Documents/Languages/es.json" }))
   mockGlobal(t, "window", { __TAURI_INTERNALS__: { invoke } })
-  assert.equal(createMobileServices("ios").localePicker.saveToAppDirectory, undefined)
+  assert.equal(typeof createMobileServices("ios").localePicker.saveToAppDirectory, "function")
   const result = await createMobileServices("android").localePicker.saveToAppDirectory("es", "{}")
   assert.equal(result.path, "/app/Documents/Languages/es.json")
   assert.deepEqual(invoke.mock.calls[0].arguments.slice(0, 2), [
