@@ -13,6 +13,8 @@ import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
 import { loadLocale, t } from "./i18n"
 import { resolveLayout, type ResolvedLayout } from "./platform"
 import { syncAppIcon } from "./appIcon"
+import appIconDark from "../src-tauri/app-icons/dark.png"
+import appIconLight from "../src-tauri/app-icons/light.png"
 import { NavigationRail, NavIcon } from "./components/NavigationRail"
 import { ErrorBox } from "./components"
 
@@ -49,6 +51,8 @@ export default function App() {
   }, [])
 
   const settings = getSettings()
+  // アプリ内ロゴも OS のアプリアイコンと同じテーマの画像を使う
+  const headerIcon = settings.theme === "dark" ? appIconDark : appIconLight
   useEffect(() => {
     void loadLocale(settings.locale).then(() => setSettingsRev((n) => n + 1))
   }, [settings.locale])
@@ -233,7 +237,7 @@ export default function App() {
           <header className="top-bar">
             <div className="top-bar-brand">
               <button type="button" className="logo" onClick={() => navigate("/", true)}>
-                <span aria-hidden="true">🐾</span> PawKemoViewer
+                <img className="logo-icon" src={headerIcon} alt="" aria-hidden="true" /> PawKemoViewer
               </button>
               {pageLabel && <span className="topbar-context">{pageLabel}</span>}
             </div>
@@ -267,7 +271,9 @@ export default function App() {
             >
               ← {t("common.back")} <span className="kbd small">Esc</span>
             </button>
-            <button type="button" className="logo small" onClick={() => navigate("/", true)}>🐾 PawKemoViewer</button>
+            <button type="button" className="logo small" onClick={() => navigate("/", true)}>
+              <img className="logo-icon" src={headerIcon} alt="" aria-hidden="true" /> PawKemoViewer
+            </button>
           </header>
         )}
 

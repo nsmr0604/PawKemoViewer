@@ -216,6 +216,17 @@ body {
 .logo.small {
   font-size: 20px;
 }
+.logo-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex: none;
+}
+.logo.small .logo-icon {
+  width: 20px;
+  height: 20px;
+}
 
 .detail-bar {
   justify-content: space-between;
