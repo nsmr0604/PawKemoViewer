@@ -1,5 +1,7 @@
+import { POST_PAGE_SIZE } from "../application/post-pages"
+import { getApplication } from "../application/composition"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { api, getSettings, updateSettings, SETTINGS_CHANGED_EVENT } from "../api"
+import { getSettings, updateSettings, SETTINGS_CHANGED_EVENT } from "../api"
 import type { PawPost } from "../types"
 import { PostGrid, ErrorBox } from "../components"
 import { useNavigate } from "../router"
@@ -7,7 +9,6 @@ import { useScrollMemory } from "../hooks"
 import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../history"
 import { t } from "../i18n"
 
-const PAGE = 50
 const MIN_QUERY = 3
 
 export function HomePage({ query }: { query: URLSearchParams }) {
@@ -55,11 +56,11 @@ export function HomePage({ query }: { query: URLSearchParams }) {
       setLoading(true)
       setError(null)
       try {
-        const res = await api.posts({ q: q || undefined, o })
+        const page = await getApplication().loadHomePosts({ query: q, offset: o })
         if (seq !== reqSeq.current) return // 古いレスポンスは破棄
-        setPosts((prev) => (replace ? res : [...prev, ...res]))
+        setPosts((prev) => (replace ? page.posts : [...prev, ...page.posts]))
         setOffset(o)
-        if (res.length < PAGE) setDone(true)
+        if (page.done) setDone(true)
       } catch (e) {
         if (seq === reqSeq.current) setError(e)
       } finally {
@@ -197,7 +198,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
           loading={loading}
           done={done}
           viewMode={viewMode}
-          onEndReached={loading || done ? undefined : () => load(offset + PAGE, false)}
+          onEndReached={loading || done ? undefined : () => load(offset + POST_PAGE_SIZE, false)}
         />
       )}
       {!loading && !error && filteredPosts.length === 0 && done && (

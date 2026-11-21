@@ -1,3 +1,4 @@
+import { createHomePostUseCase } from "./post-pages"
 import { api, apiStatus } from "../api"
 import { logError, logInfo, logWarn } from "../log"
 import { createPostDetailUseCases } from "./post-detail"
@@ -7,6 +8,7 @@ import { getPlatformRuntime } from "../platform/runtime"
 
 function createApplication() {
   return {
+    loadHomePosts: createHomePostUseCase(api.posts),
     postDetail: createPostDetailUseCases({
       post: api.post,
       postRevisions: api.postRevisions,

@@ -12,6 +12,7 @@ after(() => server.close())
 
 const { createLocaleUseCases } = await server.ssrLoadModule("/src/application/locales.ts")
 const { createPostDetailUseCases } = await server.ssrLoadModule("/src/application/post-detail.ts")
+const { createHomePostUseCase } = await server.ssrLoadModule("/src/application/post-pages.ts")
 
 test("locale CRUD validates input and sends private and shared writes to their own targets", async (t) => {
   const write = t.mock.fn(async () => {})
@@ -95,4 +96,15 @@ test("post detail keeps the post on revision errors and cancels before starting 
   pending.resolve(post)
   await assert.rejects(result, { name: "AbortError" })
   assert.equal(fetchRevisions.mock.callCount(), 1)
+})
+
+test("home posts preserve query and offset and stop on a short page", async (t) => {
+  const posts = Array.from({ length: 50 }, (_, id) => ({ id }))
+  const fetchPosts = t.mock.fn(async ({ o }) => o === 0 ? posts : posts.slice(0, 2))
+  const loadHomePosts = createHomePostUseCase(fetchPosts)
+  assert.deepEqual(await loadHomePosts({ query: "", offset: 0 }), { posts, done: false })
+  assert.deepEqual(await loadHomePosts({ query: "keyword", offset: 50 }), { posts: posts.slice(0, 2), done: true })
+  assert.deepEqual(fetchPosts.mock.calls.map(({ arguments: args }) => args[0]), [
+    { q: undefined, o: 0 }, { q: "keyword", o: 50 },
+  ])
 })
