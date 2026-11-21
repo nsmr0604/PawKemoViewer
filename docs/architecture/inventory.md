@@ -20,3 +20,23 @@ Rendered media -> origin/CDN or pkv protocol -> Rust handler for eligible extern
 ```
 
 There is no application composition root or repository layer between screens and the feature modules. In particular, `api.ts` owns settings, request policy and endpoint helpers. `db.ts` and `icons.ts` own persistence details while delegating IndexedDB opening to the platform adapters.
+
+## M0.2 — PlatformRuntime and service coverage
+
+[Runtime](../../src/platform/runtime.ts) initializes a singleton before feature consumers run. A Tauri window is detected by `__TAURI_INTERNALS__`. The OS helper selects desktop or mobile for native windows, while the absence of the marker selects web. `getPlatformRuntime()` throws before initialization. `resetPlatformRuntimeForTests()` clears the singleton.
+
+The [contracts](../../src/platform/contracts.ts) mark all services optional. The matrix describes the registered adapters, including placeholders and unsupported operations. See [desktop](../../src/platform/families/desktop.ts), [mobile](../../src/platform/families/mobile.ts) and [web](../../src/platform/families/web.ts).
+
+| Service | Desktop | Mobile | Web | Consumers |
+|---|---|---|---|---|
+| `storage` / `sessionStorage` | WebView local/session storage | Same | Browser local/session storage | Settings, follows, search history, favorite tab, scroll, post context and follow metadata |
+| `indexedDatabase` | IndexedDB open/upgrade | Same | Same | `db.openDb`, `icons.openDb`; schema and transactions stay with consumers |
+| `storageLocations` | Native private and secondary path resolver | Native private, secondary returns null | Absent | No feature consumer found |
+| `files` | Native app-private export | Same | Blob download | `backup.exportBackup`, Settings log export |
+| `locale` | Native private CRUD and secondary list/write | Native private CRUD | Listing returns null, write rejects, delete returns false | `i18n.refreshLocales`, Settings locale actions |
+| `clipboard` | WebView Clipboard API | Same | Browser Clipboard API | Settings backup copy/paste; Creators still uses a separate helper |
+| `logging` | Diagnostic append through Tauri | Same | Absent | `log` gates persistent output on `DEBUG_DIAG` |
+| `lifecycle` | Absent | Tauri back event and exit | No-op back listener, exit rejects | `App` native back effect |
+| `permissions`, `database`, `network` | Absent | Absent | Absent | No consumers. `database` and `network` are typed as `unknown`. |
+
+The runtime already exposes a typed IndexedDB opener. The `database` slot has no established responsibility beyond that boundary. Current transport calls provide evidence for a network boundary, while scheduling, cache and endpoint policy belong to `api.ts`. Before factoring shared adapters, capture missing-service behavior, placement of storage detection (native modules currently evaluate it at import time), and rejection/cleanup behavior for IndexedDB and lifecycle registration.
