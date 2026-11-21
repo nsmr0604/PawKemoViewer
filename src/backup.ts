@@ -39,7 +39,7 @@ export async function buildBackup(): Promise<string> {
 }
 
 /** バックアップをファイルに書き出し (Rust 側で %APPDATA%/backup/) */
-export async function exportBackup(): Promise<string> {
+export async function exportBackup(): Promise<import("./platform/contracts").FileExportResult> {
   const files = getPlatformRuntime().services.files
   if (!files) throw new Error("File export service unavailable")
   return files.exportText("pawkemoviewer-backup.json", await buildBackup())
