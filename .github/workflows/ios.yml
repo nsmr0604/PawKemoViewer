@@ -55,8 +55,8 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          # 端末向け + iOS Simulator (Apple Silicon / Intel) の rust std を入れる
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+          # iOS 端末 (arm64) 向けの rust std を入れる
+          targets: aarch64-apple-ios
 
       - name: Install XcodeGen
         # npx tauri ios init が Xcode プロジェクトを生成するのに必要
@@ -67,9 +67,8 @@ jobs:
           fi
           xcodegen --version
 
-      - name: Verify iOS Simulator runtime
-        # ランナーに Simulator ランタイムが無い場合は、わかりやすいエラーで失敗させる
-        run: xcrun simctl list devices available
+      - name: Verify Xcode
+        run: xcodebuild -version
 
       - name: Install Dependencies
         run: npm ci
@@ -82,50 +81,36 @@ jobs:
         # src-tauri/gen/apple は git 管理外 (Android と同じく CI で毎回生成)
         run: npx tauri ios init
 
-      - name: Build unsigned iOS Simulator app (Apple Silicon / arm64)
+      - name: Build unsigned iOS IPA (device / arm64)
+        # 既定 target = aarch64 (iOS 端末)。--no-sign で CODE_SIGNING_ALLOWED=NO の
+        # archive を作り、PawKemoViewer.ipa を生成する (Apple Developer 不要)。
         run: |
           if [ "${{ inputs.release }}" = "true" ]; then
-            npx tauri ios build --target aarch64-sim --no-sign
+            npx tauri ios build --no-sign
           else
-            npx tauri ios build --target aarch64-sim --no-sign --features debug-diag
+            npx tauri ios build --no-sign --features debug-diag
           fi
 
-      - name: Build unsigned iOS Simulator app (Intel / x86_64)
-        run: |
-          if [ "${{ inputs.release }}" = "true" ]; then
-            npx tauri ios build --target x86_64 --no-sign
-          else
-            npx tauri ios build --target x86_64 --no-sign --features debug-diag
-          fi
-
-      - name: Package simulator apps
+      - name: Collect unsigned IPA
         run: |
           set -euo pipefail
           VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
           mkdir -p dist-ios
-
-          pack() {
-            arch="$1"
-            label="$2"
-            app=$(printf '%s\n' "src-tauri/gen/apple/build/$arch"/*.app | head -n 1)
-            if [ ! -d "$app" ]; then
-              echo "no .app found in src-tauri/gen/apple/build/$arch" >&2
-              exit 1
-            fi
-            out="dist-ios/PawKemoViewer_${VER}_ios-simulator-${label}.zip"
-            (cd "$(dirname "$app")" && zip -q -r "$OLDPWD/$out" "$(basename "$app")")
-            echo "packaged: $out"
-          }
-
-          pack arm64-sim arm64
-          pack x86_64 x86_64
+          ipa=$(printf '%s\n' src-tauri/gen/apple/build/arm64/*.ipa | head -n 1)
+          if [ ! -f "$ipa" ]; then
+            echo "no unsigned IPA found in src-tauri/gen/apple/build/arm64" >&2
+            exit 1
+          fi
+          out="dist-ios/PawKemoViewer_${VER}_ios-unsigned.ipa"
+          cp "$ipa" "$out"
+          echo "packaged: $out"
           ls -la dist-ios
 
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: pawchive-ios
-          path: dist-ios/*.zip
+          path: dist-ios/*.ipa
 
       - name: Attach iOS builds to Release
         # push (main) = デバッグビルド → rolling prerelease `debug-latest` へ添付
@@ -137,10 +122,10 @@ jobs:
           VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
 
           if [ "${{ inputs.release }}" = "true" ]; then
-            gh release upload "pawkemoviewer-v${VER}" dist-ios/*.zip --clobber \
-              || gh release create "pawkemoviewer-v${VER}" dist-ios/*.zip \
+            gh release upload "pawkemoviewer-v${VER}" dist-ios/*.ipa --clobber \
+              || gh release create "pawkemoviewer-v${VER}" dist-ios/*.ipa \
                    --title "PawKemoViewer v${VER}" \
-                   --notes "Automated build (iOS simulator, unsigned)."
+                   --notes "Automated build (iOS unsigned IPA / 要再署名で実機インストール)."
             exit 0
           fi
 
@@ -157,8 +142,8 @@ jobs:
             done
           fi
 
-          gh release upload "$TAG" dist-ios/*.zip --clobber \
-            || gh release create "$TAG" dist-ios/*.zip \
+          gh release upload "$TAG" dist-ios/*.ipa --clobber \
+            || gh release create "$TAG" dist-ios/*.ipa \
                  --prerelease \
                  --title "PawKemoViewer debug build" \
-                 --notes "Automated debug build (v${VER}). iOS simulator builds are unsigned (VITE_DEBUG_DIAG=1・テスト用・非公式)."
+                 --notes "Automated debug build (v${VER}). iOS IPA is unsigned (VITE_DEBUG_DIAG=1・テスト用・非公式)。実機インストールには再署名が必要。"
