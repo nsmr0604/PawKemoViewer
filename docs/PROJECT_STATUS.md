@@ -381,3 +381,8 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 - This remains unverified: the dialog plugin's selected-path conversion may differ on mobile/content-URI providers, and no build/typecheck/device test was run. JS plugin package synchronization is still outstanding.
 
 - Preserved the browser/Web fallback for backup restore: non-native runtimes still use the HTML file input, while native runtimes use the Rust open-dialog command.
+
+
+## M2 follow-up — bounded native backup reads (2026-11-21)
+- `open_user_backup` now enforces the 5 MiB ceiling during the actual read (read at most limit + 1 bytes), rather than relying solely on a metadata check that could race with file changes. UTF-8 decoding errors are reported explicitly.
+- Commit `4ebb0e34`. Source-level only; native dialog selected-path conversion remains potentially incompatible with Android content URIs/iOS file-provider URLs and is not validated. No build/typecheck/device test/CI was run.
