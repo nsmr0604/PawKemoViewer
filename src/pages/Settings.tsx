@@ -275,6 +275,10 @@ export function SettingsPage() {
   const doExportBackup = async () => {
     try {
       const path = await exportBackup()
+      if (path === "キャンセル") {
+        setBackupResult("バックアップの保存をキャンセルしました")
+        return
+      }
       let clip = ""
       try {
         const clipboard = getPlatformRuntime().services.clipboard
@@ -345,6 +349,10 @@ export function SettingsPage() {
       const files = getPlatformRuntime().services.files
       if (!files) throw new Error("File export service unavailable")
       const path = await files.exportText("pawchive-log.txt", formatLog())
+      if (path === "キャンセル") {
+        setLogResult("ログの保存をキャンセルしました")
+        return
+      }
       setLogResult(t("settings.exported", { path, clip: "" }))
     } catch (e) {
       setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
