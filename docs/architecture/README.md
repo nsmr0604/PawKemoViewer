@@ -10,6 +10,8 @@ This folder contains the tracked roadmap and handoffs for evolving the experimen
 
 See the [baseline inventory](inventory.md) for code references and validation, and [platform contract semantics](platform-contracts.md) for capability and failure rules.
 
+See the [application use-case conventions](use-cases.md) for workflow boundaries and cancellation.
+
 ## Principles
 - Incremental migrations, behavior-preserving first.
 - Keep platform-specific implementation behind typed contracts.

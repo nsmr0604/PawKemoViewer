@@ -16,7 +16,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 - [x] **M1.4** Add contract tests for adapter behavior and runtime initialization edge cases. Depends: M1.1-M1.3.
 
 ## M2 — Use cases
-- [ ] **M2.1** Establish Application use-case naming, error, result and cancellation conventions. Deliver design doc. Depends: M0.3.
+- [x] **M2.1** Establish Application use-case naming, error, result and cancellation conventions. Deliver design doc. Depends: M0.3.
 - [ ] **M2.2** Introduce composition root and dependency wiring, without changing workflows. Depends: M1.1,M2.1.
 - [ ] **M2.3** Migrate a low-risk slice (select based on inventory; default locale CRUD or favorites) to a Use Case. Depends: M2.2.
 - [ ] **M2.4** Migrate post-detail workflow to Use Case with behavior preservation. Depends: M2.3.
