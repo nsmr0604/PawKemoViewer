@@ -730,9 +730,16 @@ export function SettingsPage() {
             <small>{t("settings.importDesc")}</small>
           </div>
           <div className="settings-actions">
-            <button className="btn" onClick={() => void importBackupNative()}>
-              バックアップファイルを選択
-            </button>
+            {getPlatformRuntime().descriptor.isNative ? (
+              <button className="btn" onClick={() => void importBackupNative()}>
+                バックアップファイルを選択
+              </button>
+            ) : (
+              <label className="btn">
+                バックアップファイルを選択
+                <input type="file" accept=".json,application/json" hidden onChange={(e) => { void importBackupFile(e.target.files?.[0] ?? null); e.currentTarget.value = "" }} />
+              </label>
+            )}
             <button className="btn" onClick={doImportFromClipboard}>
               {t("settings.importClipboard")}
             </button>
