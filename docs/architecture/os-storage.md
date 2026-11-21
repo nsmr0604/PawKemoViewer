@@ -42,6 +42,18 @@ The user reported successful open and export on a device. The retain picker open
 
 The Linux Tauri CLI rejects `ios init`; this environment has no Xcode/UIKit SDK. The Swift source needs compilation and execution in a macOS iOS 14+ simulator target or on a device. On that target, embed the helper in a small host view controller and check actual Files providers, copied input, export destination and cancellation. The prototype has no production iOS wiring.
 
+### Unsigned iPhone probe IPA
+
+[IOSProbeApp.swift](prototypes/m5/IOSProbeApp.swift) is the standalone host for the Files picker. It retains the picker delegate, stages an export fixture and removes the staged directory on completion or cancel.
+
+On macOS with full Xcode selected and the iPhoneOS SDK installed:
+
+```bash
+PROBE_OUTPUT=/path/to/writable/output bash docs/architecture/prototypes/m5/build-ios-probe.sh
+```
+
+The script compiles an arm64 device executable, checks that it has no code-signature load command and packages `Payload/FilesProbe.app` into `PawKemoViewer-Files-Probe-unsigned.ipa`. An unsigned build requires signing before installation on a standard iPhone. The Linux cloud run exercised the shell syntax, plist parsing and missing-Xcode guard. Swift/UIKit compilation and actual IPA packaging still need the macOS run.
+
 ## Native acceptance checks before M5.4
 
 | Scenario | Android SAF | iOS Files |
