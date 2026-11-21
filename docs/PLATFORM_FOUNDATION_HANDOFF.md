@@ -288,3 +288,5 @@ Suggested sequence: (1) platform contracts/runtime + CI trigger adjustment; (2) 
 - Added Rust `open_user_backup` command with a JSON-filtered native open dialog; it reads selected UTF-8 file contents, caps file size at 5 MiB, and returns None on cancellation.
 - Settings backup restore now calls this command instead of the HTML file input for the backup restore entry point. The existing HTML-based locale import pickers remain.
 - This remains unverified: the dialog plugin's selected-path conversion may differ on mobile/content-URI providers, and no build/typecheck/device test was run. JS plugin package synchronization is still outstanding.
+
+- Preserved the browser/Web fallback for backup restore: non-native runtimes still use the HTML file input, while native runtimes use the Rust open-dialog command.
