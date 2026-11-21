@@ -571,12 +571,27 @@ input:not([type]) {
 .creator-name .badge-new {
   position: static;
 }
+.creator-row-copy {
+  flex: 1;
+  min-width: 0;
+}
 .creator-sub {
   color: var(--fg2);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* フォロー一覧の記事名: 最大 2 行で折り返し、収まらない場合は省略 */
+.creator-post-title {
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 .link {
   color: var(--accent);

@@ -332,7 +332,7 @@ export function FavoritesPage() {
                   onClick={() => navigate(`/creator/${f.service}/${f.id}`)}
                 >
                   <CreatorAvatar service={f.service} id={f.id} name={f.name} />
-                  <div>
+                  <div className="creator-row-copy">
                     <div className="creator-name">
                       {f.name || f.id}
                       {f.isNew && <span className="badge-new">NEW</span>}
@@ -344,7 +344,7 @@ export function FavoritesPage() {
                     </div>
                     {f.newest && (
                       <div
-                        className="creator-sub link"
+                        className="creator-post-title link"
                         onClick={(e) => {
                           e.stopPropagation()
                           navigate(`/post/${f.newest!.service}/${f.newest!.user}/${f.newest!.id}`)
