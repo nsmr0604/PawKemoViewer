@@ -296,3 +296,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Settings backup and log export now recognize the native save command's `キャンセル` sentinel and display an explicit cancellation message rather than reporting a successful export or attempting clipboard copy.
 - Cancellation handling is caller-side; the service contract still returns a string sentinel, which is fragile and should be replaced with a typed result (cancelled vs saved path) in a future contract slice.
 - No build/typecheck/device/CI validation was run. Native file-path conversion and Android/iOS SAF/Files semantics remain unverified; JS dialog dependency and package-lock synchronization are still blocked.
+
+
+## M2 continuation — typed export outcome (2026-11-21)
+- Replaced the FileExportService string/sentinel return contract with a discriminated result: `{ status: "saved", path }` or `{ status: "cancelled" }`. Native adapters translate the command sentinel into this result; the web adapter returns the saved filename result.
+- Backup export and Settings log export consume the typed result and treat cancellation as a distinct non-success outcome, avoiding string/path ambiguity.
+- Source edits only; no build, typecheck, automated tests, CI or platform/device verification. Dialog plugin npm dependency/lockfile and native open/import path remain pending.
