@@ -77,7 +77,10 @@
 - `npm run build` / `npm run icons:generate` / 3 ワークフローの YAML / Wiki 同期スクリプト: OK
 - ハッシュ照合: `icon.ico` は pc.png 生成分と一致、Android `ic_launcher.png` は
   dark.png 生成分と一致。
-- CI: Wiki Sync は success。Build Tauri / Android / iOS は 2026-11-21 時点で実行中。
+- CI: 0.4.1 の Build Tauri / Android / iOS は success。
+  iOS 代替アイコン修正後の IPA (`44911910546`) を解析し、
+  `Info.plist` に `TauriAppIconAliases` / `CFBundleAlternateIcons` / `AppIconLight`、
+  `Assets.car` に `AppIconLight` が含まれることを確認済み。
 
 ## 5. 未完了タスク
 
