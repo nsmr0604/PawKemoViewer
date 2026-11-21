@@ -245,3 +245,24 @@ test("app-folder locale export uses its own destination and returns the saved pa
   assert.equal(save.mock.callCount(), 0)
   assert.equal(createLocaleUseCases(repository, () => true, { save }).canSaveLocaleToAppDirectory, false)
 })
+
+test("only the secondary locale path is exposed while both dictionaries are loaded", async () => {
+  const { refreshLocales, secondaryLocaleFolder, loadLocale, t } =
+    await server.ssrLoadModule("/src/i18n.ts")
+  const file = (label) => ({ code: "es", json: JSON.stringify({ "locale.name": "Español", "nav.home": label }) })
+  const privateCatalogue = { dir: "/data/data/example/locales", invalid: [], files: [file("Private")] }
+  const publicCatalogue = { dir: "/storage/emulated/0/Android/data/example/files/Documents/Languages", invalid: [], files: [file("Secondary")] }
+  try {
+    await refreshLocales({ listPrivate: async () => privateCatalogue, listSecondary: async () => publicCatalogue })
+    assert.equal(secondaryLocaleFolder(), publicCatalogue.dir)
+    assert.equal(await loadLocale("es"), "es")
+    assert.equal(t("nav.home"), "Secondary")
+    await refreshLocales({ listPrivate: async () => privateCatalogue })
+    assert.equal(secondaryLocaleFolder(), "")
+    assert.equal(await loadLocale("es"), "es")
+    assert.equal(t("nav.home"), "Private")
+  } finally {
+    await refreshLocales(undefined)
+    await loadLocale("ja")
+  }
+})

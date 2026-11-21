@@ -1232,13 +1232,17 @@ pub struct LocaleList {
 
 #[tauri::command]
 fn list_locale_files(app: tauri::AppHandle) -> Result<LocaleList, String> {
-    let dir = locale_dir(&app)?;
+    list_locale_directory(locale_dir(&app)?)
+}
+
+fn list_locale_directory(dir: std::path::PathBuf) -> Result<LocaleList, String> {
+    use std::io::Read;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let mut files = Vec::new();
     let mut invalid = Vec::new();
     for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
         let path = entry.path();
-        if !path.is_file() {
+        if !entry.file_type().is_ok_and(|kind| kind.is_file()) {
             continue;
         }
         let name = entry.file_name().to_string_lossy().to_string();
@@ -1248,9 +1252,13 @@ fn list_locale_files(app: tauri::AppHandle) -> Result<LocaleList, String> {
             invalid.push(name);
             continue;
         }
-        match std::fs::read_to_string(&path) {
-            Ok(json) => files.push(LocaleFile { code: code.to_string(), json }),
-            Err(_) => invalid.push(name),
+        let mut json = String::new();
+        let read = std::fs::File::open(&path)
+            .and_then(|file| file.take(LOCALE_MAX_BYTES + 1).read_to_string(&mut json));
+        if read.is_ok_and(|bytes| bytes as u64 <= LOCALE_MAX_BYTES) {
+            files.push(LocaleFile { code: code.to_string(), json });
+        } else {
+            invalid.push(name);
         }
     }
     Ok(LocaleList { dir: dir.to_string_lossy().to_string(), files, invalid })
@@ -1297,14 +1305,20 @@ fn delete_locale_file(app: tauri::AppHandle, code: String) -> Result<bool, Strin
 
 
 
-// Desktop secondary locale files in the user-accessible Documents area.
-#[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
-fn secondary_locale_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> { Ok(app.path().document_dir().map_err(|e| e.to_string())?.join("Pawchive").join("languages")) }
+// Use the app's external Documents on Android and the Files-visible Documents on iOS.
+fn secondary_locale_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let documents = app.path().document_dir().map_err(|error| error.to_string())?;
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    return Ok(documents.join("Languages"));
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    Ok(documents.join("Pawchive").join("languages"))
+}
+
 #[tauri::command]
 fn list_secondary_locale_files(app: tauri::AppHandle) -> Result<LocaleList, String> {
-    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] { let dir=secondary_locale_dir(&app)?; std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?; let mut files=Vec::new(); let mut invalid=Vec::new(); for entry in std::fs::read_dir(&dir).map_err(|e|e.to_string())?.flatten(){ let path=entry.path(); if !path.is_file(){continue;} let name=entry.file_name().to_string_lossy().to_string(); let Some(code)=name.strip_suffix(".json") else {continue}; let too_big=entry.metadata().map(|m|m.len()>LOCALE_MAX_BYTES).unwrap_or(true); if !valid_locale_code(code)||too_big{invalid.push(name);continue;} match std::fs::read_to_string(&path){Ok(json)=>files.push(LocaleFile{code:code.to_string(),json}),Err(_)=>invalid.push(name)} } return Ok(LocaleList{dir:dir.to_string_lossy().to_string(),files,invalid}); }
-    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))] { let _=app; Ok(LocaleList{dir:String::new(),files:Vec::new(),invalid:Vec::new()}) }
+    list_locale_directory(secondary_locale_dir(&app)?)
 }
+
 #[tauri::command]
 fn write_secondary_locale_file(app: tauri::AppHandle, code: String, json: String) -> Result<String, String> { if !valid_locale_code(&code){return Err("invalid locale code".into());} if json.len() as u64>LOCALE_MAX_BYTES{return Err("locale file too large".into());} #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))] { let dir=secondary_locale_dir(&app)?; std::fs::create_dir_all(&dir).map_err(|e|e.to_string())?; let path=dir.join(format!("{}.json",code)); atomic_locale_write(&path,json.as_bytes())?; return Ok(path.to_string_lossy().to_string()); } #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))] {let _=app;Err("secondary locale storage unavailable".into())} }
 // Foundation storage-location resolver (additive; consumers are migrated separately).
@@ -1396,10 +1410,11 @@ async fn save_locale_file_to_app_directory(
 #[cfg(target_os = "ios")]
 fn prepare_ios_files_directory(app: &tauri::AppHandle) -> Result<(), String> {
     use std::io::{ErrorKind, Write};
-    let documents = app.path().document_dir().map_err(|error| error.to_string())?;
-    std::fs::create_dir_all(documents.join("Languages")).map_err(|error| error.to_string())?;
+    let languages = secondary_locale_dir(app)?;
+    std::fs::create_dir_all(&languages).map_err(|error| error.to_string())?;
 
-    // Register actual content in Documents so the app's local Files location has a visible item.
+    // A visible file in Documents gives Files an item to index for this app.
+    let documents = languages.parent().ok_or("Missing iOS Documents directory")?;
     let guide = documents.join("PawKemoViewer-Files.txt");
     match std::fs::OpenOptions::new().write(true).create_new(true).open(&guide) {
         Ok(mut file) => file.write_all(

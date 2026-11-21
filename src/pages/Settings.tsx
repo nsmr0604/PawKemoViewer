@@ -19,7 +19,7 @@ import {
   t,
   loadLocale,
   availableLocales,
-  localeFolder,
+  secondaryLocaleFolder,
   invalidLocaleFiles,
   type Locale,
   type LocaleInfo,
@@ -48,7 +48,12 @@ function fmtTs(ms: number | undefined): string {
 export function SettingsPage() {
   const s = getSettings()
   const localeUseCases = getApplication().locales
-  const supportsSecondaryLocale = getPlatformRuntime().descriptor.family === "desktop"
+  const platform = getPlatformRuntime().descriptor
+  const supportsSecondaryLocale = platform.family === "desktop"
+  const secondaryFolder = secondaryLocaleFolder()
+  const folderLabel = secondaryFolder && platform.isNative && platform.os === "ios"
+    ? t("settings.localeFolderIos")
+    : secondaryFolder.replace(/^.*\/(Android\/data\/)/, "$1")
 
   const [theme, setTheme] = useState<"dark" | "light">(s.theme)
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(s.layoutMode || "auto")
@@ -230,6 +235,7 @@ export function SettingsPage() {
         if (result.kind === "missing") setLocaleMsg(t("settings.localePickerMissing"))
         if (result.kind === "invalid-json") setLocaleMsg(t("settings.localeBadJson"))
         if (result.kind === "saved") {
+          if (operation === "export-to-app") await reloadLocales()
           setLocaleMsg(result.path ? t("settings.localePickerSavedTo", { path: result.path }) : t("settings.localePickerSaved"))
         }
       }
@@ -422,7 +428,7 @@ export function SettingsPage() {
         <div className="setting-item">
           <div className="setting-text">
             <span>{t("settings.localeFolder")}</span>
-            <small>{localeFolder() || "-"}</small>
+            <small>{folderLabel || "-"}</small>
             {invalidLocaleFiles().length > 0 && (
               <small>{t("settings.localeInvalid", { files: invalidLocaleFiles().join(", ") })}</small>
             )}

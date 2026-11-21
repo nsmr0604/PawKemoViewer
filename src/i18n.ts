@@ -40,7 +40,7 @@ const BUNDLED_NAMES: Record<string, string> = { ja: "日本語", en: "English" }
 
 const external = new Map<string, Dict>()
 const secondary = new Map<string, Dict>()
-let externalDir = ""
+let secondaryDir = ""
 let invalidFiles: string[] = []
 
 i18n.use(initReactI18next).init({
@@ -82,10 +82,10 @@ export async function refreshLocales(repository: LocaleRepository | undefined): 
   external.clear()
   secondary.clear()
   invalidFiles = []
+  secondaryDir = ""
   try {
     const res = await repository?.listPrivate()
     if (!res) throw new Error("External locale list unavailable")
-    externalDir = res.dir
     invalidFiles = [...res.invalid]
     for (const f of res.files) {
       const dict = parseLocaleJson(f.json)
@@ -102,6 +102,7 @@ export async function refreshLocales(repository: LocaleRepository | undefined): 
   try {
     const res = await repository?.listSecondary?.()
     if (res) {
+      secondaryDir = res.dir
       invalidFiles.push(...res.invalid.map((name) => `secondary:${name}`))
       for (const f of res.files) {
         const dict = parseLocaleJson(f.json)
@@ -124,9 +125,9 @@ export function availableLocales(): LocaleInfo[] {
   }))
 }
 
-/** 外部ファイルの読み込み結果 (表示用) */
-export function localeFolder(): string {
-  return externalDir
+/** 追加の言語フォルダーの読み込み結果 (表示用) */
+export function secondaryLocaleFolder(): string {
+  return secondaryDir
 }
 export function invalidLocaleFiles(): string[] {
   return invalidFiles

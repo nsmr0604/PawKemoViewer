@@ -102,7 +102,7 @@ test("runtime requires initialization, preserves identity, and selects the right
   assert.deepEqual(mobile.descriptor, { os: "android", family: "mobile", isNative: true })
   assert.equal(getPlatformRuntime(), mobile)
   assert.equal(typeof mobile.services.lifecycle.onBackRequested, "function")
-  assert.equal(mobile.services.locale.listSecondary, undefined)
+  assert.equal(typeof mobile.services.locale.listSecondary, "function")
 
   resetPlatformRuntimeForTests()
   globalThis.navigator = { userAgent: "Windows" }
