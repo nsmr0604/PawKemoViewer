@@ -6,12 +6,13 @@ final class AndroidGrantProbe {
         int read = AndroidLocalePicker.READ;
         int write = AndroidLocalePicker.WRITE;
         int persistent = AndroidLocalePicker.PERSISTABLE;
-        expect(0, AndroidLocalePicker.persistableModes(read | write, read | write));
+        expect(read | write, AndroidLocalePicker.persistableModes(read | write, read | write));
+        expect(0, AndroidLocalePicker.persistableModes(persistent, read | write));
         expect(0, AndroidLocalePicker.persistableModes(persistent | read, write));
         expect(read, AndroidLocalePicker.persistableModes(persistent | read | write, read));
         expect(write, AndroidLocalePicker.persistableModes(persistent | write, read | write));
         expect(read | write, AndroidLocalePicker.persistableModes(persistent | read | write, -1));
-        System.out.println("PASS: 5 SAF grant-mask cases");
+        System.out.println("PASS: 6 SAF grant-mask cases");
     }
 
     private static void expect(int expected, int actual) {

@@ -44,7 +44,6 @@ final class AndroidLocalePicker {
     }
 
     static int persistableModes(int returnedFlags, int requestedModes) {
-        if ((returnedFlags & PERSISTABLE) == 0) return 0;
         return returnedFlags & requestedModes & (READ | WRITE);
     }
 

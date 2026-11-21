@@ -2,6 +2,7 @@ package org.pawkemoviewer.safprobe;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.UriPermission;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Button;
@@ -30,9 +31,21 @@ public final class ProbeActivity extends Activity {
         button(panel, "Open JSON", () -> pick(AndroidLocalePicker.openJson(), OPEN));
         button(panel, "Export fixture JSON", () -> pick(AndroidLocalePicker.createJson("pawkemoviewer-saf-probe.json"), CREATE));
         button(panel, "Open and retain read access", () -> pick(AndroidLocalePicker.openJson(), OPEN_PERSISTED));
-        button(panel, "Read remembered document", () -> runProbe(() -> read(remembered())));
+        button(panel, "Read remembered document", () -> runProbe(() -> {
+            Uri uri = remembered();
+            if (uri == null) return "No remembered document. First retain a read grant.";
+            boolean persisted = hasPersistedRead(uri);
+            try {
+                return read(uri) + (persisted ? ". Persisted read grant listed." : ". No persisted read grant listed.");
+            } catch (SecurityException error) {
+                return "Read denied by Android." + (persisted ? " Persisted grant listed." : " No persisted read grant listed.");
+            }
+        }));
         button(panel, "Release retained access", () -> runProbe(() -> {
-            getContentResolver().releasePersistableUriPermission(remembered(), AndroidLocalePicker.READ);
+            Uri uri = remembered();
+            if (uri == null) return "No remembered document. First retain a read grant.";
+            if (!hasPersistedRead(uri)) return "No persisted read grant to release.";
+            getContentResolver().releasePersistableUriPermission(uri, AndroidLocalePicker.READ);
             return "Grant released. Restart the app before checking denial.";
         }));
         status = new TextView(this);
@@ -67,11 +80,26 @@ public final class ProbeActivity extends Activity {
             }
             String readResult = read(uri);
             if (request == OPEN_PERSISTED) {
-                boolean persisted = AndroidLocalePicker.takePersistedAccess(
-                    getContentResolver(), uri, data.getFlags(), AndroidLocalePicker.READ
-                );
-                if (persisted) getPreferences(MODE_PRIVATE).edit().putString(URI_KEY, uri.toString()).apply();
-                return readResult + (persisted ? ". Read grant retained." : ". Provider did not offer a persistent read grant.");
+                int flags = data.getFlags();
+                String flagReport = " (flags 0x" + Integer.toHexString(flags) + ")";
+                Uri previous = remembered();
+                if (previous != null && !previous.equals(uri) && hasPersistedRead(previous)) {
+                    return readResult + ". Release the previous retained grant first.";
+                }
+                try {
+                    if (!AndroidLocalePicker.takePersistedAccess(getContentResolver(), uri, flags, AndroidLocalePicker.READ)) {
+                        return readResult + ". Picker returned no read grant" + flagReport;
+                    }
+                } catch (SecurityException error) {
+                    return readResult + ". Android refused to retain the read grant" + flagReport;
+                }
+                if (!hasPersistedRead(uri)) {
+                    return readResult + ". Android did not list a persisted read grant" + flagReport;
+                }
+                if (!getPreferences(MODE_PRIVATE).edit().putString(URI_KEY, uri.toString()).commit()) {
+                    return readResult + ". Read grant retained, but saving the document reference failed" + flagReport;
+                }
+                return readResult + ". Read grant retained and document remembered" + flagReport;
             }
             return readResult;
         });
@@ -79,8 +107,14 @@ public final class ProbeActivity extends Activity {
 
     private Uri remembered() {
         String value = getPreferences(MODE_PRIVATE).getString(URI_KEY, null);
-        if (value == null) throw new IllegalStateException("No remembered document");
-        return Uri.parse(value);
+        return value == null ? null : Uri.parse(value);
+    }
+
+    private boolean hasPersistedRead(Uri uri) {
+        for (UriPermission permission : getContentResolver().getPersistedUriPermissions()) {
+            if (permission.isReadPermission() && uri.equals(permission.getUri())) return true;
+        }
+        return false;
     }
 
     private String read(Uri uri) throws Exception {
