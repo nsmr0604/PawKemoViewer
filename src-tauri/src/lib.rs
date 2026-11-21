@@ -980,11 +980,19 @@ fn open_user_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
         .pick_file();
     let Some(selected) = selected else { return Ok(None); };
     let path = selected.into_path().map_err(|e| e.to_string())?;
-    let metadata = std::fs::metadata(&path).map_err(|e| e.to_string())?;
-    if metadata.len() > 5 * 1024 * 1024 {
+    // Enforce the limit while reading, not only from metadata (which can race
+    // with a file change between stat and read). The extra byte detects overflow.
+    use std::io::Read;
+    const MAX_BACKUP_BYTES: usize = 5 * 1024 * 1024;
+    let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut bytes = Vec::with_capacity(MAX_BACKUP_BYTES.min(64 * 1024));
+    file.take((MAX_BACKUP_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|e| e.to_string())?;
+    if bytes.len() > MAX_BACKUP_BYTES {
         return Err("backup file exceeds 5 MiB limit".into());
     }
-    let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let content = String::from_utf8(bytes).map_err(|e| format!("backup file is not UTF-8: {}", e))?;
     Ok(Some(content))
 }
 
