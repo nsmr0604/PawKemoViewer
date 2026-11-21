@@ -73,4 +73,8 @@ The app now wires two mobile-only Tauri commands to a bundled native plugin. And
 
 Settings imports a new private locale copy. It validates the locale code and dictionary, refuses a duplicate code (including case variants), and checks the conflict again in Rust under the private-write lock. Export writes the private file for the currently selected language. The existing bundled/private/desktop shared overlay precedence stays in place. The existing desktop and browser file input routes now match their respective private and shared labels.
 
-Validation in Cloud covered the application and mock IPC tests, normal/debug frontend builds, and Linux Rust check with and without diagnostics. The earlier device probes establish system-picker feasibility. The integrated apps still need Android/iOS target builds and a device pass covering import, cancel, duplicate import, export and readback. On iOS the picker requires iOS 14+.
+Validation in Cloud covered the application and mock IPC tests, normal/debug frontend builds, and Linux Rust check with and without diagnostics. The earlier device probes establish system-picker feasibility. The integrated Android ARM64 APK and unsigned iOS IPA built in GitHub Actions from `test/mobile-locale` at `2765974`. The two packages were downloaded and checked for the native picker and the separate test app ID `com.nsmr0604.pawkemoviewer.localetest`. The APK signature also verified. Chromium with mock mobile IPC covered cancel, private import, duplicate rejection and export. A device pass still needs to cover the same interactions and readback. On iOS the picker requires iOS 14+.
+
+- [Build run](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378)
+- [Android ARM64 APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378/artifacts/14714862936)
+- [Unsigned iOS IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378/artifacts/14714494818)
