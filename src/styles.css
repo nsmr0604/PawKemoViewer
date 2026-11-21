@@ -217,15 +217,15 @@ body {
   font-size: 20px;
 }
 .logo-icon {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  object-fit: cover;
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
   flex: none;
 }
 .logo.small .logo-icon {
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 21px;
 }
 
 .detail-bar {

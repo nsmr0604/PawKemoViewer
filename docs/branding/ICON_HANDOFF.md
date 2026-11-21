@@ -42,8 +42,12 @@
 | ファイル | サイズ | 用途 |
 |---|---|---|
 | `src-tauri/app-icons/pc.png` | 1254×1254 PNG | PC (desktop) アイコンの元画像 |
-| `src-tauri/app-icons/dark.png` | 512×512 PNG | モバイル既定アイコンの元画像 |
-| `src-tauri/app-icons/light.png` | 512×512 PNG | モバイル代替アイコンの元画像 |
+| `src-tauri/app-icons/dark.png` | 532×532 PNG (四隅透過) | モバイル既定アイコンの元画像 |
+| `src-tauri/app-icons/light.png` | 532×532 PNG (四隅透過) | モバイル代替アイコンの元画像 |
+
+- 2026-11-22: dark / light の白い四隅を透明化し、コンテンツを中央寄せして
+  正方形に再出力した (元画像はローカル `.agent-work/icon-originals/` に退避)。
+  アプリ内ロゴでもこの透過画像を使い、`object-fit: contain` でサイズを調整する。
 
 - 旧 `assets/icons/*.svg` は「SVG は崩れるため PNG / BMP を使う」というユーザー指示で
   **削除済み**。SVG をリネームしただけの代理登録は禁止。
