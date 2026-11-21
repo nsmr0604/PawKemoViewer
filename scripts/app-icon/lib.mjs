@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -49,23 +49,11 @@ function tauriRunner() {
 }
 
 /** Runs `tauri icon` for one source image, writing per-platform icons into `outputDirectory`. */
-export function generateIcon(icon, configDir, outputDirectory, options = {}) {
+export function generateIcon(icon, configDir, outputDirectory) {
   const source = resolve(configDir, icon.source);
   if (!existsSync(source)) fail(`source image not found: ${relative(process.cwd(), source)}`);
 
-  let input = source;
-  if (options.iosOpaqueBackground) {
-    mkdirSync(outputDirectory, { recursive: true });
-    input = join(outputDirectory, 'ios-icon.svg');
-    writeFileSync(
-      input,
-      `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" fill="${
-        icon.backgroundColor ?? '#000000'
-      }"/><image href="${source}" width="512" height="512"/></svg>`
-    );
-  }
-
-  const args = ['tauri', 'icon', input, '--output', outputDirectory];
+  const args = ['tauri', 'icon', source, '--output', outputDirectory];
   if (icon.backgroundColor) args.push('--ios-color', icon.backgroundColor);
 
   const result = spawnSync(tauriRunner(), args, {
