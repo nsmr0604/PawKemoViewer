@@ -1,31 +1,21 @@
-# Architecture Refactor Guide
+# アプリ基盤の開発資料
 
-This folder contains the tracked roadmap and handoffs for evolving the experimental platform separation in `0.5.0` toward layered architecture.
+`0.5.0` ブランチで進めるレイヤー分離のロードマップと、作業・検証結果を管理する。
 
-## Read in order
-1. [ROADMAP.md](ROADMAP.md) — milestones, goals and boundaries.
-2. [TASKS.md](TASKS.md) — small task IDs, dependencies and completion checklist.
-3. [AGENT_WORKFLOW.md](AGENT_WORKFLOW.md) — shared instructions for contributors/agents.
-4. [STATUS.md](STATUS.md) — current focus, handoff and validation.
+1. [ロードマップ](ROADMAP.md) — 目標とマイルストーン
+2. [作業チェックリスト](TASKS.md) — タスクID、依存関係、完了条件
+3. [作業・引き継ぎ手順](AGENT_WORKFLOW.md) — ブランチ、検証、記録のルール
+4. [現在の進捗](STATUS.md) — リモート、リリース、完了・未完了項目
 
-See the [baseline inventory](inventory.md) for code references and validation, and [platform contract semantics](platform-contracts.md) for capability and failure rules.
+| 設計・検証資料 | 内容 |
+|---|---|
+| [初期棚卸し](inventory.md) | コードの位置と検証の基準 |
+| [プラットフォーム契約](platform-contracts.md) | 機能の有無と失敗時の扱い |
+| [ユースケース](use-cases.md) | 処理の境界とキャンセル |
+| [リポジトリとインフラ](repositories.md) | ストレージの責務と通信方針 |
+| [ドメイン境界](domain.md) | モデルの責務とルール |
+| [OSのストレージ](os-storage.md) | ファイル選択と実機確認手順 |
+| [画面構成](adaptive-ui.md) | レイアウトと操作の検証範囲 |
+| [安定化の検証記録](stabilization.md) | 依存チェックとパッケージの検証根拠 |
 
-See the [application use-case conventions](use-cases.md) for workflow boundaries and cancellation.
-
-See the [repository and infrastructure design](repositories.md) for storage ownership and transport policy.
-
-See the [domain model boundaries](domain.md) for model ownership and rules.
-
-See the [OS storage capability matrix](os-storage.md) for native validation and picker follow-up.
-
-See the [adaptive presentation design](adaptive-ui.md) for layout and interaction coverage.
-
-See the [stabilization report](stabilization.md) for the dependency check and release evidence.
-
-## Principles
-- Incremental migrations, behavior-preserving first.
-- Keep platform-specific implementation behind typed contracts.
-- Application use cases coordinate workflows; repositories abstract data access.
-- Domain rules remain framework-agnostic.
-- Do not create abstractions without concrete use cases.
-- Documents in this folder are tracked and are the shared source of truth; local notes are not.
+移行は小さく進め、既存動作を保つ。プラットフォーム固有の処理は型付き契約の背後に置き、ユースケースは処理の流れ、リポジトリはデータアクセスを担う。ドメインはフレームワークから独立させ、具体的な用途がある場合に抽象化する。共有する引き継ぎは日本語で記録する。

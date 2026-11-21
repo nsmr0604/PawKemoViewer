@@ -1,90 +1,24 @@
-# Layered Architecture Refactor Roadmap
+# アプリ基盤のロードマップ
 
-> Status: proposal, derived from experimental platform separation in branch `0.5.0`. This document defines work; it does not claim tasks are implemented.
-> Baseline: branch `0.5.0`. Preserve React + Tauri 2 + Rust + reqwest direct API architecture.
+`0.5.0` ブランチのプラットフォーム分離を段階的に進め、表示、アプリケーション、ドメイン、インフラ、プラットフォームの責務を明確にする。React + Tauri 2 + Rust + reqwest の構成で、Windows・macOS・Linux・Android・iOS/iPadOS を対象とする。実施状況は [進捗](STATUS.md)、作業IDと依存関係は [チェックリスト](TASKS.md) を参照する。
 
-## Goal
-Evolve the existing PlatformRuntime/family adapters into a maintainable architecture with clear Presentation, Application, Domain, Infrastructure and Platform boundaries. Keep cross-platform support (Windows, macOS, Linux, Android, iOS) and preserve existing behavior. Avoid a big-bang rewrite.
+## マイルストーンと完了条件
 
-## Non-negotiable constraints
-- Read `AGENTS.md`, this roadmap, task list, and workflow before starting; look for handoffs.
-- No Cloudflare Pages/Workers/Functions/Wrangler/reverse proxy.
-- API requests to Pawchive remain direct Rust reqwest; pkv only for eligible external media URLs.
-- Do not weaken scheduler, cooldown, concurrency, cache, logging or security behavior.
-- Tauri v2 JS command args use camelCase.
-- Keep secrets/session tokens out of code, logs, docs and commits.
-- Do not merge PRs without explicit authorization. Batch CI/build validation; do not trigger build on every commit if workflows permit.
-- One focused task per commit. Keep handoffs in tracked docs (notes is gitignored and not shared).
+| 範囲 | 目的と完了条件 |
+|---|---|
+| M0 | アプリ入口、PlatformRuntime、API・DB・キャッシュ・プラットフォームへの依存を棚卸しし、検証の基準、リスク、境界を記録する。実行時の動作は維持する。 |
+| M1 | サービスを型付き契約で表し、共有アダプターと OS 固有の処理の境界を定める。機能の有無、未対応、初期化前の扱いをテストし、既存の利用箇所を維持する。 |
+| M2 | 依存関係をコンポジションルートで組み立てる。言語ファイル、投稿詳細、ホーム、クリエイターの処理をユースケースに移し、入出力、エラー、キャンセルを検証する。 |
+| M3 | リポジトリを通じてデータソースにアクセスし、通信、DTO 正規化、永続化、トランザクションを分ける。キャッシュとスケジューラーの方針を共有し、移行した処理を回帰テストで確認する。 |
+| M4 | DTO・保存データ・ドメイン・表示モデルの変換を整理する。根拠のあるルールを抽出し、React・Tauri・IndexedDB・通信から独立してテストする。 |
+| M5 | OS ごとの権限とファイル選択を試作で確認し、言語ファイルの取り込み、書き出し、追加フォルダーを実装する。最小権限で動作し、プロバイダーの差、権限の寿命、キャンセル、入力エラーを検証する。 |
+| M6 | デスクトップとモバイルの画面構成とナビゲーションを分離し、処理を共有する。狭い画面、リサイズ、キーボード、タッチ、戻る操作を確認する。 |
+| M7 | 依存境界、型・テスト・Rust のチェック、パッケージ、起動、端末操作を対象ごとに検証する。未確認の項目と理由を記録し、リリース判定と残課題を更新する。 |
 
-## Milestones and exit criteria
+## 進め方と制約
 
-### M0 — Baseline inventory & architecture guardrails
-**Purpose:** establish evidence and dependency baseline before moving code.
-- M0.1 inventory entrypoints, feature consumers, API/database/cache dependencies and direct platform calls.
-- M0.2 document PlatformRuntime bootstrapping, service contract usage and missing/optional services.
-- M0.3 record baseline checks and platform behavior matrix; tests only where existing scripts permit.
-Exit: inventory is reviewed, risks and boundaries documented, no runtime behavior changes.
-
-### M1 — Platform contract consolidation
-**Purpose:** mature 0.5.0 experimental contract without breaking consumers.
-- M1.1 replace `unknown` service slots with explicit interfaces (only when concrete contracts are understood).
-- M1.2 factor truly shared adapter implementations; retain family-specific overrides.
-- M1.3 define service availability/capability and unsupported-operation semantics.
-- M1.4 verify bootstrap ordering, uninitialized runtime handling, and adapter contract tests.
-Exit: contract types explicit; adapters tested; no regression in existing service consumers.
-
-### M2 — Application composition and Use Case boundary
-**Purpose:** decouple UI from operational workflows.
-- M2.1 add composition root/factory for wiring repositories and services.
-- M2.2 define use-case conventions (input/output, errors, cancellation, loading policy).
-- M2.3 migrate one low-risk vertical slice (recommended: favorites or locale CRUD) end-to-end.
-- M2.4 migrate post detail loading; keep API/cache behavior intact.
-- M2.5 migrate home/creator list workflows incrementally.
-Exit: selected screens call application use cases; workflow logic not embedded in UI; tests cover use cases.
-
-### M3 — Repository and Infrastructure boundaries
-**Purpose:** isolate data sources, persistence and transport.
-- M3.1 define repository interfaces for posts, creators, favorites/follows, settings as evidence dictates.
-- M3.2 move repository implementations into infrastructure; API transport and DTO normalization remain distinct.
-- M3.3 separate DB schema/transaction primitives from repository policy.
-- M3.4 formalize cache and scheduler interaction contracts; avoid duplicated policy.
-- M3.5 migrate remaining consumers in small slices.
-Exit: feature consumers no direct transport/storage access for migrated areas; regression checks pass.
-
-### M4 — Domain rules and model ownership
-**Purpose:** establish stable app-level rules without unnecessary abstraction.
-- M4.1 map DTO, persistence, domain and view models; document conversions.
-- M4.2 extract only validated business rules/policies from features.
-- M4.3 define repository contracts and domain error vocabulary.
-- M4.4 test pure rules independently.
-Exit: domain layer has no React/Tauri/IndexedDB/network dependency; migration scope justified.
-
-### M5 — Platform capability expansion and storage
-**Purpose:** address platform-specific access consistently.
-- M5.1 capability matrix for private/shared storage, file picker, permission, lifecycle.
-- M5.2 Android SAF and iOS Files picker research/prototype with grant lifecycle/cancellation/error cases.
-- M5.3 implement shared-secondary access only after platform feasibility and security review.
-- M5.4 locale private-primary + secondary overlay/import/export behavior and validation.
-Exit: access is least-privilege, OS-specific behavior documented and tested; no assumptions of unrestricted filesystem access.
-
-### M6 — Presentation split and adaptive UI
-**Purpose:** allow desktop/mobile UI divergence without duplicating business workflows.
-- M6.1 define presentation capability/layout selection strategy.
-- M6.2 separate desktop shell/navigation and mobile shell/navigation.
-- M6.3 migrate one screen at a time to shared use cases and screen-specific presentation.
-- M6.4 validate narrow screens, keyboard/mouse, touch, back navigation, window resize.
-Exit: shared workflow logic; platform/family UI can differ; layout regression checks documented.
-
-### M7 — Validation, dependency rules and stabilization
-**Purpose:** prevent architecture erosion.
-- M7.1 add automated dependency-boundary checks if feasible.
-- M7.2 test matrix (Windows/macOS/Linux/Android/iOS plus browser fallback as supported).
-- M7.3 batch typecheck, tests, Rust check, build and device verification; record unavailable checks.
-- M7.4 document release readiness and remaining debt.
-Exit: validations reported honestly; no merge or release without authorization.
-
-## Sequencing
-M0 -> M1 -> M2 -> M3 -> M4. M5 can proceed in parallel after M1 contract/capability design, but platform implementation depends on feasibility. M6 begins after M2 and proceeds screen-by-screen; M7 runs as final stabilization and periodically at milestone boundaries.
-
-## Scope control
-Each task should normally fit one agent context and one commit. If task touches >5 unrelated files, split it. Avoid mass renames and parallel edits to shared contracts. Task dependencies are listed in TASKS.md. The task list is the source of truth for actionable work; update status and handoff when work changes.
+- M0 から M4 まで順に進める。M5 は M1 の機能設計後に試作でき、実装は試作で実現性を確認してから進める。M6 は M2 以降に画面単位で進め、M7 は節目ごとに検証する。
+- Pawchive API は Rust の reqwest で直接呼ぶ。`pkv` は対象となる外部メディアに限定する。Cloudflare Pages・Workers・Functions・Wrangler・リバースプロキシは採用しない。
+- スケジューラー、クールダウン、並行処理、キャッシュ、ログ、セキュリティの既存方針を維持する。Tauri v2 の JavaScript コマンド引数は camelCase とし、機密情報をコード、ログ、資料、コミットに含めない。
+- 作業前に `AGENTS.md` と [作業・引き継ぎ手順](AGENT_WORKFLOW.md) を確認する。1コミットにつき一つの作業を目安とし、対象が広がる場合は分割する。検証は節目でまとめ、マージとリリースには承認を得る。
+- 作業の変更はチェックリストと進捗へ反映し、引き継ぎを日本語で Git 管理下に記録する。

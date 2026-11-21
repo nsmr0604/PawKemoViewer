@@ -1,65 +1,59 @@
-# Architecture Refactor Task Breakdown
+# アプリ基盤の作業チェックリスト
 
-Status legend: `TODO`, `BLOCKED`, `IN_PROGRESS`, `DONE`. No task is considered done without evidence recorded.
-Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.md before execution.
+完了の根拠を記録し、着手前に [作業・引き継ぎ手順](AGENT_WORKFLOW.md) を確認する。
 
-## M0 — Inventory
-- [x] **M0.1** Inventory app entrypoints and dependency map. Deliver `docs/architecture/inventory.md`. No code changes. Dependencies: none.
-- [x] **M0.2** Inventory PlatformRuntime bootstrap, contract fields, adapter coverage and consumers. Deliver contract matrix in inventory. Depends: M0.1.
-- [x] **M0.3** Map feature-to-API/DB/cache/platform direct accesses. Include file and symbols. Depends: M0.1.
-- [x] **M0.4** Establish validation baseline and test gaps. Report checks actually run, not assumed. Depends: M0.1-M0.3.
+## M0 — 棚卸し
+- [x] **M0.1** 入口と依存関係を棚卸しし、`inventory.md` に記録する。コードの変更は不要。
+- [x] **M0.2** PlatformRuntime の初期化、契約、アダプター、利用箇所の対応表を作る。 前提は M0.1。
+- [x] **M0.3** 機能から API・DB・キャッシュ・プラットフォームへの直接参照を、ファイルと識別子ごとに整理する。 前提は M0.1。
+- [x] **M0.4** 検証の基準と不足項目を定め、実行した確認を記録する。 前提は M0.1-M0.3。
 
-## M1 — Platform contracts
-- [x] **M1.1** Design typed replacements for `database?: unknown` and `network?: unknown`; implementation only for clearly scoped consumers. Depends: M0.2,M0.3.
-- [x] **M1.2** Define service capability/unsupported/error semantics (design doc). Depends: M1.1.
-- [x] **M1.3** Identify/factor common adapter code without altering behavior. Tests first; scope small. Depends: M0.2.
-- [x] **M1.4** Add contract tests for adapter behavior and runtime initialization edge cases. Depends: M1.1-M1.3.
+## M1 — プラットフォーム契約
+- [x] **M1.1** `database?: unknown` と `network?: unknown` を型付き契約に置き換える。用途が明確な利用箇所から実装する。 前提は M0.2,M0.3。
+- [x] **M1.2** サービスの機能、未対応時、失敗時の扱いを定義する。 前提は M1.1。
+- [x] **M1.3** アダプターの共有処理を切り出す。先にテストを確認し、移行範囲を絞る。 前提は M0.2。
+- [x] **M1.4** アダプター契約と初期化境界のテストを追加する。 前提は M1.1-M1.3。
 
-## M2 — Use cases
-- [x] **M2.1** Establish Application use-case naming, error, result and cancellation conventions. Deliver design doc. Depends: M0.3.
-- [x] **M2.2** Introduce composition root and dependency wiring, without changing workflows. Depends: M1.1,M2.1.
-- [x] **M2.3** Migrate a low-risk slice (select based on inventory; default locale CRUD or favorites) to a Use Case. Depends: M2.2.
-- [x] **M2.4** Migrate post-detail workflow to Use Case with behavior preservation. Depends: M2.3.
-- [x] **M2.5** Migrate home-post workflow. Depends: M2.4.
-- [x] **M2.6** Migrate creator listing/profile workflow. Depends: M2.4; can parallelize with M2.5 only if no shared-file conflicts.
+## M2 — ユースケース
+- [x] **M2.1** ユースケースの命名、入出力、エラー、キャンセルの規約を定める。 前提は M0.3。
+- [x] **M2.2** 依存の組み立てをコンポジションルートへ集約し、既存の処理フローを保つ。 前提は M1.1,M2.1。
+- [x] **M2.3** 言語ファイルなどリスクの低い機能を一つ、ユースケースに移行する。 前提は M2.2。
+- [x] **M2.4** 投稿詳細を移行し、既存動作を検証する。 前提は M2.3。
+- [x] **M2.5** ホームの投稿一覧を移行する。 前提は M2.4。
+- [x] **M2.6** クリエイター一覧とプロフィールを移行する。共有ファイルに競合がない場合に限り M2.5 と並行できる。 前提は M2.4。
 
-## M3 — Repositories / infrastructure
-- [x] **M3.1** Repository contract design for one migrated slice. Depends: M2.3.
-- [x] **M3.2** Implement repository and move data-source details for that slice. Depends: M3.1.
-- [x] **M3.3** Inventory DB ownership and transactions; design schema/transaction boundary. Depends: M0.3.
-- [x] **M3.4** Separate transport DTO normalization from domain/presentation types for one API path. Depends: M3.1.
-- [x] **M3.5** Cache/scheduler contract review and tests (no policy changes without separate task). Depends: M0.3,M3.1.
-- [x] **M3.6** Expand repository migration to other slices, one task per feature. Depends: M3.2-M3.5.
+## M3 — リポジトリとインフラ
+- [x] **M3.1** 移行済みの機能一つについてリポジトリ契約を設計する。 前提は M2.3。
+- [x] **M3.2** リポジトリを実装し、データソースの処理を移す。 前提は M3.1。
+- [x] **M3.3** DB の責務とトランザクションを整理し、境界を設計する。 前提は M0.3。
+- [x] **M3.4** API の DTO 正規化をドメイン型・表示型から分離する。 前提は M3.1。
+- [x] **M3.5** キャッシュとスケジューラーの契約を確認してテストする。方針の変更は別タスクにする。 前提は M0.3,M3.1。
+- [x] **M3.6** 機能単位でリポジトリ移行を広げる。 前提は M3.2-M3.5。
 
-## M4 — Domain
-- [x] **M4.1** Model/DTO/DB/view model mapping inventory. Depends: M3.4.
-- [x] **M4.2** Extract one pure domain rule and tests. Depends: M4.1.
-- [x] **M4.3** Define domain error and policy conventions; migrate only justified cases. Depends: M4.2.
-- [x] **M4.4** Verify domain dependency isolation. Depends: M4.2,M4.3.
+## M4 — ドメイン
+- [x] **M4.1** モデル、DTO、DB、表示用モデルの変換を棚卸しする。 前提は M3.4。
+- [x] **M4.2** 純粋なドメインルールを一つ抽出してテストする。 前提は M4.1。
+- [x] **M4.3** ドメインエラーとポリシーの規約を決め、根拠のある処理を移す。 前提は M4.2。
+- [x] **M4.4** ドメインの依存関係が分離されていることを確認する。 前提は M4.2,M4.3。
 
-## M5 — OS storage and capabilities
-- [x] **M5.1** Document storage capability matrix (private/shared, permissions, persistable grant, file picker) per OS. Depends: M1.2.
-- [x] **M5.2** Android SAF feasibility prototype and permission/grant tests. Signed probe and Android device validation passed for the tested provider.
-- [x] **M5.3** iOS Files/document picker feasibility prototype. Unsigned IPA built in Actions. User confirmed Open and Export on device.
-- [ ] **M5.4** Implement shared storage adapters on the validated platform(s), task per OS. Depends: M5.2,M5.3. **Implemented; integrated Android/iOS builds passed. Device checks pending.**
-- [ ] **M5.5** Locale secondary overlay/import/export, validation and conflict semantics. Depends: M5.4. **Implemented; native regression checks pending.**
+## M5 — OS のストレージと機能
+- [x] **M5.1** OS ごとの私有・共有ストレージ、権限、保持可能なアクセス権、ファイル選択を整理する。 前提は M1.2。
+- [x] **M5.2** Android SAF を試作し権限のライフサイクルを検証する。署名済み試作 APK と対象プロバイダーでの実機検証が完了。
+- [x] **M5.3** iOS Files の選択を試作する。Actions で無署名 IPA を作成し、ユーザーが実機で開く・書き出す操作を確認。
+- [ ] **M5.4** 検証した OS の共有ストレージアダプターを実装する。**実装済み。統合 APK・IPA の実機検証待ち。** 前提は M5.2,M5.3。
+- [ ] **M5.5** 追加言語の上書き順序、取り込み・書き出し、入力検証、重複時の扱いを実装する。**実装済み。実機の回帰確認待ち。** 前提は M5.4。
 
-## M6 — UI shells
-- [x] **M6.1** Decide adaptive UI strategy and capabilities. Design-only. Depends: M2.2.
-- [x] **M6.2** Split desktop/mobile shell/navigation with no workflow changes. Depends: M6.1.
-- [x] **M6.3** Migrate screen to adaptive presentation, one screen per task. Depends: M2.3,M6.2.
-- [x] **M6.4** Layout and interaction test matrix. Depends: M6.2,M6.3.
+## M6 — 画面構成
+- [x] **M6.1** 端末幅と設定に応じた画面構成の方針を設計する。 前提は M2.2。
+- [x] **M6.2** 既存処理を保ち、デスクトップとモバイルの画面構成・ナビゲーションを分ける。 前提は M6.1。
+- [x] **M6.3** 画面単位で共有ユースケースと表示処理に分ける。 前提は M2.3,M6.2。
+- [x] **M6.4** 画面幅と操作方法ごとの検証表を作る。 前提は M6.2,M6.3。
 
-## M7 — Stabilization
-- [x] **M7.1** Add dependency-boundary enforcement. Depends: M2-M4.
-- [ ] **M7.2** Run platform validation matrix and record gaps. Depends: M1-M6. **PARTIAL:** Desktop and mobile candidate packages verified. Installed Linux Home and public API passed. Windows/macOS startup, authenticated flows and M5 device checks remain open.
-- [ ] **M7.3** Prepare release-readiness/debt report. Depends: M7.2. **DRAFT:** Release gates and remaining debt recorded.
+## M7 — 安定化
+- [x] **M7.1** 依存境界を自動検証する。 前提は M2-M4。
+- [ ] **M7.2** 対象プラットフォームで検証し、不足項目を記録する。**一部完了。0.5.1 の5対象ビルドと Linux の候補版起動・公開 API を確認。Windows/macOS の起動、認証付き操作、M5 の実機検証が残る。** 前提は M1-M6。
+- [ ] **M7.3** リリース判定と残課題の報告をまとめる。**暫定。M7.2 の残りの検証結果を反映する。** 前提は M7.2。
 
-## Agent task completion template
-- Task ID and title
-- Files changed
-- Dependency assumptions
-- Behavior impact / migration notes
-- Tests and checks run (include exact commands/results)
-- Known limitations / follow-up task IDs
-- Update this checklist and `docs/architecture/STATUS.md` in the same task if status changes
+## 完了時の記録
+
+タスクID、変更ファイル、依存関係、動作への影響、検証コマンドと結果、未解決事項、次のタスクを日本語で記録する。状態が変わったら本書と [進捗](STATUS.md) を同じ作業で更新する。

@@ -1,43 +1,26 @@
-# Agent Workflow for Architecture Refactor
+# アプリ基盤の作業・引き継ぎ手順
 
-This is the shared operating procedure for humans and agents. Treat the ROADMAP and TASKS as project context and sequencing authority.
+## 作業前
 
-## Before starting (mandatory)
-1. Read `AGENTS.md` and all `docs/architecture/` handoffs: README, ROADMAP, TASKS, STATUS, and relevant design/inventory files.
-2. Check the target branch and recent commits/PRs for overlapping work; read the latest handoff.
-3. Pick one unchecked task ID. Confirm its dependencies are complete; if not, stop or choose a ready task.
-4. Keep work isolated on a task branch based on the agreed milestone branch. Do not merge PRs unless authorized.
-5. Review the task scope. Split further if context, files or risks are too large.
+1. `AGENTS.md` と [ロードマップ](ROADMAP.md)、[作業チェックリスト](TASKS.md)、[進捗](STATUS.md)、関連する設計・棚卸し資料を読む。
+2. 対象ブランチと最新コミット・PRを確認し、重複作業がないか照合する。
+3. 依存タスクの完了を確認し、着手可能な未完了タスクを一つ選ぶ。
+4. 合意したマイルストーンのブランチから `arch/<タスクID>-<短い名前>` を切る。PR のマージには明示的な承認を得る。
+5. 変更範囲とリスクを見直し、必要に応じてタスクを分ける。
 
-## Work execution
-- Implement only the selected task and prerequisite corrections; do not silently expand scope.
-- Preserve existing functionality and security constraints.
-- Avoid simultaneous edits to shared contracts or status documents by multiple agents. Coordinate through task IDs and branch/PR.
-- One commit should represent one task. Do not combine unrelated tasks.
-- Validate with the smallest relevant test first; batch broader validation at milestone checkpoints.
-- If validation cannot be run, report that explicitly; never claim it passed.
-- For purely design/inventory tasks, deliver the document and cross-check against code.
+## 作業中
 
-## Handoff (mandatory before pausing or completing)
-Update `docs/architecture/STATUS.md` with:
-- Current milestone/task ID and status
-- Completed work and commit/PR references
-- Exact files touched
-- Validation commands/results
-- Open issues, risks, and next ready task IDs
-Update TASKS.md checkboxes only when evidence supports completion.
-Add task-specific design notes when needed; keep documents concise and link them from README.
-Commit the handoff update together with the task where possible.
+- 選んだタスクとその前提の修正に絞り、既存の動作とセキュリティ上の制約を守る。
+- タスクIDとブランチ・PRで作業を調整する。共有契約や進捗資料を同時に編集する作業は避ける。
+- 1コミットにつき1タスクを目安とする。最小限の関連テストから実行し、広い範囲の検証はマイルストーンの節目でまとめる。
+- 実行できなかった検証とその理由を明記する。設計・棚卸しの資料はコードと照合する。
+- 複数エージェントで並行する場合は、変更ファイルと契約の依存関係が重ならないタスクを選ぶ。設計と実装を分けた場合は、合意した提案に沿って実装する。
 
-## Suggested agent prompt
-```
-Read AGENTS.md and docs/architecture/README.md, ROADMAP.md, TASKS.md, STATUS.md and related notes first.
-Work only on task <TASK-ID>. Verify its dependencies and avoid overlapping edits.
-Implement the task as a small change, run focused validation, update TASKS and STATUS with evidence and next steps, and commit one task only. Do not merge.
-```
+## 中断・完了時の引き継ぎ
 
-## Branching and collaboration
-- Branch names: `arch/<task-id>-short-name`.
-- Multiple agents may work concurrently only on tasks with no shared-file or contract dependency.
-- Design tasks may produce a proposal first; implementation should follow the proposal task, not reinterpret it.
-- Tracked docs in `docs/architecture/` are the shared handoff; local `notes/` is gitignored and cannot be relied upon by remote agents.
+**引き継ぎ、作業状況、検証結果、エージェントへの申し送りは日本語で記述する。**
+コマンド、パス、識別子、エラーの原文は必要に応じてそのまま引用する。
+
+[STATUS.md](STATUS.md) に、タスクIDと状態、作業内容、コミットやPR、変更ファイル、検証コマンドと結果、未解決事項、次に着手できるタスクを記録する。完了の根拠がある項目は [TASKS.md](TASKS.md) で更新する。設計資料を加えた場合は [README.md](README.md) からリンクし、可能な限り作業と引き継ぎを同じコミットにまとめる。
+
+共有する引き継ぎは Git 管理下の `docs/architecture/` に置く。`notes/` はローカル用とする。

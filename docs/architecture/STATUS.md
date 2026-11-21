@@ -1,28 +1,26 @@
-# Architecture Refactor Status
+# アプリ基盤の進捗・引き継ぎ
 
-## Latest validation — M7.2 installed Linux candidate
+## 0.5.1 リリースとリモートの状態
 
-- [Actions run 44937149049](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44937149049) installed the Linux DEB from candidate `3ec9392` on Ubuntu 24.04. The installed app exposed the Home search field through WebKitGTK accessibility, and its native public posts request returned HTTP 200 with a nonempty response.
-- Added `.github/workflows/linux-installed-smoke.yml` and `tests/linux_installed_smoke.py`. Windows and macOS desktop startup, authenticated operations and M5.4–M5.5 device checks remain open.
+- 検証ブランチ `arch/m7-native-validation` の `bf00644` は `0.5.0` に統合済み。リリースタグ `pawkemoviewer-v0.5.1` は同ブランチのビルドコミット `d9cac68` を指す。
+- 同じコミットで [PC デバッグ](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44937715356)、[Android デバッグ](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44937718053)、[iOS/iPadOS デバッグ](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44937721526) が成功。その後の [PC リリース](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44938664361)、[Android リリース](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44938667164)、[iOS/iPadOS リリース](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44938670365) も成功した。
+- [0.5.1 リリース](https://github.com/nsmr0604/PawKemoViewer/releases/tag/pawkemoviewer-v0.5.1) に Windows、macOS、Linux、Android、iPhone・iPad 共通の無署名 IPA を含む計9ファイルを確認。リリースビルドの成功とマイルストーンの実機検証は個別に記録する。
 
-## Previous validation — M7.2 desktop packages
+## マイルストーン
 
-- Candidate `3ec9392` includes the desktop navigation update and PC icon. [Actions run 44936122546](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546) passed for Windows, macOS and Linux. Downloaded packages were inspected for the installer or app executable and bundle metadata. See the [desktop package evidence](stabilization.md#desktop-candidate-3ec9392).
-- The same commit also passed [Android and iOS/iPadOS packaging](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488). All five candidate packages now have evidence tied to one source commit.
-- Added the desktop candidate workflow and updated the validation handoff. The 33 JavaScript tests passed again. Desktop installation and live WebView/IPC smoke, plus the M5.4–M5.5 mobile provider checks, remain open. M7.3 stays provisional.
+| 範囲 | 状態 | 確認済みの内容と残作業 |
+|---|---|---|
+| M0〜M4 | 完了 | 棚卸し、プラットフォーム契約、ユースケース、リポジトリ、ドメイン境界。起点は PR #12 の `cf81e3d`。 |
+| M5.1〜M5.3 | 完了 | ストレージの機能表、Android SAF の保持・再起動・解放・解放後のアクセス拒否、iOS の試作での開く・書き出す操作を確認。 |
+| M5.4〜M5.5 | 実装済み・実機確認待ち | Android と iOS/iPadOS で言語ファイルの取り込み、書き出し、追加フォルダーを実装。実機で選択のキャンセル、重複・不正入力、直接保存、再読み込み、書き出したファイルの再読込を確認する。[実機確認手順](os-storage.md#integrated-device-pass) |
+| M6 | 完了 | デスクトップとモバイルの画面構成を分離。Chromium で幅の切り替え、フォーカス、キーボード、タッチ、戻る操作を確認。 |
+| M7.1 | 完了 | 通常・診断ビルドに依存境界チェックを追加。 |
+| M7.2 | 一部完了 | 5対象のパッケージと Linux のインストール・ホーム表示・公開 API を確認。Windows/macOS の起動、認証付き通信、M5 の実機操作が残る。 |
+| M7.3 | 暫定 | リリース判定の資料と残課題を記録済み。M7.2 の結果を反映して確定する。 |
 
-## Previous validation — M7.2 mobile candidate
+## 検証の根拠
 
-- Candidate `2af56d5` on `arch/m7-native-validation` combines the selected-file adapter, secondary language folders, adaptive shell and 0.5.0 icon masters. [Actions run 44934090212](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212) passed for Android and iOS/iPadOS. Both packages were inspected after download.
-- Ran `node --test tests/{platform,application,domain}.test.mjs` (33 passed), `npm run build`, `npm run build:debug`, `python3 tests/ui_layout_smoke.py`, and Linux `cargo check` with and without diagnostics. The Linux diagnostic binary linked with embedded frontend assets. It did not present a usable WebView under Cloud Xvfb.
-- Updated the candidate workflow, [device acceptance steps](os-storage.md#integrated-device-pass), task checklist and [validation evidence](stabilization.md). M5.4–M5.5 still require integrated device results. M7.2 has advanced through mobile packaging and still requires desktop package and device smoke evidence. M7.3 remains provisional.
-
-## Prior checkpoints
-
-- Baseline: `0.5.0` at `cf81e3d` (PR #12). M0 `7a6e898`, M1 `3565050`, M2 `24ea538`, M3 `e4a0726`, M4 `11592a4`, M6 `809cebc`.
-- **M7 advanced. M7.1 complete.** `3743d88` adds the scoped dependency check to both builds and removes type dependencies from post use cases to the API module.
-- M7.2 is partial. The [stabilization report](stabilization.md) records 27 passing automated tests, the dependency check and a rejected boundary-violation fixture, normal/debug builds, Linux Rust checks and linking, Chromium UI and index smoke, five Android JVM grant-mask checks, and successful unauthenticated public HTTP. Linux native startup failed at the WebKitGTK child-process path.
-- M7.3 has a provisional release report. Native package validation, live app IPC/authentication, device behavior and M5 remain release gates. No release workflow was run.
-- M5.1 is complete. M5.2 now has a standalone Android SAF probe APK. Compilation, five JVM flag tests, signature verification and launcher manifest inspection passed. The user confirmed Android open/export. The 1.0 remembered read and release failed, and 1.1 adds grant diagnostics. The user confirmed Android 1.1 retained-read and release success with flags `0x43`. The user confirmed a force-stop and relaunch before the successful read. After release and another force-stop/relaunch, the user observed “Read denied by Android”. M5.2 native grant feasibility is complete for the tested Android provider. M5.3 is also complete for copy-based Open and Export on the user’s device. Build and test details are in the storage handoff. M5.4–M5.5 now have integrated Android/iOS selected-file adapters and Settings locale import/export. The 30 JavaScript tests, normal/diagnostic frontend builds and Linux Rust checks passed. The Android ARM64 APK and unsigned iOS IPA both built in Actions run 44923710378. The integrated device verification remains open. See [storage acceptance checks](os-storage.md).
-- Files touched: `scripts/check-boundaries.mjs`, `package.json`, `src/application/{post-detail,post-pages}.ts`, and `docs/architecture/{README,TASKS,STATUS,stabilization}.md`.
-- Next: obtain native execution environments, run the M5 provider checks, and repeat the native matrix against the release candidate. Cloud-only checks do not establish native release readiness.
+- `node --test tests/{platform,application,domain}.test.mjs` の33件、通常・診断フロントエンドビルド、Chromium の画面検証、Linux Rust チェックと診断リンクが通過。
+- `3ec9392` の [デスクトップ候補](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546) と [モバイル候補](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488) を生成・検査。iOS/iPadOS では Files 公開設定と代替アイコンを確認した。
+- [Linux 起動検証](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44937149049) では同候補の DEB を Ubuntu 24.04 にインストールし、WebKitGTK にホームの検索欄が表示され、公開投稿 API が HTTP 200 と本文を返すことを確認した。認証はこの検証に含まれない。
+- 変更対象は本書、[作業チェックリスト](TASKS.md)、[ロードマップ](ROADMAP.md)、[作業・引き継ぎ手順](AGENT_WORKFLOW.md)、[資料の目次](README.md)、`AGENTS.md`。詳細な検証ログは [安定化の検証記録](stabilization.md) を参照。
