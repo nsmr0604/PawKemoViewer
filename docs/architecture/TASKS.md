@@ -32,7 +32,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 - [x] **M3.6** Expand repository migration to other slices, one task per feature. Depends: M3.2-M3.5.
 
 ## M4 — Domain
-- [ ] **M4.1** Model/DTO/DB/view model mapping inventory. Depends: M3.4.
+- [x] **M4.1** Model/DTO/DB/view model mapping inventory. Depends: M3.4.
 - [ ] **M4.2** Extract one pure domain rule and tests. Depends: M4.1.
 - [ ] **M4.3** Define domain error and policy conventions; migrate only justified cases. Depends: M4.2.
 - [ ] **M4.4** Verify domain dependency isolation. Depends: M4.2,M4.3.
