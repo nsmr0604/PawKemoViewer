@@ -5,7 +5,8 @@ import os
 from playwright.sync_api import expect, sync_playwright
 
 
-APP_URL = "http://127.0.0.1:5181"
+APP_URL = os.environ.get("PKV_UI_URL", "http://127.0.0.1:5181")
+EXPECT_DIAGNOSTICS = os.environ.get("PKV_EXPECT_DEBUG_DIAG", "1") == "1"
 FIXTURE = """
 (() => {
   const post = {
@@ -72,7 +73,29 @@ def desktop_matrix(browser):
         page.keyboard.press("s")
         expect(page.locator(".nav-rail [aria-current=page]")).to_contain_text("設定")
         sections = page.locator(".settings-nav")
-        expect(sections.get_by_role("button")).to_have_count(8)
+        expect(sections.get_by_role("button")).to_have_count(8 if EXPECT_DIAGNOSTICS else 7)
+        diagnostics = page.locator("#settings-diagnostics")
+        diagnostics_link = sections.get_by_role("button", name="開発・診断")
+        toggle = page.get_by_role("switch", name="開発・ログ項目を表示")
+        if EXPECT_DIAGNOSTICS:
+            expect(toggle).to_have_count(0)
+            expect(diagnostics_link).to_be_visible()
+            expect(diagnostics.get_by_text("詳細診断", exact=True)).to_be_visible()
+        else:
+            expect(diagnostics_link).to_have_count(0)
+            expect(diagnostics).to_have_count(0)
+            expect(toggle).to_have_attribute("aria-checked", "false")
+            toggle.click()
+            expect(diagnostics_link).to_be_visible()
+            expect(diagnostics.get_by_text("セッションキーの手動設定", exact=True)).to_be_visible()
+            expect(diagnostics.get_by_text("ログ", exact=True)).to_be_visible()
+            expect(diagnostics.get_by_text("詳細診断", exact=True)).to_have_count(0)
+            page.reload()
+            expect(diagnostics_link).to_be_visible()
+            expect(toggle).to_have_attribute("aria-checked", "true")
+            toggle.click()
+            expect(diagnostics_link).to_have_count(0)
+            expect(diagnostics).to_have_count(0)
         sections.get_by_role("button", name="表示", exact=True).click()
         expect(page.locator("#settings-display")).to_be_focused()
         page.get_by_role("button", name="📱 モバイル").click()

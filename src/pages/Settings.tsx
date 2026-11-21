@@ -28,7 +28,7 @@ import { displayAppVersion } from "../version"
 import { getPlatformRuntime } from "../platform/runtime"
 const DeveloperFullDiagnostics = DEBUG_DIAG ? lazy(() => import("../components/DeveloperFullDiagnostics").then((module) => ({ default: module.DeveloperFullDiagnostics }))) : null
 
-const DeveloperLiteTools = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
+const DeveloperSessionTools = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
 function fmtBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} MB`
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`
@@ -355,7 +355,8 @@ export function SettingsPage() {
     }
   }
 
-  const logCount = getLogEntries().length
+  const showDiagnostics = DEBUG_DIAG || developerToolsEnabled
+  const logCount = showDiagnostics ? getLogEntries().length : 0
 
   return (
     <div className="page settings">
@@ -370,8 +371,8 @@ export function SettingsPage() {
           ["settings-connection", t("settings.navConnection")],
           ["settings-data", t("settings.navBackup")],
           ["settings-cache", t("settings.navStorage")],
-          ["settings-diagnostics", t("settings.diagnostics")],
           ["settings-info", t("settings.info")],
+          ...(showDiagnostics ? [["settings-diagnostics", t("settings.diagnostics")]] : []),
         ].map(([id, label]) => (
           <button
             key={id}
@@ -821,46 +822,6 @@ export function SettingsPage() {
       </div>
       </div>
 
-      {/* ------------------------------------------------ 診断 */}
-      <div id="settings-diagnostics" className="settings-section" tabIndex={-1}>
-        <h2 className="section-label">{t("settings.diagnostics")}</h2>
-
-
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>{t("settings.logTitle")}</span>
-            <small>{t("settings.logDesc", { count: logCount })}</small>
-          </div>
-          <div className="settings-actions">
-            <button className="btn" onClick={showLog}>
-              {t("settings.show")}
-            </button>
-            <button className="btn" onClick={exportLog}>
-              {t("settings.export")}
-            </button>
-            <button
-              className="btn"
-              onClick={() => {
-                clearLog()
-                setLogText(null)
-                setLogResult(t("settings.logCleared"))
-              }}
-            >
-              {t("settings.clear")}
-            </button>
-          </div>
-        </div>
-
-        {logResult && <span className="small">{logResult}</span>}
-
-        {logText !== null && (
-          <pre className="log-view mono">
-            {logText}
-          </pre>
-        )}
-      </div>
-
       {/* ------------------------------------------------ 情報 */}
       <div id="settings-info" className="settings-section" tabIndex={-1}>
         <h2 className="section-label">{t("settings.info")}</h2>
@@ -902,6 +863,10 @@ export function SettingsPage() {
               onChange={(next) => {
                 setDeveloperToolsEnabled(next)
                 updateSettings({ developerToolsEnabled: next })
+                if (!next) {
+                  setLogText(null)
+                  setLogResult(null)
+                }
               }}
               label={t("settings.developerTools")}
               onLabel={t("settings.developerToolsOn")}
@@ -910,22 +875,58 @@ export function SettingsPage() {
           </div>
         )}
 
-        {(DEBUG_DIAG || developerToolsEnabled) && (
-          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
-            <DeveloperLiteTools />
-          </Suspense>
-        )}
-
-        {DEBUG_DIAG && DeveloperFullDiagnostics && (
-          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
-            <DeveloperFullDiagnostics />
-          </Suspense>
-        )}
-
         <p className="small">
           {t("settings.aboutNote")}
         </p>
       </div>
+      {showDiagnostics && (
+        <div id="settings-diagnostics" className="settings-section" tabIndex={-1}>
+          <h2 className="section-label">{t("settings.diagnostics")}</h2>
+
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>{t("settings.logTitle")}</span>
+              <small>{t("settings.logDesc", { count: logCount })}</small>
+            </div>
+            <div className="settings-actions">
+              <button className="btn" onClick={showLog}>
+                {t("settings.show")}
+              </button>
+              <button className="btn" onClick={exportLog}>
+                {t("settings.export")}
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  clearLog()
+                  setLogText(null)
+                  setLogResult(t("settings.logCleared"))
+                }}
+              >
+                {t("settings.clear")}
+              </button>
+            </div>
+          </div>
+
+          {logResult && <span className="small">{logResult}</span>}
+
+          {logText !== null && (
+            <pre className="log-view mono">
+              {logText}
+            </pre>
+          )}
+
+          <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
+            <DeveloperSessionTools />
+          </Suspense>
+
+          {DEBUG_DIAG && DeveloperFullDiagnostics && (
+            <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
+              <DeveloperFullDiagnostics />
+            </Suspense>
+          )}
+        </div>
+      )}
     </div>
   )
 }
