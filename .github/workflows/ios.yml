@@ -117,6 +117,16 @@ jobs:
           node scripts/app-icon/generate-ios.mjs --config src-tauri/app-icons.json
           grep -n 'TauriAppIconAliases' src-tauri/gen/apple/project.yml
 
+      - name: Regenerate Xcode project with alternate icons
+        # tauri ios init が作った pbxproj / Info.plist はパッチ前に生成されている。
+        # project.yml の映射・ビルド設定を反映させるため xcodegen を再実行する。
+        run: |
+          set -e
+          cd src-tauri/gen/apple
+          xcodegen generate --spec project.yml
+          grep -n 'TauriAppIconAliases' PawKemoViewer_iOS/Info.plist
+          grep -n 'ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS' PawKemoViewer.xcodeproj/project.pbxproj
+
       - name: Build unsigned iOS IPA (device / arm64)
         # 既定 target = aarch64 (iOS 端末)。--no-sign で CODE_SIGNING_ALLOWED=NO の
         # archive を作り、PawKemoViewer.ipa を生成する (Apple Developer 不要)。
