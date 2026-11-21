@@ -11,6 +11,7 @@ const server = await createServer({
 after(() => server.close())
 
 const { createLocaleUseCases } = await server.ssrLoadModule("/src/application/locales.ts")
+const { createLocaleRepository } = await server.ssrLoadModule("/src/infrastructure/locale-repository.ts")
 const { createPostDetailUseCases } = await server.ssrLoadModule("/src/application/post-detail.ts")
 const { createHomePostUseCase, createCreatorPostUseCase } = await server.ssrLoadModule("/src/application/post-pages.ts")
 const { createCreatorUseCases } = await server.ssrLoadModule("/src/application/creators.ts")
@@ -19,7 +20,7 @@ test("locale CRUD validates input and sends private and shared writes to their o
   const write = t.mock.fn(async () => {})
   const writeSecondary = t.mock.fn(async () => {})
   const remove = t.mock.fn(async () => true)
-  const locales = createLocaleUseCases({ write, writeSecondary, delete: remove }, (value) => value === "{}")
+  const locales = createLocaleUseCases({ writePrivate: write, writeSecondary, deletePrivate: remove }, (value) => value === "{}")
   assert.deepEqual(await locales.addLocale("bad/code", "{}"), { kind: "invalid-code" })
   assert.deepEqual(await locales.addLocale("en", "invalid"), { kind: "invalid-json" })
   assert.deepEqual(await locales.addLocale(" en ", "{}"), { kind: "saved", code: "en" })
@@ -43,7 +44,7 @@ test("locale CRUD validates input and sends private and shared writes to their o
 test("locale import snapshots input and reports write failure without stopping the batch", async () => {
   const pending = Promise.withResolvers()
   const locales = createLocaleUseCases({
-    async write(code) { if (code === "en") throw new Error("write failed") },
+    async writePrivate(code) { if (code === "en") throw new Error("write failed") },
   }, () => true)
   const files = [
     { name: "en.json", size: 2, text: () => pending.promise },
@@ -166,4 +167,22 @@ test("creator refresh keeps cache clearing order, maps full rows and skips write
   controller.abort()
   deferred.resolve(data)
   await assert.rejects(result, { name: "AbortError" })
+})
+
+test("locale repository preserves catalogue, capabilities and deletion results", async () => {
+  const catalogue = { dir: "locales", files: [{ code: "en", json: "{}" }], invalid: ["bad.json"] }
+  const failure = new Error("disk unavailable")
+  const service = {
+    catalogue,
+    listExternal() { return Promise.resolve(this.catalogue) },
+    async write() { throw failure },
+    delete: async () => false,
+  }
+  assert.equal(createLocaleRepository(undefined), undefined)
+  const repository = createLocaleRepository(service)
+  assert.equal(await repository.listPrivate(), catalogue)
+  assert.equal(repository.listSecondary, undefined)
+  assert.equal(repository.writeSecondary, undefined)
+  assert.equal(await repository.deletePrivate("en"), false)
+  await assert.rejects(repository.writePrivate("en", "{}"), (error) => error === failure)
 })

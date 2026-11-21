@@ -1,14 +1,16 @@
+import { createLocaleRepository } from "../infrastructure/locale-repository"
 import { createCreatorUseCases } from "./creators"
 import { creatorsCount, getAllCreatorRows, getMeta, invalidateCreatorIndex, normalizeCreatorQuery, saveCreators, searchCreators, SEARCH_INDEX_VERSION } from "../db"
 import { createHomePostUseCase, createCreatorPostUseCase } from "./post-pages"
 import { api, apiStatus, clearApiCache } from "../api"
 import { logError, logInfo, logWarn } from "../log"
 import { createPostDetailUseCases } from "./post-detail"
-import { parseLocaleJson } from "../i18n"
+import { parseLocaleJson, refreshLocales } from "../i18n"
 import { createLocaleUseCases } from "./locales"
 import { getPlatformRuntime } from "../platform/runtime"
 
 function createApplication() {
+  const locales = createLocaleRepository(getPlatformRuntime().services.locale)
   return {
     creators: createCreatorUseCases({
       search: searchCreators,
@@ -36,7 +38,8 @@ function createApplication() {
       warn: logWarn,
       error: logError,
     }),
-    locales: createLocaleUseCases(getPlatformRuntime().services.locale, (json) => Boolean(parseLocaleJson(json))),
+    locales: createLocaleUseCases(locales, (json) => Boolean(parseLocaleJson(json))),
+    refreshLocales: () => refreshLocales(locales),
   }
 }
 

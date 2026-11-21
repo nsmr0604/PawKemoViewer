@@ -17,7 +17,7 @@ import { initReactI18next } from "react-i18next"
 // 日本語は静的 import (JS に埋め込み)。外部ファイルや言語ファイルの喪失に依存しない
 import ja from "./locales/ja.json"
 import { logWarn } from "./log"
-import { getPlatformRuntime } from "./platform/runtime"
+import type { LocaleRepository } from "./application/locale-repository"
 
 export type Locale = string
 type Dict = Record<string, string>
@@ -78,12 +78,12 @@ export function parseLocaleJson(text: string): Dict | null {
 }
 
 /** 外部ファイルを再スキャンする (app_data/locales)。ブラウザ実行などでは何もしない */
-export async function refreshLocales(): Promise<void> {
+export async function refreshLocales(repository: LocaleRepository | undefined): Promise<void> {
   external.clear()
   secondary.clear()
   invalidFiles = []
   try {
-    const res = await getPlatformRuntime().services.locale?.listExternal()
+    const res = await repository?.listPrivate()
     if (!res) throw new Error("External locale list unavailable")
     externalDir = res.dir
     invalidFiles = [...res.invalid]
@@ -100,7 +100,7 @@ export async function refreshLocales(): Promise<void> {
     // Tauri 以外の実行環境では外部ファイルは無い (同梱の言語のみ)
   }
   try {
-    const res = await getPlatformRuntime().services.locale?.listSecondary?.()
+    const res = await repository?.listSecondary?.()
     if (res) {
       invalidFiles.push(...res.invalid.map((name) => `secondary:${name}`))
       for (const f of res.files) {

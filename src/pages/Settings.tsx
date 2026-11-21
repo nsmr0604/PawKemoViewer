@@ -18,7 +18,6 @@ import { clearIconCache, creatorIconInfo } from "../icons"
 import {
   t,
   loadLocale,
-  refreshLocales,
   availableLocales,
   localeFolder,
   invalidLocaleFiles,
@@ -158,7 +157,7 @@ export function SettingsPage() {
   }
 
   const reloadLocales = async () => {
-    await refreshLocales()
+    await getApplication().refreshLocales()
     setLocaleList(availableLocales())
     // 外部の ja.json 等を反映させるため、現在の言語を読み直す
     await applyLocale(locale)
@@ -177,7 +176,7 @@ export function SettingsPage() {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
     }
-    await refreshLocales()
+    await getApplication().refreshLocales()
     setLocaleList(availableLocales())
     setLocaleAddCode("")
     setLocaleAddJson("")
@@ -198,7 +197,7 @@ export function SettingsPage() {
     const { imported, failures } = result
     const suffix = { code: "", size: " (1 MiB超過)", json: " (JSON形式不正)", write: " (保存失敗)" }
     const skipped = failures.map(({ name, reason }) => name + suffix[reason]).join(", ")
-    await refreshLocales()
+    await getApplication().refreshLocales()
     setLocaleList(availableLocales())
     if (target === "secondary") {
       setLocaleMsg(failures.length ? `共有領域へ保存: ${imported}; スキップ: ${skipped}` : `共有領域へ ${imported} 件保存しました`)
@@ -216,7 +215,7 @@ export function SettingsPage() {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
     }
-    await refreshLocales()
+    await getApplication().refreshLocales()
     setLocaleList(availableLocales())
     setLocaleMsg(t("settings.localeDeleted", { code }))
     // 削除した言語を選択中なら日本語へ戻す
