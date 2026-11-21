@@ -39,13 +39,23 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                 let file = directory.appendingPathComponent(args.filename)
                 try Data(args.json.utf8).write(to: file, options: .atomic)
+                let picker = UIDocumentPickerViewController(forExporting: [file], asCopy: true)
+                picker.directoryURL = try self.filesLanguageDirectory()
                 self.exportDirectory = directory
-                self.present(UIDocumentPickerViewController(forExporting: [file], asCopy: true), invoke)
+                self.present(picker, invoke)
             } catch {
                 try? FileManager.default.removeItem(at: directory)
                 invoke.reject("Could not stage the locale export")
             }
         }
+    }
+
+    private func filesLanguageDirectory() throws -> URL {
+        let manager = FileManager.default
+        let documents = try manager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let directory = documents.appendingPathComponent("Languages", isDirectory: true)
+        try manager.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 
     private func present(_ picker: UIDocumentPickerViewController, _ invoke: Invoke) {

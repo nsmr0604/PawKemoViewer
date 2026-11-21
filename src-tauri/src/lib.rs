@@ -1386,6 +1386,14 @@ pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let builder = builder.plugin(tauri_plugin_locale_picker::init());
+    #[cfg(target_os = "ios")]
+    let builder = builder.setup(|app| {
+        let directory = app.path().document_dir()?.join("Languages");
+        if let Err(error) = std::fs::create_dir_all(directory) {
+            log::warn!("Could not create the Files language directory: {error}");
+        }
+        Ok(())
+    });
     builder
         .plugin(
             tauri_plugin_log::Builder::default()
