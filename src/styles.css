@@ -238,6 +238,7 @@ body {
 
 .bottom-nav button {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -250,6 +251,10 @@ body {
   cursor: pointer;
 }
 .bottom-nav button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
 }
 .bottom-nav .nav-active {
@@ -487,6 +492,7 @@ input:not([type]) {
   padding: 8px 10px 10px;
 }
 .post-card-title {
+  overflow-wrap: anywhere;
   font-size: 13px;
   line-height: 1.35;
   display: -webkit-box;
@@ -709,6 +715,10 @@ input:not([type]) {
 /* ------------------------------------------------------------------ */
 /* 投稿詳細                                                            */
 /* ------------------------------------------------------------------ */
+
+.post-title-wrap {
+  overflow-wrap: anywhere;
+}
 
 .post-page .post-title-wrap h1 {
   font-size: 18px;
@@ -1636,6 +1646,13 @@ button, a, input, select, textarea {
   gap: 5px;
 }
 
+.nav-rail-caption,
+.nav-rail-label,
+.nav-rail-account-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .nav-rail-caption {
   padding: 0 12px 8px;
   color: var(--fg2);
@@ -1780,6 +1797,7 @@ button, a, input, select, textarea {
 }
 
 .top-bar-actions {
+  max-width: 50%;
   margin-left: auto;
 }
 
@@ -1797,6 +1815,10 @@ button, a, input, select, textarea {
 }
 
 .topbar-context {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding-left: 14px;
   border-left: 1px solid var(--surface-border);
   color: var(--fg2);
@@ -1805,6 +1827,7 @@ button, a, input, select, textarea {
 }
 
 .btn-account {
+  min-width: 0;
   min-height: 40px;
   border-color: var(--surface-border);
   background: var(--bg2);
@@ -1812,12 +1835,36 @@ button, a, input, select, textarea {
   font-weight: 650;
 }
 
+.btn-account span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .btn-account svg {
+  flex-shrink: 0;
   width: 17px;
   height: 17px;
 }
 
+.detail-bar .btn {
+  min-width: 0;
+}
+
+.detail-back-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-bar .logo {
+  flex-shrink: 0;
+}
+
 .desktop-shortcuts-hint {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   gap: 5px;
   font-size: 10px;
   opacity: 0.8;
@@ -1938,6 +1985,8 @@ textarea:focus {
 
 .settings-nav button {
   flex: 0 0 auto;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: 8px 12px;
   border: 1px solid var(--surface-border);
   border-radius: 999px;
@@ -2066,6 +2115,9 @@ textarea:focus {
     min-height: 54px;
     padding: 8px 14px;
     padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  }
+  .top-bar-actions {
+    max-width: 45%;
   }
   .topbar-context {
     display: none;

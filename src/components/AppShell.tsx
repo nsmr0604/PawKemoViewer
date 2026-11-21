@@ -73,7 +73,8 @@ export function AppShell({ layout, currentPath, followCount, hasSession, childre
               onClick={() => history.back()}
               title={`${t("common.back")} (Esc)`}
             >
-              ← {t("common.back")} <span className="kbd small">Esc</span>
+              <span className="detail-back-label">← {t("common.back")}</span>
+              <span className="kbd small">Esc</span>
             </button>
             <button type="button" className="logo small" onClick={() => navigate("/", true)}>🐾 PawKemoViewer</button>
           </header>
