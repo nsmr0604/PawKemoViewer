@@ -2,7 +2,7 @@ import { browserStorage, clipboard, indexedDatabase } from "./browser"
 import { invoke } from "@tauri-apps/api/core"
 import { pawchiveApiTransport } from "./native"
 import { onBackButtonPress, exit } from "@tauri-apps/api/app"
-import type { FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService, LifecycleService } from "../contracts"
+import type { FileExportService, LocaleService, LocalePicker, PlatformServices, StorageArea, StorageLocationService, LifecycleService } from "../contracts"
 
 const lifecycle: LifecycleService = {
   onBackRequested: (handler) => {
@@ -35,11 +35,16 @@ const storageLocations: StorageLocationService = {
 
 const locale: LocaleService = {
   listExternal: async () => { try { return await invoke<import("../contracts").LocaleFileSet>("list_locale_files") } catch { return null } },
-  write: async (code, json) => { await invoke("write_locale_file", { code, json }) },
+  write: async (code, json, replaceExisting) => { await invoke("write_locale_file", { code, json, replaceExisting }) },
   delete: async (code) => await invoke<boolean>("delete_locale_file", { code }),
 }
 
 const files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
+
+const localePicker: LocalePicker = {
+  open: () => invoke("pick_locale_file"),
+  save: (code, json) => invoke("save_locale_file", { code, json }),
+}
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
@@ -52,6 +57,7 @@ export function createMobileServices(): PlatformServices {
     logging,
     files,
     locale,
+    localePicker,
     clipboard,
     lifecycle,
   }

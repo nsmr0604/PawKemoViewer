@@ -1257,7 +1257,7 @@ fn list_locale_files(app: tauri::AppHandle) -> Result<LocaleList, String> {
 }
 
 #[tauri::command]
-fn write_locale_file(app: tauri::AppHandle, code: String, json: String) -> Result<String, String> {
+fn write_locale_file(app: tauri::AppHandle, code: String, json: String, replace_existing: Option<bool>) -> Result<String, String> {
     if !valid_locale_code(&code) {
         return Err("invalid locale code".into());
     }
@@ -1266,7 +1266,17 @@ fn write_locale_file(app: tauri::AppHandle, code: String, json: String) -> Resul
     }
     let dir = locale_dir(&app)?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = dir.join(format!("{}.json", code));
+    static PRIVATE_LOCALE_WRITES: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = PRIVATE_LOCALE_WRITES.lock().map_err(|_| "Locale write lock unavailable")?;
+    let filename = format!("{code}.json");
+    if replace_existing == Some(false) {
+        for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
+            if entry.map_err(|e| e.to_string())?.file_name().to_string_lossy().eq_ignore_ascii_case(&filename) {
+                return Err("A locale file with this code already exists".into());
+            }
+        }
+    }
+    let path = dir.join(filename);
     atomic_locale_write(&path, json.as_bytes())?;
     Ok(path.to_string_lossy().to_string())
 }
@@ -1332,9 +1342,51 @@ fn resolve_storage_location(
     Ok(Some(path.to_string_lossy().to_string()))
 }
 
+#[cfg(any(target_os = "android", target_os = "ios"))]
+struct LocalePickerGuard;
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+static LOCALE_PICKER_BUSY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+impl Drop for LocalePickerGuard {
+    fn drop(&mut self) {
+        LOCALE_PICKER_BUSY.store(false, std::sync::atomic::Ordering::Release);
+    }
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+async fn run_locale_picker(
+    app: &tauri::AppHandle, command: &str, payload: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    if LOCALE_PICKER_BUSY.swap(true, std::sync::atomic::Ordering::AcqRel) {
+        return Err("A locale picker is already open".into());
+    }
+    let _guard = LocalePickerGuard;
+    tauri_plugin_locale_picker::run(app, command, payload).await
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+#[tauri::command]
+async fn pick_locale_file(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    run_locale_picker(&app, "importLocale", serde_json::json!({})).await
+}
+
+#[cfg(any(target_os = "android", target_os = "ios"))]
+#[tauri::command]
+async fn save_locale_file(app: tauri::AppHandle, code: String, json: String) -> Result<serde_json::Value, String> {
+    if !valid_locale_code(&code) || json.len() > LOCALE_MAX_BYTES {
+        return Err("Invalid locale export".into());
+    }
+    run_locale_picker(&app, "exportLocale", serde_json::json!({ "filename": format!("{code}.json"), "json": json })).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    let builder = builder.plugin(tauri_plugin_locale_picker::init());
+    builder
         .plugin(
             tauri_plugin_log::Builder::default()
                 .level(log::LevelFilter::Info)
@@ -1375,6 +1427,10 @@ pub fn run() {
                 write_locale_file,
                 delete_locale_file,
                 resolve_storage_location,
+                #[cfg(any(target_os = "android", target_os = "ios"))]
+                pick_locale_file,
+                #[cfg(any(target_os = "android", target_os = "ios"))]
+                save_locale_file,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している

@@ -328,3 +328,20 @@ test("revision requests preserve typed validation errors and encode valid argume
   assert.deepEqual(await api.postRevisions("fanbox", "42", "a b"), [])
   assert.equal(invoke.mock.calls[0].arguments[1].path, "/fanbox/user/42/post/a%20b/revisions")
 })
+
+test("mobile locale picker routes selected-file IO through native IPC", async (t) => {
+  const { createMobileServices, createWebServices, createDesktopServices } =
+    await server.ssrLoadModule("/src/platform/families/index.ts")
+  const invoke = t.mock.fn(async (command) => command === "pick_locale_file"
+    ? { kind: "selected", name: "es.json", json: "{}" }
+    : { kind: "cancelled" })
+  mockGlobal(t, "window", { __TAURI_INTERNALS__: { invoke } })
+  const picker = createMobileServices().localePicker
+  assert.deepEqual(await picker.open(), { kind: "selected", name: "es.json", json: "{}" })
+  assert.deepEqual(await picker.save("es", "{}"), { kind: "cancelled" })
+  assert.deepEqual(invoke.mock.calls.map(({ arguments: args }) => args.slice(0, 2)), [
+    ["pick_locale_file", {}], ["save_locale_file", { code: "es", json: "{}" }],
+  ])
+  assert.equal(createWebServices().localePicker, undefined)
+  assert.equal(createDesktopServices().localePicker, undefined)
+})

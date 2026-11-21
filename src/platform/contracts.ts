@@ -26,8 +26,13 @@ export interface LocaleService {
   listExternal(): Promise<LocaleFileSet | null>
   listSecondary?(): Promise<LocaleFileSet | null>
   writeSecondary?(code: string, json: string): Promise<void>
-  write(code: string, json: string): Promise<void>
+  write(code: string, json: string, replaceExisting?: boolean): Promise<void>
   delete(code: string): Promise<boolean>
+}
+
+export interface LocalePicker {
+  open(): Promise<{ kind: "cancelled" } | { kind: "selected"; name: string; json: string }>
+  save(code: string, json: string): Promise<{ kind: "cancelled" | "saved" }>
 }
 
 export interface FileExportService {
@@ -75,6 +80,7 @@ export interface PlatformServices {
   logging?: LoggingService
   files?: FileExportService
   locale?: LocaleService
+  localePicker?: LocalePicker
   clipboard?: ClipboardService
   lifecycle?: LifecycleService
   permissions?: PermissionService
