@@ -45,7 +45,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 - [ ] **M5.5** Locale secondary overlay/import/export, validation and conflict semantics. Depends: M5.4.
 
 ## M6 — UI shells
-- [ ] **M6.1** Decide adaptive UI strategy and capabilities. Design-only. Depends: M2.2.
+- [x] **M6.1** Decide adaptive UI strategy and capabilities. Design-only. Depends: M2.2.
 - [ ] **M6.2** Split desktop/mobile shell/navigation with no workflow changes. Depends: M6.1.
 - [ ] **M6.3** Migrate screen to adaptive presentation, one screen per task. Depends: M2.3,M6.2.
 - [ ] **M6.4** Layout and interaction test matrix. Depends: M6.2,M6.3.
