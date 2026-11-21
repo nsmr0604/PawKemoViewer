@@ -68,7 +68,9 @@ test("post detail rejects invalid routes and sorts revisions without mutating th
     post: fetchPost, postRevisions: async () => revisions,
     status: () => null, info() {}, warn() {}, error() {},
   })
-  await assert.rejects(detail.loadPostDetail({ ...postContext, postId: "a/b" }), /不正/)
+  await assert.rejects(detail.loadPostDetail({ ...postContext, postId: "a/b" }), {
+    name: "InvalidPostContextError", code: "invalid-post-context", message: /不正/,
+  })
   assert.equal(fetchPost.mock.callCount(), 0)
   const result = await detail.loadPostDetail(postContext)
   assert.equal(result.post, post)

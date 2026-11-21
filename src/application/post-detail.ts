@@ -1,6 +1,6 @@
 import type { api } from "../api"
 
-import { isValidPostContext, type PostContext } from "../domain/post-identity"
+import { InvalidPostContextError, isValidPostContext, type PostContext } from "../domain/post-identity"
 
 type Dependencies = Pick<typeof api, "post" | "postRevisions" | "postComments"> & {
   status: (error: unknown) => number | null
@@ -17,7 +17,7 @@ export function createPostDetailUseCases(deps: Dependencies) {
       if (!isValidPostContext(context)) {
         const message = `投稿識別子が不正です: ${label}`
         deps.error(message)
-        throw new Error(message)
+        throw new InvalidPostContextError(message)
       }
       signal?.throwIfAborted()
       deps.info(`投稿詳細取得開始 ${label}`)

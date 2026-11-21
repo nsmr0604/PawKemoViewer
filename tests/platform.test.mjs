@@ -310,3 +310,21 @@ test("GET cache evicts the oldest inserted entry at its limit", async (t) => {
   assert.equal(requests.length, 152)
   assert.equal(requests.at(-1), "/posts?q=0")
 })
+
+test("revision requests preserve typed validation errors and encode valid arguments", async (t) => {
+  const { api, clearApiCache } = await server.ssrLoadModule("/src/api.ts")
+  t.after(() => { resetPlatformRuntimeForTests(); clearApiCache() })
+  const invoke = t.mock.fn(async () => "[]")
+  mockGlobal(t, "navigator", { userAgent: "Linux" })
+  mockGlobal(t, "window", { __TAURI_INTERNALS__: { invoke } })
+  initializePlatformRuntime()
+  // The earlier cache test advances the fake clock across a full cache window.
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: Date.now() + 200000 })
+  await assert.rejects(api.postRevisions("fanbox", "42", "a/b"), {
+    name: "InvalidPostContextError", code: "invalid-post-context",
+    message: /Invalid post revision context/,
+  })
+  assert.equal(invoke.mock.callCount(), 0)
+  assert.deepEqual(await api.postRevisions("fanbox", "42", "a b"), [])
+  assert.equal(invoke.mock.calls[0].arguments[1].path, "/fanbox/user/42/post/a%20b/revisions")
+})

@@ -12,3 +12,12 @@ function isValidId(value: string): boolean {
 export function isValidPostContext({ service, creatorId, postId }: PostContext): boolean {
   return (service === "fanbox" || service === "patreon") && isValidId(creatorId) && isValidId(postId)
 }
+
+export class InvalidPostContextError extends Error {
+  readonly code = "invalid-post-context"
+
+  constructor(message: string) {
+    super(message)
+    this.name = "InvalidPostContextError"
+  }
+}

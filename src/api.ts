@@ -1,4 +1,4 @@
-import { isValidPostContext } from "./domain/post-identity"
+import { InvalidPostContextError, isValidPostContext } from "./domain/post-identity"
 import type { CreatorIndexDto } from "./infrastructure/creator-index-dto"
 import type { Locale } from "./i18n"
 
@@ -364,7 +364,7 @@ export const api = {
     // 投稿詳細と同じ識別子を使い、URL segment ごとに encode して要求する。
     // 不正な識別子は /undefined/... のような API URL に変換しない。
     if (!isValidPostContext({ service, creatorId, postId })) {
-      return Promise.reject(new Error(
+      return Promise.reject(new InvalidPostContextError(
         `Invalid post revision context: service=${String(service)} creatorId=${String(creatorId)} postId=${String(postId)}`,
       ))
     }
