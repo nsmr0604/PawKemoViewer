@@ -15,7 +15,7 @@ const files: FileExportService = {
       anchor.href = url
       anchor.download = filename
       anchor.click()
-      return filename
+      return { status: "saved", path: filename }
     } finally {
       // Browser download handling is asynchronous; immediate revocation can invalidate
       // the URL before the browser has consumed it.
