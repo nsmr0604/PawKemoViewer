@@ -1,4 +1,4 @@
-import type { CreatorRow } from "../db"
+import type { CreatorRow } from "../application/creator-index-repository"
 
 /** Wire fields consumed from GET /creators. Older records can omit timestamps. */
 export interface CreatorIndexDto {

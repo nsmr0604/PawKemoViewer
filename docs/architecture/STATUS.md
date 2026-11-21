@@ -1,14 +1,14 @@
 # Architecture Refactor Status
 
-- Baseline: `0.5.0` at `cf81e3d` (PR #12). [M0 inventory](inventory.md) complete at `7a6e898`. [M1 platform contract consolidation](platform-contracts.md) complete at `3565050`.
-- **M2 complete. M3.1 ready.** See [application use cases](use-cases.md) for the migration boundaries.
-  - M2.1 `f21b1c0`: workflow naming, partial results, error propagation and cooperative cancellation.
-  - M2.2 `ad83c3a`: startup composition before settings/locale initialization and UI mount.
-  - M2.3 `6b6bacb`: private/shared locale writes, import results and deletion.
-  - M2.4 `00020bc`: post detail, revisions and separate comment loading. Changed routes cancel follow-on work and suppress stale responses.
-  - M2.5 `a85cafc`: Home page fetch and termination rule.
-  - M2.6: creator index search/build/refresh, profile read wiring and tagged post paging. Legacy rows and refresh order were retained.
-- Files touched: `src/main.tsx`, `src/application/{composition,locales,post-detail,post-pages,creators}.ts`, `src/pages/{Settings,PostPage,Home,Creators,CreatorPage}.tsx`, `tests/application.test.mjs`, `package.json`, and `docs/architecture/{README,TASKS,STATUS,use-cases}.md`.
-- Validation: `npm run test:application` (8 passed), `npm run test:platform` (10 passed), `npm run build`, `npm run build:debug`, and `git diff --check`. Chromium with fixture Tauri IPC exercised Home, Post with revisions returning 404, Creator index, and Creator profile/post list through the running Vite app.
-- Remaining checks: real native IPC, live API and device workflows are unverified. Rust and workflow files were outside this milestone. Cancellation prevents subsequent writes or stale display updates. Requests and writes already started are not terminated by the UI.
-- Next task: M3.1 design a repository contract for a migrated slice. Locale CRUD is the initial candidate because its operations and existing failure semantics are already explicit. M3.3 DB ownership inventory and M5.1 platform storage capability matrix have their prerequisites.
+- Baseline: `0.5.0` at `cf81e3d` (PR #12). M0 `7a6e898`, M1 `3565050`, M2 `24ea538`.
+- **M3 complete. M4.1 ready.** See [repository and infrastructure design](repositories.md).
+  - M3.1 `ab5bf4a`: locale repository contract and capability semantics.
+  - M3.2 `d84a6a7`: bind private/shared catalogue and mutations to the platform through the locale repository.
+  - M3.3 `99163a4`: inventory schema and transaction ownership. Documented the future atomic creator-pack boundary.
+  - M3.4 `e3f6791`: isolate the creator index wire DTO and conversion.
+  - M3.5 `610e497`: verify API scheduler, capacity, expiry, retry and session invalidation while keeping the current policy.
+  - M3.6: use the creator index repository for cached search, migration and refresh.
+- Files touched: `src/application/{composition,locales,creators,locale-repository,creator-index-repository}.ts`, `src/infrastructure/{locale-repository,creator-index-dto,creator-index-repository}.ts`, `src/{api,db,i18n}.ts`, `src/main.tsx`, `src/pages/{Creators,Settings}.tsx`, `tests/{application,platform}.test.mjs`, and `docs/architecture/{README,TASKS,STATUS,repositories}.md`.
+- Validation: `npm run test:application` (10 passed), `npm run test:platform` (13 passed), `npm run build`, `npm run build:debug`, and `git diff --check`. Chromium with fixture Tauri IPC loaded locale listings and exercised Home, Post revision 404, Creator profile/posts, and warm reload of the creator index from real browser IndexedDB without refetching `/creators`.
+- Open: native IPC, live API and physical devices were not exercised. The existing split pack/metadata transactions and cache edge cases are recorded for follow-up. No schema or scheduler policy changes were made.
+- Next: M4.1 inventory DTO, persistence, domain and view model mappings. M5.1 also remains ready.

@@ -1,3 +1,5 @@
+import type { CreatorRow } from "./application/creator-index-repository"
+export type { CreatorRow } from "./application/creator-index-repository"
 // IndexedDB ヘルパー: クリエイターキャッシュと未読管理
 import { getPlatformRuntime } from "./platform/runtime"
 // 注意: DB_NAME は v0.3.0 (PawKemoViewer 改名) で "pawkemoviewer" に変更。
@@ -53,23 +55,6 @@ function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStor
 // ---------------------------------------------------------------------------
 // creators キャッシュ: /creators (約10万件) を 1 回取得して永続化
 // ---------------------------------------------------------------------------
-
-export interface CreatorRow {
-  key: string // "service:id"
-  id: string
-  service: string
-  name: string
-  nameLower: string
-  /** URL slug (fanbox: tateha 等)。索引 v1 には存在しない (再構築で付与) */
-  publicId?: string
-  publicIdLower?: string
-  /** お気に入り数 (人気度順) */
-  favorited?: number
-  /** 最終更新日時 (API の updated) */
-  updated?: number
-  /** インデックス日時 */
-  indexed?: number
-}
 
 /**
  * クリエイター索引のバージョン。

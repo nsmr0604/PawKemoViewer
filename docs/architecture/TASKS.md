@@ -29,7 +29,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 - [x] **M3.3** Inventory DB ownership and transactions; design schema/transaction boundary. Depends: M0.3.
 - [x] **M3.4** Separate transport DTO normalization from domain/presentation types for one API path. Depends: M3.1.
 - [x] **M3.5** Cache/scheduler contract review and tests (no policy changes without separate task). Depends: M0.3,M3.1.
-- [ ] **M3.6** Expand repository migration to other slices, one task per feature. Depends: M3.2-M3.5.
+- [x] **M3.6** Expand repository migration to other slices, one task per feature. Depends: M3.2-M3.5.
 
 ## M4 — Domain
 - [ ] **M4.1** Model/DTO/DB/view model mapping inventory. Depends: M3.4.

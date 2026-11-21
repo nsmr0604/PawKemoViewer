@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getApplication } from "../application/composition"
 import { creatorBannerUrl } from "../api"
-import type { CreatorRow } from "../db"
+import type { CreatorRow } from "../application/creator-index-repository"
 import type { PawCreator } from "../types"
 import { Spinner, ErrorBox, Empty, fmtDate, CreatorAvatar } from "../components"
 import { navigate } from "../router"

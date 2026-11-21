@@ -128,8 +128,8 @@ test("creator index reuses eligible legacy rows and preserves direct post links"
   const save = t.mock.fn(async () => {})
   const resetIndex = t.mock.fn()
   const creators = createCreatorUseCases({
-    indexVersion: 3, version: async () => 2, count: async () => 1,
-    search: async () => [row], normalize: () => ({ service: "fanbox", postId: "123" }),
+    isCurrent: async () => false, count: async () => 1,
+    search: async () => ({ rows: [row], service: "fanbox", postId: "123" }),
     legacyRows: async () => [row], save, resetIndex,
     fetchRows: () => assert.fail("legacy migration should not download"),
   })
@@ -146,7 +146,7 @@ test("creator refresh keeps cache clearing order, maps full rows and skips write
   const calls = []
   const data = [{ service: "fanbox", id: "42", name: "Example", public_id: "Slug", updated: "2025-01-01" }]
   const deps = {
-    indexVersion: 3, version: async () => 3,
+    isCurrent: async () => true,
     clearApiCache: () => calls.push("clear API"),
     resetIndex: () => calls.push("invalidate index"),
     fetchRows: async () => { calls.push("download"); return toCreatorIndexRows(data) },

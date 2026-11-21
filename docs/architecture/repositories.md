@@ -34,3 +34,7 @@ The API module remains the owner of requests, status extraction, cache and sched
 - Account lookup with a different supplied session defaults to bypassing the cache. Callers should not force caching for a session outside the current generation. A same-generation request that outlives an expired/reinserted key can remove the replacement entry on rejection. These cases remain follow-up review items; M3 keeps the existing policy.
 
 The mocked IPC tests cover coalescing, expiry, capacity, retry, session invalidation, spacing, and maximum concurrency. No live service is contacted.
+
+## M3.6 — Creator index repository
+
+The Creator screen calls the existing creator use cases. The composition root supplies a repository that owns IndexedDB queries, index version lookup, network DTO mapping, persistence, and the existing cache invalidation operations. The use case retains the decisions to reuse eligible legacy rows, fetch new rows when needed, cancel before a subsequent write, and expose a direct post link for a matching result. Profile and post reads still use their separately bound API calls. The creator index repository does not alter the packed storage format or data upgrade path.
