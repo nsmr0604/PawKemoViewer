@@ -972,6 +972,9 @@ fn export_log(
 
 
 /// Native backup picker; cancellation is represented by None.
+/// Desktop implementation only: mobile picker results may be URI-based and must
+/// be read through a URI-aware API rather than std::fs.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[tauri::command]
 fn open_user_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let selected = tauri_plugin_dialog::DialogExt::dialog(&app)
@@ -996,7 +999,8 @@ fn open_user_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
     Ok(Some(content))
 }
 
-/// Save a user-selected file through the native dialog. Cancellation is non-error.
+/// Desktop save implementation; mobile requires URI-aware writing.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[tauri::command]
 fn save_user_file(app: tauri::AppHandle, file_name: String, text: String) -> Result<String, String> {
     use std::io::Write;
