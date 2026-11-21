@@ -1,6 +1,3 @@
-import {
-  invoke
-} from "@tauri-apps/api/core"
 import type { Locale } from "./i18n"
 
 import type {
@@ -265,20 +262,14 @@ async function request<T>(
 
   const exec = scheduled(async () => {
     try {
-      // 注意: Tauri v2 のコマンド引数は Rust 側 snake_case を camelCase で渡す
-      // (session_key ではなく sessionKey。snake_case だとバインドされず
-      //  常にセッション無しになり認証系 API が 401 になる)
-      const result = await invoke<string>(
-        "api_request",
-        {
-          path,
-          method,
-          sessionKey:
-            requestSessionKey || null,
-          timeoutSecs:
-            settings.timeoutSecs || null,
-        }
-      )
+      const transport = getPlatformRuntime().services.network
+      if (!transport) throw new Error("Pawchive API requires a native runtime")
+      const result = await transport.request({
+        path,
+        method,
+        sessionKey: requestSessionKey || null,
+        timeoutSecs: settings.timeoutSecs || null,
+      })
 
       try {
         return JSON.parse(result) as T

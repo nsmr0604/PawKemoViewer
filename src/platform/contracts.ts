@@ -52,6 +52,17 @@ export interface PermissionService {
 
 export interface IndexedDatabaseService { open(name: string, version: number, upgrade: (db: IDBDatabase) => void): Promise<IDBDatabase> }
 
+export interface PawchiveApiRequest {
+  path: string
+  method: string
+  sessionKey: string | null
+  timeoutSecs: number | null
+}
+
+export interface PawchiveApiTransport {
+  request(request: PawchiveApiRequest): Promise<string>
+}
+
 /** Service integration points; optional until each migration is completed. */
 export interface SessionStorageService { get(key: string): string | null; set(key: string, value: string): void; remove(key: string): void }
 
@@ -60,8 +71,7 @@ export interface PlatformServices {
   sessionStorage?: SessionStorageService
   storage?: KeyValueStorage
   storageLocations?: StorageLocationService
-  database?: unknown
-  network?: unknown
+  network?: PawchiveApiTransport
   logging?: LoggingService
   files?: FileExportService
   locale?: LocaleService
