@@ -216,7 +216,7 @@
   "settings.fileListOn": "ファイル名のリスト",
   "settings.fileListOff": "本文の下に画像表示",
   "settings.coverTitle": "FANBOX の cover.jpeg を除外",
-  "settings.coverDesc": "オンにすると FANBOX 投稿の作品カバー画像 (cover.jpeg) を、投稿一覧のサムネイル・枚数と投稿詳細のファイル一覧から除外します。設定は全投稿に適用されます (投稿ごとの切替は投稿詳細からも可能)",
+  "settings.coverDesc": "オンにすると投稿詳細のファイル一覧から FANBOX の作品カバー画像 (cover.jpeg) を除外します。投稿一覧のサムネイルや枚数には影響しません (投稿ごとの切替は投稿詳細からも可能)",
   "settings.coverOn": "除外する",
   "settings.coverOff": "表示する",
   "settings.iconTitle": "アイコンキャッシュ",

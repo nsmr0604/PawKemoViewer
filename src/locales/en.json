@@ -216,7 +216,7 @@
   "settings.fileListOn": "File name list",
   "settings.fileListOff": "Images below text",
   "settings.coverTitle": "Exclude FANBOX cover.jpeg",
-  "settings.coverDesc": "When on, hides the cover image (cover.jpeg) of FANBOX posts from list thumbnails and counts, and from the post's file list. Applies to all posts (can also be toggled per post).",
+  "settings.coverDesc": "When on, hides the cover image (cover.jpeg) from the post detail's file list. List thumbnails and counts are not affected (can also be toggled per post).",
   "settings.coverOn": "Exclude",
   "settings.coverOff": "Show",
   "settings.iconTitle": "Icon cache",
