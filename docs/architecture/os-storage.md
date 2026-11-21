@@ -78,3 +78,9 @@ Validation in Cloud covered the application and mock IPC tests, normal/debug fro
 - [Build run](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378)
 - [Android ARM64 APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378/artifacts/14714862936)
 - [Unsigned iOS IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378/artifacts/14714494818)
+
+### App-owned export folders
+
+On Android the native plugin prepares `getExternalFilesDir(DIRECTORY_DOCUMENTS)/Languages` at startup. Settings can export the selected private locale there directly, without an additional runtime permission. The save result reports the actual path. If external storage was unavailable at startup, export retries folder creation and reports failure if it still cannot write. Android may hide `Android/data` from the system picker and file managers. Use the separate system-picker export when the destination should be visible there.
+
+On iOS the app creates `Documents/Languages` at startup, makes Documents visible in Files, and suggests Languages as the initial export location. The private locale catalogue still lives in app data. Both exports require an imported or manually added locale file, selected as the current language.
