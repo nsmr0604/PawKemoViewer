@@ -315,3 +315,10 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 ## M2 follow-up — bounded native backup reads (2026-11-21)
 - `open_user_backup` now enforces the 5 MiB ceiling during the actual read (read at most limit + 1 bytes), rather than relying solely on a metadata check that could race with file changes. UTF-8 decoding errors are reported explicitly.
 - Commit `4ebb0e34`. Source-level only; native dialog selected-path conversion remains potentially incompatible with Android content URIs/iOS file-provider URLs and is not validated. No build/typecheck/device test/CI was run.
+
+
+## M2 native-picker API audit (2026-11-21)
+- Consulted official Tauri v2 Dialog plugin documentation: selected paths on iOS are file:// URIs and on Android are content URIs; the Rust dialog plugin docs explicitly note Android files are behind content URIs and recommend the filesystem plugin for reading. Thus `FilePath.into_path()` in `open_user_backup` is not a cross-platform mobile solution and can fail on mobile.
+- `save_user_file` similarly assumes a filesystem path and direct `std::fs::File::create`, which is not valid for Android content URI destinations and may not correctly handle iOS scoped file access.
+- The required next change should use dialog + Tauri filesystem plugin URI-aware APIs, with a JS/Rust bridge that enforces size limits, rather than translating content URI to `PathBuf`. Package-lock is present; dependency integration needs proper npm synchronization, which this session cannot perform reliably.
+- No build, typecheck, or device test was run. Do not mark mobile file selection/import/export complete yet.
