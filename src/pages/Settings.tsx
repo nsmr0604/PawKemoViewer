@@ -1,3 +1,4 @@
+import { getApplication } from "../application/composition"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
 import { getSettings, updateSettings, api, apiStatus } from "../api"
@@ -21,7 +22,6 @@ import {
   availableLocales,
   localeFolder,
   invalidLocaleFiles,
-  parseLocaleJson,
   type Locale,
   type LocaleInfo,
 } from "../i18n"
@@ -165,19 +165,14 @@ export function SettingsPage() {
   }
 
   const addLocale = async () => {
-    const code = localeAddCode.trim()
-    if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) {
-      setLocaleMsg(t("settings.localeBadCode"))
-      return
-    }
-    if (!parseLocaleJson(localeAddJson)) {
-      setLocaleMsg(t("settings.localeBadJson"))
-      return
-    }
+    let code: string
     try {
-      const localeService = getPlatformRuntime().services.locale
-      if (!localeService) throw new Error("Locale service unavailable")
-      await localeService.write(code, localeAddJson)
+      const result = await getApplication().locales.addLocale(localeAddCode, localeAddJson)
+      if (result.kind !== "saved") {
+        setLocaleMsg(t(result.kind === "invalid-code" ? "settings.localeBadCode" : "settings.localeBadJson"))
+        return
+      }
+      code = result.code
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
@@ -191,59 +186,32 @@ export function SettingsPage() {
     await applyLocale(locale)
   }
 
-  const importLocaleFiles = async (files: FileList | null) => {
+  const importLocaleFiles = async (files: FileList | null, target: "private" | "secondary" = "private") => {
     if (!files?.length) return
-    const service = getPlatformRuntime().services.locale
-    if (!service) { setLocaleMsg(t("settings.failedMsg", { msg: "Locale service unavailable" })); return }
-    let imported = 0
-    const failures: string[] = []
-    for (const file of Array.from(files)) {
-      const code = file.name.replace(/\.json$/i, "")
-      if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) { failures.push(file.name); continue }
-      try {
-        if (file.size > 1024 * 1024) { failures.push(file.name + " (1 MiB超過)"); continue }
-        const json = await file.text()
-        if (!parseLocaleJson(json)) { failures.push(file.name + " (JSON形式不正)"); continue }
-        await service.write(code, json)
-        imported++
-      } catch { failures.push(file.name + " (保存失敗)") }
+    const result = await getApplication().locales.importLocaleFiles(files, target)
+    if (result.kind === "unavailable") {
+      setLocaleMsg(target === "secondary"
+        ? "共有領域への言語ファイル書き込みはこのプラットフォームでは未対応です"
+        : t("settings.failedMsg", { msg: "Locale service unavailable" }))
+      return
     }
+    const { imported, failures } = result
+    const suffix = { code: "", size: " (1 MiB超過)", json: " (JSON形式不正)", write: " (保存失敗)" }
+    const skipped = failures.map(({ name, reason }) => name + suffix[reason]).join(", ")
     await refreshLocales()
     setLocaleList(availableLocales())
-    setLocaleMsg(failures.length ? `インポート数: ${imported}; スキップ: ${failures.join(", ")}` : `Imported ${imported} 件の言語ファイル`)
-    await applyLocale(locale)
-  }
-
-  // Import user-accessible locale files without replacing app-private files.
-  const importSecondaryLocaleFiles = async (files: FileList | null) => {
-    if (!files?.length) return
-    const service = getPlatformRuntime().services.locale
-    if (!service?.writeSecondary) { setLocaleMsg("共有領域への言語ファイル書き込みはこのプラットフォームでは未対応です"); return }
-    let imported = 0
-    const failures: string[] = []
-    for (const file of Array.from(files)) {
-      const code = file.name.replace(/\.json$/i, "")
-      if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) { failures.push(file.name); continue }
-      try {
-        if (file.size > 1024 * 1024) { failures.push(file.name + " (1 MiB超過)"); continue }
-        const json = await file.text()
-        if (!parseLocaleJson(json)) { failures.push(file.name + " (JSON形式不正)"); continue }
-        await service.writeSecondary(code, json)
-        imported++
-      } catch { failures.push(file.name + " (保存失敗)") }
+    if (target === "secondary") {
+      setLocaleMsg(failures.length ? `共有領域へ保存: ${imported}; スキップ: ${skipped}` : `共有領域へ ${imported} 件保存しました`)
+    } else {
+      setLocaleMsg(failures.length ? `インポート数: ${imported}; スキップ: ${skipped}` : `Imported ${imported} 件の言語ファイル`)
     }
-    await refreshLocales()
-    setLocaleList(availableLocales())
-    setLocaleMsg(failures.length ? `共有領域へ保存: ${imported}; スキップ: ${failures.join(", ")}` : `共有領域へ ${imported} 件保存しました`)
     await applyLocale(locale)
   }
 
   const deleteLocale = async (code: string) => {
     if (!window.confirm(t("settings.localeDeleteConfirm", { code }))) return
     try {
-      const localeService = getPlatformRuntime().services.locale
-      if (!localeService) throw new Error("Locale service unavailable")
-      await localeService.delete(code)
+      await getApplication().locales.deleteLocale(code)
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
@@ -449,7 +417,7 @@ export function SettingsPage() {
             </div>
             <label className="btn">
               共有ファイル選択
-              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importSecondaryLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
+              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
             </label>
           </div>
         )}
@@ -461,7 +429,7 @@ export function SettingsPage() {
           </div>
           <label className="btn">
             ファイル選択
-            <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
+            <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files, "secondary"); e.currentTarget.value = "" }} />
           </label>
         </div>
 

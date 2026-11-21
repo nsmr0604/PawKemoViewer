@@ -1,8 +1,10 @@
+import { parseLocaleJson } from "../i18n"
+import { createLocaleUseCases } from "./locales"
 import { getPlatformRuntime } from "../platform/runtime"
 
 function createApplication() {
   return {
-    localeService: getPlatformRuntime().services.locale,
+    locales: createLocaleUseCases(getPlatformRuntime().services.locale, (json) => Boolean(parseLocaleJson(json))),
   }
 }
 
