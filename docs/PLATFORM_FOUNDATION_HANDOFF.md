@@ -316,3 +316,9 @@ Suggested sequence: (1) platform contracts/runtime + CI trigger adjustment; (2) 
 - Desktop native backup picker/save dialog commands are now compiled only for non-mobile targets.
 - Android/iOS command stubs return explicit unsupported errors rather than attempting `FilePath.into_path()` and `std::fs` against picker URIs. This is a temporary safety limitation; mobile native import/export is intentionally unavailable until URI-aware implementation is integrated.
 - This change prevents misleading path assumptions but is not completion of M2. No build/typecheck/device validation performed.
+
+
+## Mobile backup-picker fallback correction (2026-11-21)
+- Backup restore UI now selects the native Rust dialog only for the desktop platform family. Mobile and web use the WebView/browser file-input flow, avoiding a mobile UI button that invoked the intentionally unsupported URI-stub command.
+- Mobile file-input behavior is still unverified on devices and does not constitute SAF URI integration. Export remains unavailable on mobile until URI-aware write integration is completed.
+- Source-only commit `e3d3251`; no build/typecheck/device validation.
