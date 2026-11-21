@@ -730,7 +730,7 @@ export function SettingsPage() {
             <small>{t("settings.importDesc")}</small>
           </div>
           <div className="settings-actions">
-            {getPlatformRuntime().descriptor.isNative ? (
+            {getPlatformRuntime().descriptor.family === "desktop" ? (
               <button className="btn" onClick={() => void importBackupNative()}>
                 バックアップファイルを選択
               </button>
