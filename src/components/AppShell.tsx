@@ -30,6 +30,17 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
             ? t("nav.postDetail")
             : ""
 
+  const backButton = (
+    <button
+      className="btn btn-ghost"
+      onClick={() => history.back()}
+      title={`${t("common.back")} (Esc)`}
+    >
+      <span className="detail-back-label">← {t("common.back")}</span>
+      <span className="kbd small">Esc</span>
+    </button>
+  )
+
   return (
     <div className={`app ${isDesktopLayout ? "app-desktop" : "app-mobile"}`}>
       {/* デスクトップ環境では左側ナビゲーションレール (JHenTai 型) */}
@@ -38,7 +49,7 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
       )}
 
       <div className="app-main-wrapper">
-        {!isDetail && !isLogin && (
+        {!isDesktopLayout && !isDetail && !isLogin && (
           <header className="top-bar">
             <div className="top-bar-brand">
               <button type="button" className="logo" onClick={() => navigate("/", true)}>
@@ -47,15 +58,6 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
               {pageLabel && <span className="topbar-context">{pageLabel}</span>}
             </div>
             <div className="top-bar-actions">
-              {isDesktopLayout && (
-                <div className="desktop-shortcuts-hint" title={t("nav.shortcuts")}>
-                  <span className="kbd">/</span> {t("common.search")}
-                  <span className="kbd">H</span> {t("nav.home")}
-                  <span className="kbd">C</span> {t("nav.creators")}
-                  <span className="kbd">F</span> {t("nav.favorites")}
-                  <span className="kbd">S</span> {t("nav.settings")}
-                </div>
-              )}
               <button
                 type="button"
                 className="btn btn-account"
@@ -67,23 +69,19 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
             </div>
           </header>
         )}
-        {(isDetail || isLogin) && (
+        {!isDesktopLayout && (isDetail || isLogin) && (
           <header className="top-bar detail-bar">
-            <button
-              className="btn btn-ghost"
-              onClick={() => history.back()}
-              title={`${t("common.back")} (Esc)`}
-            >
-              <span className="detail-back-label">← {t("common.back")}</span>
-              <span className="kbd small">Esc</span>
-            </button>
+            {backButton}
             <button type="button" className="logo small" onClick={() => navigate("/", true)}>
               <img className="logo-icon" src={headerIcon} alt="" /> PawKemoViewer
             </button>
           </header>
         )}
 
-        <main className={`content ${isLogin ? "content-naked" : ""}`}>{children}</main>
+        <main className={`content ${isLogin ? "content-naked" : ""}`}>
+          {isDesktopLayout && (isDetail || isLogin) && <div className="desktop-back">{backButton}</div>}
+          {children}
+        </main>
 
         {/* モバイル環境では下部ボトムナビ */}
         {!isDesktopLayout && !isLogin && (

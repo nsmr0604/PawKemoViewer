@@ -1,3 +1,4 @@
+import pcIcon from "../../src-tauri/app-icons/pc.png"
 import { navigate } from "../router"
 import { t } from "../i18n"
 import { navigationItems } from "./navigation-items"
@@ -43,7 +44,7 @@ export function NavigationRail({ currentPath, followCount, hasSession }: Navigat
     <aside className="nav-rail">
       <div className="nav-rail-top">
         <button className="nav-rail-brand" onClick={() => navigate("/", true)} title="PawKemoViewer">
-          <span className="nav-rail-brand-icon">🐾</span>
+          <img className="nav-rail-brand-icon" src={pcIcon} alt="" />
           <span className="nav-rail-brand-copy">
             <strong>PawKemoViewer</strong>
             <small>pawchive client</small>

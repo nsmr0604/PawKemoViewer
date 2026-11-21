@@ -171,15 +171,6 @@ body {
   padding: 6px;
 }
 
-.desktop-shortcuts-hint {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--fg2);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .kbd {
   background: var(--bg3);
   border: 1px solid color-mix(in srgb, var(--fg2) 30%, transparent);
@@ -1625,13 +1616,8 @@ button, a, input, select, textarea {
 .nav-rail-brand-icon {
   width: 42px;
   height: 42px;
-  display: grid;
-  place-items: center;
+  object-fit: contain;
   flex: 0 0 auto;
-  border-radius: 13px;
-  background: linear-gradient(145deg, var(--accent), var(--accent2));
-  color: #171820;
-  font-size: 23px;
 }
 
 .nav-rail-brand-copy,
@@ -1873,15 +1859,6 @@ button, a, input, select, textarea {
   flex-shrink: 0;
 }
 
-.desktop-shortcuts-hint {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  gap: 5px;
-  font-size: 10px;
-  opacity: 0.8;
-}
-
 .kbd {
   border-radius: 5px;
   padding: 2px 6px;
@@ -1989,6 +1966,18 @@ textarea:focus {
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(12px);
   scrollbar-width: none;
+}
+
+.app-desktop .settings-nav {
+  top: 0;
+}
+
+.desktop-back {
+  margin-bottom: 12px;
+}
+
+.desktop-back .btn {
+  max-width: 100%;
 }
 
 .settings-nav::-webkit-scrollbar {
@@ -2117,9 +2106,6 @@ textarea:focus {
     padding-left: 18px;
     padding-right: 18px;
   }
-  .desktop-shortcuts-hint {
-    display: none;
-  }
 }
 
 @media (max-width: 680px) {
@@ -2136,9 +2122,6 @@ textarea:focus {
   }
   .content {
     padding: 16px 12px calc(86px + env(safe-area-inset-bottom));
-  }
-  .app-desktop .content {
-    padding-bottom: calc(86px + env(safe-area-inset-bottom));
   }
   .settings-nav {
     top: 54px;
