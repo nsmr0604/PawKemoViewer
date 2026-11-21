@@ -118,7 +118,8 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
   - iOS: `project.yml` に `# APP-ICON ALIASES START/END` と
     `ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES` を入れてから
     `npm run icons:generate:ios` → `AppIconLight.appiconset` のみ生成
-    (既定は dark の `AppIcon.appiconset`)
+    (既定は dark の `AppIcon.appiconset`)。**生成後に `xcodegen generate` を再実行**して
+    pbxproj / Info.plist へ反映する (init 時に生成したものはパッチ前のまま)
 - 注意: iOS は代替アイコン切替時に OS の確認ダイアログが出る。Android は alias 切替で
   ランチャーアイコンが一時的に消えることがある。実機確認は未実施
 

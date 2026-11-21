@@ -67,6 +67,8 @@
   (`scripts/app-icon/generate-android.mjs`)。
 - iOS: `AppIconLight.appiconset` のみ生成し、`project.yml` にエイリアス設定を注入
   (`scripts/app-icon/generate-ios.mjs`)。既定は dark の `AppIcon.appiconset`。
+  `tauri ios init` が作った pbxproj / Info.plist はパッチ前のままなので、
+  **生成後に `xcodegen generate` を再実行**して反映する (2026-11-21 修正)。
 - アプリ内左上のロゴも 🐾 テキストから `dark.png` / `light.png` の画像に変更し、
   テーマに合わせて表示を切り替える (`src/App.tsx` / `src/styles.css`)。
 
