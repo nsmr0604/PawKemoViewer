@@ -349,12 +349,14 @@
 - [x] 成果物は **iOS 端末向けの未署名 IPA** (`PawKemoViewer_{VER}_ios-unsigned.ipa`)。
       `--no-sign` (既定 target=aarch64) で Apple Developer 登録なしにビルド。
       未署名のためそのままでは実機/TestFlight にインストール不可 (再署名が必要)。
-- [ ] push して CI を実動確認 (ローカル Windows では Xcode ビルド不可)。初回 run
-      `44885345685` は旧 Simulator 構成のもので、IPA 構成は次回 run で確認。
+- [x] IPA 構成の CI 実動確認: run `44887554567` success (artifact `pawchive-ios` 4.0MB)。
+      最新の同期後 run (Build Tauri `44907956241` / Android `44907956266` /
+      iOS `44907956239`) は実行中、Wiki Sync `44907956270` は success。
 - [ ] 実機/TestFlight 配布が必要になったら、署名証明書と Provisioning Profile を
       GitHub Secrets 化し、`tauri ios build --export-method` を追加する。
 
 ## モバイルアプリアイコンのライト/ダーク切替 (2026-11-21)
+- デザイン引継ぎ: [docs/branding/ICON_HANDOFF.md](https://github.com/nsmr0604/pawchive/blob/main/docs/branding/ICON_HANDOFF.md)
 - [x] リポジトリのアイコン画像は `src-tauri/app-icons/{pc,dark,light}.png` の 3 枚のみ
       (pc = PC 用、dark = モバイル既定、light = モバイル切替用)。
       旧アイコン資産・Web 用 `public/` アイコン・`index.html` の icon link・

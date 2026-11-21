@@ -1,65 +1,92 @@
 # PawKemoViewer アイコン統合引継ぎ
 
 更新日: 2026-11-21  
-対象: Mobile Standard / Mobile Dark / Desktop  
+対象: Mobile Standard (light) / Mobile Dark / Desktop  
 このファイルをアイコン作業の唯一の引継ぎ資料とする。
-
-> 再作成記録: main ブランチ上でファイルが見つからなかったため、統合済みの内容を復元。復元時点の素材登録状況は別途確認すること。
 
 ## 1. ブランドと共通デザイン
 
-- **Paw**: 現在の対象である Pawchive (`pawchive.pw`) の Web API に由来する。Pawchive = paw + archive という解釈はユーザーの考察であり、公式語源としては未確認。
+- **Paw**: 現在の対象である Pawchive (`pawchive.pw`) の Web API に由来する。
+  「paw + archive」という解釈はユーザーの考察で、公式語源は未確認。
 - **Kemo**: Pawchive の派生元である Kemono (`kemono.cr`) へのリスペクト。
 - **Viewer**: 投稿・画像を閲覧するアプリ。動画プレイヤーを示す再生マークは使用しない。
 - 共通モチーフ: 狐耳娘、流れる髪、大きめの肉球、狐しっぽ。
-- モバイルとPCは**共通ブランドの別表現**とし、シンボルの連続性を優先する。
+- モバイルと PC は共通ブランドの別表現とし、シンボルの連続性を優先する。
 - 文字、月、星、光点、背景の幾何学模様は正式デザインに含めない。
 
-## 2. Mobile: 決定済み
+## 2. 決定済みデザイン
 
-| 項目 | Standard (Light) | Dark |
-| --- | --- | --- |
+### Mobile
+
+| 項目 | Standard (light) | Dark |
+|---|---|---|
 | 採用配色 | ミント × シアン × ピンク | スレート × ブルー × ティール |
 | 描画 | フラット・シンプルな狐耳娘シルエット | 同じシルエット |
 | ブランド記号 | 大きめの肉球・狐しっぽ | 同左 |
-| デザイン決定 | 済 | 済 |
+| 扱い | テーマが light のときの代替アイコン | 既定 (primary) アイコン |
 
-### 現在のリポジトリ上の素材
-- `assets/icons/mobile-light.svg`
-- `assets/icons/mobile-dark.svg`
-- 上記SVGは **main に登録済み**。ただしユーザーから「SVGは崩れるためPNGまたはBMPを使用」と明示的な変更要求がある。
-- **PNG/BMPへの置換・GitHubへのバイナリ登録は未完了**。SVGをPNGへリネームするだけの変更は禁止。
-- Tauri / Android / iOS のプラットフォーム用アイコン生成・組み込みも未実施。
-
-## 3. Desktop: デザイン決定済み
+### Desktop
 
 - **最終採用**: A1 Bright Cyan をベースに、狐しっぽの大きさを A2 程度に拡大。
 - **配色**: 白髪 × Teal × Blue / Cyan × Blue。背景は装飾のないシンプルなグラデーション。
-- **構図**: 白髪の狐耳娘、流れる長い髪、青いリボン、右側に大きく広がる白い狐しっぽ、右下に大きな肉球。
-- **PCらしいリッチさ**: 毛束・狐耳の内毛・しっぽの毛流れ・自然な陰影を強調。背景の装飾は増やさない。
+- **構図**: 白髪の狐耳娘、流れる長い髪、青いリボン、右側に大きく広がる白い狐しっぽ、
+  右下に大きな肉球。
+- **PC らしいリッチさ**: 毛束・狐耳の内毛・しっぽの毛流れ・自然な陰影を強調。
+  背景の装飾は増やさない。
 - **禁止要素**: 月、星、光点、再生マーク、文字、背景幾何学模様。
-- **成果物**: 会話中で `PawKemoViewer-PC-icon.png` として生成・提供済み。生成時の案内では 1254 × 1254 PNG。
-- **GitHubの予定配置先**: `assets/icons/desktop.png`。
-- **現状**: PNGのGitHubへのバイナリ登録は未完了。**mainにPCアイコンがマージ済みと誤認しないこと**。
 
-## 4. 未完了タスク（優先順）
+## 3. リポジトリ上の素材 (2026-11-21 現在)
 
-1. 会話中の採用済みPC PNG (`PawKemoViewer-PC-icon.png`) のバイナリを取得し、`assets/icons/desktop.png` に登録。
-2. 採用済みモバイル2案を**元の確定デザインと照合**してPNG（またはBMP）として書き出し、`assets/icons/mobile-light.png` と `assets/icons/mobile-dark.png` に登録。
-3. PNGヘッダ・画像寸法・透明度・小サイズでの視認性を検証し、対応するGitHub PRを作成して `main` へマージ。
-4. バイナリ版の採用後、旧SVGを削除するか参照用に残すか判断。少なくとも正式アセットの参照はPNG/BMPに統一。
-5. 必要に応じてTauri / Windows / macOS / Linux / Android / iOSの各OS用アイコンを生成し、ビルドと表示を検証。
-6. この引継ぎのアセット状態・PR・コミット・残作業を更新。
+アイコン画像は以下の **3 枚のみ** を正としている。
 
-## 5. 変更・検証の注意
+| ファイル | サイズ | 用途 |
+|---|---|---|
+| `src-tauri/app-icons/pc.png` | 1254×1254 PNG | PC (desktop) アイコンの元画像 |
+| `src-tauri/app-icons/dark.png` | 512×512 PNG | モバイル既定アイコンの元画像 |
+| `src-tauri/app-icons/light.png` | 512×512 PNG | モバイル代替アイコンの元画像 |
 
-- アイコン画像そのものを変更せず、承認済みデザインを優先する。再生成する場合は元画像との違いを明示する。
-- PNG/BMPは**実際のバイナリ**としてGitHubへ登録する。GitHubテキストAPIのUTF-8書き込みや拡張子変更で代用しない。
-- アセット登録・OS別組み込み・デザイン更新はそれぞれ独立タスクとして扱う。
-- この文書統合作業では画像本体やビルド設定を変更していない。画像表示・アプリビルド検証は未実施。
+- 旧 `assets/icons/*.svg` は「SVG は崩れるため PNG / BMP を使う」というユーザー指示で
+  **削除済み**。SVG をリネームしただけの代理登録は禁止。
+- Web 用の `public/` アイコン、`index.html` の icon link、旧 `scripts/make-icons.mjs`
+  も削除済み。Tauri のネイティブアプリアイコンには不要
+  (`index.html` 自体は WebView の入口のため維持)。
+- `src-tauri/icons/` は **gitignore 済みの生成物**。リポジトリには置かない。
 
-## 6. 引継ぎ資料の整理履歴
+## 4. 組み込み実装 (完了)
 
-- 旧 `docs/branding/icon-design-handoff.md`（モバイル中心）を本ファイルへ統合して削除。
-- 旧 `docs/branding/desktop-icon-png-handoff.md`（PC中心）を本ファイルへ統合して削除。
-- 以後、アイコンの決定事項・素材状態・未完了タスクは `docs/branding/ICON_HANDOFF.md` のみを更新する。
+- `scripts/generate-icons.mjs` が `npm run icons:generate` / `tauri:dev` /
+  `tauri:android:dev` / `tauri:build` から呼ばれる。
+  - PC (`icon.ico` / `icon.icns` / `icon.png` / StoreLogo 等) → `pc.png`
+  - Android / iOS (`src-tauri/icons/android` / `ios`) → `dark.png`
+- 各 workflow (tauri / android / ios) も `tauri * init`・`tauri build` の前に
+  `npm run icons:generate` を実行する。
+- モバイルの切替は `tauri-plugin-app-icon` + capability `app-icon:default`。
+  `src/appIcon.ts` が light テーマ時のみ `set_icon('light')`、dark 時は `set_icon(null)`
+  で既定 (dark) に戻す。
+- Android: light 用 mipmap + `activity-alias` を Manifest に注入
+  (`scripts/app-icon/generate-android.mjs`)。
+- iOS: `AppIconLight.appiconset` のみ生成し、`project.yml` にエイリアス設定を注入
+  (`scripts/app-icon/generate-ios.mjs`)。既定は dark の `AppIcon.appiconset`。
+
+### 検証済み
+
+- `npm run build` / `npm run icons:generate` / 3 ワークフローの YAML / Wiki 同期スクリプト: OK
+- ハッシュ照合: `icon.ico` は pc.png 生成分と一致、Android `ic_launcher.png` は
+  dark.png 生成分と一致。
+- CI: Wiki Sync は success。Build Tauri / Android / iOS は 2026-11-21 時点で実行中。
+
+## 5. 未完了タスク
+
+1. Android / iOS 実機でテーマ切替 → アイコンが反映され、ランチャーのエントリが
+   1 つだけ残ることを確認する (未実施)。iOS は切替時に OS の確認ダイアログが出る。
+2. 上記 CI (Build Tauri / Android / iOS) の完了結果を確認する。
+3. 必要になったら iOS 配布用に署名証明書・Provisioning Profile を GitHub Secrets 化し、
+   `tauri ios build --export-method` を追加する。
+
+## 6. 資料整理履歴
+
+- 旧 `docs/branding/icon-design-handoff.md` (モバイル中心) と
+  旧 `docs/branding/desktop-icon-png-handoff.md` (PC 中心) を本ファイルへ統合して削除。
+- 2026-11-21: 復元時に残っていた「SVG が main に登録済み」「PNG 未登録」
+  「プラットフォーム組み込み未実施」という記述は、実際のリポジトリ状態に合わせて更新した。
+- 技術的なビルド設定・CI の詳細は [`docs/BUILD.md`](../BUILD.md) も参照。

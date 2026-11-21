@@ -92,6 +92,8 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
   配布には Apple Developer の証明書/Provisioning Profile での再署名が必要
 
 ### モバイルアプリアイコン (ライト / ダーク)
+- デザイン決定事項・素材一覧・引継ぎは
+  [docs/branding/ICON_HANDOFF.md](https://github.com/nsmr0604/pawchive/blob/main/docs/branding/ICON_HANDOFF.md) を参照
 - リポジトリに入っているアイコン画像は **3 枚**:
   `src-tauri/app-icons/pc.png` (PC 用キャラクターイラスト)、
   `dark.png` (モバイル既定・青)、`light.png` (モバイル切替用・グラデーション)
