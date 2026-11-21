@@ -108,7 +108,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   }
 
   return (
-    <div className="page">
+    <div className="page home-page">
       <form className="search-bar" onSubmit={submit}>
         <input
           type="search"
@@ -177,6 +177,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
             type="button"
             className={`btn-icon ${viewMode === "grid" ? "active" : ""}`}
             onClick={() => toggleViewMode("grid")}
+            aria-pressed={viewMode === "grid"}
             title={t("common.grid")}
           >
             🔲
@@ -185,6 +186,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
             type="button"
             className={`btn-icon ${viewMode === "list" ? "active" : ""}`}
             onClick={() => toggleViewMode("list")}
+            aria-pressed={viewMode === "list"}
             title={t("common.list")}
           >
             ☰

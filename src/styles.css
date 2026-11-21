@@ -2125,3 +2125,26 @@ textarea:focus {
 .setting-subsection .section-label {
   margin-bottom: 12px;
 }
+
+/* Home keeps one control tree as the application shell changes. */
+.home-page .search-bar input {
+  min-width: 0;
+}
+
+.app-mobile .home-page .search-bar > .btn,
+.app-mobile .home-page .view-mode-toggles > .btn-icon {
+  min-height: 44px;
+}
+
+.app-mobile .home-page .view-mode-toggles > .btn-icon {
+  min-width: 44px;
+}
+
+.app-mobile .home-page .view-mode-bar {
+  flex-wrap: wrap;
+}
+
+.app-mobile .home-page .view-mode-bar > .hint-row {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
