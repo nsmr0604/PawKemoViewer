@@ -61,3 +61,29 @@ Persistence and request boundaries:
 - `api.request` invokes `api_request` directly. Preserve the three-request concurrency limit, 250 ms spacing, GET cache TTL of 60 s and 150-entry cap when moving the transport. `apiStatus` extracts the native status from the wrapped error. Rust owns direct reqwest HTTPS.
 - Several consumers use `services.storage ?? localStorage` or the corresponding session fallback, then call adapter-shaped `get`/`set`/`remove` methods. Native Web Storage exposes `getItem`/`setItem`/`removeItem`. This is a source-level mismatch if the fallback runs. Cover absent or inaccessible storage in M1.2/M1.4.
 - Router history, viewport/layout and DOM interactions remain presentation concerns. Creator search and backed-up read state cross persistence and workflow boundaries. Use these ownership distinctions when defining use cases and repositories.
+
+## M0.4 — Validation baseline
+
+Ran on Debian 13 x86-64 in Codex Cloud against `cf81e3d`, using Node.js 24, Rust 1.100.0 and the workspace WebKitGTK 4.1 libraries.
+
+| Check | Result |
+|---|---|
+| `npm ci --cache /workspace/scratch/pawkemoviewer-npm` | Passed. Installed from the committed npm lockfile. |
+| `npm run build` and `npm run build:debug` | Passed. Both runs reported the existing Vite warning that `db.ts` is imported both statically and dynamically. |
+| `cargo check --offline --manifest-path src-tauri/Cargo.toml -j 4` | Passed with five unused-variable warnings in the non-diagnostic login implementation. The first `--locked` attempt rejected the local Cargo.lock from the previous app version. The offline check refreshed the ignored lockfile using cached dependencies. |
+| `cargo check --locked --manifest-path src-tauri/Cargo.toml --features debug-diag -j 4` | Passed with the refreshed lockfile. |
+| `npm run dev -- --host 127.0.0.1 --port 5176 --strictPort` plus headless Chromium via CDP | Passed. The home/search UI rendered, the settings hash route showed its heading, and browser Back returned to Home. No native command, authenticated API or external media behavior was asserted. |
+
+### Platform coverage and gaps
+
+| Target | Coverage in M0 | Remaining checks |
+|---|---|---|
+| Browser | Startup, settings route and browser Back | Storage-denied/Web Clipboard cases, IndexedDB failures, download behavior |
+| Linux Tauri | Rust host check with and without diagnostic code | Native GUI, IPC, filesystem/locale behavior, backup and login |
+| Windows / macOS Tauri | Source review only | Native builds, WebView runtime, locale replacement and clipboard |
+| Android | Source review only | Native build, back button/exit, shared-file selection feasibility |
+| iOS | Source review only | Build and device validation, lifecycle behavior, Files picker feasibility |
+
+There is no npm test script or tracked platform contract suite in this baseline. The local notes search script is outside the tracked suite. Desktop/Android workflows target `main` for push builds and also support manual dispatch. Android has no PR trigger, and this baseline has no iOS workflow. No GitHub Actions runs, packages, native UI tests, devices or live API operations were exercised for M0.
+
+M1.1 can now use the recorded call sites to scope a typed transport boundary and resolve the redundant, unused `database` slot. Keep the existing IndexedDB schema and API request policy in place until their planned migration.
