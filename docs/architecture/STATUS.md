@@ -1,5 +1,13 @@
 # Architecture Refactor Status
 
+## Latest validation — M7.2 mobile candidate
+
+- Candidate `2af56d5` on `arch/m7-native-validation` combines the selected-file adapter, secondary language folders, adaptive shell and 0.5.0 icon masters. [Actions run 44934090212](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212) passed for Android and iOS/iPadOS. Both packages were inspected after download.
+- Ran `node --test tests/{platform,application,domain}.test.mjs` (33 passed), `npm run build`, `npm run build:debug`, `python3 tests/ui_layout_smoke.py`, and Linux `cargo check` with and without diagnostics. The Linux diagnostic binary linked with embedded frontend assets. It did not present a usable WebView under Cloud Xvfb.
+- Updated the candidate workflow, [device acceptance steps](os-storage.md#integrated-device-pass), task checklist and [validation evidence](stabilization.md). M5.4–M5.5 still require integrated device results. M7.2 has advanced through mobile packaging and still requires desktop package and device smoke evidence. M7.3 remains provisional.
+
+## Prior checkpoints
+
 - Baseline: `0.5.0` at `cf81e3d` (PR #12). M0 `7a6e898`, M1 `3565050`, M2 `24ea538`, M3 `e4a0726`, M4 `11592a4`, M6 `809cebc`.
 - **M7 advanced. M7.1 complete.** `3743d88` adds the scoped dependency check to both builds and removes type dependencies from post use cases to the API module.
 - M7.2 is partial. The [stabilization report](stabilization.md) records 27 passing automated tests, the dependency check and a rejected boundary-violation fixture, normal/debug builds, Linux Rust checks and linking, Chromium UI and index smoke, five Android JVM grant-mask checks, and successful unauthenticated public HTTP. Linux native startup failed at the WebKitGTK child-process path.

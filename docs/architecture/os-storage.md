@@ -69,7 +69,7 @@ Keep the existing overlay order (bundled, then private, then secondary, with lat
 
 ## M5.4–M5.5 — Integrated mobile locale workflow
 
-The app now wires two mobile-only Tauri commands to a bundled native plugin. Android uses SAF open/create and provider streams. iOS uses a copied import and a staged export via the Files picker. Cancel is distinct from failure. The plugin reads at most 1 MiB, and only the bounded UTF-8 text and filename cross the bridge. The app retains no URI grant, adds no broad Android storage permission and does not expose a writable directory.
+The app wires the selected-file commands to a bundled native plugin. Android uses SAF open/create and provider streams. iOS uses a copied import and a staged export via the Files picker. Cancel is distinct from failure. The plugin reads at most 1 MiB, and only the bounded UTF-8 text and filename cross the bridge. The selected-file commands retain no URI grant or broad Android storage permission. The app-owned folders below provide a separate secondary catalogue.
 
 Settings imports a new private locale copy. It validates the locale code and dictionary, refuses a duplicate code (including case variants), and checks the conflict again in Rust under the private-write lock. Export writes the private file for the currently selected language. The existing bundled/private/desktop shared overlay precedence stays in place. The existing desktop and browser file input routes now match their respective private and shared labels.
 
@@ -83,4 +83,21 @@ Validation in Cloud covered the application and mock IPC tests, normal/debug fro
 
 On Android the native plugin prepares `getExternalFilesDir(DIRECTORY_DOCUMENTS)/Languages` at startup. Settings can export the selected private locale there directly, without an additional runtime permission. The save result reports the actual path. If external storage was unavailable at startup, export retries folder creation and reports failure if it still cannot write. Android may hide `Android/data` from the system picker and file managers. Use the separate system-picker export when the destination should be visible there.
 
-On iOS the app creates `Documents/Languages` at startup, makes Documents visible in Files, and suggests Languages as the initial export location. The private locale catalogue still lives in app data. Both exports require an imported or manually added locale file, selected as the current language.
+On iOS and iPadOS the app creates `Documents/Languages` at startup and exposes Documents in Files. Settings can export directly there or use the system picker with Languages as its initial location. Settings displays the secondary folder, and Reload Languages rescans it. Both exports require a selected language with a private copy created by import or manual addition. The private catalogue remains in app data.
+
+### Integrated device pass
+
+Use the locale test package for each device. On iPhone or iPad, launch once and open
+**Files → On My iPhone / On My iPad → PawKemoViewer → Languages**. On Android, verify
+the app-owned Documents/Languages path reported by Settings. Record device model, OS,
+provider, package commit and observed result for each check:
+
+1. Cancel the open picker and confirm the language catalogue is unchanged.
+2. Import a valid, unused language code. Select it and verify its translated text.
+   Repeat the import to verify duplicate rejection. Check that malformed or oversized
+   input leaves the list unchanged.
+3. Export the selected language to the app folder and verify the exported JSON.
+   Put a second distinct language JSON in the secondary folder, reload, select it
+   and verify the displayed translations. Restart the app to verify discovery on launch.
+4. Export through the system picker to a local provider and reopen the exported file
+   to verify its contents. Cancel an export and confirm no destination is written.
