@@ -26,3 +26,17 @@ The checker passed on the project. A temporary page containing a literal dynamic
 Commands run from the repository root included `npm run test:domain`, `npm run test:application`, `npm run test:platform`, `npm run build`, `npm run build:debug`, and `python tests/ui_layout_smoke.py` against Vite on port 5181. Rust checks used `cargo check --locked --offline --manifest-path src-tauri/Cargo.toml -j 4`, then the same command with `--features debug-diag`. Native linking used `cargo build --locked --offline --manifest-path src-tauri/Cargo.toml --features debug-diag -j 4`. Android probe commands are in the [storage handoff](os-storage.md).
 
 M7.2 remains partial. M5 still requires native evidence, and a browser fixture is evidence for frontend wiring only.
+
+## M7.3 — Provisional release readiness
+
+**Current decision: continue validation before release.** The scoped dependency check, browser regressions, public HTTP, Rust compilation and Linux linking provide baseline evidence. The native app, mobile selected-file workflows and release packages need validation.
+
+| Priority | Remaining evidence |
+|---|---|
+| Release gate | Run the [M5 provider/grant acceptance checks](os-storage.md) on Android and iOS. Integrate only validated adapters, then verify locale catalogue, cancellation and conflict behavior. |
+| Release gate | Run native package builds and startup/smoke on Linux, Windows, macOS, Android and iOS. Include live app IPC and login with authorized test credentials, and verify desktop/mobile navigation using real inputs. |
+| Release gate | Record results for the exact candidate commit. Current desktop/Android workflows target main pushes and manual dispatch; Android has no PR trigger and the branch has no iOS workflow. No Actions run or release package was produced during this milestone. |
+| Follow-up debt | Address creator-pack/metadata atomicity and reopened IndexedDB connection handling separately. Review the documented API cache race and keep request limits intact. |
+| Follow-up debt | Extend boundary coverage to legacy modules after migrating their callers. Track the existing frontend mixed-import and Rust non-diagnostic login warnings. |
+
+This is an interim readiness record. Final completion of M7.3 depends on the native matrix in M7.2.
