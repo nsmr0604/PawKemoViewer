@@ -10,18 +10,22 @@ PawKemoViewer (v0.4.1) のビルド・パッケージング・CI 構成。
 git push (main)
   ↓
 GitHub Actions
-  ├─ Build Tauri (tauri.yml)   Windows / Linux / macOS
-  ├─ Android Build (android.yml) universal APK
-  └─ iOS Build (ios.yml)       iOS 端末向け未署名 IPA
+  ├─ Build Tauri (tauri.yml)   Windows / Linux のみ (macOS は手動)
+  └─ Android Build (android.yml) universal APK
   ↓
 rolling prerelease "debug-latest" (デバッグビルド)
+
+手動 workflow_dispatch
+  ├─ Build Tauri (tauri.yml)   Windows / Linux / macOS
+  └─ iOS Build (ios.yml)       iOS 端末向け未署名 IPA
 ```
 
-- **push (main) / PR = デバッグビルド**: 診断コード (`VITE_DEBUG_DIAG=1`) を注入し、
-  **rolling prerelease `debug-latest`** へアセット添付 (旧バージョン分は自動掃除)
-- **正式リリース = 手動のみ**: Actions 画面から `workflow_dispatch` の input
-  `release=true` (両ワークフロー)。診断コード無し・タグ `pawkemoviewer-v{VER}` へ添付
-- PR ビルドは artifact のみ (android.yml。PC は未設定)
+- **push (main) = デバッグビルド**: 診断コード (`VITE_DEBUG_DIAG=1`) を注入し、
+  **rolling prerelease `debug-latest`** へアセット添付 (旧バージョン分は自動掃除)。
+  macOS / iOS はコミット時にはビルドしない
+- **macOS / iOS = 手動のみ**: Actions 画面から `workflow_dispatch` を実行
+  (`release=true` で正式リリース `pawkemoviewer-v{VER}` へ添付、
+  無指定なら debug-latest へ添付)
 
 ## 成果物
 
@@ -67,7 +71,8 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
 ## CI 構成の詳細
 
 ### tauri.yml (Build Tauri)
-- matrix: `windows-latest` / `ubuntu-24.04` / `macos-15` (fail-fast: false)
+- matrix: push は `windows-latest` / `ubuntu-24.04` のみ、`workflow_dispatch` 時は
+  `macos-15` も含む (fail-fast: false)
 - `prepare` ジョブ: release=true 時は旧 PC アセット削除 / debug 時は
   debug-latest の現行バージョン以外を掃除
 - `VITE_DEBUG_DIAG` は **ジョブレベル env** (tauri-action の beforeBuildCommand 内
@@ -78,9 +83,8 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
 - デバッグビルド: `npx tauri android build --features debug-diag`。正式リリース: feature 無し
 - `npx tauri android init` → `npx tauri android build` → zipalign + apksigner
   (debug.keystore) → リリース添付
-- `on: pull_request` も発火 (artifact のみ)
-
 ### ios.yml (iOS Build)
+- **手動 `workflow_dispatch` のみ** (push トリガは削除済み)
 - `macos-15` runner。`npx tauri ios init` で Xcode プロジェクトを毎回生成
   (`src-tauri/gen/apple` は git 管理外)。XcodeGen は `brew install xcodegen` で導入
 - Rust target は `aarch64-apple-ios` (端末向け arm64)

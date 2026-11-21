@@ -1,23 +1,7 @@
 name: iOS Build
 
 on:
-  push:
-    branches:
-      - main
-    # ビルド関連ファイルの変更時のみ発火 (ドキュメントのみのコミットではスキップ)
-    paths:
-      - "src/**"
-      - "src-tauri/**"
-      - "public/**"
-      - "index.html"
-      - "vite.config.ts"
-      - "tsconfig.json"
-      - "package.json"
-      - "package-lock.json"
-      - "scripts/app-icon/**"
-      - "src-tauri/app-icons.json"
-      - "src-tauri/app-icons/**"
-      - ".github/workflows/ios.yml"
+  # コミット時はビルドしない (macOS runner の負荷・時間を抑えるため手動実行のみ)
   workflow_dispatch:
     inputs:
       release:

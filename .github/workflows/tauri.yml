@@ -83,11 +83,9 @@ jobs:
     needs: prepare
     strategy:
       fail-fast: false
+      # push (コミット時) は Windows / Linux のみ。macOS は手動実行時だけビルドする
       matrix:
-        include:
-          - platform: windows-latest
-          - platform: ubuntu-24.04
-          - platform: macos-15
+        platform: ${{ fromJSON(github.event_name == 'push' && '["windows-latest", "ubuntu-24.04"]' || '["windows-latest", "ubuntu-24.04", "macos-15"]') }}
 
     runs-on: ${{ matrix.platform }}
 
