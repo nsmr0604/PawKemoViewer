@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "org.pawkemoviewer.localepicker"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         minSdk = 24
         consumerProguardFiles("consumer-rules.pro")
