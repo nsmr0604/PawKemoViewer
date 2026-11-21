@@ -52,7 +52,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 
 ## M7 — Stabilization
 - [x] **M7.1** Add dependency-boundary enforcement. Depends: M2-M4.
-- [ ] **M7.2** Run platform validation matrix and record gaps. Depends: M1-M6. **PARTIAL:** Desktop and mobile candidate packages verified. Native UI, live IPC and M5 device checks remain open.
+- [ ] **M7.2** Run platform validation matrix and record gaps. Depends: M1-M6. **PARTIAL:** Desktop and mobile candidate packages verified. Installed Linux Home and public API passed. Windows/macOS startup, authenticated flows and M5 device checks remain open.
 - [ ] **M7.3** Prepare release-readiness/debt report. Depends: M7.2. **DRAFT:** Release gates and remaining debt recorded.
 
 ## Agent task completion template

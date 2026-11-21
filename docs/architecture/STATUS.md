@@ -1,6 +1,11 @@
 # Architecture Refactor Status
 
-## Latest validation — M7.2 desktop packages
+## Latest validation — M7.2 installed Linux candidate
+
+- [Actions run 44937149049](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44937149049) installed the Linux DEB from candidate `3ec9392` on Ubuntu 24.04. The installed app exposed the Home search field through WebKitGTK accessibility, and its native public posts request returned HTTP 200 with a nonempty response.
+- Added `.github/workflows/linux-installed-smoke.yml` and `tests/linux_installed_smoke.py`. Windows and macOS desktop startup, authenticated operations and M5.4–M5.5 device checks remain open.
+
+## Previous validation — M7.2 desktop packages
 
 - Candidate `3ec9392` includes the desktop navigation update and PC icon. [Actions run 44936122546](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546) passed for Windows, macOS and Linux. Downloaded packages were inspected for the installer or app executable and bundle metadata. See the [desktop package evidence](stabilization.md#desktop-candidate-3ec9392).
 - The same commit also passed [Android and iOS/iPadOS packaging](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488). All five candidate packages now have evidence tied to one source commit.

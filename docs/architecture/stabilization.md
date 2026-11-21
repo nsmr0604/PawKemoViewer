@@ -61,6 +61,16 @@ Inspection confirmed the separate test app ID and locale commands on both, plus 
 and iPad icon declarations inside the IPA. Desktop installation, app startup, live API/IPC
 and integrated provider checks remain pending.
 
+### Installed Linux candidate
+
+[Actions run 44937149049](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44937149049)
+installed the `3ec9392` DEB using APT on Ubuntu 24.04. Under Xvfb and a fresh D-Bus
+and XDG session, `/usr/bin/pawkemoviewer` exposed the Home search field via
+WebKitGTK/AT-SPI. The same app logged HTTP 200 and a nonempty body from the native
+public posts request. This covers installed startup, Home rendering and live
+unauthenticated WebView-to-Rust API transport. Login and interactive desktop flows
+remain pending.
+
 ## M7.3 — Provisional release readiness
 
 **Current decision: continue validation before release.** The scoped dependency check, browser regressions, public HTTP, Rust compilation and Linux linking provide baseline evidence. The native app, mobile selected-file workflows and release packages need validation.
