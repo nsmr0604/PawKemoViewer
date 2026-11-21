@@ -10,3 +10,19 @@
 - Existing cross-layer calls through legacy root modules are outside this scoped rule. This is an import check, with computed module paths and runtime effects outside its coverage.
 
 The checker passed on the project. A temporary page containing a literal dynamic import of the creator infrastructure repository failed with the offending source and resolved target as expected. Both builds run the same check.
+
+## M7.2 — Platform validation snapshot
+
+| Target | Observed in Codex Cloud | Pending outside this environment |
+|---|---|---|
+| Frontend build and regression | Architecture check, 3 domain tests, 10 application tests, 14 platform tests, production and diagnostic builds passed. The existing Vite mixed-import warning for `db.ts` remained. | Package-level verification on each native target. |
+| Chromium with fixture IPC | The [layout matrix](adaptive-ui.md) passed. An additional smoke run covered locale discovery, Home, invalid and valid post routes, revisions with HTTP 404, creator profile/posts, and index reload from browser IndexedDB without refetch. | Real WebView IPC, authentication, provider dialogs, OS insets and physical gestures. |
+| Linux Tauri | Host Rust check passed with and without diagnostics. A linked Linux diagnostic build passed. With Xvfb, the binary stopped during startup because the system WebKitGTK child `/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitNetworkProcess` was unavailable. | Repeat the native smoke on a Linux machine with system WebKitGTK 4.1 and verify the packaging target. |
+| Windows / macOS | No native execution in this Linux environment. | Build, launch and confirm login, backup, clipboard, keyboard and locale behavior. |
+| Android | Standalone SAF probe compiled against SDK 35 and passed five JVM grant-mask checks. Chromium covered simulated navigation Back/exit. | Build and run the app. Validate the Android picker against a real provider, permission persistence/revocation, and physical Back. |
+| iOS | Source-only document picker prototype, no Xcode/UIKit. | Compile on macOS, then test Files providers, cancel/export, safe-area placement and physical navigation. |
+| Pawchive public HTTP | Schema request returned HTTP 200. One unauthenticated GET to `/api/v1/posts?o=0` returned HTTP 200 and a JSON list of 50 records with `id`, `service` and `user`. | Native IPC/reqwest end-to-end, login and authenticated flows. No account credentials were used in the HTTP probe. |
+
+Commands run from the repository root included `npm run test:domain`, `npm run test:application`, `npm run test:platform`, `npm run build`, `npm run build:debug`, and `python tests/ui_layout_smoke.py` against Vite on port 5181. Rust checks used `cargo check --locked --offline --manifest-path src-tauri/Cargo.toml -j 4`, then the same command with `--features debug-diag`. Native linking used `cargo build --locked --offline --manifest-path src-tauri/Cargo.toml --features debug-diag -j 4`. Android probe commands are in the [storage handoff](os-storage.md).
+
+M7.2 remains partial. M5 still requires native evidence, and a browser fixture is evidence for frontend wiring only.
