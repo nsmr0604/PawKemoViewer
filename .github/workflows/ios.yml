@@ -1,0 +1,164 @@
+name: iOS Build
+
+on:
+  push:
+    branches:
+      - main
+    # ビルド関連ファイルの変更時のみ発火 (ドキュメントのみのコミットではスキップ)
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "public/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
+        type: boolean
+        default: false
+
+# 同一ブランチの新しい iOS ビルドを優先し、古い実行中ビルドはキャンセルする
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    env:
+      # push = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
+      # 手動 release=true のみ診断コード無しの正式リリースビルド。
+      # 注意: `true && '' || '1'` は空文字が偽のため '1' になる。リリースは '0' を明示する
+      VITE_DEBUG_DIAG: ${{ inputs.release == true && '0' || '1' }}
+      # デバッグビルドの表記用ビルド番号 (バージョン番号は変えない)。リリースは 'release'
+      VITE_BUILD_REV: ${{ inputs.release == true && 'release' || github.run_number }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # 端末向け + iOS Simulator (Apple Silicon / Intel) の rust std を入れる
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: Install XcodeGen
+        # npx tauri ios init が Xcode プロジェクトを生成するのに必要
+        run: |
+          set -e
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Verify iOS Simulator runtime
+        # ランナーに Simulator ランタイムが無い場合は、わかりやすいエラーで失敗させる
+        run: xcrun simctl list devices available
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Frontend
+        # ジョブレベル env (VITE_DEBUG_DIAG) を使用
+        run: npm run build
+
+      - name: Initialize iOS project
+        # src-tauri/gen/apple は git 管理外 (Android と同じく CI で毎回生成)
+        run: npx tauri ios init
+
+      - name: Build unsigned iOS Simulator app (Apple Silicon / arm64)
+        run: |
+          if [ "${{ inputs.release }}" = "true" ]; then
+            npx tauri ios build --target aarch64-sim --no-sign
+          else
+            npx tauri ios build --target aarch64-sim --no-sign --features debug-diag
+          fi
+
+      - name: Build unsigned iOS Simulator app (Intel / x86_64)
+        run: |
+          if [ "${{ inputs.release }}" = "true" ]; then
+            npx tauri ios build --target x86_64 --no-sign
+          else
+            npx tauri ios build --target x86_64 --no-sign --features debug-diag
+          fi
+
+      - name: Package simulator apps
+        run: |
+          set -euo pipefail
+          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          mkdir -p dist-ios
+
+          pack() {
+            arch="$1"
+            label="$2"
+            app=$(printf '%s\n' "src-tauri/gen/apple/build/$arch"/*.app | head -n 1)
+            if [ ! -d "$app" ]; then
+              echo "no .app found in src-tauri/gen/apple/build/$arch" >&2
+              exit 1
+            fi
+            out="dist-ios/PawKemoViewer_${VER}_ios-simulator-${label}.zip"
+            (cd "$(dirname "$app")" && zip -q -r "$OLDPWD/$out" "$(basename "$app")")
+            echo "packaged: $out"
+          }
+
+          pack arm64-sim arm64
+          pack x86_64 x86_64
+          ls -la dist-ios
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pawchive-ios
+          path: dist-ios/*.zip
+
+      - name: Attach iOS builds to Release
+        # push (main) = デバッグビルド → rolling prerelease `debug-latest` へ添付
+        # 手動 release=true のみ正式リリース pawkemoviewer-v{VER} へ添付。
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+
+          if [ "${{ inputs.release }}" = "true" ]; then
+            gh release upload "pawkemoviewer-v${VER}" dist-ios/*.zip --clobber \
+              || gh release create "pawkemoviewer-v${VER}" dist-ios/*.zip \
+                   --title "PawKemoViewer v${VER}" \
+                   --notes "Automated build (iOS simulator, unsigned)."
+            exit 0
+          fi
+
+          # --- デバッグビルド: rolling prerelease debug-latest ---
+          TAG=debug-latest
+
+          # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r a; do
+              case "$a" in
+                *"_${VER}_"*) ;; # 現行バージョンは残す
+                *) gh release delete-asset "$TAG" "$a" --yes || true ;;
+              esac
+            done
+          fi
+
+          gh release upload "$TAG" dist-ios/*.zip --clobber \
+            || gh release create "$TAG" dist-ios/*.zip \
+                 --prerelease \
+                 --title "PawKemoViewer debug build" \
+                 --notes "Automated debug build (v${VER}). iOS simulator builds are unsigned (VITE_DEBUG_DIAG=1・テスト用・非公式)."
