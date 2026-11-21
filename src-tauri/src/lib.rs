@@ -1393,6 +1393,23 @@ async fn save_locale_file_to_app_directory(
     run_locale_picker(&app, "exportToAppDirectory", payload).await
 }
 
+#[cfg(target_os = "ios")]
+fn prepare_ios_files_directory(app: &tauri::AppHandle) -> Result<(), String> {
+    use std::io::{ErrorKind, Write};
+    let documents = app.path().document_dir().map_err(|error| error.to_string())?;
+    std::fs::create_dir_all(documents.join("Languages")).map_err(|error| error.to_string())?;
+
+    // Register actual content in Documents so the app's local Files location has a visible item.
+    let guide = documents.join("PawKemoViewer-Files.txt");
+    match std::fs::OpenOptions::new().write(true).create_new(true).open(&guide) {
+        Ok(mut file) => file.write_all(
+            b"PawKemoViewer\n\nLanguages is the suggested destination for exported language JSON files.\n",
+        ).map_err(|error| error.to_string()),
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => Ok(()),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -1400,9 +1417,8 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_locale_picker::init());
     #[cfg(target_os = "ios")]
     let builder = builder.setup(|app| {
-        let directory = app.path().document_dir()?.join("Languages");
-        if let Err(error) = std::fs::create_dir_all(directory) {
-            log::warn!("Could not create the Files language directory: {error}");
+        if let Err(error) = prepare_ios_files_directory(app.handle()) {
+            log::warn!("Could not prepare the Files language directory: {error}");
         }
         Ok(())
     });
