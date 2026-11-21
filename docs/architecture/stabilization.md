@@ -39,7 +39,7 @@ The app ID is `com.nsmr0604.pawkemoviewer.localetest`.
 | [Unsigned iOS/iPadOS IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212/artifacts/14718772648) | Downloaded IPA contains iPhone and iPad device families, Files sharing and in-place settings, the iPad light icon, and the selected-file and direct folder-export commands. |
 | Linux and browser | Rust checks with and without diagnostics, a Linux diagnostic link with embedded frontend, 33 tests, both frontend builds and the Chromium shell matrix passed. Xvfb did not yield a usable WebView for the Linux binary. |
 
-The candidate permits an [integrated device pass](os-storage.md#integrated-device-pass).
+The candidate permits an [integrated device pass](os-storage.md#モバイル統合版の実機確認).
 Device behavior, real provider dialogs and desktop package startup still require validation.
 
 ### Desktop candidate 3ec9392
@@ -71,16 +71,17 @@ public posts request. This covers installed startup, Home rendering and live
 unauthenticated WebView-to-Rust API transport. Login and interactive desktop flows
 remain pending.
 
-## M7.3 — Provisional release readiness
+## M7.3 — リリース判定と残課題
 
-**Current decision: continue validation before release.** The scoped dependency check, browser regressions, public HTTP, Rust compilation and Linux linking provide baseline evidence. The native app, mobile selected-file workflows and release packages need validation.
+[0.5.1 は公開済み](https://github.com/nsmr0604/PawKemoViewer/releases/tag/pawkemoviewer-v0.5.1)。
+全対象のデバッグ・リリースビルド、パッケージの内容、依存境界、自動テスト33件を確認した。
+デスクトップの公開 API 検証は未認証の状態で行った。認証付き操作と統合版のモバイル実機確認は、
+実行結果を得てから完了とする。
 
-| Priority | Remaining evidence |
+| 区分 | 残作業 |
 |---|---|
-| Release gate | Run the [M5 provider/grant acceptance checks](os-storage.md) on Android and iOS. Integrate only validated adapters, then verify locale catalogue, cancellation and conflict behavior. |
-| Release gate | Run native package builds and startup/smoke on Linux, Windows, macOS, Android and iOS. Include live app IPC and login with authorized test credentials, and verify desktop/mobile navigation using real inputs. |
-| Release gate | Record results for the exact candidate commit. The desktop and mobile candidate workflows produced verification artifacts. Installation and live device behavior remain open. |
-| Follow-up debt | Address creator-pack/metadata atomicity and reopened IndexedDB connection handling separately. Review the documented API cache race and keep request limits intact. |
-| Follow-up debt | Extend boundary coverage to legacy modules after migrating their callers. Track the existing frontend mixed-import and Rust non-diagnostic login warnings. |
+| M5.4・M5.5 | Android・iPhone・iPad で、取り込み、書き出し、再起動、キャンセル、入力拒否を確認する。[実機確認手順](os-storage.md#モバイル統合版の実機確認) |
+| M7.2 | 承認済みのテストアカウントでログインし、認証付きの API と操作を確認する。各端末のバージョン、ビルド、結果を記録する。 |
+| 技術的な残課題 | クリエイター索引のデータとメタデータの原子性、IndexedDB の再接続、API キャッシュの競合、既存モジュールの依存チェック範囲、Vite と非診断 Rust ビルドの既知の警告を個別に扱う。 |
 
-This is an interim readiness record. Final completion of M7.3 depends on the native matrix in M7.2.
+M7.3 の確定には M7.2 の残項目の結果を反映する。
