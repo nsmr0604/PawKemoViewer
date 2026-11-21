@@ -20,6 +20,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   const [done, setDone] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [input, setInput] = useState(q)
+  const [showSearchError, setShowSearchError] = useState(false)
   const [viewMode, setViewMode] = useState<"grid" | "list">(getSettings().postViewMode)
   const [history, setHistory] = useState<string[]>(getSearchHistory)
   const [serviceFilter, setServiceFilter] = useState<"all" | "fanbox" | "patreon">("all")
@@ -40,6 +41,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
 
   useEffect(() => {
     setInput(q)
+    setShowSearchError(false)
     setPosts([])
     setOffset(0)
     setDone(false)
@@ -92,13 +94,17 @@ export function HomePage({ query }: { query: URLSearchParams }) {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (input.trim() && input.trim().length < MIN_QUERY) return
-    const t = input.trim()
-    if (t) {
-      addSearchHistory(t)
+    const keyword = input.trim()
+    if (keyword && keyword.length < MIN_QUERY) {
+      setShowSearchError(true)
+      return
+    }
+    setShowSearchError(false)
+    if (keyword) {
+      addSearchHistory(keyword)
       setHistory(getSearchHistory())
     }
-    nav(t ? `/search?q=${encodeURIComponent(t)}` : "/", true)
+    nav(keyword ? `/search?q=${encodeURIComponent(keyword)}` : "/", true)
   }
 
   const submitHistory = (h: string) => {
@@ -109,59 +115,69 @@ export function HomePage({ query }: { query: URLSearchParams }) {
 
   return (
     <div className="page home-page">
-      <form className="search-bar" onSubmit={submit}>
-        <input
-          type="search"
-          placeholder={t("home.searchPlaceholder")}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        <button type="submit" className="btn">
-          {t("common.search")}
-        </button>
-      </form>
-      {!q && history.length > 0 && (
-        <div className="history-chips">
-          {history.map((h) => (
-            <button key={h} className="chip" onClick={() => submitHistory(h)}>
-              {h}
-            </button>
-          ))}
-          <button
-            className="chip chip-more"
-            title={t("home.historyClear")}
-            onClick={() => {
-              clearSearchHistory()
-              setHistory([])
+      <h1 className="page-title">{t("home.browseTitle")}</h1>
+      <div className="discovery-panel">
+        <form className="search-bar" role="search" onSubmit={submit}>
+          <input
+            type="search"
+            placeholder={t("home.searchPlaceholder")}
+            value={input}
+            aria-label={t("common.search")}
+            aria-invalid={showSearchError || undefined}
+            aria-describedby={showSearchError ? "home-search-error" : undefined}
+            onChange={(e) => {
+              setInput(e.target.value)
+              setShowSearchError(false)
             }}
-          >
-            {t("home.historyClearShort")}
+          />
+          <button type="submit" className="btn btn-primary">
+            {t("common.search")}
           </button>
-        </div>
-      )}
-      <section className="home-filters" aria-label={t("home.filters")}>
-        <div className="home-filter-group">
-          <span className="small text-muted">{t("home.serviceFilter")}</span>
-          <div className="tag-chips">
-            {(["all", "fanbox", "patreon"] as const).map((service) => (
-              <button key={service} type="button"
-                className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
-                aria-pressed={serviceFilter === service}
-                onClick={() => setServiceFilter(service)}>
-                {service === "all" ? t("home.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+        </form>
+        {showSearchError && <p id="home-search-error" className="search-error" role="alert">{t("home.tooShort")}</p>}
+        {!q && history.length > 0 && (
+          <div className="history-chips">
+            {history.map((h) => (
+              <button key={h} className="chip" onClick={() => submitHistory(h)}>
+                {h}
               </button>
             ))}
-          </div>
-        </div>
-        {hasActiveFilters && (
-          <div className="hint-row">
-            <span className="small text-muted">{t("home.filteredCount", { shown: filteredPosts.length, total: posts.length })}</span>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
-              setServiceFilter("all")
-            }}>{t("home.clearFilters")}</button>
+            <button
+              className="chip chip-more"
+              title={t("home.historyClear")}
+              onClick={() => {
+                clearSearchHistory()
+                setHistory([])
+              }}
+            >
+              {t("home.historyClearShort")}
+            </button>
           </div>
         )}
-      </section>
+        <section className="home-filters" aria-label={t("home.filters")}>
+          <div className="home-filter-group">
+            <span className="small text-muted">{t("home.serviceFilter")}</span>
+            <div className="tag-chips">
+              {(["all", "fanbox", "patreon"] as const).map((service) => (
+                <button key={service} type="button"
+                  className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
+                  aria-pressed={serviceFilter === service}
+                  onClick={() => setServiceFilter(service)}>
+                  {service === "all" ? t("home.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+                </button>
+              ))}
+            </div>
+          </div>
+          {hasActiveFilters && (
+            <div className="hint-row">
+              <span className="small text-muted">{t("home.filteredCount", { shown: filteredPosts.length, total: posts.length })}</span>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
+                setServiceFilter("all")
+              }}>{t("home.clearFilters")}</button>
+            </div>
+          )}
+        </section>
+      </div>
       <div className="view-mode-bar">
         {tooShort && <div className="hint-row">{t("home.tooShort")}</div>}
         {q && !tooShort && (
@@ -172,7 +188,8 @@ export function HomePage({ query }: { query: URLSearchParams }) {
             </button>
           </div>
         )}
-        <div className="view-mode-toggles">
+        {!q && <h2 className="feed-title">{t("home.latestTitle")}</h2>}
+        <div className="view-mode-toggles" role="group" aria-label={t("home.viewMode")}>
           <button
             type="button"
             className={`btn-icon ${viewMode === "grid" ? "active" : ""}`}
@@ -180,7 +197,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
             aria-pressed={viewMode === "grid"}
             title={t("common.grid")}
           >
-            🔲
+            <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M2 2h6v6H2zM12 2h6v6h-6zM2 12h6v6H2zM12 12h6v6h-6z" /></svg>
           </button>
           <button
             type="button"
@@ -189,7 +206,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
             aria-pressed={viewMode === "list"}
             title={t("common.list")}
           >
-            ☰
+            <svg aria-hidden="true" viewBox="0 0 20 20"><path d="M3 4h14M3 10h14M3 16h14" /></svg>
           </button>
         </div>
       </div>

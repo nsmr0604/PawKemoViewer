@@ -359,7 +359,7 @@ export function SettingsPage() {
 
   return (
     <div className="page settings">
-      <h2>{t("settings.title")}</h2>
+      <h1 className="page-title">{t("settings.title")}</h1>
       <p className="settings-intro">{t("settings.intro")}</p>
 
       <nav className="settings-nav" aria-label={t("settings.sections")}>
@@ -376,7 +376,11 @@ export function SettingsPage() {
           <button
             key={id}
             type="button"
-            onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onClick={() => {
+              const section = document.getElementById(id)
+              section?.focus({ preventScroll: true })
+              section?.scrollIntoView({ block: "start" })
+            }}
           >
             {label}
           </button>
@@ -384,8 +388,8 @@ export function SettingsPage() {
       </nav>
 
       {/* ------------------------------------------------ アカウント */}
-      <div id="settings-account" className="settings-section">
-        <div className="section-label">{t("settings.accountTitle")}</div>
+      <div id="settings-account" className="settings-section" tabIndex={-1}>
+        <h2 className="section-label">{t("settings.accountTitle")}</h2>
 
         <div className="settings-actions">
           <button className="btn btn-primary" onClick={() => navigate("/login?next=/settings")}>
@@ -407,8 +411,84 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 表示 */}
-      <div id="settings-display" className="settings-section">
-        <div className="section-label">{t("settings.displayTitle")}</div>
+      <div id="settings-display" className="settings-section" tabIndex={-1}>
+        <h2 className="section-label">{t("settings.displayTitle")}</h2>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.theme")}</span>
+            <small>{t("settings.themeDesc")}</small>
+          </div>
+          <div className="segmented">
+            <button
+              className={`seg ${theme === "dark" ? "seg-active" : ""}`}
+              aria-pressed={theme === "dark"}
+              onClick={() => applyTheme("dark")}
+            >
+              {t("settings.themeDark")}
+            </button>
+            <button
+              className={`seg ${theme === "light" ? "seg-active" : ""}`}
+              aria-pressed={theme === "light"}
+              onClick={() => applyTheme("light")}
+            >
+              {t("settings.themeLight")}
+            </button>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.layout")}</span>
+            <small>{t("settings.layoutDesc")}</small>
+          </div>
+          <div className="segmented">
+            <button
+              className={`seg ${layoutMode === "auto" ? "seg-active" : ""}`}
+              aria-pressed={layoutMode === "auto"}
+              onClick={() => applyLayoutMode("auto")}
+            >
+              {t("settings.layoutAuto")}
+            </button>
+            <button
+              className={`seg ${layoutMode === "desktop" ? "seg-active" : ""}`}
+              aria-pressed={layoutMode === "desktop"}
+              onClick={() => applyLayoutMode("desktop")}
+            >
+              {t("settings.layoutDesktop")}
+            </button>
+            <button
+              className={`seg ${layoutMode === "mobile" ? "seg-active" : ""}`}
+              aria-pressed={layoutMode === "mobile"}
+              onClick={() => applyLayoutMode("mobile")}
+            >
+              {t("settings.layoutMobile")}
+            </button>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.postView")}</span>
+            <small>{t("settings.postViewDesc")}</small>
+          </div>
+          <div className="segmented">
+            <button
+              className={`seg ${postViewMode === "grid" ? "seg-active" : ""}`}
+              aria-pressed={postViewMode === "grid"}
+              onClick={() => applyPostViewMode("grid")}
+            >
+              {t("settings.gridBtn")}
+            </button>
+            <button
+              className={`seg ${postViewMode === "list" ? "seg-active" : ""}`}
+              aria-pressed={postViewMode === "list"}
+              onClick={() => applyPostViewMode("list")}
+            >
+              {t("settings.listBtn")}
+            </button>
+          </div>
+        </div>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -552,75 +632,6 @@ export function SettingsPage() {
 
         <div className="setting-item">
           <div className="setting-text">
-            <span>{t("settings.theme")}</span>
-            <small>{t("settings.themeDesc")}</small>
-          </div>
-          <div className="segmented">
-            <button
-              className={`seg ${theme === "dark" ? "seg-active" : ""}`}
-              onClick={() => applyTheme("dark")}
-            >
-              {t("settings.themeDark")}
-            </button>
-            <button
-              className={`seg ${theme === "light" ? "seg-active" : ""}`}
-              onClick={() => applyTheme("light")}
-            >
-              {t("settings.themeLight")}
-            </button>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>{t("settings.layout")}</span>
-            <small>{t("settings.layoutDesc")}</small>
-          </div>
-          <div className="segmented">
-            <button
-              className={`seg ${layoutMode === "auto" ? "seg-active" : ""}`}
-              onClick={() => applyLayoutMode("auto")}
-            >
-              {t("settings.layoutAuto")}
-            </button>
-            <button
-              className={`seg ${layoutMode === "desktop" ? "seg-active" : ""}`}
-              onClick={() => applyLayoutMode("desktop")}
-            >
-              {t("settings.layoutDesktop")}
-            </button>
-            <button
-              className={`seg ${layoutMode === "mobile" ? "seg-active" : ""}`}
-              onClick={() => applyLayoutMode("mobile")}
-            >
-              {t("settings.layoutMobile")}
-            </button>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>{t("settings.postView")}</span>
-            <small>{t("settings.postViewDesc")}</small>
-          </div>
-          <div className="segmented">
-            <button
-              className={`seg ${postViewMode === "grid" ? "seg-active" : ""}`}
-              onClick={() => applyPostViewMode("grid")}
-            >
-              {t("settings.gridBtn")}
-            </button>
-            <button
-              className={`seg ${postViewMode === "list" ? "seg-active" : ""}`}
-              onClick={() => applyPostViewMode("list")}
-            >
-              {t("settings.listBtn")}
-            </button>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-text">
             <span>{t("settings.noImage")}</span>
             <small>{t("settings.noImageDesc")}</small>
           </div>
@@ -649,8 +660,8 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 投稿表示 (省データ) */}
-      <div id="settings-post" className="settings-section">
-        <div className="section-label">{t("settings.postTitle")}</div>
+      <div id="settings-post" className="settings-section" tabIndex={-1}>
+        <h2 className="section-label">{t("settings.postTitle")}</h2>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -696,8 +707,8 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 接続 */}
-      <div id="settings-connection" className="settings-section">
-        <div className="section-label">{t("settings.navConnection")}</div>
+      <div id="settings-connection" className="settings-section" tabIndex={-1}>
+        <h2 className="section-label">{t("settings.navConnection")}</h2>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -719,8 +730,8 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ データ (バックアップ) */}
-      <div id="settings-data" className="settings-section">
-        <div className="section-label">{t("settings.backupSection")}</div>
+      <div id="settings-data" className="settings-section" tabIndex={-1}>
+        <h2 className="section-label">{t("settings.backupSection")}</h2>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -775,8 +786,8 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ キャッシュ */}
-      <div id="settings-cache" className="settings-section">
-        <div className="section-label">{t("settings.storageTitle")}</div>
+      <div id="settings-cache" className="settings-section" tabIndex={-1}>
+        <h2 className="section-label">{t("settings.storageTitle")}</h2>
 
         <div className="setting-item">
           <div className="setting-text">
@@ -811,8 +822,8 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 診断 */}
-      <div id="settings-diagnostics" className="settings-section">
-        <div className="section-label">{t("settings.diagnostics")}</div>
+      <div id="settings-diagnostics" className="settings-section" tabIndex={-1}>
+        <h2 className="section-label">{t("settings.diagnostics")}</h2>
 
 
 
@@ -851,8 +862,8 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 情報 */}
-      <div id="settings-info" className="settings-section">
-        <div className="section-label">{t("settings.info")}</div>
+      <div id="settings-info" className="settings-section" tabIndex={-1}>
+        <h2 className="section-label">{t("settings.info")}</h2>
 
         <div className="setting-item">
           <div className="setting-text">

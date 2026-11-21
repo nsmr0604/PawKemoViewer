@@ -120,6 +120,7 @@ export function CreatorsPage() {
 
   return (
     <div className="page">
+      <h1 className="page-title">{t("nav.creators")}</h1>
       {clipCreator && (
         <div className="clipboard-banner">
           <div className="clipboard-banner-info">

@@ -265,6 +265,7 @@ export function FavoritesPage() {
 
   return (
     <div className="page">
+      <h1 className="page-title">{t("nav.favorites")}</h1>
       <div className="tabs">
         <button className={`tab ${tab === "follows" ? "tab-active" : ""}`} onClick={() => setTab("follows")}>
           {t("nav.favorites")} {newCount > 0 && <span className="badge">{newCount}</span>}
