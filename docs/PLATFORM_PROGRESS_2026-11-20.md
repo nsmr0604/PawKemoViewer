@@ -290,3 +290,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - Mobile and desktop `FileExportService.exportText` now route to this save dialog, so backup export and log export destinations are user-selected rather than silently app-private. Web adapter remains browser-download behavior.
 - Dialog cancellation currently returns a Japanese cancellation string; caller-side UI handling is a follow-up refinement. Import still uses HTML file picker and does not yet implement URI persistence or SAF folder grants.
 - Commits: `f289149` Rust command/registration; `8424707` mobile adapter; `59f3ea0` desktop adapter. Build/device verification remains pending, and frontend dialog plugin dependency/lockfile remains absent.
+
+
+## M2 continuation — save-dialog cancellation UX (2026-11-21)
+- Settings backup and log export now recognize the native save command's `キャンセル` sentinel and display an explicit cancellation message rather than reporting a successful export or attempting clipboard copy.
+- Cancellation handling is caller-side; the service contract still returns a string sentinel, which is fragile and should be replaced with a typed result (cancelled vs saved path) in a future contract slice.
+- No build/typecheck/device/CI validation was run. Native file-path conversion and Android/iOS SAF/Files semantics remain unverified; JS dialog dependency and package-lock synchronization are still blocked.
