@@ -52,7 +52,7 @@ const clipboard: ClipboardService = {
   writeText: async (text) => { try { if (!navigator.clipboard) return false; await navigator.clipboard.writeText(text); return true } catch { return false } },
 }
 
-const files: FileExportService = { exportText: async (filename, content) => { const result = await invoke<string>("save_user_file", { fileName: filename, text: content }); return result === "キャンセル" ? { status: "cancelled" } : { status: "saved", path: result } } }
+const files: FileExportService = { exportText: async (filename, content) => {\n  // Mobile native save picker is intentionally disabled until URI-aware writes are integrated.\n  // Reject before invoking the Rust stub so the error clearly reflects the capability gap.\n  throw new Error("モバイルのユーザー指定ファイル保存はURI対応の実装待ちです")\n} }
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
