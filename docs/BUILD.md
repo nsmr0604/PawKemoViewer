@@ -11,7 +11,8 @@ git push (main)
   ↓
 GitHub Actions
   ├─ Build Tauri (tauri.yml)   Windows / Linux / macOS
-  └─ Android Build (android.yml) universal APK
+  ├─ Android Build (android.yml) universal APK
+  └─ iOS Build (ios.yml)       iOS 端末向け未署名 IPA
   ↓
 rolling prerelease "debug-latest" (デバッグビルド)
 ```
@@ -30,6 +31,7 @@ rolling prerelease "debug-latest" (デバッグビルド)
 | Linux | `PawKemoViewer_0.4.0_amd64.AppImage` / `_amd64.deb` |
 | macOS | `PawKemoViewer_0.4.0_aarch64.dmg` |
 | Android | `PawKemoViewer_0.4.0_universal.apk` (debug.keystore 署名) |
+| iOS | `PawKemoViewer_0.4.0_ios-unsigned.ipa` (未署名・実機インストールには再署名が必要) |
 
 - 実行ファイル名は `pawkemoviewer` (crate 名由来)。Android packageId は
   `com.nsmr0604.pawkemoviewer`
@@ -48,7 +50,14 @@ npm run build:debug                            # VITE_DEBUG_DIAG=1 のフロン�
 npm run tauri:dev                              # 開発実行 (Vite + Tauri + debug-diag)
 npm run tauri:android:dev                      # Android 開発実行 + debug-diag
 npm run tauri:build                            # ローカルリリースバンドル (通常は不要)
+npm run icons:generate                         # pc.png / dark.png から src-tauri/icons/ を生成
 ```
+
+- ネイティブアイコンはリポジトリに置かず、上記 `icons:generate` / `tauri:dev` /
+  `tauri:android:dev` / `tauri:build` が実行時に `scripts/generate-icons.mjs` を呼んで生成する
+  (`src-tauri/icons/` は gitignore 済み)。**PC 向けの `icon.ico` / `icon.icns` /
+  StoreLogo 等は `pc.png` から、Android / iOS は `dark.png` から生成**し、
+  `light.png` はモバイルの代替アイコン専用
 
 - デバッグ診断ビルド (PC): `npm run dev` / `npm run tauri:dev` は `.env.development` により
   `VITE_DEBUG_DIAG` が自動有効。`tauri:dev` は Cargo feature `debug-diag` も指定。debug exe は
@@ -71,6 +80,46 @@ npm run tauri:build                            # ローカルリリースバン�
   (debug.keystore) → リリース添付
 - `on: pull_request` も発火 (artifact のみ)
 
+### ios.yml (iOS Build)
+- `macos-15` runner。`npx tauri ios init` で Xcode プロジェクトを毎回生成
+  (`src-tauri/gen/apple` は git 管理外)。XcodeGen は `brew install xcodegen` で導入
+- Rust target は `aarch64-apple-ios` (端末向け arm64)
+- `npx tauri ios build --no-sign` (既定 target = aarch64) で Codesign を無効化した
+  archive を作り、`PawKemoViewer.ipa` を生成 (Apple Developer 不要)。
+  デバッグビルドは `--features debug-diag` も付ける
+- 成果物は `PawKemoViewer_{VER}_ios-unsigned.ipa` として artifact + リリースへ添付。
+  **未署名のためそのままでは実機/TestFlight にインストール不可**。
+  配布には Apple Developer の証明書/Provisioning Profile での再署名が必要
+
+### モバイルアプリアイコン (ライト / ダーク)
+- リポジトリに入っているアイコン画像は **3 枚**:
+  `src-tauri/app-icons/pc.png` (PC 用キャラクターイラスト)、
+  `dark.png` (モバイル既定・青)、`light.png` (モバイル切替用・グラデーション)
+- `src-tauri/icons/` (desktop / Android / iOS) は dark.png から **ビルド時に生成** し、
+  gitignore している。各 workflow は `tauri * init` / `tauri build` の前に
+  `npm run icons:generate` を実行する
+- Web 用の `public/` アイコン、`index.html` の icon link、旧 `scripts/make-icons.mjs`
+  は削除した (Tauri のネイティブアプリアイコンには不要。`index.html` 自体は
+  WebView のエントリなので全プラットフォームで残す)
+- 切替は `tauri-plugin-app-icon` (Rust) + `app-icon:default` capability を使用。
+  フロントは `src/appIcon.ts` の `syncAppIcon()` をテーマ変更時に呼び、
+  light テーマでは `light` を選択、dark テーマでは `set_icon(null)` で
+  既定の dark アイコンへ戻す (desktop / web は未対応のため無視)
+- 設定: `src-tauri/app-icons.json`。生成スクリプトは
+  `scripts/app-icon/` (上流 `SableClient/tauri-plugin-app-icon` を取込・MIT OR Apache-2.0、
+  npx 固定の変更あり)
+- `tauri android init` / `tauri ios init` 後に各 workflow が生成を実行:
+  - Android: init 後に `npx tauri icon src-tauri/app-icons/dark.png` で primary を再適用
+    (`gen/android` が存在すると生成先 `res/` へ直接書かれるため)、その後
+    `npm run icons:generate:android` → light 用の mipmap 各密度 `ic_launcher_light*`
+    と activity-alias を Manifest に注入 (既定 alias は dark の `ic_launcher`)
+  - iOS: `project.yml` に `# APP-ICON ALIASES START/END` と
+    `ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES` を入れてから
+    `npm run icons:generate:ios` → `AppIconLight.appiconset` のみ生成
+    (既定は dark の `AppIcon.appiconset`)
+- 注意: iOS は代替アイコン切替時に OS の確認ダイアログが出る。Android は alias 切替で
+  ランチャーアイコンが一時的に消えることがある。実機確認は未実施
+
 ### 既知の CI 障害パターン (実測)
 - **Android の gradle が Maven Central 429 (Too Many Requests) で失敗**: 一時的障害。
   次の push で再実行すれば解消 (Rust コンパイルは成功しているので failure でも慌てない)
@@ -81,7 +130,7 @@ npm run tauri:build                            # ローカルリリースバン�
 
 ## バージョニング
 
-- 形式: `0.x.y` (0.3 系)。**互換性を壊す変更はマイナー (0.x) を上げる**
+- 形式: `0.x.y` (main は 0.4 系)。**互換性を壊す変更はマイナー (0.x) を上げる**
 - 更新箇所: `package.json` / `package-lock.json` (`npm install --package-lock-only`) /
   `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`
 - v0.3.0 は破壊的変更 (内部キー・identifier・crate 名の全面改名)。**0.2.x からの
@@ -90,8 +139,8 @@ npm run tauri:build                            # ローカルリリースバン�
 ## 手動リリース手順 (正式版)
 
 1. バージョンを上げてコミット・push (デバッグビルドが回る)
-2. Actions → 「Build Tauri」/「Android Build」→ Run workflow → `release=true`
-3. 両方 success を確認 → リリース `pawkemoviewer-v{VER}` のアセットを確認
+2. Actions → 「Build Tauri」/「Android Build」/「iOS Build」→ Run workflow → `release=true`
+3. 全ワークフロー success を確認 → リリース `pawkemoviewer-v{VER}` のアセットを確認
 4. (将来) 正式配布時: リリース鍵を Secrets 化し debug.keystore をリポジトリから削除
 
 ## クロスプラットフォーム特記事項
@@ -101,6 +150,8 @@ npm run tauri:build                            # ローカルリリースバン�
 - **Android**: WebView 157 / Chrome 157 挙動を前提。debug.keystore は
   Android Studio の debug ビルドと署名が揃う
 - **macOS**: 未署名 (Gatekeeper の右クリック実行が必要)
+- **iOS**: 端末向けの**未署名 IPA** のみ。実機/TestFlight 配布には Apple Developer
+  プログラムと署名証明書・Provisioning Profile による再署名が必要 (現状未対応)
 
 
 ## Lite / Full 開発機能

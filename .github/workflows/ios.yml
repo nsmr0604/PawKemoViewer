@@ -14,6 +14,9 @@ on:
       - "tsconfig.json"
       - "package.json"
       - "package-lock.json"
+      - "scripts/app-icon/**"
+      - "src-tauri/app-icons.json"
+      - "src-tauri/app-icons/**"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
     inputs:
@@ -77,9 +80,42 @@ jobs:
         # ジョブレベル env (VITE_DEBUG_DIAG) を使用
         run: npm run build
 
+      - name: Generate native app icons
+        # src-tauri/icons/ は git 管理外。init 前に dark から生成しておく
+        run: npm run icons:generate
+
       - name: Initialize iOS project
         # src-tauri/gen/apple は git 管理外 (Android と同じく CI で毎回生成)
         run: npx tauri ios init
+
+      - name: Prepare alternate app icons in Xcode spec
+        # tauri ios init が生成する project.yml に、代替アイコンの映射ブロックと
+        # 全 AppIcon アセットをコンパイルする設定を入れる (冪等)。
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const p = 'src-tauri/gen/apple/project.yml'
+          let s = fs.readFileSync(p, 'utf8')
+          const start = '        # APP-ICON ALIASES START'
+          const end = '        # APP-ICON ALIASES END'
+          if (!s.includes(start)) {
+            const m = s.match(/(\n[ \t]+properties:\n)/)
+            if (!m) throw new Error('info.properties not found in project.yml')
+            s = s.replace(m[0], m[0] + start + '\n' + end + '\n')
+          }
+          if (!s.includes('ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS')) {
+            const m = s.match(/(\n[ \t]+ENABLE_BITCODE: false\n)/)
+            if (!m) throw new Error('ENABLE_BITCODE not found in project.yml')
+            s = s.replace(m[0], m[0] + '        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES\n')
+          }
+          fs.writeFileSync(p, s)
+          NODE
+          grep -nE 'APP-ICON ALIASES|INCLUDE_ALL_APPICON' src-tauri/gen/apple/project.yml
+
+      - name: Generate alternate app icon (light)
+        run: |
+          node scripts/app-icon/generate-ios.mjs --config src-tauri/app-icons.json
+          grep -n 'TauriAppIconAliases' src-tauri/gen/apple/project.yml
 
       - name: Build unsigned iOS IPA (device / arm64)
         # 既定 target = aarch64 (iOS 端末)。--no-sign で CODE_SIGNING_ALLOWED=NO の

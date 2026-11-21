@@ -1,6 +1,6 @@
 # Project Status & Roadmap
 
-> 最終更新: 2026-11-20 10:15 JST  
+> 最終更新: 2026-11-21 JST  
 > この文書は、ローカル環境の `notes/` や過去の会話を参照できない開発者・エージェントが、Pawchive の現状と次の作業を把握するための共有引き継ぎです。  
 > 状態が変わったら、このファイルを実装・CI の実態に合わせて更新してください。
 
@@ -340,3 +340,31 @@
 - [x] 日本語 / 英語の `favorites.syncFailed` を追加。
 - [ ] 最新 Android Actions にて Frontend / Android build を確認。直接 main にコミットしたため各 push で run が起動するが concurrency により旧 run はキャンセルされ、最新 head の結果のみ確認する。
 - [ ] local-only `toggleFollow` の呼び出元監査は継続。現時点で `follows.ts` 内に定義が残り、全呼び出経路の確認は未完了。
+
+## iOS ビルド workflow 追加 (2026-11-21 / main = 0.4.0 系)
+- [x] `.github/workflows/ios.yml` を追加・main へ push 済み (`ed8ad387`)。初回 iOS Build run
+      `44885345685` が生成され、ワークフロー認識・YAML 妥当性を確認 (実行結果は未確定)。
+      push(main) / `workflow_dispatch` で発火し、
+      `debug-latest` または `pawkemoviewer-v{VER}` へアセット添付。
+- [x] 成果物は **iOS 端末向けの未署名 IPA** (`PawKemoViewer_{VER}_ios-unsigned.ipa`)。
+      `--no-sign` (既定 target=aarch64) で Apple Developer 登録なしにビルド。
+      未署名のためそのままでは実機/TestFlight にインストール不可 (再署名が必要)。
+- [ ] push して CI を実動確認 (ローカル Windows では Xcode ビルド不可)。初回 run
+      `44885345685` は旧 Simulator 構成のもので、IPA 構成は次回 run で確認。
+- [ ] 実機/TestFlight 配布が必要になったら、署名証明書と Provisioning Profile を
+      GitHub Secrets 化し、`tauri ios build --export-method` を追加する。
+
+## モバイルアプリアイコンのライト/ダーク切替 (2026-11-21)
+- [x] リポジトリのアイコン画像は `src-tauri/app-icons/{pc,dark,light}.png` の 3 枚のみ
+      (pc = PC 用、dark = モバイル既定、light = モバイル切替用)。
+      旧アイコン資産・Web 用 `public/` アイコン・`index.html` の icon link・
+      旧 `scripts/make-icons.mjs` は削除 (`index.html` は WebView の入口のため残す)
+- [x] `src-tauri/icons/` はビルド時生成方式 (gitignore)。`scripts/generate-icons.mjs` が
+      PC アイコンは `pc.png`、Android / iOS は `dark.png` から生成。各 workflow /
+      `tauri:dev` / `tauri:build` が `icons:generate` を先に実行 (ハッシュ一致確認済み)
+- [x] 既定アイコン = dark、代替アイコン = light。`tauri-plugin-app-icon` を導入し、
+      light テーマ時のみ `set_icon('light')`、dark テーマ時は `set_icon(null)` で既定へ戻す
+      (`src/appIcon.ts` / `app-icon:default` capability)。android.yml / ios.yml が
+      `tauri * init` 後に light の代替アイコンと alias を生成
+- [ ] Android / iOS 実機でテーマ切替 → アイコン反映・ランチャーにエントリが 1 つだけ
+      残ることを確認 (未実施)。iOS は OS の確認ダイアログが出る仕様

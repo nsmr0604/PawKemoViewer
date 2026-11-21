@@ -22,6 +22,8 @@ src-tauri/target/
 # tauri bundles
 src-tauri/gen/
 src-tauri/binaries/
+# ネイティブアイコンは src-tauri/app-icons/*.png からビルド時に生成する
+src-tauri/icons/
 
 # rust
 Cargo.lock

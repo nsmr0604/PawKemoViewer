@@ -18,13 +18,15 @@ name = "pawkemoviewer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.7.4" }
+tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
 
 # Tauri
 tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
+# モバイルのライト/ダークアプリアイコン切替 (desktop では unsupported を返す)
+tauri-plugin-app-icon = "0.1.0"
 
 # Logging
 log = "0.4"

@@ -12,6 +12,7 @@ import { LoginPage } from "./pages/Login"
 import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
 import { loadLocale, t } from "./i18n"
 import { resolveLayout, type ResolvedLayout } from "./platform"
+import { syncAppIcon } from "./appIcon"
 import { NavigationRail, NavIcon } from "./components/NavigationRail"
 import { ErrorBox } from "./components"
 
@@ -73,6 +74,11 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme
   }, [route, settingsRev, settings.theme])
+
+  // モバイル: テーマに合わせて代替アプリアイコンを適用 (desktop / web は未対応のため無視)
+  useEffect(() => {
+    void syncAppIcon(settings.theme === "dark" ? "dark" : "light")
+  }, [settings.theme])
 
   useEffect(() => {
     window.scrollTo(0, 0)
