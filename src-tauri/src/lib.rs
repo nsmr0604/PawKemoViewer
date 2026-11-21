@@ -970,6 +970,24 @@ fn export_log(
 }
 
 
+
+/// Native backup picker; cancellation is represented by None.
+#[tauri::command]
+fn open_user_backup(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let selected = tauri_plugin_dialog::DialogExt::dialog(&app)
+        .file()
+        .add_filter("Pawchive backup", &["json"])
+        .pick_file();
+    let Some(selected) = selected else { return Ok(None); };
+    let path = selected.into_path().map_err(|e| e.to_string())?;
+    let metadata = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    if metadata.len() > 5 * 1024 * 1024 {
+        return Err("backup file exceeds 5 MiB limit".into());
+    }
+    let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    Ok(Some(content))
+}
+
 /// Save a user-selected file through the native dialog. Cancellation is non-error.
 #[tauri::command]
 fn save_user_file(app: tauri::AppHandle, file_name: String, text: String) -> Result<String, String> {
@@ -1386,6 +1404,7 @@ pub fn run() {
                 export_log,
                 export_file,
                 save_user_file,
+                open_user_backup,
                 fetch_creator_icon,
                 creator_icon_cache_info,
                 clear_creator_icon_cache,
