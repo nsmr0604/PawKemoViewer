@@ -20,6 +20,8 @@ See the [OS storage capability matrix](os-storage.md) for native validation and 
 
 See the [adaptive presentation design](adaptive-ui.md) for layout and interaction coverage.
 
+See the [stabilization report](stabilization.md) for the dependency check and release evidence.
+
 ## Principles
 - Incremental migrations, behavior-preserving first.
 - Keep platform-specific implementation behind typed contracts.

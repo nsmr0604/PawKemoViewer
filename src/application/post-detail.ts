@@ -1,8 +1,10 @@
-import type { api } from "../api"
-
+import type { PawComment, PawPost, PawRevision } from "../types"
 import { InvalidPostContextError, isValidPostContext, type PostContext } from "../domain/post-identity"
 
-type Dependencies = Pick<typeof api, "post" | "postRevisions" | "postComments"> & {
+type Dependencies = {
+  post(service: string, creatorId: string, postId: string): Promise<PawPost>
+  postRevisions(service: string, creatorId: string, postId: string): Promise<PawRevision[]>
+  postComments(service: string, creatorId: string, postId: string): Promise<PawComment[]>
   status: (error: unknown) => number | null
   info: (message: string) => void
   warn: (message: string) => void

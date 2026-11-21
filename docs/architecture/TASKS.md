@@ -51,7 +51,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 - [x] **M6.4** Layout and interaction test matrix. Depends: M6.2,M6.3.
 
 ## M7 — Stabilization
-- [ ] **M7.1** Add dependency-boundary enforcement. Depends: M2-M4.
+- [x] **M7.1** Add dependency-boundary enforcement. Depends: M2-M4.
 - [ ] **M7.2** Run platform validation matrix and record gaps. Depends: M1-M6.
 - [ ] **M7.3** Prepare release-readiness/debt report. Depends: M7.2.
 
