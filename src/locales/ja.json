@@ -282,7 +282,7 @@
   "settings.localeDeleted": "言語を削除しました: {{code}}",
   "nav.primary": "メインメニュー",
   "nav.menu": "メニュー",
-  "nav.account": "アカウント設定",
+  "nav.account": "アカウント",
   "nav.accountConnected": "ログイン中 · 同期を利用できます",
   "nav.accountGuest": "ログインして同期機能を利用",
   "nav.login": "ログイン",

@@ -282,7 +282,7 @@
   "settings.localeDeleted": "Language deleted: {{code}}",
   "nav.primary": "Primary navigation",
   "nav.menu": "MENU",
-  "nav.account": "Account settings",
+  "nav.account": "Account",
   "nav.accountConnected": "Signed in · Sync is available",
   "nav.accountGuest": "Sign in to enable sync",
   "nav.login": "Sign in",
