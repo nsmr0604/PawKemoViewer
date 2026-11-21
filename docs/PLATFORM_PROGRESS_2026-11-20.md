@@ -322,3 +322,9 @@ Typed LocaleService enumeration isolated in adapters; typed invoke result and pr
 - `save_user_file` similarly assumes a filesystem path and direct `std::fs::File::create`, which is not valid for Android content URI destinations and may not correctly handle iOS scoped file access.
 - The required next change should use dialog + Tauri filesystem plugin URI-aware APIs, with a JS/Rust bridge that enforces size limits, rather than translating content URI to `PathBuf`. Package-lock is present; dependency integration needs proper npm synchronization, which this session cannot perform reliably.
 - No build, typecheck, or device test was run. Do not mark mobile file selection/import/export complete yet.
+
+
+## Mobile WebView export fallback (2026-11-21)
+- Mobile FileExportService now attempts a WebView/browser download using Blob + object URL instead of immediately rejecting backup/log export requests.
+- This is a transitional fallback only: download handling and file location behavior depend on Android/iOS WebView/device configuration. It is not a SAF/Files URI writer and cannot claim user-selected destination support.
+- Build, typecheck, and device testing remain pending; do not mark M2 export fully complete.
