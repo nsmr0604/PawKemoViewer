@@ -133,7 +133,7 @@ jobs:
       - name: Collect unsigned IPA
         run: |
           set -euo pipefail
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VER=$(node -p "require('./package.json').version")
           mkdir -p dist-ios
           ipa=$(printf '%s\n' src-tauri/gen/apple/build/arm64/*.ipa | head -n 1)
           if [ ! -f "$ipa" ]; then
@@ -158,7 +158,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VER=$(node -p "require('./package.json').version")
 
           if [ "${{ inputs.release }}" = "true" ]; then
             TAG="pawkemoviewer-v${VER}"
