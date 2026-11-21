@@ -209,7 +209,7 @@ export function SettingsPage() {
     await applyLocale(locale)
   }
 
-  const useLocalePicker = async (operation: "import" | "export") => {
+  const useLocalePicker = async (operation: "import" | "export" | "export-to-app") => {
     if (localePickerBusy) return
     setLocalePickerBusy(true)
     try {
@@ -226,10 +226,12 @@ export function SettingsPage() {
             break
         }
       } else {
-        const result = await localeUseCases.exportPrivateLocale(locale)
+        const result = await localeUseCases.exportPrivateLocale(locale, operation === "export-to-app" ? "app" : "picker")
         if (result.kind === "missing") setLocaleMsg(t("settings.localePickerMissing"))
         if (result.kind === "invalid-json") setLocaleMsg(t("settings.localeBadJson"))
-        if (result.kind === "saved") setLocaleMsg(t("settings.localePickerSaved"))
+        if (result.kind === "saved") {
+          setLocaleMsg(result.path ? t("settings.localePickerSavedTo", { path: result.path }) : t("settings.localePickerSaved"))
+        }
       }
     } catch (error) {
       setLocaleMsg(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) }))
@@ -476,6 +478,18 @@ export function SettingsPage() {
               <small>{t("settings.localePickerExportDesc")}</small>
             </div>
             <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("export")}>
+              {t("settings.localePickerSave")}
+            </button>
+          </div>
+        )}
+
+        {localeUseCases.canSaveLocaleToAppDirectory && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>{t("settings.localePickerAppFolder")}</span>
+              <small>{t("settings.localePickerAppFolderDesc")}</small>
+            </div>
+            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("export-to-app")}>
               {t("settings.localePickerSave")}
             </button>
           </div>

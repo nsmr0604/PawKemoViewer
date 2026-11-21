@@ -49,6 +49,7 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, i
     },
 
     canPickLocale: picker !== undefined,
+    canSaveLocaleToAppDirectory: picker?.saveToAppDirectory !== undefined,
 
     async pickLocale() {
       if (!picker || !repository) throw new Error("Locale picker unavailable")
@@ -69,12 +70,16 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, i
       return { kind: "saved", code } as const
     },
 
-    async exportPrivateLocale(code: string) {
+    async exportPrivateLocale(code: string, destination: "picker" | "app" = "picker") {
       if (!picker || !repository) throw new Error("Locale picker unavailable")
       const catalogue = await repository.listPrivate()
       const file = catalogue?.files.find((entry) => entry.code === code)
       if (!file) return { kind: "missing" } as const
       if (!isValidJson(file.json)) return { kind: "invalid-json" } as const
+      if (destination === "app") {
+        if (!picker.saveToAppDirectory) throw new Error("App language folder unavailable")
+        return picker.saveToAppDirectory(file.code, file.json)
+      }
       return picker.save(file.code, file.json)
     },
 

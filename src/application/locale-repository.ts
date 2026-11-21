@@ -14,5 +14,6 @@ export interface LocaleRepository {
 
 export interface LocaleFileSelection {
   open(): Promise<{ kind: "cancelled" } | { kind: "selected"; name: string; json: string }>
-  save(code: string, json: string): Promise<{ kind: "cancelled" | "saved" }>
+  save(code: string, json: string): Promise<{ kind: "cancelled" | "saved"; path?: string }>
+  saveToAppDirectory?(code: string, json: string): Promise<{ kind: "saved"; path: string }>
 }

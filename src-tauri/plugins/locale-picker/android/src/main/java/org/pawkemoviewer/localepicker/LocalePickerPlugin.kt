@@ -3,6 +3,10 @@ package org.pawkemoviewer.localepicker
 import android.app.Activity
 import android.content.Intent
 import android.provider.OpenableColumns
+import android.os.Environment
+import android.util.AtomicFile
+import android.util.Log
+import java.io.File
 import androidx.activity.result.ActivityResult
 import app.tauri.plugin.JSObject
 import app.tauri.annotation.ActivityCallback
@@ -23,6 +27,47 @@ class LocaleExportArgs {
 @TauriPlugin
 class LocalePickerPlugin(private val activity: Activity) : Plugin(activity) {
     private val maxBytes = 1024 * 1024
+
+    init {
+        try {
+            languageDirectory()
+        } catch (error: Exception) {
+            Log.w("LocalePicker", "Could not prepare the app language folder", error)
+        }
+    }
+
+    private fun languageDirectory(): File {
+        val documents = activity.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+            ?: error("App-specific external storage is unavailable")
+        val folder = File(documents, "Languages")
+        check(folder.mkdirs() || folder.isDirectory) { "Could not create the app language folder" }
+        return folder
+    }
+
+    @Command
+    fun exportToAppDirectory(invoke: Invoke) {
+        Thread {
+            try {
+                val args = invoke.parseArgs(LocaleExportArgs::class.java)
+                val bytes = args.json.toByteArray(Charsets.UTF_8)
+                require(bytes.size <= maxBytes)
+                require(File(args.filename).name == args.filename && args.filename.endsWith(".json"))
+                val file = File(languageDirectory(), args.filename)
+                val atomicFile = AtomicFile(file)
+                val stream = atomicFile.startWrite()
+                try {
+                    stream.write(bytes)
+                    atomicFile.finishWrite(stream)
+                } catch (error: Exception) {
+                    atomicFile.failWrite(stream)
+                    throw error
+                }
+                invoke.resolve(JSObject().put("kind", "saved").put("path", file.absolutePath))
+            } catch (_: Exception) {
+                invoke.reject("Could not save to the app language folder")
+            }
+        }.start()
+    }
 
     @Command
     fun importLocale(invoke: Invoke) {

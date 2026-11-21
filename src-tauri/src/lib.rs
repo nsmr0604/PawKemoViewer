@@ -1381,6 +1381,18 @@ async fn save_locale_file(app: tauri::AppHandle, code: String, json: String) -> 
     run_locale_picker(&app, "exportLocale", serde_json::json!({ "filename": format!("{code}.json"), "json": json })).await
 }
 
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn save_locale_file_to_app_directory(
+    app: tauri::AppHandle, code: String, json: String,
+) -> Result<serde_json::Value, String> {
+    if !valid_locale_code(&code) || json.len() as u64 > LOCALE_MAX_BYTES {
+        return Err("Invalid locale export".into());
+    }
+    let payload = serde_json::json!({ "filename": format!("{code}.json"), "json": json });
+    run_locale_picker(&app, "exportToAppDirectory", payload).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -1439,6 +1451,8 @@ pub fn run() {
                 pick_locale_file,
                 #[cfg(any(target_os = "android", target_os = "ios"))]
                 save_locale_file,
+                #[cfg(target_os = "android")]
+                save_locale_file_to_app_directory,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している

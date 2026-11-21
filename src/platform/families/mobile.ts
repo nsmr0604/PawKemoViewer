@@ -2,7 +2,7 @@ import { browserStorage, clipboard, indexedDatabase } from "./browser"
 import { invoke } from "@tauri-apps/api/core"
 import { pawchiveApiTransport } from "./native"
 import { onBackButtonPress, exit } from "@tauri-apps/api/app"
-import type { FileExportService, LocaleService, LocalePicker, PlatformServices, StorageArea, StorageLocationService, LifecycleService } from "../contracts"
+import type { FileExportService, LocaleService, LocalePicker, PlatformDescriptor, PlatformServices, StorageArea, StorageLocationService, LifecycleService } from "../contracts"
 
 const lifecycle: LifecycleService = {
   onBackRequested: (handler) => {
@@ -47,7 +47,7 @@ const localePicker: LocalePicker = {
 }
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
-export function createMobileServices(): PlatformServices {
+export function createMobileServices(os?: PlatformDescriptor["os"]): PlatformServices {
   return {
     indexedDatabase,
     storage: browserStorage("localStorage"),
@@ -57,7 +57,10 @@ export function createMobileServices(): PlatformServices {
     logging,
     files,
     locale,
-    localePicker,
+    localePicker: os === "android" ? {
+      ...localePicker,
+      saveToAppDirectory: (code, json) => invoke("save_locale_file_to_app_directory", { code, json }),
+    } : localePicker,
     clipboard,
     lifecycle,
   }

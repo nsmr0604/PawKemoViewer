@@ -231,3 +231,17 @@ test("native locale export sends the selected private file and propagates cancel
   assert.deepEqual(await locales.exportPrivateLocale("es"), { kind: "cancelled" })
   assert.deepEqual(save.mock.calls[0].arguments, ["es", "{}"])
 })
+
+test("app-folder locale export uses its own destination and returns the saved path", async (t) => {
+  const save = t.mock.fn(async () => ({ kind: "cancelled" }))
+  const saveToAppDirectory = t.mock.fn(async () => ({ kind: "saved", path: "/app/Documents/Languages/es.json" }))
+  const repository = { listPrivate: async () => ({ files: [{ code: "es", json: "{}" }] }) }
+  const locales = createLocaleUseCases(repository, () => true, { save, saveToAppDirectory })
+  assert.equal(locales.canSaveLocaleToAppDirectory, true)
+  assert.deepEqual(await locales.exportPrivateLocale("es", "app"), {
+    kind: "saved", path: "/app/Documents/Languages/es.json",
+  })
+  assert.deepEqual(saveToAppDirectory.mock.calls[0].arguments, ["es", "{}"])
+  assert.equal(save.mock.callCount(), 0)
+  assert.equal(createLocaleUseCases(repository, () => true, { save }).canSaveLocaleToAppDirectory, false)
+})

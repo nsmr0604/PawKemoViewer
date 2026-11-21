@@ -1,4 +1,7 @@
 {
+  "settings.localePickerAppFolder": "Export to app folder",
+  "settings.localePickerAppFolderDesc": "Saves to Documents/Languages inside Android/data. An existing export for the same language is updated.",
+  "settings.localePickerSavedTo": "Saved to {{path}}",
   "settings.localePickerImportDesc": "Select one JSON file to validate and copy into app storage.",
   "settings.localePickerOpen": "Open JSON",
   "settings.localePickerExport": "Export active language file",

@@ -1,5 +1,5 @@
 import { getPlatform, isMobile } from "../platform"
-import type { PlatformFamily, PlatformRuntime, PlatformServices } from "./contracts"
+import type { PlatformFamily, PlatformDescriptor, PlatformRuntime, PlatformServices } from "./contracts"
 import { createDesktopServices, createMobileServices, createWebServices } from "./families"
 
 // Keep native-runtime detection centralized. OS detection alone does not imply Tauri/native access.
@@ -9,10 +9,10 @@ function isNativeRuntime(): boolean {
 
 let runtime: PlatformRuntime | null = null
 
-function createFamilyServices(family: PlatformFamily): PlatformServices {
+function createFamilyServices(family: PlatformFamily, os: PlatformDescriptor["os"]): PlatformServices {
   switch (family) {
     case "desktop": return createDesktopServices()
-    case "mobile": return createMobileServices()
+    case "mobile": return createMobileServices(os)
     case "web": return createWebServices()
   }
 }
@@ -23,7 +23,7 @@ export function initializePlatformRuntime(): PlatformRuntime {
   const native = isNativeRuntime()
   const os = getPlatform()
   const family: PlatformFamily = native ? (isMobile() ? "mobile" : "desktop") : "web"
-  runtime = { descriptor: { family, os, isNative: native }, services: createFamilyServices(family) }
+  runtime = { descriptor: { family, os, isNative: native }, services: createFamilyServices(family, os) }
   return runtime
 }
 
