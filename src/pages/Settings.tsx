@@ -274,8 +274,8 @@ export function SettingsPage() {
 
   const doExportBackup = async () => {
     try {
-      const path = await exportBackup()
-      if (path === "キャンセル") {
+      const result = await exportBackup()
+      if (result.status === "cancelled") {
         setBackupResult("バックアップの保存をキャンセルしました")
         return
       }
@@ -286,7 +286,7 @@ export function SettingsPage() {
       } catch {
         /* クリップボード失敗は無視 (ファイル保存で十分) */
       }
-      setBackupResult(t("settings.exported", { path, clip }))
+      setBackupResult(t("settings.exported", { path: result.path, clip }))
       logInfo("バックアップを書き出しました")
 
     } catch (e) {
@@ -348,12 +348,12 @@ export function SettingsPage() {
     try {
       const files = getPlatformRuntime().services.files
       if (!files) throw new Error("File export service unavailable")
-      const path = await files.exportText("pawchive-log.txt", formatLog())
-      if (path === "キャンセル") {
+      const result = await files.exportText("pawchive-log.txt", formatLog())
+      if (result.status === "cancelled") {
         setLogResult("ログの保存をキャンセルしました")
         return
       }
-      setLogResult(t("settings.exported", { path, clip: "" }))
+      setLogResult(t("settings.exported", { path: result.path, clip: "" }))
     } catch (e) {
       setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
     }
