@@ -1,3 +1,5 @@
+import { getApplication } from "../application/composition"
+import { isValidPostContext } from "../application/post-detail"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavPost } from "../favstate"
@@ -27,12 +29,8 @@ export function PostPage({
 }) {
   // 投稿画面を開いた時点で識別子を確定し、詳細・関連API・画面遷移で共通利用する。
   const postContext = { service, creatorId, postId }
-  const validContext =
-    (service === "fanbox" || service === "patreon") &&
-    [creatorId, postId].every(
-      (value) => typeof value === "string" && !!value.trim() &&
-        value !== "undefined" && value !== "null" && !value.includes("/"),
-    )
+  const validContext = isValidPostContext(postContext)
+  const currentLoad = useRef<AbortController | null>(null)
 
   const [post, setPost] = useState<PawPost | null>(null)
   const [comments, setComments] = useState<PawComment[] | null>(null)
@@ -80,13 +78,11 @@ export function PostPage({
   })()
 
   const load = useCallback(async () => {
-    if (!validContext) {
-      const message = `投稿識別子が不正です: service=${String(service)} creatorId=${String(creatorId)} postId=${String(postId)}`
-      logError(message)
-      setPost(null)
-      setError(new Error(message))
-      return
-    }
+    currentLoad.current?.abort()
+    const controller = new AbortController()
+    currentLoad.current = controller
+    const { signal } = controller
+    const context = { service, creatorId, postId }
     setPost(null)
     setError(null)
     setComments(null)
@@ -94,53 +90,18 @@ export function PostPage({
     setRevisionsError(null)
     setSelectedRevisionId(null)
     try {
-      logInfo(`投稿詳細取得開始 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}`)
-      const p = await api.post(postContext.service, postContext.creatorId, postContext.postId)
-      if (
-        String(p.service) !== postContext.service ||
-        String(p.user) !== postContext.creatorId ||
-        String(p.id) !== postContext.postId
-      ) {
-        logWarn(
-          `投稿API応答の識別子不一致 requested=${postContext.service}/${postContext.creatorId}/${postContext.postId} response=${String(p.service)}/${String(p.user)}/${String(p.id)}`,
-        )
-      }
-      const fileCount = (p.file?.path ? 1 : 0) + (p.attachments?.length || 0)
-      logInfo(`投稿詳細取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} files=${fileCount}`)
-      // 改訂履歴を確定してから投稿本文を表示し、旧版が一瞬先に表示されるのを防ぐ。
-      try {
-        const r = await api.postRevisions(postContext.service, postContext.creatorId, postContext.postId)
-        const ordered = (Array.isArray(r) ? r : []).slice().sort((a, b) => {
-          const aTime = Date.parse(a.added || "")
-          const bTime = Date.parse(b.added || "")
-          if (Number.isNaN(aTime) && Number.isNaN(bTime)) return 0
-          if (Number.isNaN(aTime)) return 1
-          if (Number.isNaN(bTime)) return -1
-          return bTime - aTime
-        })
-        setRevisions(ordered)
-        // 投稿詳細APIが現在の最新版。改訂履歴APIの内容は切替用の旧版として保持する。
-        setSelectedRevisionId(null)
-        logInfo(`投稿改訂履歴取得完了 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId} revisions=${ordered.length}`)
-      } catch (e) {
-        if (apiStatus(e) === 404) {
-          // 改訂が無い投稿では API が 404 + 空配列を返す (実測・bugs.md 参照)。
-          // 404 は「改訂なし」扱いにして ErrorBox を出さない
-          setRevisions([])
-          setRevisionsError(null)
-          logInfo(`投稿改訂履歴なし (404) service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}`)
-        } else {
-          setRevisions([])
-          setRevisionsError(e)
-          logError(`投稿改訂履歴取得失敗 service=${postContext.service} creatorId=${postContext.creatorId} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
-        }
-      }
-      setPost(p)
-      api.postComments(postContext.service, postContext.creatorId, postContext.postId).then(setComments).catch(() => setComments([]))
-    } catch (e) {
-      setError(e)
+      const useCases = getApplication().postDetail
+      const detail = await useCases.loadPostDetail(context, signal)
+      if (signal.aborted) return
+      setRevisions(detail.revisions)
+      setRevisionsError(detail.revisionsError)
+      setPost(detail.post)
+      const result = await useCases.loadPostComments(context)
+      if (!signal.aborted) setComments(result)
+    } catch (error) {
+      if (!signal.aborted) setError(error)
     }
-  }, [service, creatorId, postId, validContext])
+  }, [service, creatorId, postId])
 
   useEffect(() => {
     const contextRecord = {
@@ -204,6 +165,7 @@ export function PostPage({
     load()
     setFlagged("none")
     window.scrollTo(0, 0)
+    return () => currentLoad.current?.abort()
   }, [load])
 
   // ライトボックス: 投稿変更時に閉じる (cover 除外はグローバル設定なのでリセットしない)

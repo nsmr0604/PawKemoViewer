@@ -1,9 +1,21 @@
+import { api, apiStatus } from "../api"
+import { logError, logInfo, logWarn } from "../log"
+import { createPostDetailUseCases } from "./post-detail"
 import { parseLocaleJson } from "../i18n"
 import { createLocaleUseCases } from "./locales"
 import { getPlatformRuntime } from "../platform/runtime"
 
 function createApplication() {
   return {
+    postDetail: createPostDetailUseCases({
+      post: api.post,
+      postRevisions: api.postRevisions,
+      postComments: api.postComments,
+      status: apiStatus,
+      info: logInfo,
+      warn: logWarn,
+      error: logError,
+    }),
     locales: createLocaleUseCases(getPlatformRuntime().services.locale, (json) => Boolean(parseLocaleJson(json))),
   }
 }

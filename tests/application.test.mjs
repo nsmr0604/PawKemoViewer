@@ -11,6 +11,7 @@ const server = await createServer({
 after(() => server.close())
 
 const { createLocaleUseCases } = await server.ssrLoadModule("/src/application/locales.ts")
+const { createPostDetailUseCases } = await server.ssrLoadModule("/src/application/post-detail.ts")
 
 test("locale CRUD validates input and sends private and shared writes to their own targets", async (t) => {
   const write = t.mock.fn(async () => {})
@@ -51,4 +52,47 @@ test("locale import snapshots input and reports write failure without stopping t
   pending.resolve("{}")
   assert.deepEqual(await importResult, { kind: "completed", imported: 1, failures: [{ name: "en.json", reason: "write" }] })
   assert.deepEqual(await locales.importLocaleFiles([], "secondary"), { kind: "unavailable" })
+})
+
+const postContext = { service: "fanbox", creatorId: "creator", postId: "post" }
+const post = { service: "fanbox", user: "creator", id: "post" }
+
+test("post detail rejects invalid routes and sorts revisions without mutating the source", async (t) => {
+  const revisions = [{ added: "bad" }, { added: "2024-01-01" }, { added: "2025-01-01" }]
+  const fetchPost = t.mock.fn(async () => post)
+  const detail = createPostDetailUseCases({
+    post: fetchPost, postRevisions: async () => revisions,
+    status: () => null, info() {}, warn() {}, error() {},
+  })
+  await assert.rejects(detail.loadPostDetail({ ...postContext, postId: "a/b" }), /不正/)
+  assert.equal(fetchPost.mock.callCount(), 0)
+  const result = await detail.loadPostDetail(postContext)
+  assert.equal(result.post, post)
+  assert.deepEqual(result.revisions, [revisions[2], revisions[1], revisions[0]])
+  assert.equal(revisions[0].added, "bad")
+})
+
+test("post detail keeps the post on revision errors and cancels before starting revisions", async (t) => {
+  const missing = new Error("missing")
+  const failure = new Error("offline")
+  const pending = Promise.withResolvers()
+  const fetchRevisions = t.mock.fn(async () => { throw missing })
+  const deps = {
+    post: async () => post, postRevisions: fetchRevisions,
+    postComments: async () => { throw failure },
+    status: (error) => error === missing ? 404 : null, info() {}, warn() {}, error() {},
+  }
+  const detail = createPostDetailUseCases(deps)
+  assert.deepEqual(await detail.loadPostDetail(postContext), { post, revisions: [], revisionsError: null })
+  deps.postRevisions = async () => { throw failure }
+  assert.deepEqual(await detail.loadPostDetail(postContext), { post, revisions: [], revisionsError: failure })
+  assert.deepEqual(await detail.loadPostComments(postContext), [])
+  const controller = new AbortController()
+  deps.post = () => pending.promise
+  deps.postRevisions = fetchRevisions
+  const result = detail.loadPostDetail(postContext, controller.signal)
+  controller.abort()
+  pending.resolve(post)
+  await assert.rejects(result, { name: "AbortError" })
+  assert.equal(fetchRevisions.mock.callCount(), 1)
 })
