@@ -416,3 +416,9 @@ M5 browser-only slice: added lifecycle popstate handler subscription to the Web 
 ## Mobile export capability guard (2026-11-21)
 - Mobile FileExportService now fails with a clear URI-integration-pending message before invoking the unsupported Rust save command. This avoids presenting a generic native command failure as though a provider write was attempted.
 - User-selected export remains unimplemented on Android/iOS. Desktop and web paths are unchanged. Source commit `2cf86d3`; no build/typecheck/device validation.
+
+
+## Mobile WebView export fallback (2026-11-21)
+- Mobile FileExportService now attempts a WebView/browser download using Blob + object URL instead of immediately rejecting backup/log export requests.
+- This is a transitional fallback only: download handling and file location behavior depend on Android/iOS WebView/device configuration. It is not a SAF/Files URI writer and cannot claim user-selected destination support.
+- Build, typecheck, and device testing remain pending; do not mark M2 export fully complete.
