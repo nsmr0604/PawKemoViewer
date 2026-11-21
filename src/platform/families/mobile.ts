@@ -1,7 +1,8 @@
+import { browserStorage, clipboard, indexedDatabase } from "./browser"
 import { invoke } from "@tauri-apps/api/core"
 import { pawchiveApiTransport } from "./native"
 import { onBackButtonPress, exit } from "@tauri-apps/api/app"
-import type { ClipboardService, FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService, IndexedDatabaseService, LifecycleService} from "../contracts"
+import type { FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService, LifecycleService } from "../contracts"
 
 const lifecycle: LifecycleService = {
   onBackRequested: (handler) => {
@@ -15,16 +16,6 @@ const lifecycle: LifecycleService = {
   },
   exit: async () => { await exit(0) },
 }
-
-const indexedDatabase: IndexedDatabaseService = { open: (name, version, upgrade) => new Promise((resolve, reject) => { if (typeof indexedDB === "undefined") { reject(new Error("IndexedDB unavailable")); return } const request = indexedDB.open(name, version); request.onupgradeneeded = () => upgrade(request.result); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); request.onblocked = () => reject(new Error("IndexedDB upgrade blocked")) }) }
-
-const storage = typeof localStorage !== "undefined" ? {
-  get: (key: string) => localStorage.getItem(key),
-  set: (key: string, value: string) => localStorage.setItem(key, value),
-  remove: (key: string) => localStorage.removeItem(key),
-} : undefined
-
-const sessionStorageService = typeof sessionStorage !== "undefined" ? { get: (key: string) => sessionStorage.getItem(key), set: (key: string, value: string) => sessionStorage.setItem(key, value), remove: (key: string) => sessionStorage.removeItem(key) } : undefined
 
 const logging = { append: (line: string) => { void import("../../debug").then(({ debugAppendLog }) => debugAppendLog(line)) } }
 
@@ -48,14 +39,20 @@ const locale: LocaleService = {
   delete: async (code) => await invoke<boolean>("delete_locale_file", { code }),
 }
 
-const clipboard: ClipboardService = {
-  readText: async () => { try { return navigator.clipboard ? await navigator.clipboard.readText() : null } catch { return null } },
-  writeText: async (text) => { try { if (!navigator.clipboard) return false; await navigator.clipboard.writeText(text); return true } catch { return false } },
-}
-
 const files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
-  return { indexedDatabase, storage, sessionStorage: sessionStorageService, storageLocations, network: pawchiveApiTransport, logging, files, locale, clipboard, lifecycle }
+  return {
+    indexedDatabase,
+    storage: browserStorage("localStorage"),
+    sessionStorage: browserStorage("sessionStorage"),
+    storageLocations,
+    network: pawchiveApiTransport,
+    logging,
+    files,
+    locale,
+    clipboard,
+    lifecycle,
+  }
 }

@@ -1,8 +1,5 @@
-import type { FileExportService, LocaleService, PlatformServices, IndexedDatabaseService, LifecycleService} from "../contracts"
-
-const indexedDatabase: IndexedDatabaseService = { open: (name, version, upgrade) => new Promise((resolve, reject) => { if (typeof indexedDB === "undefined") { reject(new Error("IndexedDB unavailable")); return } const request = indexedDB.open(name, version); request.onupgradeneeded = () => upgrade(request.result); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); request.onblocked = () => reject(new Error("IndexedDB upgrade blocked")) }) }
-
-const sessionStorageService = typeof sessionStorage !== "undefined" ? { get: (key: string) => sessionStorage.getItem(key), set: (key: string, value: string) => sessionStorage.setItem(key, value), remove: (key: string) => sessionStorage.removeItem(key) } : undefined
+import { browserStorage, clipboard, indexedDatabase } from "./browser"
+import type { FileExportService, LocaleService, PlatformServices, LifecycleService } from "../contracts"
 
 const files: FileExportService = {
   exportText: async (filename, content) => {
@@ -36,23 +33,12 @@ const lifecycle: LifecycleService = {
 /** Browser fallback adapter bundle. Services are selectively implemented during migration. */
 export function createWebServices(): PlatformServices {
   return {
-    indexedDatabase, sessionStorage: sessionStorageService, lifecycle,
-    storage: typeof localStorage !== "undefined" ? {
-      get: (key) => localStorage.getItem(key),
-      set: (key, value) => localStorage.setItem(key, value),
-      remove: (key) => localStorage.removeItem(key),
-    } : undefined,
+    indexedDatabase,
+    storage: browserStorage("localStorage"),
+    sessionStorage: browserStorage("sessionStorage"),
+    lifecycle,
     files,
     locale,
-    clipboard: {
-      readText: async () => {
-        try { return typeof navigator !== "undefined" && navigator.clipboard ? await navigator.clipboard.readText() : null }
-        catch { return null }
-      },
-      writeText: async (text) => {
-        try { if (!navigator.clipboard) return false; await navigator.clipboard.writeText(text); return true }
-        catch { return false }
-      },
-    },
+    clipboard,
   }
 }

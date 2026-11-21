@@ -12,7 +12,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 ## M1 — Platform contracts
 - [x] **M1.1** Design typed replacements for `database?: unknown` and `network?: unknown`; implementation only for clearly scoped consumers. Depends: M0.2,M0.3.
 - [x] **M1.2** Define service capability/unsupported/error semantics (design doc). Depends: M1.1.
-- [ ] **M1.3** Identify/factor common adapter code without altering behavior. Tests first; scope small. Depends: M0.2.
+- [x] **M1.3** Identify/factor common adapter code without altering behavior. Tests first; scope small. Depends: M0.2.
 - [ ] **M1.4** Add contract tests for adapter behavior and runtime initialization edge cases. Depends: M1.1-M1.3.
 
 ## M2 — Use cases

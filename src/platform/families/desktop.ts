@@ -1,16 +1,7 @@
+import { browserStorage, clipboard, indexedDatabase } from "./browser"
 import { invoke } from "@tauri-apps/api/core"
 import { pawchiveApiTransport } from "./native"
-import type { ClipboardService, FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService, IndexedDatabaseService} from "../contracts"
-
-const indexedDatabase: IndexedDatabaseService = { open: (name, version, upgrade) => new Promise((resolve, reject) => { if (typeof indexedDB === "undefined") { reject(new Error("IndexedDB unavailable")); return } const request = indexedDB.open(name, version); request.onupgradeneeded = () => upgrade(request.result); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); request.onblocked = () => reject(new Error("IndexedDB upgrade blocked")) }) }
-
-const storage = typeof localStorage !== "undefined" ? {
-  get: (key: string) => localStorage.getItem(key),
-  set: (key: string, value: string) => localStorage.setItem(key, value),
-  remove: (key: string) => localStorage.removeItem(key),
-} : undefined
-
-const sessionStorageService = typeof sessionStorage !== "undefined" ? { get: (key: string) => sessionStorage.getItem(key), set: (key: string, value: string) => sessionStorage.setItem(key, value), remove: (key: string) => sessionStorage.removeItem(key) } : undefined
+import type { FileExportService, LocaleService, PlatformServices, StorageArea, StorageLocationService } from "../contracts"
 
 const logging = { append: (line: string) => { void import("../../debug").then(({ debugAppendLog }) => debugAppendLog(line)) } }
 
@@ -33,14 +24,19 @@ const locale: LocaleService = {
   delete: async (code) => await invoke<boolean>("delete_locale_file", { code }),
 }
 
-const clipboard: ClipboardService = {
-  readText: async () => { try { return navigator.clipboard ? await navigator.clipboard.readText() : null } catch { return null } },
-  writeText: async (text) => { try { if (!navigator.clipboard) return false; await navigator.clipboard.writeText(text); return true } catch { return false } },
-}
-
 const files: FileExportService = { exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }) }
 
 /** Desktop family centralizes native path resolution behind the common contract. */
 export function createDesktopServices(): PlatformServices {
-  return { indexedDatabase, storage, sessionStorage: sessionStorageService, storageLocations, network: pawchiveApiTransport, logging, files, locale, clipboard }
+  return {
+    indexedDatabase,
+    storage: browserStorage("localStorage"),
+    sessionStorage: browserStorage("sessionStorage"),
+    storageLocations,
+    network: pawchiveApiTransport,
+    logging,
+    files,
+    locale,
+    clipboard,
+  }
 }
