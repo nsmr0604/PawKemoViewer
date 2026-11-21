@@ -33,7 +33,7 @@ FIXTURE = """
 """
 
 
-def test_page(browser, *, width, mobile=False):
+def test_page(browser, *, width, mobile=False, init_script=None):
     mobile_options = {
         "has_touch": True,
         "is_mobile": True,
@@ -43,6 +43,8 @@ def test_page(browser, *, width, mobile=False):
     page.set_default_timeout(5000)
     page.route("**/*", lambda route: route.continue_() if route.request.url.startswith(f"{APP_URL}/") else route.abort())
     page.add_init_script(FIXTURE)
+    if init_script:
+        page.add_init_script(init_script)
     page.goto(APP_URL, wait_until="domcontentloaded")
     expect(page.get_by_text("UI Fixture Post", exact=True)).to_be_visible()
     return page
@@ -158,6 +160,44 @@ def mobile_matrix(browser):
         page.context.close()
 
 
+def long_follow_list_matrix(browser):
+    page = test_page(browser, width=390, mobile=True, init_script="""
+        localStorage.setItem("pawkemo-follows", JSON.stringify(
+            Array.from({length: 80}, (_, index) => ({
+                id: String(index + 1), service: "patreon", name: "Follow " + (index + 1)
+            }))
+        ))
+        const viewport = new EventTarget()
+        Object.defineProperties(viewport, {
+            height: { get: () => window.innerHeight - (window.testViewportInset || 0) },
+            offsetTop: { value: 0 },
+        })
+        Object.defineProperty(window, "visualViewport", { value: viewport })
+    """)
+    try:
+        bottom = page.locator(".bottom-nav")
+        bottom.get_by_role("button", name="フォロー", exact=False).tap()
+        expect(page.locator(".creator-row")).to_have_count(80)
+        page.evaluate("window.scrollTo({top: document.body.scrollHeight, behavior: 'instant'})")
+        assert page.evaluate("window.scrollY > innerHeight")
+        pinned_to = """
+            (inset) => Math.abs(document.querySelector(".bottom-nav").getBoundingClientRect().bottom
+                - (innerHeight - inset)) < 1
+        """
+        page.wait_for_function(pinned_to, arg=0)
+        page.evaluate("window.testViewportInset = 180; visualViewport.dispatchEvent(new Event('resize'))")
+        page.wait_for_function(pinned_to, arg=180)
+        page.evaluate("window.testViewportInset = 0; visualViewport.dispatchEvent(new Event('resize'))")
+        page.wait_for_function(pinned_to, arg=0)
+        bottom.get_by_role("button", name="設定", exact=True).tap()
+        expect(page.get_by_role("heading", name="設定", exact=True)).to_be_visible()
+        page.locator(".top-bar .btn-account").tap()
+        expect(page.locator(".detail-bar")).to_be_visible()
+        expect(bottom).to_be_visible()
+    finally:
+        page.context.close()
+
+
 if __name__ == "__main__":
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(
@@ -167,6 +207,7 @@ if __name__ == "__main__":
         try:
             desktop_matrix(browser)
             mobile_matrix(browser)
+            long_follow_list_matrix(browser)
         finally:
             browser.close()
-    print("PASS: desktop resize and focus, shell settings, keyboard, touch, long query and native Back fixture")
+    print("PASS: desktop resize and focus, shell settings, keyboard, touch, long query, native Back and fixed navigation on long follow lists")

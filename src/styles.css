@@ -230,19 +230,6 @@ body {
   justify-content: space-between;
 }
 
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  display: flex;
-  background: color-mix(in srgb, var(--bg2) 92%, transparent);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid var(--bg3);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
 .bottom-nav button {
   flex: 1;
   min-width: 0;
@@ -2053,13 +2040,12 @@ textarea:focus {
 
 .bottom-nav {
   position: fixed;
-  bottom: 0;
+  bottom: var(--bottom-nav-inset, 0px);
   left: 0;
   right: 0;
   z-index: 20;
   display: flex;
-  background: color-mix(in srgb, var(--bg2) 92%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--bg2);
   border-top: 1px solid var(--bg3);
   gap: 4px;
   padding: 4px max(12px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));

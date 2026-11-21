@@ -78,16 +78,12 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
           </header>
         )}
 
-        <main className={`content ${isLogin ? "content-naked" : ""}`}>
+        <main className={`content ${isDesktopLayout && isLogin ? "content-naked" : ""}`}>
           {isDesktopLayout && (isDetail || isLogin) && <div className="desktop-back">{backButton}</div>}
           {children}
         </main>
-
-        {/* モバイル環境では下部ボトムナビ */}
-        {!isDesktopLayout && !isLogin && (
-          <BottomNavigation currentPath={currentPath} followCount={followCount} />
-        )}
       </div>
+      {!isDesktopLayout && <BottomNavigation currentPath={currentPath} followCount={followCount} />}
     </div>
   )
 }
