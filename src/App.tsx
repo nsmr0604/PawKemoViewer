@@ -9,10 +9,10 @@ import { loadFollows, syncFollowsWithAccount } from "./follows"
 import { useEffect, useState, useCallback } from "react"
 import { LoginPage } from "./pages/Login"
 import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
-import { loadLocale, t } from "./i18n"
+import { loadLocale } from "./i18n"
 import { resolveLayout, type ResolvedLayout } from "./platform"
 import { getPlatformRuntime } from "./platform/runtime"
-import { NavigationRail, NavIcon } from "./components/NavigationRail"
+import { AppShell } from "./components/AppShell"
 import { ErrorBox } from "./components"
 
 export default function App() {
@@ -190,111 +190,9 @@ export default function App() {
       content = <HomePage query={route.query} />
   }
 
-  const isDetail = route.path === "post"
-  const isLogin = route.path === "login"
-  const isDesktopLayout = layout === "desktop"
-  const pageLabel = route.path === "home" || route.path === "search"
-    ? t("nav.home")
-    : route.path === "creators" || route.path === "creator"
-      ? t("nav.creators")
-      : route.path === "favorites"
-        ? t("nav.favorites")
-        : route.path === "settings"
-          ? t("nav.settings")
-          : route.path === "post"
-            ? t("nav.postDetail")
-            : ""
-
   return (
-    <div className={`app ${isDesktopLayout ? "app-desktop" : "app-mobile"}`}>
-      {/* デスクトップ環境では左側ナビゲーションレール (JHenTai 型) */}
-      {isDesktopLayout && !isLogin && (
-        <NavigationRail currentPath={route.path} followCount={followCount} hasSession={!!settings.sessionKey} />
-      )}
-
-      <div className="app-main-wrapper">
-        {!isDetail && !isLogin && (
-          <header className="top-bar">
-            <div className="top-bar-brand">
-              <button type="button" className="logo" onClick={() => navigate("/", true)}>
-                <span aria-hidden="true">🐾</span> PawKemoViewer
-              </button>
-              {pageLabel && <span className="topbar-context">{pageLabel}</span>}
-            </div>
-            <div className="top-bar-actions">
-              {isDesktopLayout && (
-                <div className="desktop-shortcuts-hint" title={t("nav.shortcuts")}>
-                  <span className="kbd">/</span> {t("common.search")}
-                  <span className="kbd">H</span> {t("nav.home")}
-                  <span className="kbd">C</span> {t("nav.creators")}
-                  <span className="kbd">F</span> {t("nav.favorites")}
-                  <span className="kbd">S</span> {t("nav.settings")}
-                </div>
-              )}
-              <button
-                type="button"
-                className="btn btn-account"
-                onClick={() => navigate(settings.sessionKey ? "/settings" : "/login")}
-              >
-                <NavIcon name="account" />
-                <span>{settings.sessionKey ? t("nav.account") : t("nav.login")}</span>
-              </button>
-            </div>
-          </header>
-        )}
-        {(isDetail || isLogin) && (
-          <header className="top-bar detail-bar">
-            <button
-              className="btn btn-ghost"
-              onClick={() => history.back()}
-              title={`${t("common.back")} (Esc)`}
-            >
-              ← {t("common.back")} <span className="kbd small">Esc</span>
-            </button>
-            <button type="button" className="logo small" onClick={() => navigate("/", true)}>🐾 PawKemoViewer</button>
-          </header>
-        )}
-
-        <main className={`content ${isLogin ? "content-naked" : ""}`}>{content}</main>
-
-        {/* モバイル環境では下部ボトムナビ */}
-        {!isDesktopLayout && !isLogin && (
-          <nav className="bottom-nav">
-            <button
-              type="button"
-              className={route.path === "home" || route.path === "search" ? "nav-active" : ""}
-              onClick={() => navigate("/", true)}
-              aria-current={route.path === "home" || route.path === "search" ? "page" : undefined}
-            >
-              <NavIcon name="home" /><span>{t("nav.home")}</span>
-            </button>
-            <button
-              type="button"
-              className={route.path === "creators" || route.path === "creator" ? "nav-active" : ""}
-              onClick={() => navigate("/creators")}
-              aria-current={route.path === "creators" || route.path === "creator" ? "page" : undefined}
-            >
-              <NavIcon name="creators" /><span>{t("nav.creators")}</span>
-            </button>
-            <button
-              type="button"
-              className={route.path === "favorites" ? "nav-active" : ""}
-              onClick={() => navigate("/favorites")}
-              aria-current={route.path === "favorites" ? "page" : undefined}
-            >
-              <NavIcon name="favorites" /><span>{t("nav.favorites")}{followCount > 0 ? ` (${followCount})` : ""}</span>
-            </button>
-            <button
-              type="button"
-              className={route.path === "settings" ? "nav-active" : ""}
-              onClick={() => navigate("/settings")}
-              aria-current={route.path === "settings" ? "page" : undefined}
-            >
-              <NavIcon name="settings" /><span>{t("nav.settings")}</span>
-            </button>
-          </nav>
-        )}
-      </div>
-    </div>
+    <AppShell layout={layout} currentPath={route.path} followCount={followCount} hasSession={!!settings.sessionKey}>
+      {content}
+    </AppShell>
   )
 }
