@@ -202,6 +202,8 @@ body {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
+  /* Tauri モバイルのステータスバー (時計/通知) と重ならないよう上部に safe area を確保 */
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
   background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--bg3);
@@ -1711,6 +1713,7 @@ button, a, input, select, textarea {
 .top-bar {
   min-height: 62px;
   padding: 10px 24px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
   border-bottom-color: var(--surface-border);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.035);
 }
@@ -2013,6 +2016,7 @@ textarea:focus {
   .top-bar {
     min-height: 54px;
     padding: 8px 14px;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
   }
   .topbar-context {
     display: none;
