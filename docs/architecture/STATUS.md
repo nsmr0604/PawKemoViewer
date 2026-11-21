@@ -1,12 +1,14 @@
 # Architecture Refactor Status
 
-- Baseline: `0.5.0` at `cf81e3d` (PR #12). [M0 inventory and validation baseline](inventory.md) complete at `7a6e898`.
-- **M1 complete. M2.1 ready.**
-  - M1.1 (`0269166`): moved the Pawchive API command behind a typed native transport and removed the unused generic database slot. The IndexedDB opener remains the persistence boundary.
-  - M1.2 (`e65f61b`): documented capability and failure behavior. See [platform contracts](platform-contracts.md).
-  - M1.3 (`680122e`): consolidated Web Storage, IndexedDB and Clipboard adapters. Ran the initial adapter tests before and after the extraction.
-  - M1.4: added contract tests for startup, capability gaps, IPC arguments, native listener cleanup, GET coalescing, native status propagation and unavailable storage. Core storage consumers use the typed adapters. Backup restore checks for missing follow storage before altering read state.
-- Files touched: `src/platform/contracts.ts`, `src/platform/families/{browser,desktop,mobile,native,web}.ts`, `src/{api,backup,follows,history,hooks}.ts`, `src/components/FollowButton.tsx`, `src/pages/Favorites.tsx`, `tests/platform.test.mjs`, `package.json`, and `docs/architecture/{README,STATUS,TASKS,platform-contracts}.md`.
-- Validation: `npm run test:platform` (10 passed), `npm run build`, and `npm run build:debug`. Linux `cargo check --locked --offline --manifest-path src-tauri/Cargo.toml -j 4` passed with existing login warnings. It also passed with `--features debug-diag`. Headless Chromium confirmed browser startup, settings persistence, settings route and Back on the Vite dev server.
-- Remaining checks: mock IPC tests verify JavaScript command wiring. Native WebView/IPC, API connectivity and physical-device testing remain open.
-- Next task: M2.1 use-case naming, errors, results and cancellation conventions. M2.2 composition depends on M2.1. M5.1 is also ready from the storage capability design.
+- Baseline: `0.5.0` at `cf81e3d` (PR #12). [M0 inventory](inventory.md) complete at `7a6e898`. [M1 platform contract consolidation](platform-contracts.md) complete at `3565050`.
+- **M2 complete. M3.1 ready.** See [application use cases](use-cases.md) for the migration boundaries.
+  - M2.1 `f21b1c0`: workflow naming, partial results, error propagation and cooperative cancellation.
+  - M2.2 `ad83c3a`: startup composition before settings/locale initialization and UI mount.
+  - M2.3 `6b6bacb`: private/shared locale writes, import results and deletion.
+  - M2.4 `00020bc`: post detail, revisions and separate comment loading. Changed routes cancel follow-on work and suppress stale responses.
+  - M2.5 `a85cafc`: Home page fetch and termination rule.
+  - M2.6: creator index search/build/refresh, profile read wiring and tagged post paging. Legacy rows and refresh order were retained.
+- Files touched: `src/main.tsx`, `src/application/{composition,locales,post-detail,post-pages,creators}.ts`, `src/pages/{Settings,PostPage,Home,Creators,CreatorPage}.tsx`, `tests/application.test.mjs`, `package.json`, and `docs/architecture/{README,TASKS,STATUS,use-cases}.md`.
+- Validation: `npm run test:application` (8 passed), `npm run test:platform` (10 passed), `npm run build`, `npm run build:debug`, and `git diff --check`. Chromium with fixture Tauri IPC exercised Home, Post with revisions returning 404, Creator index, and Creator profile/post list through the running Vite app.
+- Remaining checks: real native IPC, live API and device workflows are unverified. Rust and workflow files were outside this milestone. Cancellation prevents subsequent writes or stale display updates. Requests and writes already started are not terminated by the UI.
+- Next task: M3.1 design a repository contract for a migrated slice. Locale CRUD is the initial candidate because its operations and existing failure semantics are already explicit. M3.3 DB ownership inventory and M5.1 platform storage capability matrix have their prerequisites.

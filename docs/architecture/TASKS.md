@@ -21,7 +21,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 - [x] **M2.3** Migrate a low-risk slice (select based on inventory; default locale CRUD or favorites) to a Use Case. Depends: M2.2.
 - [x] **M2.4** Migrate post-detail workflow to Use Case with behavior preservation. Depends: M2.3.
 - [x] **M2.5** Migrate home-post workflow. Depends: M2.4.
-- [ ] **M2.6** Migrate creator listing/profile workflow. Depends: M2.4; can parallelize with M2.5 only if no shared-file conflicts.
+- [x] **M2.6** Migrate creator listing/profile workflow. Depends: M2.4; can parallelize with M2.5 only if no shared-file conflicts.
 
 ## M3 — Repositories / infrastructure
 - [ ] **M3.1** Repository contract design for one migrated slice. Depends: M2.3.

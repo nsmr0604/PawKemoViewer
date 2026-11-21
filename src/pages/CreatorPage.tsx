@@ -1,5 +1,7 @@
+import { getApplication } from "../application/composition"
+import { POST_PAGE_SIZE } from "../application/post-pages"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, creatorUrl, ApiError, getSettings, updateSettings } from "../api"
+import { creatorUrl, ApiError, getSettings, updateSettings } from "../api"
 import type { PawPost, PawTag } from "../types"
 import { Spinner, PostGrid, ErrorBox } from "../components"
 import { CreatorHeader } from "./Creators"
@@ -8,7 +10,6 @@ import { useScrollMemory } from "../hooks"
 import { parseHash } from "../router"
 import { t } from "../i18n"
 
-const PAGE = 50
 
 export function CreatorPage({ service, id }: { service: string; id: string }) {
   const [posts, setPosts] = useState<PawPost[]>([])
@@ -43,14 +44,11 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
       setLoading(true)
       setError(null)
       try {
-        const res = await api.creatorPosts(service, id, {
-          tag: selectedTags.length ? selectedTags : undefined,
-          o,
-        })
+        const page = await getApplication().loadCreatorPosts({ service, id, tags: selectedTags, offset: o })
         if (seq !== reqSeq.current) return // 古いレスポンスは破棄
-        setPosts((prev) => (replace ? res : [...prev, ...res]))
+        setPosts((prev) => (replace ? page.posts : [...prev, ...page.posts]))
         setOffset(o)
-        if (res.length < PAGE) setDone(true)
+        if (page.done) setDone(true)
       } catch (e) {
         if (seq === reqSeq.current) setError(e)
       } finally {
@@ -65,14 +63,14 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
     setDone(false)
     setError(null)
     load(0, true)
+    return () => { reqSeq.current++ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterKey])
 
   useEffect(() => {
     let alive = true
     setTags(null)
-    api
-      .creatorTags(service, id)
+    getApplication().loadCreatorTags(service, id)
       .then((t) => alive && setTags(t))
       .catch(() => alive && setTags([]))
     return () => {
@@ -84,8 +82,7 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
   useEffect(() => {
     let alive = true
     setOriginalUrl(null)
-    api
-      .originalCreatorUrl(service, id)
+    getApplication().loadOriginalCreatorUrl(service, id)
       .then((u) => {
         if (alive) setOriginalUrl(u)
       })
@@ -183,7 +180,7 @@ export function CreatorPage({ service, id }: { service: string; id: string }) {
         loading={loading}
         done={done}
         viewMode={viewMode}
-        onEndReached={loading || done ? undefined : () => load(offset + PAGE, false)}
+        onEndReached={loading || done ? undefined : () => load(offset + POST_PAGE_SIZE, false)}
       />
       {!loading && !error && posts.length === 0 && done && <div className="empty">{t("home.empty")}</div>}
     </div>

@@ -12,3 +12,9 @@ export function createHomePostUseCase(posts: typeof api.posts) {
     return postPage(await posts({ q: query || undefined, o: offset }))
   }
 }
+
+export function createCreatorPostUseCase(posts: typeof api.creatorPosts) {
+  return async ({ service, id, tags, offset }: { service: string; id: string; tags: string[]; offset: number }) => {
+    return postPage(await posts(service, id, { tag: tags.length ? tags : undefined, o: offset }))
+  }
+}

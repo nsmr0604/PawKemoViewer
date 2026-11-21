@@ -12,7 +12,8 @@ after(() => server.close())
 
 const { createLocaleUseCases } = await server.ssrLoadModule("/src/application/locales.ts")
 const { createPostDetailUseCases } = await server.ssrLoadModule("/src/application/post-detail.ts")
-const { createHomePostUseCase } = await server.ssrLoadModule("/src/application/post-pages.ts")
+const { createHomePostUseCase, createCreatorPostUseCase } = await server.ssrLoadModule("/src/application/post-pages.ts")
+const { createCreatorUseCases } = await server.ssrLoadModule("/src/application/creators.ts")
 
 test("locale CRUD validates input and sends private and shared writes to their own targets", async (t) => {
   const write = t.mock.fn(async () => {})
@@ -107,4 +108,62 @@ test("home posts preserve query and offset and stop on a short page", async (t) 
   assert.deepEqual(fetchPosts.mock.calls.map(({ arguments: args }) => args[0]), [
     { q: undefined, o: 0 }, { q: "keyword", o: 50 },
   ])
+})
+
+test("creator paging forwards tags and leaves unfiltered requests unchanged", async (t) => {
+  const fetchPosts = t.mock.fn(async () => [])
+  const loadCreatorPosts = createCreatorPostUseCase(fetchPosts)
+  assert.deepEqual(await loadCreatorPosts({ service: "fanbox", id: "42", tags: ["x", "y"], offset: 50 }), { posts: [], done: true })
+  await loadCreatorPosts({ service: "fanbox", id: "42", tags: [], offset: 0 })
+  assert.deepEqual(fetchPosts.mock.calls.map(({ arguments: args }) => args), [
+    ["fanbox", "42", { tag: ["x", "y"], o: 50 }],
+    ["fanbox", "42", { tag: undefined, o: 0 }],
+  ])
+})
+
+test("creator index reuses eligible legacy rows and preserves direct post links", async (t) => {
+  const row = { id: "42", name: "Example", service: "fanbox", publicIdLower: "example", updated: 0 }
+  const save = t.mock.fn(async () => {})
+  const resetIndex = t.mock.fn()
+  const creators = createCreatorUseCases({
+    indexVersion: 3, version: async () => 2, count: async () => 1,
+    search: async () => [row], normalize: () => ({ service: "fanbox", postId: "123" }),
+    legacyRows: async () => [row], save, resetIndex,
+    fetchCreators: () => assert.fail("legacy migration should not download"),
+  })
+  assert.equal(await creators.needsCreatorIndexBuild(await creators.countCreators()), true)
+  assert.equal(await creators.buildCreatorIndex(1), 1)
+  assert.deepEqual(save.mock.calls[0].arguments, [[row]])
+  assert.equal(resetIndex.mock.callCount(), 1)
+  assert.deepEqual(await creators.searchCreatorIndex("query"), {
+    rows: [row], postLink: { service: "fanbox", creatorId: "42", postId: "123", name: "Example" },
+  })
+})
+
+test("creator refresh keeps cache clearing order, maps full rows and skips writes after cancellation", async () => {
+  const calls = []
+  const data = [{ service: "fanbox", id: "42", name: "Example", public_id: "Slug", updated: "2025-01-01" }]
+  const deps = {
+    indexVersion: 3, version: async () => 3,
+    clearApiCache: () => calls.push("clear API"),
+    resetIndex: () => calls.push("invalidate index"),
+    fetchCreators: async () => { calls.push("download"); return data },
+    save: async (rows) => calls.push(rows),
+  }
+  const creators = createCreatorUseCases(deps)
+  assert.equal(await creators.needsCreatorIndexBuild(1), false)
+  assert.equal(await creators.refreshCreatorIndex(), 1)
+  assert.deepEqual(calls, ["clear API", "invalidate index", "download", [{
+    key: "fanbox:42", service: "fanbox", id: "42", name: "Example", nameLower: "example",
+    publicId: "Slug", publicIdLower: "slug", updated: Date.parse("2025-01-01"),
+  }]])
+
+  const controller = new AbortController()
+  const deferred = Promise.withResolvers()
+  deps.fetchCreators = () => deferred.promise
+  deps.save = () => assert.fail("cancelled download was persisted")
+  const result = creators.buildCreatorIndex(0, controller.signal)
+  controller.abort()
+  deferred.resolve(data)
+  await assert.rejects(result, { name: "AbortError" })
 })
