@@ -4,7 +4,7 @@ Status legend: `TODO`, `BLOCKED`, `IN_PROGRESS`, `DONE`. No task is considered d
 Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.md before execution.
 
 ## M0 — Inventory
-- [ ] **M0.1** Inventory app entrypoints and dependency map. Deliver `docs/architecture/inventory.md`. No code changes. Dependencies: none.
+- [x] **M0.1** Inventory app entrypoints and dependency map. Deliver `docs/architecture/inventory.md`. No code changes. Dependencies: none.
 - [ ] **M0.2** Inventory PlatformRuntime bootstrap, contract fields, adapter coverage and consumers. Deliver contract matrix in inventory. Depends: M0.1.
 - [ ] **M0.3** Map feature-to-API/DB/cache/platform direct accesses. Include file and symbols. Depends: M0.1.
 - [ ] **M0.4** Establish validation baseline and test gaps. Report checks actually run, not assumed. Depends: M0.1-M0.3.

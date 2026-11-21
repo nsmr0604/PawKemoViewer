@@ -8,6 +8,8 @@ This folder contains the tracked roadmap and handoffs for evolving the experimen
 3. [AGENT_WORKFLOW.md](AGENT_WORKFLOW.md) — shared instructions for contributors/agents.
 4. [STATUS.md](STATUS.md) — current focus, handoff and validation.
 
+See the [baseline inventory](inventory.md) for code references and validation.
+
 ## Principles
 - Incremental migrations, behavior-preserving first.
 - Keep platform-specific implementation behind typed contracts.

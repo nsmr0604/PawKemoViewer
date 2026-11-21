@@ -1,16 +1,6 @@
 # Architecture Refactor Status
 
-- Baseline branch: `0.5.0`
-- Roadmap branch: `architecture/roadmap-layered-refactor`
-- Overall: **planning established; implementation tasks not started**
-- Current focus: **M0.1 inventory app entrypoints and dependency map**
-- Completed: roadmap/task breakdown/agent workflow published on this branch.
-- Validation: documentation review only; no build or tests run for this documentation change.
-- Known caveat: prior notes folder is gitignored and cannot serve as cross-agent handoff; use this tracked folder.
-
-## Next ready tasks
-1. M0.1 inventory app entrypoints and dependency map.
-2. Start M0.1 first; M0.2-M0.4 depend on inventory evidence.
-
-## Handoff
-This branch only adds architecture planning documents. It does not refactor code, test runtime behavior, or alter platform architecture.
+- Baseline: `0.5.0` at `cf81e3d` (PR #12).
+- M0.1 complete. The [inventory](inventory.md) records the browser and native entrypoints and their dependencies. Cross-checked against `index.html`, `src/main.tsx`, `src/App.tsx`, `src/router.ts` and the Tauri entrypoint/configuration.
+- Files changed: `inventory.md`, `README.md`, `TASKS.md`, `STATUS.md`.
+- Next ready: M0.2 adapter/contract inventory and M0.3 feature/data inventory. M0.4 records the baseline checks after both are complete.
