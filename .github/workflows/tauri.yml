@@ -43,7 +43,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(jq -r '.version' src-tauri/tauri.conf.json)
+          VER=$(jq -r '.version' package.json)
           TAG="pawkemoviewer-v${VER}"
 
           # 同じバージョンの既存リリースからPC向け成果物だけを削除する。
@@ -64,7 +64,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(jq -r '.version' src-tauri/tauri.conf.json)
+          VER=$(jq -r '.version' package.json)
           TAG=debug-latest
 
           # rolling prerelease debug-latest から現行バージョン以外のアセットを掃除

@@ -12,7 +12,9 @@
     "tauri:dev": "tauri dev --features debug-diag",
     "tauri:build": "tauri build",
     "tauri:android:dev": "tauri android dev --features debug-diag",
-    "build:debug": "tsc -b && vite build --mode development"
+    "build:debug": "tsc -b && vite build --mode development",
+    "sync:version": "node scripts/sync-version.mjs",
+    "postversion": "node scripts/sync-version.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.5",

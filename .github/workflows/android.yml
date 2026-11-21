@@ -104,7 +104,7 @@ jobs:
           set -e
           BT="$ANDROID_HOME/build-tools/35.0.0"
           KS="$GITHUB_WORKSPACE/src-tauri/android-debug.keystore"
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VER=$(node -p "require('./package.json').version")
           mkdir -p dist-apk
 
           for apk in $(find src-tauri/gen/android/app/build/outputs -type f -name "*.apk"); do
@@ -144,7 +144,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VER=$(node -p "require('./package.json').version")
 
           if [ "${{ inputs.release }}" = "true" ]; then
             gh release upload "pawkemoviewer-v${VER}" dist-apk/*.apk --clobber \
