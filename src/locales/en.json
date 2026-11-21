@@ -1,4 +1,12 @@
 {
+  "settings.localePickerImportDesc": "Select one JSON file to validate and copy into app storage.",
+  "settings.localePickerOpen": "Open JSON",
+  "settings.localePickerExport": "Export active language file",
+  "settings.localePickerExportDesc": "Exports the copy in app storage for the selected language.",
+  "settings.localePickerSave": "Save JSON",
+  "settings.localePickerConflict": "A file for {{code}} already exists. Nothing was overwritten.",
+  "settings.localePickerMissing": "There is no private file for the selected language.",
+  "settings.localePickerSaved": "Language file saved.",
   "nav.home": "Home",
   "nav.creators": "Creators",
   "nav.favorites": "Following",

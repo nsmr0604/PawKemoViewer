@@ -47,6 +47,7 @@ function fmtTs(ms: number | undefined): string {
 
 export function SettingsPage() {
   const s = getSettings()
+  const localeUseCases = getApplication().locales
   const supportsSecondaryLocale = getPlatformRuntime().descriptor.family === "desktop"
 
   const [theme, setTheme] = useState<"dark" | "light">(s.theme)
@@ -71,6 +72,7 @@ export function SettingsPage() {
   const [backupPaste, setBackupPaste] = useState("")
   const [showBackupPaste, setShowBackupPaste] = useState(false)
   const [localeList, setLocaleList] = useState<LocaleInfo[]>(() => availableLocales())
+  const [localePickerBusy, setLocalePickerBusy] = useState(false)
   const [localeMsg, setLocaleMsg] = useState<string | null>(null)
   const [localeAddOpen, setLocaleAddOpen] = useState(false)
   const [localeAddCode, setLocaleAddCode] = useState("")
@@ -205,6 +207,35 @@ export function SettingsPage() {
       setLocaleMsg(failures.length ? `インポート数: ${imported}; スキップ: ${skipped}` : `Imported ${imported} 件の言語ファイル`)
     }
     await applyLocale(locale)
+  }
+
+  const useLocalePicker = async (operation: "import" | "export") => {
+    if (localePickerBusy) return
+    setLocalePickerBusy(true)
+    try {
+      if (operation === "import") {
+        const result = await localeUseCases.pickLocale()
+        switch (result.kind) {
+          case "cancelled": break
+          case "invalid-code": setLocaleMsg(t("settings.localeBadCode")); break
+          case "invalid-json": setLocaleMsg(t("settings.localeBadJson")); break
+          case "conflict": setLocaleMsg(t("settings.localePickerConflict", { code: result.code })); break
+          case "saved":
+            await reloadLocales()
+            setLocaleMsg(t("settings.localeAdded", { code: result.code }))
+            break
+        }
+      } else {
+        const result = await localeUseCases.exportPrivateLocale(locale)
+        if (result.kind === "missing") setLocaleMsg(t("settings.localePickerMissing"))
+        if (result.kind === "invalid-json") setLocaleMsg(t("settings.localeBadJson"))
+        if (result.kind === "saved") setLocaleMsg(t("settings.localePickerSaved"))
+      }
+    } catch (error) {
+      setLocaleMsg(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) }))
+    } finally {
+      setLocalePickerBusy(false)
+    }
   }
 
   const deleteLocale = async (code: string) => {
@@ -416,7 +447,7 @@ export function SettingsPage() {
             </div>
             <label className="btn">
               共有ファイル選択
-              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
+              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files, "secondary"); e.currentTarget.value = "" }} />
             </label>
           </div>
         )}
@@ -424,13 +455,31 @@ export function SettingsPage() {
         <div className="setting-item">
           <div className="setting-text">
             <span>言語JSONファイルをインポート</span>
-            <small>端末からJSONファイルを複数選択できます。検証後、アプリ専用領域へコピーします。</small>
+            <small>{localeUseCases.canPickLocale ? t("settings.localePickerImportDesc") : "端末からJSONファイルを複数選択できます。検証後、アプリ専用領域へコピーします。"}</small>
           </div>
-          <label className="btn">
-            ファイル選択
-            <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files, "secondary"); e.currentTarget.value = "" }} />
-          </label>
+          {localeUseCases.canPickLocale ? (
+            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("import")}>
+              {t("settings.localePickerOpen")}
+            </button>
+          ) : (
+            <label className="btn">
+              ファイル選択
+              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
+            </label>
+          )}
         </div>
+
+        {localeUseCases.canPickLocale && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>{t("settings.localePickerExport")}</span>
+              <small>{t("settings.localePickerExportDesc")}</small>
+            </div>
+            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("export")}>
+              {t("settings.localePickerSave")}
+            </button>
+          </div>
+        )}
 
         {localeAddOpen && (
           <div className="field">

@@ -1,4 +1,12 @@
 {
+  "settings.localePickerImportDesc": "JSONを1件選び、検証後にアプリ専用領域へコピーします。",
+  "settings.localePickerOpen": "JSONを開く",
+  "settings.localePickerExport": "使用中の言語ファイルを書き出す",
+  "settings.localePickerExportDesc": "選択中の言語のアプリ専用ファイルを書き出します。",
+  "settings.localePickerSave": "JSONを保存",
+  "settings.localePickerConflict": "{{code}} はすでに存在します。上書きしませんでした。",
+  "settings.localePickerMissing": "選択中の言語にアプリ専用ファイルがありません。",
+  "settings.localePickerSaved": "言語ファイルを保存しました。",
   "nav.home": "ホーム",
   "nav.creators": "クリエイター",
   "nav.favorites": "フォロー",

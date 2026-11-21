@@ -1,4 +1,4 @@
-import type { LocaleRepository } from "./locale-repository"
+import type { LocaleFileSelection, LocaleRepository } from "./locale-repository"
 
 const LOCALE_CODE = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/
 const MAX_LOCALE_BYTES = 1024 * 1024
@@ -6,7 +6,7 @@ const MAX_LOCALE_BYTES = 1024 * 1024
 type LocaleFile = Pick<File, "name" | "size" | "text">
 type ImportFailure = { name: string; reason: "code" | "size" | "json" | "write" }
 
-export function createLocaleUseCases(repository: LocaleRepository | undefined, isValidJson: (json: string) => boolean) {
+export function createLocaleUseCases(repository: LocaleRepository | undefined, isValidJson: (json: string) => boolean, picker?: LocaleFileSelection) {
   return {
     async addLocale(rawCode: string, json: string) {
       const code = rawCode.trim()
@@ -46,6 +46,36 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, i
         }
       }
       return { kind: "completed", imported, failures } as const
+    },
+
+    canPickLocale: picker !== undefined,
+
+    async pickLocale() {
+      if (!picker || !repository) throw new Error("Locale picker unavailable")
+      const result = await picker.open()
+      if (result.kind === "cancelled") return result
+      const code = result.name.replace(/\.json$/i, "")
+      if (!LOCALE_CODE.test(code)) return { kind: "invalid-code" } as const
+      if (new TextEncoder().encode(result.json).length > MAX_LOCALE_BYTES || !isValidJson(result.json)) {
+        return { kind: "invalid-json" } as const
+      }
+      const catalogue = await repository.listPrivate()
+      if (!catalogue) throw new Error("Could not check existing locale files")
+      const filename = `${code.toLowerCase()}.json`
+      const exists = catalogue.files.some((file) => file.code.toLowerCase() === code.toLowerCase())
+        || catalogue.invalid.some((name) => name.toLowerCase() === filename)
+      if (exists) return { kind: "conflict", code } as const
+      await repository.writePrivate(code, result.json, false)
+      return { kind: "saved", code } as const
+    },
+
+    async exportPrivateLocale(code: string) {
+      if (!picker || !repository) throw new Error("Locale picker unavailable")
+      const catalogue = await repository.listPrivate()
+      const file = catalogue?.files.find((entry) => entry.code === code)
+      if (!file) return { kind: "missing" } as const
+      if (!isValidJson(file.json)) return { kind: "invalid-json" } as const
+      return picker.save(file.code, file.json)
     },
 
     async deleteLocale(code: string) {

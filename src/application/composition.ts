@@ -10,7 +10,8 @@ import { createLocaleUseCases } from "./locales"
 import { getPlatformRuntime } from "../platform/runtime"
 
 function createApplication() {
-  const locales = createLocaleRepository(getPlatformRuntime().services.locale)
+  const services = getPlatformRuntime().services
+  const locales = createLocaleRepository(services.locale)
   return {
     creators: createCreatorUseCases(creatorIndexRepository),
     loadCreatorPosts: createCreatorPostUseCase(api.creatorPosts),
@@ -27,7 +28,7 @@ function createApplication() {
       warn: logWarn,
       error: logError,
     }),
-    locales: createLocaleUseCases(locales, (json) => Boolean(parseLocaleJson(json))),
+    locales: createLocaleUseCases(locales, (json) => Boolean(parseLocaleJson(json)), services.localePicker),
     refreshLocales: () => refreshLocales(locales),
   }
 }

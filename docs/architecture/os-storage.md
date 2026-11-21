@@ -66,3 +66,11 @@ The script compiles an arm64 device executable, checks that it has no code-signa
 ## Locale behavior to preserve in M5.5
 
 Keep the existing overlay order (bundled, then private, then secondary, with later entries overriding earlier keys) and the locale repository's distinction between private and secondary writes. For a new picker path, validate the filename, byte limit and dictionary before cataloguing a file. Cancellation and validation failure leave the catalogue unchanged. Treat a duplicate locale code or export name as an explicit conflict decision when adding a new destination workflow. M5.4 adapter integration and the M5.5 locale flow depend on the native checks above.
+
+## M5.4–M5.5 — Integrated mobile locale workflow
+
+The app now wires two mobile-only Tauri commands to a bundled native plugin. Android uses SAF open/create and provider streams. iOS uses a copied import and a staged export via the Files picker. Cancel is distinct from failure. The plugin reads at most 1 MiB, and only the bounded UTF-8 text and filename cross the bridge. The app retains no URI grant, adds no broad Android storage permission and does not expose a writable directory.
+
+Settings imports a new private locale copy. It validates the locale code and dictionary, refuses a duplicate code (including case variants), and checks the conflict again in Rust under the private-write lock. Export writes the private file for the currently selected language. The existing bundled/private/desktop shared overlay precedence stays in place. The existing desktop and browser file input routes now match their respective private and shared labels.
+
+Validation in Cloud covered the application and mock IPC tests, normal/debug frontend builds, and Linux Rust check with and without diagnostics. The earlier device probes establish system-picker feasibility. The integrated apps still need Android/iOS target builds and a device pass covering import, cancel, duplicate import, export and readback. On iOS the picker requires iOS 14+.

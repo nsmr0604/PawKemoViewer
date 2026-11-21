@@ -201,3 +201,33 @@ test("creator DTO normalization preserves missing fields and supported date repr
       publicId: "Slug", publicIdLower: "slug", updated: 1672531200, indexed: 0, favorited: 0 },
   ])
 })
+
+test("native locale import handles cancellation, rejects conflicts, and writes a new private copy", async (t) => {
+  const writePrivate = t.mock.fn(async () => {})
+  const picker = { open: async () => ({ kind: "cancelled" }) }
+  const repository = {
+    listPrivate: async () => ({ files: [{ code: "en", json: "{}" }], invalid: ["de.json"] }),
+    writePrivate,
+  }
+  const locales = createLocaleUseCases(repository, (text) => text === "{}", picker)
+  assert.deepEqual(await locales.pickLocale(), { kind: "cancelled" })
+  for (const code of ["EN", "de"]) {
+    picker.open = async () => ({ kind: "selected", name: code + ".json", json: "{}" })
+    assert.deepEqual(await locales.pickLocale(), { kind: "conflict", code })
+  }
+  picker.open = async () => ({ kind: "selected", name: "es.json", json: "bad" })
+  assert.deepEqual(await locales.pickLocale(), { kind: "invalid-json" })
+  assert.equal(writePrivate.mock.callCount(), 0)
+  picker.open = async () => ({ kind: "selected", name: "es.json", json: "{}" })
+  assert.deepEqual(await locales.pickLocale(), { kind: "saved", code: "es" })
+  assert.deepEqual(writePrivate.mock.calls[0].arguments, ["es", "{}", false])
+})
+
+test("native locale export sends the selected private file and propagates cancel", async (t) => {
+  const save = t.mock.fn(async () => ({ kind: "cancelled" }))
+  const repository = { listPrivate: async () => ({ files: [{ code: "es", json: "{}" }], invalid: [] }) }
+  const locales = createLocaleUseCases(repository, () => true, { save })
+  assert.deepEqual(await locales.exportPrivateLocale("ja"), { kind: "missing" })
+  assert.deepEqual(await locales.exportPrivateLocale("es"), { kind: "cancelled" })
+  assert.deepEqual(save.mock.calls[0].arguments, ["es", "{}"])
+})
