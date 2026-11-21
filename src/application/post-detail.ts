@@ -1,20 +1,12 @@
 import type { api } from "../api"
 
-type PostContext = { service: string; creatorId: string; postId: string }
+import { isValidPostContext, type PostContext } from "../domain/post-identity"
 
 type Dependencies = Pick<typeof api, "post" | "postRevisions" | "postComments"> & {
   status: (error: unknown) => number | null
   info: (message: string) => void
   warn: (message: string) => void
   error: (message: string) => void
-}
-
-export function isValidPostContext({ service, creatorId, postId }: PostContext) {
-  return (service === "fanbox" || service === "patreon") &&
-    [creatorId, postId].every(
-      (value) => typeof value === "string" && !!value.trim() &&
-        value !== "undefined" && value !== "null" && !value.includes("/"),
-    )
 }
 
 export function createPostDetailUseCases(deps: Dependencies) {

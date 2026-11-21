@@ -1,5 +1,5 @@
 import { getApplication } from "../application/composition"
-import { isValidPostContext } from "../application/post-detail"
+import { isValidPostContext } from "../domain/post-identity"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavPost } from "../favstate"
