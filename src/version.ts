@@ -8,5 +8,5 @@ const IS_DEBUG = /^\d+$/.test(RAW_REV)
 const COMMIT = /^[0-9a-f]{7,40}$/i.test(RAW_COMMIT) ? RAW_COMMIT.slice(0, 7) : ""
 
 export function displayAppVersion(version: string): string {
-  return IS_DEBUG && COMMIT ? `${version}(${COMMIT})` : version
+  return IS_DEBUG && COMMIT ? `${version} (${COMMIT})` : version
 }

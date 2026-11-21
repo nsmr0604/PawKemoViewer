@@ -65,7 +65,9 @@
   で既定 (dark) に戻す。
 - Android: light 用 mipmap + `activity-alias` を Manifest に注入
   (`scripts/app-icon/generate-android.mjs`)。
-- iOS: `AppIconLight.appiconset` のみ生成し、`project.yml` にエイリアス設定を注入
+- iOS: `tauri ios init` **後に** `npx tauri icon dark.png` を実行して既定アイコンを
+  `gen/apple/Assets.xcassets/AppIcon.appiconset` へ直接書き込む (2026-11-22 修正)。
+  `AppIconLight.appiconset` のみ生成し、`project.yml` にエイリアス設定を注入
   (`scripts/app-icon/generate-ios.mjs`)。既定は dark の `AppIcon.appiconset`。
   `tauri ios init` が作った pbxproj / Info.plist はパッチ前のままなので、
   **生成後に `xcodegen generate` を再実行**して反映する (2026-11-21 修正)。

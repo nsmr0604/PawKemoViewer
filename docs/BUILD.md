@@ -122,7 +122,10 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
     (`gen/android` が存在すると生成先 `res/` へ直接書かれるため)、その後
     `npm run icons:generate:android` → light 用の mipmap 各密度 `ic_launcher_light*`
     と activity-alias を Manifest に注入 (既定 alias は dark の `ic_launcher`)
-  - iOS: `project.yml` に `# APP-ICON ALIASES START/END` と
+  - iOS: init 後に `npx tauri icon src-tauri/app-icons/dark.png` で既定アイコンを
+    生成先 `gen/apple/Assets.xcassets/AppIcon.appiconset` へ直接書き込む
+    (init 前だと `src-tauri/icons/ios` にしか生成されず既定アイコンのままになる)。
+    その後 `project.yml` に `# APP-ICON ALIASES START/END` と
     `ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES` を入れてから
     `npm run icons:generate:ios` → `AppIconLight.appiconset` のみ生成
     (既定は dark の `AppIcon.appiconset`)。**生成後に `xcodegen generate` を再実行**して

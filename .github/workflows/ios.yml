@@ -87,6 +87,11 @@ jobs:
         # src-tauri/gen/apple は git 管理外 (Android と同じく CI で毎回生成)
         run: npx tauri ios init
 
+      - name: Apply primary (dark) app icon
+        # init 後に実行すると tauri icon が gen/apple/Assets.xcassets/AppIcon.appiconset
+        # へ直接書き込む (init 前だと src-tauri/icons/ios にしか生成されない)
+        run: npx tauri icon src-tauri/app-icons/dark.png
+
       - name: Prepare alternate app icons in Xcode spec
         # tauri ios init が生成する project.yml に、代替アイコンの映射ブロックと
         # 全 AppIcon アセットをコンパイルする設定を入れる (冪等)。
