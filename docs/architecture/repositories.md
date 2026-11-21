@@ -23,3 +23,14 @@ Known follow-ups: readers may observe a new pack alongside old metadata after in
 ## M3.4 — Creator index transport mapping
 
 `GET /creators` returns `CreatorIndexDto[]` with wire fields such as `public_id`. The infrastructure mapper produces index rows and preserves the previous lowercase keys, optional fields, popularity and date conversions. This is a boundary for the index endpoint. Creator profiles still use their existing response type. Epoch seconds, milliseconds and parsed dates retain their existing representations, so this change does not write a new pack format.
+
+## M3.5 — API cache and scheduler
+
+The API module remains the owner of requests, status extraction, cache and scheduling. The repository calls the existing endpoints and does not cache or schedule again.
+
+- All native API requests share a FIFO queue. Starts are at least 250 ms apart with at most three active operations. Completion or rejection frees a slot.
+- Cache-enabled GETs reuse in-flight and completed operations by path within a cache generation. Expiry is 60 seconds from insertion. The 150-entry cap evicts the oldest inserted entry. Rejections are removed so a retry can run. Mutations and explicitly uncached GETs still traverse the queue.
+- A session change or explicit clear increments the generation and drops cached references. A queued request retains its original session value. The timeout is read when the queued operation begins. An old response can still fulfill its original caller but cannot populate the new generation.
+- Account lookup with a different supplied session defaults to bypassing the cache. Callers should not force caching for a session outside the current generation. A same-generation request that outlives an expired/reinserted key can remove the replacement entry on rejection. These cases remain follow-up review items; M3 keeps the existing policy.
+
+The mocked IPC tests cover coalescing, expiry, capacity, retry, session invalidation, spacing, and maximum concurrency. No live service is contacted.

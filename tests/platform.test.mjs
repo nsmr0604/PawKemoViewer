@@ -217,3 +217,96 @@ test("backup restore leaves IndexedDB untouched when follow storage is unavailab
   await assert.rejects(applyBackup(JSON.stringify({ type: BACKUP_TYPE })), /Follow storage unavailable/)
   assert.equal(open.mock.callCount(), 0)
 })
+
+test("API scheduler spaces starts and enforces the concurrency limit", async (t) => {
+  const { api, clearApiCache } = await server.ssrLoadModule("/src/api.ts")
+  t.after(() => { resetPlatformRuntimeForTests(); clearApiCache() })
+  const starts = []
+  mockGlobal(t, "navigator", { userAgent: "Linux" })
+  mockGlobal(t, "window", { __TAURI_INTERNALS__: { invoke: (command, { path }) => {
+    assert.equal(command, "api_request")
+    const pending = Promise.withResolvers()
+    starts.push({ path, time: Date.now(), finish: pending.resolve })
+    return pending.promise
+  } } })
+  initializePlatformRuntime()
+  const now = Date.now() + 1000
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now })
+  const requests = ["a", "b", "c", "d"].map((q) => api.posts({ q }))
+  assert.equal(starts.length, 1)
+  t.mock.timers.tick(249)
+  assert.equal(starts.length, 1)
+  t.mock.timers.tick(1)
+  t.mock.timers.tick(250)
+  assert.deepEqual(starts.map(({ time }) => time - now), [0, 250, 500])
+  t.mock.timers.tick(500)
+  assert.equal(starts.length, 3)
+  starts[0].finish("[]")
+  await requests[0]
+  assert.equal(starts.at(-1).path, "/posts?q=d")
+  assert.equal(starts.at(-1).time - now, 1000)
+  starts.slice(1).forEach(({ finish }) => finish("[]"))
+  await Promise.all(requests)
+})
+
+test("GET cache expiry, failure retry and session invalidation preserve transport behavior", async (t) => {
+  const { api, clearApiCache, getSettings, updateSettings } = await server.ssrLoadModule("/src/api.ts")
+  t.after(() => { updateSettings({ sessionKey: "" }); resetPlatformRuntimeForTests(); clearApiCache() })
+  const starts = []
+  mockGlobal(t, "navigator", { userAgent: "Linux" })
+  mockGlobal(t, "window", { dispatchEvent() {}, __TAURI_INTERNALS__: { invoke: (_command, args) => {
+    const pending = Promise.withResolvers()
+    starts.push({ ...args, ...pending })
+    return pending.promise
+  } } })
+  initializePlatformRuntime()
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: Date.now() + 10000 })
+
+  const old = api.accountFavorites("post")
+  assert.equal(starts[0].sessionKey, null)
+  updateSettings({ sessionKey: "fixture-session" })
+  assert.equal(getSettings().sessionKey, "fixture-session")
+  const current = api.accountFavorites("post")
+  t.mock.timers.tick(250)
+  assert.equal(starts[1].sessionKey, "fixture-session")
+  starts[1].resolve('["current"]')
+  assert.deepEqual(await current, ["current"])
+  starts[0].resolve('["previous"]')
+  assert.deepEqual(await old, ["previous"])
+  assert.deepEqual(await api.accountFavorites("post"), ["current"])
+  assert.equal(starts.length, 2)
+
+  t.mock.timers.tick(60001)
+  const expired = api.accountFavorites("post")
+  assert.equal(starts.length, 3)
+  starts[2].reject("STATUS=503 BODY=fixture")
+  await assert.rejects(expired)
+  const retry = api.accountFavorites("post")
+  t.mock.timers.tick(250)
+  assert.equal(starts.length, 4)
+  starts[3].resolve('["retried"]')
+  assert.deepEqual(await retry, ["retried"])
+})
+
+test("GET cache evicts the oldest inserted entry at its limit", async (t) => {
+  const { api, clearApiCache } = await server.ssrLoadModule("/src/api.ts")
+  t.after(() => { resetPlatformRuntimeForTests(); clearApiCache() })
+  const requests = []
+  mockGlobal(t, "navigator", { userAgent: "Linux" })
+  mockGlobal(t, "window", { __TAURI_INTERNALS__: { invoke: async (_command, { path }) => {
+    requests.push(path)
+    return "[]"
+  } } })
+  initializePlatformRuntime()
+  // Start after the earlier fake-clock test and stay within one TTL window.
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: Date.now() + 120000 })
+  for (let i = 0; i <= 150; i++) {
+    await api.posts({ q: String(i) })
+    t.mock.timers.tick(250)
+  }
+  await api.posts({ q: "1" })
+  assert.equal(requests.length, 151)
+  await api.posts({ q: "0" })
+  assert.equal(requests.length, 152)
+  assert.equal(requests.at(-1), "/posts?q=0")
+})
