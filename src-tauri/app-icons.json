@@ -1,0 +1,18 @@
+{
+  "android": {
+    "mainActivity": ".MainActivity",
+    "resourcesDirectory": "gen/android/app/src/main/res",
+    "manifest": "gen/android/app/src/main/AndroidManifest.xml"
+  },
+  "ios": {
+    "assetsDirectory": "gen/apple/Assets.xcassets",
+    "projectSpec": "gen/apple/project.yml"
+  },
+  "icons": [
+    {
+      "id": "light",
+      "source": "app-icons/light.png",
+      "backgroundColor": "#3B82F6"
+    }
+  ]
+}

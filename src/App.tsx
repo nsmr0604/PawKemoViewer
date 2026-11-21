@@ -8,6 +8,9 @@ import { SettingsPage } from "./pages/Settings"
 import { loadFollows, syncFollowsWithAccount } from "./follows"
 import { useEffect, useState, useCallback } from "react"
 import { LoginPage } from "./pages/Login"
+import appIconDark from "../src-tauri/app-icons/dark.png"
+import appIconLight from "../src-tauri/app-icons/light.png"
+import { syncAppIcon } from "./appIcon"
 import { getSettings, SETTINGS_CHANGED_EVENT } from "./api"
 import { loadLocale, t } from "./i18n"
 import { resolveLayout, type ResolvedLayout } from "./platform"
@@ -48,6 +51,7 @@ export default function App() {
   }, [])
 
   const settings = getSettings()
+  const headerIcon = settings.theme === "dark" ? appIconDark : appIconLight
   useEffect(() => {
     void loadLocale(settings.locale).then(() => setSettingsRev((n) => n + 1))
   }, [settings.locale])
@@ -73,6 +77,10 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme
   }, [route, settingsRev, settings.theme])
+
+  useEffect(() => {
+    void syncAppIcon(settings.theme)
+  }, [settings.theme])
 
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -217,7 +225,7 @@ export default function App() {
           <header className="top-bar">
             <div className="top-bar-brand">
               <button type="button" className="logo" onClick={() => navigate("/", true)}>
-                <span aria-hidden="true">🐾</span> PawKemoViewer
+                <img className="logo-icon" src={headerIcon} alt="" /> PawKemoViewer
               </button>
               {pageLabel && <span className="topbar-context">{pageLabel}</span>}
             </div>
@@ -251,7 +259,9 @@ export default function App() {
             >
               ← {t("common.back")} <span className="kbd small">Esc</span>
             </button>
-            <button type="button" className="logo small" onClick={() => navigate("/", true)}>🐾 PawKemoViewer</button>
+            <button type="button" className="logo small" onClick={() => navigate("/", true)}>
+              <img className="logo-icon" src={headerIcon} alt="" /> PawKemoViewer
+            </button>
           </header>
         )}
 

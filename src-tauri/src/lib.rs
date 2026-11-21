@@ -1340,6 +1340,7 @@ pub fn run() {
                 .level(log::LevelFilter::Info)
                 .build(),
         )
+        .plugin(tauri_plugin_app_icon::init())
         .register_asynchronous_uri_scheme_protocol("pkv", |ctx, request, responder| {
             let app = ctx.app_handle().clone();
             let method = request.method().as_str().to_string();

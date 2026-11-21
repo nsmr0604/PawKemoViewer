@@ -130,6 +130,10 @@ jobs:
         # ジョブレベル env (VITE_DEBUG_DIAG) を使用
         run: npm run build
 
+      - name: Generate native app icons
+        # src-tauri/icons/ は git 管理外。2 枚の元画像のうち dark から全サイズを生成する
+        run: npm run icons:generate
+
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v0
         env:
