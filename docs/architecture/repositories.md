@@ -19,3 +19,7 @@ Application code owns form and batch validation, per-file outcomes, and catalogu
 The infrastructure boundary should own the schema, upgrade callback and transactions. Application-facing repositories receive finished values or rejected operations. They never receive an `IDBDatabase`, object store, raw metadata key, or transaction. A creator-pack replacement and its metadata belong in a single future read/write transaction over `meta`; include the legacy store in the same transaction only if clearing it becomes part of the commit promise. Until a dedicated schema/atomicity change is tested, retain the current pack format, version and legacy fallback.
 
 Known follow-ups: readers may observe a new pack alongside old metadata after interruption, and the connection owners close on version change without resetting a resolved cached handle. A transaction refactor should cover interrupted writes, upgrade/reopen and legacy compatibility with a real IndexedDB engine. Avoid a cross-store atomicity claim for backup or icon caches.
+
+## M3.4 — Creator index transport mapping
+
+`GET /creators` returns `CreatorIndexDto[]` with wire fields such as `public_id`. The infrastructure mapper produces index rows and preserves the previous lowercase keys, optional fields, popularity and date conversions. This is a boundary for the index endpoint. Creator profiles still use their existing response type. Epoch seconds, milliseconds and parsed dates retain their existing representations, so this change does not write a new pack format.

@@ -1,3 +1,4 @@
+import type { CreatorIndexDto } from "./infrastructure/creator-index-dto"
 import type { Locale } from "./i18n"
 
 import type {
@@ -328,7 +329,7 @@ export const api = {
   },
 
   /** 全クリエイター (約10万件) */
-  creators: () => request<PawCreator[]>("/creators"),
+  creators: () => request<CreatorIndexDto[]>("/creators"),
 
   /** クリエイター投稿一覧 */
   creatorPosts: (

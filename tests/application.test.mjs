@@ -14,6 +14,7 @@ const { createLocaleUseCases } = await server.ssrLoadModule("/src/application/lo
 const { createLocaleRepository } = await server.ssrLoadModule("/src/infrastructure/locale-repository.ts")
 const { createPostDetailUseCases } = await server.ssrLoadModule("/src/application/post-detail.ts")
 const { createHomePostUseCase, createCreatorPostUseCase } = await server.ssrLoadModule("/src/application/post-pages.ts")
+const { toCreatorIndexRows } = await server.ssrLoadModule("/src/infrastructure/creator-index-dto.ts")
 const { createCreatorUseCases } = await server.ssrLoadModule("/src/application/creators.ts")
 
 test("locale CRUD validates input and sends private and shared writes to their own targets", async (t) => {
@@ -130,7 +131,7 @@ test("creator index reuses eligible legacy rows and preserves direct post links"
     indexVersion: 3, version: async () => 2, count: async () => 1,
     search: async () => [row], normalize: () => ({ service: "fanbox", postId: "123" }),
     legacyRows: async () => [row], save, resetIndex,
-    fetchCreators: () => assert.fail("legacy migration should not download"),
+    fetchRows: () => assert.fail("legacy migration should not download"),
   })
   assert.equal(await creators.needsCreatorIndexBuild(await creators.countCreators()), true)
   assert.equal(await creators.buildCreatorIndex(1), 1)
@@ -148,7 +149,7 @@ test("creator refresh keeps cache clearing order, maps full rows and skips write
     indexVersion: 3, version: async () => 3,
     clearApiCache: () => calls.push("clear API"),
     resetIndex: () => calls.push("invalidate index"),
-    fetchCreators: async () => { calls.push("download"); return data },
+    fetchRows: async () => { calls.push("download"); return toCreatorIndexRows(data) },
     save: async (rows) => calls.push(rows),
   }
   const creators = createCreatorUseCases(deps)
@@ -161,7 +162,7 @@ test("creator refresh keeps cache clearing order, maps full rows and skips write
 
   const controller = new AbortController()
   const deferred = Promise.withResolvers()
-  deps.fetchCreators = () => deferred.promise
+  deps.fetchRows = () => deferred.promise
   deps.save = () => assert.fail("cancelled download was persisted")
   const result = creators.buildCreatorIndex(0, controller.signal)
   controller.abort()
@@ -185,4 +186,16 @@ test("locale repository preserves catalogue, capabilities and deletion results",
   assert.equal(repository.writeSecondary, undefined)
   assert.equal(await repository.deletePrivate("en"), false)
   await assert.rejects(repository.writePrivate("en", "{}"), (error) => error === failure)
+})
+
+test("creator DTO normalization preserves missing fields and supported date representations", () => {
+  const rows = toCreatorIndexRows([
+    { service: "patreon", id: "1", name: "Legacy" },
+    { service: "fanbox", id: "2", name: "Mixed", public_id: "Slug", updated: "1672531200", indexed: "invalid", favorited: 0 },
+  ])
+  assert.deepEqual(rows, [
+    { key: "patreon:1", id: "1", service: "patreon", name: "Legacy", nameLower: "legacy" },
+    { key: "fanbox:2", id: "2", service: "fanbox", name: "Mixed", nameLower: "mixed",
+      publicId: "Slug", publicIdLower: "slug", updated: 1672531200, indexed: 0, favorited: 0 },
+  ])
 })

@@ -1,3 +1,4 @@
+import { toCreatorIndexRows } from "../infrastructure/creator-index-dto"
 import { createLocaleRepository } from "../infrastructure/locale-repository"
 import { createCreatorUseCases } from "./creators"
 import { creatorsCount, getAllCreatorRows, getMeta, invalidateCreatorIndex, normalizeCreatorQuery, saveCreators, searchCreators, SEARCH_INDEX_VERSION } from "../db"
@@ -19,7 +20,7 @@ function createApplication() {
       version: () => getMeta<number>("creatorsIndexVersion"),
       indexVersion: SEARCH_INDEX_VERSION,
       legacyRows: getAllCreatorRows,
-      fetchCreators: api.creators,
+      fetchRows: async () => toCreatorIndexRows(await api.creators()),
       save: saveCreators,
       resetIndex: invalidateCreatorIndex,
       clearApiCache,
