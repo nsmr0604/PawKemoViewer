@@ -302,3 +302,11 @@ Suggested sequence: (1) platform contracts/runtime + CI trigger adjustment; (2) 
 - `save_user_file` similarly assumes a filesystem path and direct `std::fs::File::create`, which is not valid for Android content URI destinations and may not correctly handle iOS scoped file access.
 - The required next change should use dialog + Tauri filesystem plugin URI-aware APIs, with a JS/Rust bridge that enforces size limits, rather than translating content URI to `PathBuf`. Package-lock is present; dependency integration needs proper npm synchronization, which this session cannot perform reliably.
 - No build, typecheck, or device test was run. Do not mark mobile file selection/import/export complete yet.
+
+
+## URI-aware native file handling follow-up (2026-11-21)
+- Reconfirmed Tauri v2 dialog result formats: desktop filesystem paths, iOS file URLs, Android content URIs. `FilePath.into_path()`/`std::fs` direct use cannot be treated as portable for picker-returned URI values.
+- Official Tauri docs recommend the filesystem plugin for URI-compatible access. JS plugin APIs are the appropriate candidate to read picker URIs; security-scoped iOS resources are handled by plugin access. Desktop behavior can continue using native paths as appropriate.
+- Additional caution: current Android filesystem-plugin write handling via `content://` save URIs has documented provider metadata/zero-byte-file concerns in plugin issue reports (including cloud-backed providers). Therefore prioritize robust import-read path first; export-write path requires device/provider verification or Android native ContentResolver stream implementation rather than assuming `writeFile` works.
+- No dependency/plugin code was changed in this slice because GitHub content operations did not return the expected M2 ref during initial fetch and package lock/native setup cannot be regenerated or tested here. Branch lookup subsequently confirmed it exists, but working files require careful ref consistency. Do not claim implementation complete.
+- Next: implement URI-aware import reader using plugin FS + npm lock synchronization; investigate Android save URI ContentResolver write and iOS Files export semantics separately. Then migrate locale file imports and log dump/backup export. Build/device verification still pending.
