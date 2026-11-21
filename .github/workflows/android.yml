@@ -1,4 +1,5 @@
 name: Android Build
+run-name: ${{ github.workflow }} - ${{ github.event.head_commit.message || github.event.pull_request.title || (inputs.release && 'manual release' || 'manual debug') }}
 
 on:
   push:
@@ -63,6 +64,18 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # リリースノート / サマリに直近のコミットメッセージを表示するため履歴を取得
+          fetch-depth: 0
+
+      - name: Show recent commits
+        shell: bash
+        run: |
+          {
+            echo '### 最近のコミット (このビルド)'
+            git log -5 --pretty=format:'- %h %s'
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -175,31 +188,42 @@ jobs:
         run: |
           set -e
           VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
-
-          if [ "${{ inputs.release }}" = "true" ]; then
-            gh release upload "pawkemoviewer-v${VER}" dist-apk/*.apk --clobber \
-              || gh release create "pawkemoviewer-v${VER}" dist-apk/*.apk \
-                   --title "PawKemoViewer v${VER}" \
-                   --notes "Automated build (APK: dev-signed for testing)."
-            exit 0
-          fi
-
-          # --- デバッグビルド: rolling prerelease debug-latest ---
-          TAG=debug-latest
           SHA=$(git rev-parse --short HEAD)
 
-          # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r a; do
-              case "$a" in
-                *"_${VER}_"*) ;; # 現行バージョンは残す
-                *) gh release delete-asset "$TAG" "$a" --yes || true ;;
-              esac
-            done
+          if [ "${{ inputs.release }}" = "true" ]; then
+            TAG="pawkemoviewer-v${VER}"
+            TITLE="PawKemoViewer v${VER}"
+            HEADLINE="Automated build (APK: dev-signed for testing)."
+            PRERELEASE_FLAG=""
+          else
+            # デバッグビルド: rolling prerelease debug-latest
+            TAG=debug-latest
+            TITLE="PawKemoViewer debug build"
+            HEADLINE="Automated debug build (${SHA}, v${VER}). デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式)."
+            PRERELEASE_FLAG="--prerelease"
+
+            # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r a; do
+                case "$a" in
+                  *"_${VER}_"*) ;; # 現行バージョンは残す
+                  *) gh release delete-asset "$TAG" "$a" --yes || true ;;
+                esac
+              done
+            fi
           fi
+
+          {
+            echo "$HEADLINE"
+            echo
+            echo "### 最近のコミット"
+            git log -5 --pretty=format:'- %h %s'
+            echo
+          } > release-notes.md
 
           gh release upload "$TAG" dist-apk/*.apk --clobber \
             || gh release create "$TAG" dist-apk/*.apk \
-                 --prerelease \
-                 --title "PawKemoViewer debug build" \
-                 --notes "Automated debug build (${SHA}, v${VER}). デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式)."
+                 $PRERELEASE_FLAG \
+                 --title "$TITLE" \
+                 --notes-file release-notes.md
+          gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md

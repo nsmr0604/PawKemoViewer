@@ -26,6 +26,9 @@ rolling prerelease "debug-latest" (デバッグビルド)
 - **macOS / iOS = 手動のみ**: Actions 画面から `workflow_dispatch` を実行
   (`release=true` で正式リリース `pawkemoviewer-v{VER}` へ添付、
   無指定なら debug-latest へ添付)
+- 各 workflow は `run-name` にコミットメッセージ (手動実行はモード)、
+  Actions のステップサマリとリリースノートに **直近 5 件のコミットメッセージ**
+  (`git log -5`) を表示する (`fetch-depth: 0` で履歴を取得)
 
 ## 成果物
 

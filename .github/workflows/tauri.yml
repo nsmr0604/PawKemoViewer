@@ -1,4 +1,5 @@
 name: Build Tauri
+run-name: ${{ github.workflow }} - ${{ github.event.head_commit.message || (inputs.release && 'manual release' || 'manual debug') }}
 
 on:
   push:
@@ -101,6 +102,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # リリースノート / サマリに直近のコミットメッセージを表示するため履歴を取得
+          fetch-depth: 0
+
+      - name: Show recent commits
+        shell: bash
+        run: |
+          {
+            echo '### 最近のコミット (このビルド)'
+            git log -5 --pretty=format:'- %h %s'
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -143,3 +156,30 @@ jobs:
           releaseDraft: false
           prerelease: ${{ inputs.release != true }}
           args: ${{ inputs.release == true && '' || '--features debug-diag' }}
+
+      - name: Add recent commits to release notes
+        # 同じリリースへの書き込みが競合しないようLinuxジョブだけが実行する
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          if [ "${{ inputs.release }}" = "true" ]; then
+            TAG="pawkemoviewer-v${VER}"
+            TITLE="PawKemoViewer v${VER}"
+            HEADLINE="Automated release build."
+          else
+            TAG=debug-latest
+            TITLE="PawKemoViewer debug build"
+            HEADLINE="Automated debug build (v${VER}). デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式)."
+          fi
+          {
+            echo "$HEADLINE"
+            echo
+            echo "### 最近のコミット"
+            git log -5 --pretty=format:'- %h %s'
+            echo
+          } > release-notes.md
+          gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
