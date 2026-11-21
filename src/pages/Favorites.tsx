@@ -48,13 +48,14 @@ function restoreCachedPost(
 export function FavoritesPage() {
   const { sessionKey } = getSettings()
   // 選択タブを保存しておき、次回起動時に復元する (FANBOX Viewer「ホーム既定タブ」型)
+  const storage = getPlatformRuntime().services.storage ?? localStorage
   const [tab, setTabState] = useState<"follows" | "account">(() => {
-    const t = (getPlatformRuntime().services.storage ?? localStorage).get("pawkemo-fav-tab")
+    const t = storage.get("pawkemo-fav-tab")
     return t === "account" ? "account" : "follows"
   })
   const setTab = (t: "follows" | "account") => {
     setTabState(t)
-    (getPlatformRuntime().services.storage ?? localStorage).set("pawkemo-fav-tab", t)
+    storage.set("pawkemo-fav-tab", t)
   }
   const [follows, setFollows] = useState<FollowState[]>([])
   const [accountFavs, setAccountFavs] = useState<AccountFavorite[] | null>(null)

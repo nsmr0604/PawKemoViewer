@@ -80,7 +80,7 @@ export default function App() {
 
   // 戻る操作は PlatformRuntime の LifecycleService に集約する。
   useEffect(() => {
-    // route.path ごとの再登録を避け、native listener を一度だけ登録する。\n    const lifecycle = getPlatformRuntime().services.lifecycle
+    const lifecycle = getPlatformRuntime().services.lifecycle
     if (!lifecycle) return
     return lifecycle.onBackRequested((canGoBack) => {
       // WebView の履歴がある場合はルート種別に関係なく履歴を戻す。

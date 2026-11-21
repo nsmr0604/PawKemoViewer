@@ -4,8 +4,6 @@ const indexedDatabase: IndexedDatabaseService = { open: (name, version, upgrade)
 
 const sessionStorageService = typeof sessionStorage !== "undefined" ? { get: (key: string) => sessionStorage.getItem(key), set: (key: string, value: string) => sessionStorage.setItem(key, value), remove: (key: string) => sessionStorage.removeItem(key) } : undefined
 
-const logging = { append: (_line: string) => { /* browser runtime has no persistent log sink */ } }
-
 const files: FileExportService = {
   exportText: async (filename, content) => {
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" })

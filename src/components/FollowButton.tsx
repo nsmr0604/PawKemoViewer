@@ -24,7 +24,8 @@ export function FollowButton({ service, id }: { service: string; id: string }) {
       const f = list.find((x) => x.service === service && x.id === id)
       if (f && f.name !== row.name && row.name) {
         f.name = row.name
-        (getPlatformRuntime().services.storage ?? localStorage).set("pawkemo-follows", JSON.stringify(list))
+        const storage = getPlatformRuntime().services.storage ?? localStorage
+        storage.set("pawkemo-follows", JSON.stringify(list))
       }
     })
     return () => { alive = false }

@@ -124,7 +124,6 @@ export async function applyBackup(text: string): Promise<{
   replaceFollows(follows)
 
   // 設定 (sessionKey も含めて復元。ただし空文字は無視して既存を維持)
-  const cur = getSettings()
   const patch: Partial<Settings> = {}
   const validators: Partial<Record<keyof Settings, (value: unknown) => boolean>> = {
     sessionKey: (v) => typeof v === "string" && v.length <= 8192,
