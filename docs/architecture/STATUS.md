@@ -1,14 +1,12 @@
 # Architecture Refactor Status
 
-- Baseline: `0.5.0` at `cf81e3d` (PR #12). M0 `7a6e898`, M1 `3565050`, M2 `24ea538`.
-- **M3 complete. M4.1 ready.** See [repository and infrastructure design](repositories.md).
-  - M3.1 `ab5bf4a`: locale repository contract and capability semantics.
-  - M3.2 `d84a6a7`: bind private/shared catalogue and mutations to the platform through the locale repository.
-  - M3.3 `99163a4`: inventory schema and transaction ownership. Documented the future atomic creator-pack boundary.
-  - M3.4 `e3f6791`: isolate the creator index wire DTO and conversion.
-  - M3.5 `610e497`: verify API scheduler, capacity, expiry, retry and session invalidation while keeping the current policy.
-  - M3.6: use the creator index repository for cached search, migration and refresh.
-- Files touched: `src/application/{composition,locales,creators,locale-repository,creator-index-repository}.ts`, `src/infrastructure/{locale-repository,creator-index-dto,creator-index-repository}.ts`, `src/{api,db,i18n}.ts`, `src/main.tsx`, `src/pages/{Creators,Settings}.tsx`, `tests/{application,platform}.test.mjs`, and `docs/architecture/{README,TASKS,STATUS,repositories}.md`.
-- Validation: `npm run test:application` (10 passed), `npm run test:platform` (13 passed), `npm run build`, `npm run build:debug`, and `git diff --check`. Chromium with fixture Tauri IPC loaded locale listings and exercised Home, Post revision 404, Creator profile/posts, and warm reload of the creator index from real browser IndexedDB without refetching `/creators`.
-- Open: native IPC, live API and physical devices were not exercised. The existing split pack/metadata transactions and cache edge cases are recorded for follow-up. No schema or scheduler policy changes were made.
-- Next: M4.1 inventory DTO, persistence, domain and view model mappings. M5.1 also remains ready.
+- Baseline: `0.5.0` at `cf81e3d` (PR #12). M0 `7a6e898`, M1 `3565050`, M2 `24ea538`, M3 `e4a0726`.
+- **M4 complete. M5.1 ready.** See [domain model boundaries](domain.md).
+  - M4.1 `81a44cf`: inventoried transport, persistence, application and view models.
+  - M4.2 `f924191`: shared the pure post identity predicate between post detail, the revisions API gate and the post page.
+  - M4.3 `2febbeb`: documented domain conventions and exposed a stable validation error code at the existing rejection points.
+  - M4.4: isolated compilation and transitive source dependency check using only the ES2022 library.
+- Files touched: `src/domain/post-identity.ts`, `src/{api.ts,application/post-detail.ts,pages/PostPage.tsx}`, `tests/{domain,application,platform}.test.mjs`, `package.json`, and `docs/architecture/{README,TASKS,STATUS,domain}.md`.
+- Validation: `npm run test:domain` (3 passed), `npm run test:application` (10 passed), `npm run test:platform` (14 passed), `npm run build`, `npm run build:debug`, and `git diff --check`. Chromium with fixture IPC exercised an invalid post route and a valid post with revision 404, plus Home, creator profile and warm index reload. The platform test also verifies invalid input never reaches IPC and valid revision paths retain percent encoding.
+- Open: native IPC, live API and physical devices were not exercised. The existing Vite mixed-import warning for `db.ts` persists.
+- Next: M5.1 map private/shared storage, permission grants and file selection by OS using the M1 capability design. M6.1 is also ready.

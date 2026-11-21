@@ -17,3 +17,7 @@ The initial domain rule is the validity of a post identity used by detail loadin
 - The post identity predicate is pure. It checks both identifiers and the supported service. It does not trim, decode or rewrite valid values. Routing and transport encode or decode only where their existing contracts require it.
 - An expected validation failure may use a typed domain error when multiple entrypoints share the same business rule. `InvalidPostContextError` exposes the stable code `invalid-post-context`. Callers supply the existing display or diagnostic message and decide when to reject or log. Validation runs before the request scheduler for invalid revision inputs.
 - Keep HTTP status and a revision 404 interpretation at the transport/application boundary. Leave IndexedDB, locale parsing, caching, translation and rendering outside the domain. Add a pure rule when several callers need the same policy or when testing it separately reduces risk. An error class is warranted only when callers share a specific distinguishable condition.
+
+## M4.4 — Dependency isolation
+
+`npm run test:domain` runs the post identity rule under Node and type-checks every `src/domain` TypeScript file in a program with ES2022 library types and automatic ambient packages disabled. The test rejects any resolved source outside the domain or the TypeScript standard library, including type-only dependencies. React, Tauri, DOM, IndexedDB and network APIs are outside the domain boundary. Broader dependency rules for the rest of the application remain part of M7.

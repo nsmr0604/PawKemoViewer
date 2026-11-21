@@ -35,7 +35,7 @@ Each task is intended as a small independent agent context. Read AGENT_WORKFLOW.
 - [x] **M4.1** Model/DTO/DB/view model mapping inventory. Depends: M3.4.
 - [x] **M4.2** Extract one pure domain rule and tests. Depends: M4.1.
 - [x] **M4.3** Define domain error and policy conventions; migrate only justified cases. Depends: M4.2.
-- [ ] **M4.4** Verify domain dependency isolation. Depends: M4.2,M4.3.
+- [x] **M4.4** Verify domain dependency isolation. Depends: M4.2,M4.3.
 
 ## M5 — OS storage and capabilities
 - [ ] **M5.1** Document storage capability matrix (private/shared, permissions, persistable grant, file picker) per OS. Depends: M1.2.
