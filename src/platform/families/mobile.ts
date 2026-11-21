@@ -52,7 +52,7 @@ const clipboard: ClipboardService = {
   writeText: async (text) => { try { if (!navigator.clipboard) return false; await navigator.clipboard.writeText(text); return true } catch { return false } },
 }
 
-const files: FileExportService = { exportText: (filename, content) => invoke<string>("save_user_file", { fileName: filename, text: content }) }
+const files: FileExportService = { exportText: async (filename, content) => { const result = await invoke<string>("save_user_file", { fileName: filename, text: content }); return result === "キャンセル" ? { status: "cancelled" } : { status: "saved", path: result } } }
 
 /** Mobile family exposes only private storage until sharing adapters are implemented. */
 export function createMobileServices(): PlatformServices {
