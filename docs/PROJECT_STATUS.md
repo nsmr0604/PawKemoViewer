@@ -396,3 +396,12 @@
 - Repository audit finds the intended family intermediate layer is not consistently present today: `src/platform.ts` is mainly UA/layout/clipboard helper; direct native invoke, IndexedDB/localStorage, logs and large Rust command module remain coupled across files. Details and phased target documented in `docs/PLATFORM_ABSTRACTION.md`.
 - Target: common foundation contracts, Desktop family layer, Mobile family layer, OS-specific adapters; central adapter selection/capability reporting, avoid OS branching scattered through common code.
 - PR #9 updated to include this audit and target architecture. This remains documentation/plan only; implementation not yet done.
+
+## Platform abstraction migration progress (2026-11-20)
+
+- [x] Stage 0 initial dependency inventory documented in `docs/PLATFORM_AUDIT.md` (source-level, non-exhaustive).
+- [ ] Stage 1 contracts/interface design.
+- [ ] Stage 2 Desktop/Mobile family runtime.
+- [ ] Stage 3 centralized adapter selection and capabilities.
+- [ ] Subsequent migrations: logs; DB/storage/settings; cache/scheduler; networking/PKV; permissions/files/backup/clipboard; UI lifecycle; final audit and CI.
+- Target architecture and migration invariants: common UI/domain -> common foundation -> Desktop/Mobile family runtime -> OS adapters. Do not claim OS-specific execution or device tests without actual verification.

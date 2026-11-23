@@ -178,3 +178,7 @@ See [PLATFORM_ABSTRACTION.md](PLATFORM_ABSTRACTION.md) for the target architectu
 ## Platform-family architecture migration
 
 The desired target is common UI/domain and services -> common contracts -> Desktop (Windows/macOS/Linux) or Mobile (Android/iOS) intermediate processing layer -> OS-specific adapter. The current code only has partial responsive/UI branching and a basic platform helper; it does not yet provide consistent intermediate service layers. The entire codebase is in scope (storage, logging, database/cache, networking, permission, export/share, clipboard, lifecycle/configuration). See [PLATFORM_ABSTRACTION.md](PLATFORM_ABSTRACTION.md) for the audit and staged plan.
+
+## Platform abstraction migration
+
+Initial audit: see [PLATFORM_AUDIT.md](PLATFORM_AUDIT.md). The intended structure is common UI/domain and foundation services, a Desktop or Mobile family runtime, and OS-specific adapters. This is a staged whole-codebase migration; the inventory is not a claim that the abstraction is already implemented.
