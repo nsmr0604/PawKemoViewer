@@ -15,7 +15,9 @@ use reqwest::header::{
     USER_AGENT,
 };
 
-use std::sync::LazyLock;
+use std::io::Read;
+use std::net::{IpAddr, ToSocketAddrs};
+use std::sync::{mpsc, Arc, LazyLock, Mutex};
 
 // reqwest Client は Clone が安価で内部の接続プールを共有できる。
 // コマンドごとに Client を生成せず、接続/TLS セッションをアプリ全体で再利用する。
@@ -147,12 +149,34 @@ fn log_http_request_body(app: &tauri::AppHandle, target: &str, content_type: Opt
     }
 }
 
+// pkv プロキシの資源制御。応答は最終的に全量メモリへ載るため上限を設ける。
+const PROXY_MAX_BODY_BYTES: u64 = 64 * 1024 * 1024;
+const PROXY_MAX_HTML_BYTES: u64 = 8 * 1024 * 1024;
+const PROXY_CONNECT_TIMEOUT_SECS: u64 = 10;
+const PROXY_TIMEOUT_SECS: u64 = 180;
+const PROXY_MAX_REDIRECTS: usize = 5;
+const PROXY_WORKERS: usize = 4;
+
 static PROXY_HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(|| {
     reqwest::blocking::Client::builder()
         .user_agent(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
         )
         .gzip(true)
+        .connect_timeout(std::time::Duration::from_secs(PROXY_CONNECT_TIMEOUT_SECS))
+        // 全量バッファ前提のため、停止した接続でワーカーを占有し続けないよう上限を置く
+        .timeout(std::time::Duration::from_secs(PROXY_TIMEOUT_SECS))
+        // リダイレクト先も初回と同じ検査を通す (SSRF 迂回の防止)
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if attempt.previous().len() >= PROXY_MAX_REDIRECTS {
+                return attempt.stop();
+            }
+            if is_proxyable(attempt.url()) && host_is_public(attempt.url()) {
+                attempt.follow()
+            } else {
+                attempt.error("blocked redirect")
+            }
+        }))
         .build()
         .expect("failed to initialize proxy HTTP client")
 });
@@ -580,10 +604,19 @@ async fn fetch_creator_icon(
 // リファラーチェックでブロックされる fanbox / patreon / 外部サイトの
 // ファイル・ページを Rust 側で Referer/Origin を偽装して中継する。
 //
-// WebView 側の URL: http://pkv.localhost/file?u=<対象URL>&r=<リファラー>
+// WebView 側の URL: Windows / Android は http://pkv.localhost/file?u=<対象URL>&r=<リファラー>、
+// それ以外の OS は pkv://localhost/file?u=<対象URL>&r=<リファラー>
 //  - GET  : ファイル/ページ取得
 //  - POST : 外部ページ内のフォーム送信を中継 (reCAPTCHA 付きフォーム等)
 // ---------------------------------------------------------------------------
+
+/// pkv カスタムプロトコルの基底 URL。
+/// Tauri は Windows / Android だけ `http://<scheme>.localhost` で配信し、
+/// macOS / iOS / Linux は `<scheme>://localhost` になる。
+#[cfg(any(windows, target_os = "android"))]
+const PKV_BASE_URL: &str = "http://pkv.localhost/file";
+#[cfg(not(any(windows, target_os = "android")))]
+const PKV_BASE_URL: &str = "pkv://localhost/file";
 
 /// リファラーチェックが無い (実測) / ミラー済みのため直接アクセス可能なホスト。
 /// HTML 変換も行わない (fanbox / patreon は SPA のため同一オリジン化すると壊れる)。
@@ -606,6 +639,76 @@ fn forbidden_host(hostname: &str) -> bool {
         || h.split('.').all(|p| p.parse::<u16>().is_ok()) // IPv4 リテラル
 }
 
+/// グローバル到達可能なアドレスか (loopback / private / link-local / CGNAT 等を拒否)
+fn is_public_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => {
+            let octets = v4.octets();
+            !(v4.is_private()
+                || v4.is_loopback()
+                || v4.is_link_local()
+                || v4.is_unspecified()
+                || v4.is_broadcast()
+                || v4.is_multicast()
+                || octets[0] == 0
+                || (octets[0] == 100 && (64..128).contains(&octets[1])) // 100.64.0.0/10
+                || (octets[0] == 192 && octets[1] == 0 && octets[2] == 0) // 192.0.0.0/24
+                || (octets[0] == 198 && (octets[1] & 0xfe) == 18)) // 198.18.0.0/15
+        }
+        IpAddr::V6(v6) => {
+            !(v6.is_loopback()
+                || v6.is_unspecified()
+                || v6.is_unique_local()
+                || v6.is_unicast_link_local()
+                || v6.is_multicast()
+                || v6
+                    .to_ipv4_mapped()
+                    .map(|mapped| !is_public_ip(IpAddr::V4(mapped)))
+                    .unwrap_or(false))
+        }
+    }
+}
+
+/// ホストが内部アドレスへ解決しないことを確認する。
+/// 名前解決自体に失敗した場合は reqwest の接続失敗に任せる。
+fn host_is_public(u: &reqwest::Url) -> bool {
+    let host = match u.host_str() {
+        Some(h) if !h.is_empty() => h,
+        _ => return false,
+    };
+    let port = u.port_or_known_default().unwrap_or(443);
+    match (host, port).to_socket_addrs() {
+        Ok(addrs) => addrs.into_iter().all(|addr| is_public_ip(addr.ip())),
+        Err(_) => true,
+    }
+}
+
+enum BodyReadError {
+    TooLarge,
+    Read(String),
+}
+
+/// 応答本文を上限付きで読み切る。Content-Length を信用せず実バイト数で判定する。
+fn read_body_limited(
+    mut resp: reqwest::blocking::Response,
+    limit: u64,
+) -> Result<Vec<u8>, BodyReadError> {
+    if let Some(length) = resp.content_length() {
+        if length > limit {
+            return Err(BodyReadError::TooLarge);
+        }
+    }
+    let mut bytes = Vec::new();
+    resp.by_ref()
+        .take(limit + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| BodyReadError::Read(e.to_string()))?;
+    if bytes.len() as u64 > limit {
+        return Err(BodyReadError::TooLarge);
+    }
+    Ok(bytes)
+}
+
 /// ホストに応じた既定のリファラー
 fn derive_referer(hostname: &str) -> &'static str {
     let h = hostname.to_ascii_lowercase();
@@ -619,6 +722,21 @@ fn derive_referer(hostname: &str) -> &'static str {
         // 投稿本文からの外部リンク等は fanbox 由来として扱う
         "https://www.fanbox.cc/"
     }
+}
+
+/// Referer に指定できるのは元サービス (FANBOX / Patreon) のページか、
+/// 中継先と同じホストのページ (プロキシした HTML 内のサブリソース) だけ。
+/// 任意サイトへの Referer 偽装を防ぐ。
+fn is_allowed_referer(u: &reqwest::Url, target_host: &str) -> bool {
+    if !matches!(u.scheme(), "http" | "https") {
+        return false;
+    }
+    let h = u.host_str().unwrap_or("").to_ascii_lowercase();
+    h == target_host.to_ascii_lowercase()
+        || h == "fanbox.cc"
+        || h.ends_with(".fanbox.cc")
+        || h == "patreon.com"
+        || h.ends_with(".patreon.com")
 }
 
 /// Pawchive 本体・API・画像配信サーバーは常に直接アクセスする。
@@ -666,7 +784,7 @@ fn percent_decode(s: &str) -> String {
 
 /// pkv プロトコルの URL を生成する
 fn pkv_url(abs: &reqwest::Url, referer: &str) -> String {
-    let mut u = reqwest::Url::parse("http://pkv.localhost/file").unwrap();
+    let mut u = reqwest::Url::parse(PKV_BASE_URL).unwrap();
     u.query_pairs_mut()
         .append_pair("u", abs.as_str())
         .append_pair("r", referer);
@@ -822,14 +940,20 @@ fn pkv_proxy_fetch(
     if !is_proxyable(&target) {
         return bad(403, "forbidden host");
     }
+    // 名前解決後に内部アドレスへ向かうホストも拒否する (DNS リバインディング対策)
+    if !host_is_public(&target) {
+        return bad(403, "forbidden address");
+    }
 
     let host = target.host_str().unwrap_or("").to_string();
 
-    // リファラー: クエリ指定 (https) を優先、無ければホスト別の既定値
+    // リファラー: クエリ指定 (fanbox / patreon の記事 URL) を優先、無ければホスト別の既定値
     let mut referer = derive_referer(&host).to_string();
     if let Some(r) = &r {
-        if r.starts_with("http") && reqwest::Url::parse(r).is_ok() {
-            referer = r.clone();
+        if let Ok(ru) = reqwest::Url::parse(r) {
+            if is_allowed_referer(&ru, &host) {
+                referer = ru.to_string();
+            }
         }
     }
     let origin = reqwest::Url::parse(&referer)
@@ -877,7 +1001,9 @@ fn pkv_proxy_fetch(
 
     let resp = match client.execute(request) {
         Ok(r) => r,
+        // reqwest のエラー表示は URL (クエリ含む) を含むため、ログ・応答から除去する
         Err(e) => {
+            let e = e.without_url();
             let message = format!("PROXY_ERROR destination={} error={}", safe_log_url(&target), e);
             log::error!(target: "Pawchive::Proxy", "{}", message);
             append_app_log(app, &message);
@@ -907,7 +1033,22 @@ fn pkv_proxy_fetch(
 
     // 外部 (direct 以外) ホストの HTML ページ: base 注入 + リンク/リソースのプロキシ化
     if ct.contains("text/html") && !is_direct_host(&host) {
-        let html = resp.text().unwrap_or_default();
+        let bytes = match read_body_limited(resp, PROXY_MAX_HTML_BYTES) {
+            Ok(bytes) => bytes,
+            Err(BodyReadError::TooLarge) => {
+                let message = format!("PROXY_ERROR destination={} body=too_large", safe_log_url(&target));
+                log::error!(target: "Pawchive::Proxy", "{}", message);
+                append_app_log(app, &message);
+                return bad(413, "response too large");
+            }
+            Err(BodyReadError::Read(error)) => {
+                let message = format!("PROXY_ERROR destination={} body_read_error={}", safe_log_url(&target), error);
+                log::error!(target: "Pawchive::Proxy", "{}", message);
+                append_app_log(app, &message);
+                return bad(502, "upstream body");
+            }
+        };
+        let html = String::from_utf8_lossy(&bytes).into_owned();
         #[cfg(feature = "debug-diag")]
         log_http_response_body(app, "Pawchive::Proxy", &html);
         let self_referer = format!("{}://{}/", target.scheme(), host);
@@ -919,23 +1060,42 @@ fn pkv_proxy_fetch(
             .unwrap();
     }
 
-    // そのまま中継 (バイナリ / direct ホストの HTML)
-    let mut b = Response::builder().status(status);
-    for h in [
+    // そのまま中継 (バイナリ / direct ホストの HTML)。
+    // ヘッダーは本文を読む前に控え、Content-Length は実バイト数で付け直す。
+    let forwarded: Vec<(tauri::http::HeaderName, String)> = [
         header::CONTENT_TYPE,
-        header::CONTENT_LENGTH,
         header::CONTENT_RANGE,
         header::ACCEPT_RANGES,
         header::CACHE_CONTROL,
         header::CONTENT_DISPOSITION,
         header::ETAG,
         header::LAST_MODIFIED,
-    ] {
-        if let Some(v) = resp.headers().get(&h).and_then(|v| v.to_str().ok()) {
-            b = b.header(h, v);
+    ]
+    .iter()
+    .filter_map(|name| {
+        resp.headers()
+            .get(name)
+            .and_then(|value| value.to_str().ok())
+            .map(|value| (name.clone(), value.to_string()))
+    })
+    .collect();
+
+    let bytes = match read_body_limited(resp, PROXY_MAX_BODY_BYTES) {
+        Ok(bytes) => bytes,
+        Err(BodyReadError::TooLarge) => {
+            let message = format!("PROXY_ERROR destination={} body=too_large", safe_log_url(&target));
+            log::error!(target: "Pawchive::Proxy", "{}", message);
+            append_app_log(app, &message);
+            return bad(413, "response too large");
         }
-    }
-    let bytes = resp.bytes().unwrap_or_default();
+        Err(BodyReadError::Read(error)) => {
+            let message = format!("PROXY_ERROR destination={} body_read_error={}", safe_log_url(&target), error);
+            log::error!(target: "Pawchive::Proxy", "{}", message);
+            append_app_log(app, &message);
+            return bad(502, "upstream body");
+        }
+    };
+
     #[cfg(feature = "debug-diag")]
     if ct.starts_with("text/") || ct.contains("json") || ct.contains("xml") || ct.contains("javascript") {
         if let Ok(text) = std::str::from_utf8(&bytes) {
@@ -946,7 +1106,56 @@ fn pkv_proxy_fetch(
     } else {
         full_http_log(app, "Pawchive::Proxy", &format!("RESPONSE_BODY <binary omitted; {} bytes>", bytes.len()));
     }
-    b.body(bytes.to_vec()).unwrap()
+
+    let mut builder = Response::builder().status(status);
+    for (name, value) in forwarded {
+        builder = builder.header(name, value);
+    }
+    builder
+        .header(header::CONTENT_LENGTH, bytes.len().to_string())
+        .body(bytes)
+        .unwrap()
+}
+
+type ProxyJob = (
+    tauri::AppHandle,
+    String,
+    String,
+    Option<Vec<u8>>,
+    Option<String>,
+    tauri::UriSchemeResponder,
+);
+
+/// pkv の要求を固定数のワーカーで処理する。
+/// 1 要求 1 スレッドだと画像が多い画面でスレッドが増えすぎるため。
+fn proxy_queue() -> &'static mpsc::Sender<ProxyJob> {
+    static QUEUE: LazyLock<mpsc::Sender<ProxyJob>> = LazyLock::new(|| {
+        let (sender, receiver) = mpsc::channel::<ProxyJob>();
+        let receiver = Arc::new(Mutex::new(receiver));
+        for index in 0..PROXY_WORKERS {
+            let receiver = Arc::clone(&receiver);
+            let _ = std::thread::Builder::new()
+                .name(format!("pkv-proxy-{index}"))
+                .spawn(move || loop {
+                    let job = {
+                        let receiver = match receiver.lock() {
+                            Ok(receiver) => receiver,
+                            Err(_) => return,
+                        };
+                        receiver.recv()
+                    };
+                    match job {
+                        Ok((app, method, uri, body, range, responder)) => {
+                            let response = pkv_proxy_fetch(&app, &method, &uri, body, range);
+                            responder.respond(response);
+                        }
+                        Err(_) => return,
+                    }
+                });
+        }
+        sender
+    });
+    &QUEUE
 }
 
 #[tauri::command]
@@ -1197,11 +1406,15 @@ pub fn run() {
             } else {
                 None
             };
-            // ブロッキング取得は別スレッドで行う (UI を止めない)
-            std::thread::spawn(move || {
-                let response = pkv_proxy_fetch(&app, &method, &uri, body, range);
-                responder.respond(response);
-            });
+            // UI を止めないよう固定ワーカーへ投入する
+            let job = (app, method, uri, body, range, responder);
+            if let Err(mpsc::SendError((_, _, _, _, _, responder))) = proxy_queue().send(job) {
+                let unavailable = tauri::http::Response::builder()
+                    .status(503)
+                    .body(b"proxy unavailable".to_vec())
+                    .unwrap();
+                responder.respond(unavailable);
+            }
         })
         .invoke_handler(
             tauri::generate_handler![
@@ -1239,4 +1452,80 @@ pub fn run() {
         .expect(
             "error while building tauri application",
         );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pkv_scheme_base_parses() {
+        // macOS / iOS / Linux で使う pkv:// 形式を、Windows でもパーサが受け付けることを確認する
+        let parsed = reqwest::Url::parse("pkv://localhost/file").unwrap();
+        assert_eq!(parsed.scheme(), "pkv");
+        assert_eq!(parsed.host_str(), Some("localhost"));
+    }
+
+    #[test]
+    fn pkv_url_keeps_target_and_referer() {
+        let target = reqwest::Url::parse("https://example.com/a%20b.png?x=1&y=2").unwrap();
+        let referer = "https://www.fanbox.cc/@tateha/posts/1";
+        let url = pkv_url(&target, referer);
+        assert!(url.starts_with(PKV_BASE_URL), "{url}");
+        let parsed = reqwest::Url::parse(&url).unwrap();
+        let pairs: std::collections::HashMap<_, _> = parsed.query_pairs().into_owned().collect();
+        assert_eq!(pairs.get("u").map(String::as_str), Some(target.as_str()));
+        assert_eq!(pairs.get("r").map(String::as_str), Some(referer));
+    }
+
+    #[test]
+    fn referer_allowlist_accepts_services_and_same_host_only() {
+        let ok = |value: &str, host: &str| {
+            is_allowed_referer(&reqwest::Url::parse(value).unwrap(), host)
+        };
+        assert!(ok("https://www.fanbox.cc/@tateha/posts/1", "example.com"));
+        assert!(ok("https://tateha.fanbox.cc/posts/1", "example.com"));
+        assert!(ok("https://www.patreon.com/posts/1", "example.com"));
+        assert!(ok("https://cdn.example.com/page", "cdn.example.com"));
+        assert!(!ok("https://evil.example/redirect", "example.com"));
+        assert!(!ok("javascript:alert(1)", "example.com"));
+        assert!(!ok("file:///etc/passwd", "example.com"));
+    }
+
+    #[test]
+    fn proxy_host_guards_block_internal_and_pawchive_hosts() {
+        assert!(forbidden_host("127.0.0.1"));
+        assert!(forbidden_host("localhost"));
+        assert!(forbidden_host("printer.local"));
+        assert!(!forbidden_host("example.com"));
+        assert!(is_pawchive_host("img.pawchive.pw"));
+        assert!(!is_proxyable(&reqwest::Url::parse("https://pawchive.pw/x").unwrap()));
+        assert!(is_proxyable(&reqwest::Url::parse("https://example.sakura.ne.jp/x").unwrap()));
+    }
+
+    #[test]
+    fn resolved_private_and_special_addresses_are_rejected() {
+        for value in [
+            "127.0.0.1",
+            "10.1.2.3",
+            "172.16.0.1",
+            "192.168.0.1",
+            "169.254.169.254",
+            "100.64.0.1",
+            "0.0.0.0",
+            "224.0.0.1",
+            "198.18.0.1",
+            "::1",
+            "fc00::1",
+            "fe80::1",
+            "::ffff:192.168.0.1",
+        ] {
+            let ip: IpAddr = value.parse().unwrap();
+            assert!(!is_public_ip(ip), "{value} must be rejected");
+        }
+        for value in ["1.1.1.1", "93.184.216.34", "2606:4700:4700::1111"] {
+            let ip: IpAddr = value.parse().unwrap();
+            assert!(is_public_ip(ip), "{value} must be accepted");
+        }
+    }
 }

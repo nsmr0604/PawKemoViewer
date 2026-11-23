@@ -172,8 +172,8 @@
 - reqwest は `default-features = false` + `rustls-tls` を維持し、OpenSSL に依存させない
 - Tauri v2 の JS → Rust コマンド引数は camelCase。Rust 側 snake_case のまま JS から渡さない
 - pawchive API は `pawchive.pw/api/v1` に直接アクセスし、Swagger スキーマに準拠
-- `pkv://` は FANBOX / Patreon の対象メディアに限って使用。pawchive 本体と `*.pawchive.pw` は常に直接通信
-- pkv の Referer / User-Agent / host allowlist の制御を維持し、Pawchive の画像を pkv 経由で再試行しない
+- `pkv://` は FANBOX / Patreon の対象メディアと、投稿コンテキストのある外部 URL (元記事 Referer が必要な場合) に使用。pawchive 本体と `*.pawchive.pw` は常に直接通信
+- pkv の Referer / User-Agent / host allowlist の制御を維持し、Pawchive の画像を pkv 経由で再試行しない。Referer に指定できるのは fanbox.cc / patreon.com のページのみ
 - API scheduler / cache / request spacing / concurrency 制限を維持
 - Favorites の cooldown を維持
 - API の意図的な未実装である `fancards` / `links` / GET flag を追加しない

@@ -1,5 +1,6 @@
 import { getApplication } from "../application/composition"
 import { isValidPostContext } from "../domain/post-identity"
+import { normalizeFanboxSlug, originalPostReferer } from "../domain/post-referer"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavoritePost } from "../post-favorites"
@@ -55,23 +56,17 @@ export function PostPage({
   // 元サービスの記事URLを Referer に使用する。FANBOX は slug サブドメインの
   // URLから slug を取り出し、www.fanbox.cc の記事URLへ正規化する。
   const proxyReferer = (() => {
-    if (service === "patreon") {
-      return `https://www.patreon.com/posts/${encodeURIComponent(postId)}`
-    }
-    if (service === "fanbox") {
-      let slug = ""
-      if (originalUrl) {
-        try {
-          slug = new URL(originalUrl).hostname.replace(/\.fanbox\.cc$/i, "")
-        } catch {
-          slug = ""
-        }
+    if (service === "patreon") return originalPostReferer("patreon", postId)
+    if (service !== "fanbox") return undefined
+    let slug = ""
+    if (originalUrl) {
+      try {
+        slug = normalizeFanboxSlug(new URL(originalUrl).hostname.replace(/\.fanbox\.cc$/i, ""))
+      } catch {
+        slug = ""
       }
-      return slug && slug !== "www"
-        ? `https://www.fanbox.cc/@${encodeURIComponent(slug)}/posts/${encodeURIComponent(postId)}`
-        : `https://www.fanbox.cc/posts/${encodeURIComponent(postId)}`
     }
-    return undefined
+    return originalPostReferer("fanbox", postId, slug)
   })()
 
   const load = useCallback(async () => {

@@ -76,11 +76,11 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 
 ### URL 生成
 
-- `fileUrl(f, service?, postId?, refererUrl?)` — 本体ファイル URL。FANBOX / Patreon 由来は `proxyImages` 有効時に pkv:// 経由 (記事 URL を Referer に使用)。pawchive 配信 (n1 / img) は直接
+- `fileUrl(f, service?, postId?, refererUrl?)` — 本体ファイル URL。FANBOX / Patreon 由来は `proxyImages` 有効時に pkv 経由 (記事 URL を Referer に使用)。pawchive 配信 (n1 / img) は直接
 - `thumbUrl(f)` — サムネイル (`img.pawchive.pw/thumbnail/data{path}`)。直接取得のみ
-- `proxyFileUrl(url, service?, postId?, refererUrl?)` — ホットリンク対策 (fanbox/patreon/pximg) を pkv:// 経由に変換 (`proxyImages` 無効時は原 URL のまま)
-- `proxyLinkUrl(url, service?, postId?, refererUrl?)` — 本文中の外部リンクを pkv:// 経由に変換
-- Referer の決定順: `refererUrl` (正規の記事 URL) → fanbox/patreon の記事 URL (postId あり) → サービストップ
+- `proxyFileUrl(url, service?, postId?, refererUrl?)` — ホットリンク対策 (fanbox/patreon/pximg) と、**投稿コンテキストのある外部ホスト**を pkv 経由に変換 (`proxyImages` 無効時は原 URL のまま)
+- `proxyLinkUrl(url, service?, postId?, refererUrl?)` — 本文中の外部リンクを pkv 経由に変換
+- Referer の決定順: `refererUrl` (正規の記事 URL) → service / postId から導出した元記事 URL → サービストップ。fanbox は creator slug が分かる場合 `https://www.fanbox.cc/@slug/posts/{postId}`、不明なら `https://www.fanbox.cc/posts/{postId}`
 - `creatorIconUrl(service, id)` — `https://pawchive.pw/icons/{service}/{userId}`
 - `creatorBannerUrl(service, id)` — `https://pawchive.pw/banners/{service}/{userId}`
 - `postUrl(service, userId, postId)` — pawchive 投稿ページ
@@ -106,11 +106,15 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 | `debug_append_log(text)` | (Full / debug-diag feature のみ) ログ行を `app_data/logs/debug-app.log` に追記 |
 | `debug_open_log_folder()` | (Full / debug-diag feature のみ) ログフォルダをファイラで開く |
 
-### pkv:// プロトコル
+### pkv プロトコル
 WebView から Referer を設定できないため、リファラーチェックがある外部 URL を Rust 側で中継する。
-- `/file?u=<対象URL>&r=<リファラー>`
-- 対象は外部メディアホストのみ。**pawchive 本体ホスト (`pawchive.pw` / `*.pawchive.pw`) は対象外** (`f=1` 強制中継は 0.3.1 で廃止)
-- SSRF 対策 (内部アドレス拒否) あり。fanbox / patreon のホストは中継対象
+- Windows / Android: `/file?u=<対象URL>&r=<リファラー>` (`http://pkv.localhost`)
+- macOS / iOS / Linux: `pkv://localhost/file?u=<対象URL>&r=<リファラー>`
+- 対象はホットリンク対策ホスト (fanbox / patreon / pximg) と、投稿コンテキストのある外部ホスト。
+  **pawchive 本体ホスト (`pawchive.pw` / `*.pawchive.pw`) は常に対象外** (`f=1` 強制中継は 0.3.1 で廃止)
+- `r` に指定できるのは fanbox.cc / patreon.com のページのみ (任意サイトへの Referer 偽装を防ぐ)
+- SSRF 対策 (内部アドレス拒否) あり。転送先の名前解決 IP も検査する
+- 応答は 64 MiB (HTML は 8 MiB) を上限とし、超過は 413。転送は 4 ワーカー、リダイレクトは最大 5 回
 - HTML ページは base 注入 + リンク/リソースのプロキシ化を行う
 
 ## データ型 (src/types.ts)

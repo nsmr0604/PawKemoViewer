@@ -1,4 +1,5 @@
 import { InvalidPostContextError, isValidPostContext } from "./domain/post-identity"
+import { originalPostReferer } from "./domain/post-referer"
 import type { CreatorIndexDto } from "./infrastructure/creator-index-dto"
 import type { Locale } from "./i18n"
 
@@ -550,13 +551,53 @@ function isHotlinkHost(hostname: string): boolean {
   return HOTLINK_HOSTS.some((d) => hostname === d || hostname.endsWith("." + d))
 }
 
-/** pkv プロトコル経由 URL (Rust 側でリファラーを偽装して中継) */
-function pkvProxyUrl(url: string, referer: string): string {
-  return `http://pkv.localhost/file?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}`
+/** pawchive 本体・API・画像サーバーは常に直接通信する */
+function isPawchiveHost(hostname: string): boolean {
+  return hostname === "pawchive.pw" || hostname.endsWith(".pawchive.pw")
 }
 
-/** リファラーチェックでブロックされる可能性のあるファイル URL を paw 経由に変換する。
- *  pawchive 自身のミラー (n1 / img) はそのまま。 */
+/** WebView 自身・ローカルの URL は中継しない */
+function isLocalHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "127.0.0.1"
+}
+
+/** pkv カスタムプロトコルの URL 形式。
+ *  Tauri は Windows / Android だけ `http://<scheme>.localhost` で配信し、
+ *  それ以外の OS は `<scheme>://localhost` になる。 */
+function pkvBaseUrl(): string {
+  const os = getPlatformRuntime().descriptor.os
+  return os === "windows" || os === "android"
+    ? "http://pkv.localhost/file"
+    : "pkv://localhost/file"
+}
+
+/** 外部 URL に付ける Referer。投稿コンテキストが無い場合はホスト別のトップを使う */
+function proxyReferer(
+  service: string | undefined,
+  postId: string | undefined,
+  refererUrl: string | undefined,
+  hostname: string,
+): string {
+  if (refererUrl) return refererUrl
+  if (service && postId) {
+    const derived = originalPostReferer(service, postId)
+    if (derived) return derived
+  }
+  const patreon = hostname === "patreon.com" || hostname.endsWith(".patreon.com")
+    || hostname === "patreonusercontent.com" || hostname.endsWith(".patreonusercontent.com")
+  return patreon ? "https://www.patreon.com/" : "https://www.fanbox.cc/"
+}
+
+/** pkv プロトコル経由 URL (Rust 側でリファラーを偽装して中継) */
+function pkvProxyUrl(url: string, referer: string): string {
+  return `${pkvBaseUrl()}?u=${encodeURIComponent(url)}&r=${encodeURIComponent(referer)}`
+}
+
+/** リファラーチェックでブロックされる可能性のあるファイル URL を pkv 経由に変換する。
+ *  - ホットリンク対策ホスト (FANBOX / Patreon 等) は常に対象
+ *  - それ以外の外部ホストも、投稿コンテキストの元記事 Referer がある場合に対象
+ *    (fanbox / patreon 以外からのアクセスを拒否する外部サイト向け)
+ *  - pawchive 自身のミラー (n1 / img) は常に直接 */
 export function proxyFileUrl(url: string, service?: string, postId?: string, refererUrl?: string): string {
   if (!url) return url
   let h: URL
@@ -566,17 +607,10 @@ export function proxyFileUrl(url: string, service?: string, postId?: string, ref
     return url
   }
   if (h.protocol !== "https:" && h.protocol !== "http:") return url
-  if (!isHotlinkHost(h.hostname)) return url
+  if (isPawchiveHost(h.hostname) || isLocalHost(h.hostname)) return url
   if (!getSettings().proxyImages) return url
-  // 投稿記事を参照元にする。記事IDが無い場合のみサービスのトップを使う。
-  const referer = refererUrl || (service === "patreon"
-    ? (postId ? `https://www.patreon.com/posts/${encodeURIComponent(postId)}` : "https://www.patreon.com/")
-    : service === "fanbox"
-      ? (postId ? `https://www.fanbox.cc/posts/${encodeURIComponent(postId)}` : "https://www.fanbox.cc/")
-      : h.hostname.endsWith("patreon.com") || h.hostname.endsWith("patreonusercontent.com")
-        ? "https://www.patreon.com/"
-        : "https://www.fanbox.cc/")
-  return pkvProxyUrl(h.toString(), referer)
+  if (!refererUrl && !isHotlinkHost(h.hostname)) return url
+  return pkvProxyUrl(h.toString(), proxyReferer(service, postId, refererUrl, h.hostname))
 }
 
 /** 投稿本文から張られた外部リンクを paw 経由に変換する。
@@ -593,13 +627,8 @@ export function proxyLinkUrl(url: string, service?: string, postId?: string, ref
   if (h.protocol !== "https:" && h.protocol !== "http:") return url
   if (h.origin === location.origin) return url
   // fanbox / patreon 自体は SPA のためそのまま (リファラーチェックが無い・実測)
-  if (h.hostname.endsWith("pawchive.pw") || isHotlinkHost(h.hostname)) return url
-  const referer = refererUrl || (service === "patreon"
-    ? (postId ? `https://www.patreon.com/posts/${encodeURIComponent(postId)}` : "https://www.patreon.com/")
-    : service === "fanbox"
-      ? (postId ? `https://www.fanbox.cc/posts/${encodeURIComponent(postId)}` : "https://www.fanbox.cc/")
-      : "https://www.fanbox.cc/")
-  return pkvProxyUrl(h.toString(), referer)
+  if (isPawchiveHost(h.hostname) || isLocalHost(h.hostname) || isHotlinkHost(h.hostname)) return url
+  return pkvProxyUrl(h.toString(), proxyReferer(service, postId, refererUrl, h.hostname))
 }
 
 export function creatorUrl(service: string, userId: string) {

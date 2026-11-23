@@ -4,6 +4,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import ts from "typescript"
 import { isValidPostContext } from "../src/domain/post-identity.ts"
+import { normalizeFanboxSlug, originalPostReferer } from "../src/domain/post-referer.ts"
 
 const context = { service: "fanbox", creatorId: "creator", postId: "post" }
 
@@ -22,6 +23,25 @@ test("post identity rejects unsupported services and incomplete or ambiguous ide
     assert.equal(isValidPostContext({ ...context, creatorId: value }), false)
     assert.equal(isValidPostContext({ ...context, postId: value }), false)
   }
+})
+
+test("original post referer uses the creator slug for FANBOX and the bare ID for Patreon", () => {
+  assert.equal(originalPostReferer("fanbox", "123", "tateha"), "https://www.fanbox.cc/@tateha/posts/123")
+  assert.equal(originalPostReferer("fanbox", "123", "@Tateha"), "https://www.fanbox.cc/@tateha/posts/123")
+  assert.equal(originalPostReferer("fanbox", "123"), "https://www.fanbox.cc/posts/123")
+  assert.equal(originalPostReferer("fanbox", "123", "www"), "https://www.fanbox.cc/posts/123")
+  assert.equal(originalPostReferer("patreon", "456"), "https://www.patreon.com/posts/456")
+  assert.equal(originalPostReferer("fanbox", "a b"), "https://www.fanbox.cc/posts/a%20b")
+  assert.equal(originalPostReferer("youtube", "789"), undefined)
+})
+
+test("fanbox slug normalization rejects values that cannot be a subdomain", () => {
+  assert.equal(normalizeFanboxSlug(" tateha "), "tateha")
+  assert.equal(normalizeFanboxSlug("@tateha"), "tateha")
+  assert.equal(normalizeFanboxSlug("www"), "")
+  assert.equal(normalizeFanboxSlug("tateha.fanbox.cc"), "")
+  assert.equal(normalizeFanboxSlug("a/b"), "")
+  assert.equal(normalizeFanboxSlug(undefined), "")
 })
 
 test("domain compiles with ES2022 alone and resolves only domain and standard library files", () => {

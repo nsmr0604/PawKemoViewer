@@ -100,12 +100,18 @@ Rust は失敗時 `Err("STATUS=401 BODY=...")` 文字列を返し、JS 側は `A
 - `account/favorites?type=post` は **PawPost 全フィールド** を返す (スリム形は artist のみ)
 - 一覧のみ `substring` フィールドを持つ
 
-### pkv:// プロキシ (`http://pkv.localhost/`)
+### pkv プロキシ (`pkv://` / `http://pkv.localhost/`)
 WebView から Referer を設定できないため、リファラーチェックがある外部 URL を Rust 側で中継する。
-`/file?u=<対象URL>&r=<リファラー>`。
-対象は外部メディアホストのみ。pawchive 本体 (`pawchive.pw` / `*.pawchive.pw`) は除外し、常に WebView / Rust から直接取得する。
-SSRF 対策 (内部アドレス拒否) あり。fanbox / patreon のホストは中継対象。
-Referer は投稿の正規 URL (canonical) を優先して付与する。
+`/file?u=<対象URL>&r=<リファラー>`。URL 形式は OS で異なり、Windows / Android は
+`http://pkv.localhost/file`、macOS / iOS / Linux は `pkv://localhost/file` になる (Tauri の仕様)。
+対象はホットリンク対策ホスト (fanbox / patreon / pximg) と、投稿コンテキストのある外部ホスト。
+pawchive 本体 (`pawchive.pw` / `*.pawchive.pw`) は除外し、常に WebView / Rust から直接取得する。
+`r` に指定できるのは fanbox.cc / patreon.com のページのみ。Referer は投稿の正規 URL (canonical) を
+優先して付与し、service / creatorId / postId から導出する (`src/domain/post-referer.ts`)。
+SSRF 対策 (内部アドレス拒否) あり。名前解決後の IP も検査し、private / loopback / link-local /
+CGNAT を拒否する。
+資源制御として、connect 10 秒 / 全体 180 秒のタイムアウト、本文 64 MiB (HTML は 8 MiB) の上限
+(超過は 413)、4 ワーカーでの処理、リダイレクトは最大 5 回で各ホップを同じ検査に通す。
 
 ### デバッグ診断コードはビルド時フラグ注入
 `VITE_DEBUG_DIAG=1` (フロント) / Cargo feature `debug-diag` (Rust) をデバッグビルドで常に指定する。
