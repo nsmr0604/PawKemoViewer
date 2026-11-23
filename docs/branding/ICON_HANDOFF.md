@@ -65,7 +65,7 @@
 - 各 workflow (tauri / android / ios) も `tauri * init`・`tauri build` の前に
   `npm run icons:generate` を実行する。
 - モバイルの切替は `tauri-plugin-app-icon` + capability `app-icon:default`。
-  `src/appIcon.ts` が light テーマ時のみ `set_icon('light')`、dark 時は `set_icon(null)`
+  `src/app-icon.ts` が light テーマ時のみ `set_icon('light')`、dark 時は `set_icon(null)`
   で既定 (dark) に戻す。
 - Android: light 用 mipmap + `activity-alias` を Manifest に注入
   (`scripts/app-icon/generate-android.mjs`)。

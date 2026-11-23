@@ -34,7 +34,7 @@
 - 実機での UI/UX の視覚確認は未完了
 
 ## ビルドフラグによる開発機能の分離 (2026-11-20)
-- [x] フロントエンドの `DEBUG_DIAG` を `src/buildFlags.ts` に分離。`VITE_DEBUG_DIAG=1` のときだけ開発用チャンクを動的ロード
+- [x] フロントエンドの `DEBUG_DIAG` を `src/build-flags.ts` に分離。`VITE_DEBUG_DIAG=1` のときだけ開発用チャンクを動的ロード
 - [x] 開発用セッションID入力・検証・保存、詳細ログフォルダ操作、バックアップJSONダンプを `DeveloperDiagnostics.tsx` へ分離。製品版では lazy import 自体をビルド時に除去
 - [x] 長文ログ分割を `debug-log.ts` へ分離し、詳細APIレスポンスログとファイルログをデバッグビルドだけでロード
 - [x] 製品版ログは基本的な uncaught error / unhandled rejection / API失敗 (method/path/HTTP status) に限定。APIレスポンス本文や詳細スタックは記録しない
@@ -372,7 +372,7 @@
       `tauri:dev` / `tauri:build` が `icons:generate` を先に実行 (ハッシュ一致確認済み)
 - [x] 既定アイコン = dark、代替アイコン = light。`tauri-plugin-app-icon` を導入し、
       light テーマ時のみ `set_icon('light')`、dark テーマ時は `set_icon(null)` で既定へ戻す
-      (`src/appIcon.ts` / `app-icon:default` capability)。android.yml / ios.yml が
+      (`src/app-icon.ts` / `app-icon:default` capability)。android.yml / ios.yml が
       `tauri * init` 後に light の代替アイコンと alias を生成
 - [ ] Android / iOS 実機でテーマ切替 → アイコン反映・ランチャーにエントリが 1 つだけ
       残ることを確認 (未実施)。iOS は OS の確認ダイアログが出る仕様

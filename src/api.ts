@@ -13,6 +13,7 @@ import type {
   AccountFavorite,
   PawFile,
 } from "./types"
+import { getCreatorRow } from "./db"
 import { logApiFailure } from "./log"
 import { getPlatformRuntime } from "./platform/runtime"
 
@@ -458,7 +459,6 @@ export const api = {
 /** fanbox の creator slug (public_id) をクリエイター索引から取得 */
 async function fanboxSlug(creatorId: string): Promise<string | null> {
   try {
-    const { getCreatorRow } = await import("./db")
     const row = await getCreatorRow(`fanbox:${creatorId}`)
     return row?.publicId || null
   } catch {

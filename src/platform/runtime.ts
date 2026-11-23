@@ -1,4 +1,4 @@
-import { getPlatform, isMobile } from "../platform"
+import { getPlatform, isMobile } from "./environment"
 import type { PlatformFamily, PlatformDescriptor, PlatformRuntime, PlatformServices } from "./contracts"
 import { createDesktopServices, createMobileServices, createWebServices } from "./families"
 

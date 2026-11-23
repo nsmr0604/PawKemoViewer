@@ -41,24 +41,33 @@ src/                    フロントエンド
   db.ts                 IndexedDB (クリエイター索引パック・既読)
   icons.ts              クリエイターアイコンの多段キャッシュ
   follows.ts            フォロー (アカウント同期)
-  favstate.ts           お気に入り投稿の共有状態
+  post-favorites.ts           お気に入り投稿の共有状態
   backup.ts             バックアップ書き出し/読み込み
   log.ts                アプリ内ログ (リングバッファ)
-  buildFlags.ts         ビルド時機能フラグ (VITE_DEBUG_DIAG)
-  debug.ts              開発項目が有効な場合の Tauri ログ操作
+  build-flags.ts         ビルド時機能フラグ (VITE_DEBUG_DIAG)
+  native-debug-log.ts   デバッグビルド用の Tauri ファイルログ操作
   debug-log.ts          詳細ログ分割 (デバッグビルドのみ動的ロード)
-  router.ts / hooks.ts / platform.ts / history.ts / types.ts / styles.css
-  components.tsx        共通 UI (PostCard / PostRow / PostGrid / Thumb / CreatorAvatar / ErrorBox / fmtDate ほか)
-  components/           FollowButton / NavigationRail / DeveloperDiagnostics (Lite) / DeveloperFullDiagnostics (Full: debug only)
-  pages/                Home / Creators / CreatorPage / PostPage / Favorites / Login / Settings
+  platform/             実行環境判定・サービス契約・デスクトップ／モバイル／Web アダプター
+  components/           PostGrid / PostThumbnail / CreatorAvatar / Feedback / NavigationRail など
+  pages/                HomePage / CreatorsPage / CreatorPage / PostPage / FavoritesPage / LoginPage / SettingsPage
+  post-files.ts         投稿ファイルの選別
+  post-content.ts       投稿本文 HTML の処理
 src-tauri/
-  src/lib.rs            Rust 実装 (コマンド・pkv:// プロキシ)
+  src/lib.rs            Tauri コマンド登録・API・pkv:// プロキシ
+  src/locale_storage.rs 言語ファイルの読み書きと保存場所の解決
   src/main.rs           エントリポイント
   examples/probe_api.rs API 実測プローブ
   Cargo.toml            features: debug-diag
 docs/                   本ドキュメント群
 .github/workflows/      tauri.yml (PC) / android.yml (APK)
 ```
+
+## 命名規則
+
+- React の画面・コンポーネントのファイル名は `PascalCase.tsx`。画面は `HomePage.tsx` のように `Page` で終え、主コンポーネントと同じ名前にする。起動ファイルは `main.tsx`。
+- TypeScript の非 UI モジュールは `kebab-case.ts`。型は `PascalCase`、関数と変数は `camelCase`、モジュールの定数は `UPPER_SNAKE_CASE`。
+- Rust のモジュール、関数、Tauri コマンド名は `snake_case`。Tauri コマンドの引数名はフロントエンド側で `camelCase`。
+- 外部 API のフィールド名・保存形式・ストレージキーは、対応する既存の形式に合わせる。
 
 ## 開発環境
 

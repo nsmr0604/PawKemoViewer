@@ -152,7 +152,7 @@ notes/
 - デバッグ用の診断コード (backup JSON ダンプ・詳細通信ログ等) は
   **ビルド時フラグで注入し、リリースビルドではコード自体を分離する**。
   実行時判定 (`cfg!(debug_assertions)` や is_debug コマンド) は使わない
-- **フロントエンド**: `VITE_DEBUG_DIAG=1` → `src/debug.ts` の `DEBUG_DIAG` 定数。
+- **フロントエンド**: `VITE_DEBUG_DIAG=1` → `src/build-flags.ts` の `DEBUG_DIAG` 定数。
   診断コードは `if (DEBUG_DIAG)` で囲み、リリースビルドでは定数畳み込みで
   バンドラが分岐ごと排除する
   - 開発サーバ (`npm run dev`): `.env.development` で自動有効

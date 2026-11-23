@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { t } from "../i18n"
-import type { ResolvedLayout } from "../platform"
+import type { ResolvedLayout } from "../platform/environment"
 import { navigate } from "../router"
 import { BottomNavigation } from "./BottomNavigation"
 import { NavigationRail, NavIcon } from "./NavigationRail"

@@ -9,10 +9,10 @@ import {
   formatLog,
   logInfo,
 } from "../log"
-import { DEBUG_DIAG } from "../buildFlags"
+import { DEBUG_DIAG } from "../build-flags"
 import { navigate } from "../router"
-import { Toggle } from "../components"
-import { getPlatformName, type LayoutMode } from "../platform"
+import { Toggle } from "../components/Toggle"
+import { getPlatformName, type LayoutMode } from "../platform/environment"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
 import { clearIconCache, creatorIconInfo } from "../icons"
 import {

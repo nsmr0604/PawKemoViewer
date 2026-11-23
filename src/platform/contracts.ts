@@ -1,5 +1,5 @@
 /** Platform foundation contracts. OS implementations are injected by family adapters. */
-import type { PlatformType } from "../platform"
+import type { PlatformType } from "./environment"
 
 export type PlatformFamily = "desktop" | "mobile" | "web"
 
