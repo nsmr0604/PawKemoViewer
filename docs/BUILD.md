@@ -23,6 +23,7 @@ PawKemoViewer (v0.5.1) のビルド・パッケージング・CI 構成。
 
 起動・言語ファイルの検証も同じビルド画面から実行する。
 
+- Build Tauri の `windows_smoke=true` と macOS Build の `installed_smoke=true` は、その実行で作ったインストーラーから起動し、公開投稿 API の応答を確認する。
 - Build Tauri の `linux_smoke=true` は、その実行で作った DEB をインストールし、WebView の起動と公開投稿 API の応答を確認する。
 - Android Build と iOS Build の `locale_test=true` は、アプリ ID `com.nsmr0604.pawkemoviewer.localetest` で言語ファイル検証用パッケージを作る。通常版と並べてインストールできる。
 - どちらの検証モードも手動のデバッグビルド専用で、成果物は Actions に保存する。

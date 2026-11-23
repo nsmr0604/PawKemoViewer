@@ -25,6 +25,10 @@ on:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
+      windows_smoke:
+        description: "Windows のインストールと起動を検証 (デバッグ・成果物のみ)"
+        type: boolean
+        default: false
       linux_smoke:
         description: "Linux に DEB をインストールして起動と公開 API を検証 (デバッグ・成果物のみ)"
         type: boolean
@@ -35,7 +39,7 @@ on:
         default: false
 
 concurrency:
-  group: desktop-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}-${{ inputs.linux_smoke && 'validation' || 'standard' }}
+  group: desktop-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}-${{ (inputs.linux_smoke || inputs.windows_smoke) && 'validation' || 'standard' }}
   cancel-in-progress: ${{ inputs.release != true }}
 
 permissions:
@@ -59,11 +63,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: 製品版と Linux 起動検証の同時指定を拒否
-        if: inputs.release && inputs.linux_smoke
+      - name: 製品版と起動検証の同時指定を拒否
+        if: inputs.release && (inputs.linux_smoke || inputs.windows_smoke)
         shell: bash
         run: |
-          echo "linux_smoke requires a debug build" >&2
+          echo "Installation checks require a debug build" >&2
           exit 1
 
       - uses: actions/setup-node@v6
@@ -135,9 +139,29 @@ jobs:
           xvfb-run -a --server-args="-screen 0 1280x900x24" dbus-run-session -- \
             /usr/bin/python3 tests/linux_installed_smoke.py
 
+      - uses: actions/setup-python@v6
+        if: runner.os == 'Windows' && inputs.windows_smoke
+        with:
+          python-version: "3.12"
+
+      - name: Windows にインストールして起動
+        if: runner.os == 'Windows' && inputs.windows_smoke
+        shell: pwsh
+        timeout-minutes: 12
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer, $extra = @(Get-ChildItem src-tauri/target/release/bundle/nsis -Filter '*-setup.exe')
+          if (-not $installer -or $extra) { throw 'NSIS インストーラーは1個必要です' }
+          $target = Join-Path $env:RUNNER_TEMP 'PawKemoViewer'
+          $result = Start-Process $installer.FullName -ArgumentList '/S', "/D=$target" -PassThru -Wait
+          if ($result.ExitCode -ne 0) { throw "NSIS が終了コード $($result.ExitCode) を返しました" }
+          python tests/desktop_installed_smoke.py "$target/pawkemoviewer.exe"
+
   publish:
     needs: build
-    if: inputs.artifact_only != true && inputs.linux_smoke != true
+    if: inputs.artifact_only != true && inputs.linux_smoke != true && inputs.windows_smoke != true
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

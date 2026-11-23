@@ -8,13 +8,17 @@ on:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
+      installed_smoke:
+        description: "macOS のインストールと起動を検証 (デバッグ・成果物のみ)"
+        type: boolean
+        default: false
       artifact_only:
         description: "成果物を Actions にのみ保存"
         type: boolean
         default: false
 
 concurrency:
-  group: macos-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}
+  group: macos-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}-${{ inputs.installed_smoke && 'validation' || 'standard' }}
   cancel-in-progress: ${{ inputs.release != true }}
 
 permissions:
@@ -33,6 +37,12 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+
+      - name: 製品版と起動検証の同時指定を拒否
+        if: inputs.release && inputs.installed_smoke
+        run: |
+          echo "installed_smoke requires a debug build" >&2
+          exit 1
 
       - uses: actions/setup-node@v6
         with:
@@ -78,9 +88,31 @@ jobs:
             artifacts/*.app.tar.gz
           if-no-files-found: error
 
+      - uses: actions/setup-python@v6
+        if: inputs.installed_smoke
+        with:
+          python-version: "3.12"
+
+      - name: macOS に配置して起動
+        if: inputs.installed_smoke
+        timeout-minutes: 12
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          set -euo pipefail
+          dmg=$(find src-tauri/target/release/bundle/dmg -type f -name '*.dmg' -print -quit)
+          test -n "$dmg"
+          mount=$(mktemp -d)
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount"
+          trap 'hdiutil detach "$mount"' EXIT
+          app="$RUNNER_TEMP/PawKemoViewer.app"
+          ditto "$mount/PawKemoViewer.app" "$app"
+          exe=$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$app/Contents/Info.plist")
+          python tests/desktop_installed_smoke.py "$app/Contents/MacOS/$exe"
+
   publish:
     needs: build
-    if: inputs.artifact_only != true
+    if: inputs.artifact_only != true && inputs.installed_smoke != true
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
