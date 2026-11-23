@@ -2040,7 +2040,7 @@ textarea:focus {
 
 .bottom-nav {
   position: fixed;
-  bottom: var(--bottom-nav-inset, 0px);
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 20;
