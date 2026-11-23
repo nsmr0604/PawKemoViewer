@@ -26,6 +26,13 @@ export function createMobileServices(os?: PlatformDescriptor["os"]): PlatformSer
         return resolveNativeStorageLocation(area, purpose)
       },
     },
+    userFiles: {
+      ...native.userFiles,
+      appDirectory: {
+        openBackup: () => invoke("pick_json_file", { purpose: "backup", appDirectory: true }),
+        save: (purpose, filename, text) => invoke("save_user_file", { purpose, filename, text, appDirectory: true }),
+      },
+    },
     localePicker: os === "android" || os === "ios" ? {
       ...native.localePicker,
       saveToAppDirectory: (code, json) => invoke("save_locale_file_to_app_directory", { code, json }),

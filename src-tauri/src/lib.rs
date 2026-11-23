@@ -1172,7 +1172,7 @@ pub fn run() {
     #[cfg(target_os = "ios")]
     let builder = builder.setup(|app| {
         if let Err(error) = locale_storage::prepare_ios_files_directory(app.handle()) {
-            log::warn!("Could not prepare the Files language directory: {error}");
+            log::warn!("Could not prepare the Files directories: {error}");
         }
         Ok(())
     });

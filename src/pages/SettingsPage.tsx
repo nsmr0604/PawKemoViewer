@@ -50,6 +50,8 @@ export function SettingsPage() {
   const localeUseCases = getApplication().locales
   const { descriptor: platform, services } = getPlatformRuntime()
   const supportsSecondaryLocale = Boolean(services.locale?.writeSecondary)
+  const appDirectory = services.userFiles?.appDirectory
+  const mobileFolderLabel = t(platform.os === "ios" ? "settings.appFilesIos" : "settings.appFilesAndroid")
   const secondaryFolder = secondaryLocaleFolder()
   const folderLabel = secondaryFolder && platform.isNative && platform.os === "ios"
     ? t("settings.localeFolderIos")
@@ -273,13 +275,19 @@ export function SettingsPage() {
     updateSettings({ timeoutSecs: v })
   }
 
-  const saveUserFile = async (purpose: "backup" | "log", filename: string, text: string) => {
+  const describeExportPath = (path: string, inAppFolder: boolean) => {
+    if (!inAppFolder) return path
+    return platform.os === "ios" ? `${mobileFolderLabel} / ${path}` : path.replace(/^.*\/(Android\/data\/)/, "$1")
+  }
+
+  const saveUserFile = async (purpose: "backup" | "log", filename: string, text: string, chooseLocation: boolean) => {
+    if (appDirectory && !chooseLocation) return appDirectory.save(purpose, filename, text)
     if (services.userFiles) return services.userFiles.save(purpose, filename, text)
     if (!services.files) throw new Error("File export service unavailable")
     return { kind: "saved" as const, path: await services.files.exportText(filename, text) }
   }
 
-  const doExportBackup = async () => {
+  const doExportBackup = async (chooseLocation = false) => {
     if (filePickerBusy) return
     setFilePickerBusy(true)
     setBackupResult(null)
@@ -288,7 +296,7 @@ export function SettingsPage() {
       if (new TextEncoder().encode(json).length > MAX_BACKUP_BYTES) {
         throw new Error(t("settings.backupTooLarge"))
       }
-      const result = await saveUserFile("backup", "pawkemoviewer-backup.json", json)
+      const result = await saveUserFile("backup", "pawkemoviewer-backup.json", json, chooseLocation)
       if (result.kind === "cancelled") return
 
       let clip = ""
@@ -298,7 +306,7 @@ export function SettingsPage() {
         /* ファイル保存の結果を優先する */
       }
       setBackupResult(result.path
-        ? t("settings.exported", { path: result.path, clip })
+        ? t("settings.exported", { path: describeExportPath(result.path, Boolean(appDirectory && !chooseLocation)), clip })
         : t("settings.backupSaved", { clip }))
       logInfo("バックアップを書き出しました")
     } catch (e) {
@@ -308,7 +316,7 @@ export function SettingsPage() {
     }
   }
 
-  const doImportBackupFile = async (file?: File) => {
+  const doImportBackupFile = async (file?: File, fromAppFolder = false) => {
     if (filePickerBusy || (!file && !services.userFiles)) return
     setFilePickerBusy(true)
     setBackupResult(null)
@@ -317,7 +325,8 @@ export function SettingsPage() {
         if (file.size > MAX_BACKUP_BYTES) throw new Error(t("settings.backupTooLarge"))
         await doImport(new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer()))
       } else {
-        const result = await services.userFiles?.open("backup")
+        const result = fromAppFolder ? await appDirectory?.openBackup() : await services.userFiles?.open("backup")
+        if (result?.kind === "missing") setBackupResult(t("settings.backupMissing"))
         if (result?.kind === "selected") await doImport(result.json)
       }
     } catch (e) {
@@ -363,15 +372,15 @@ export function SettingsPage() {
 
   const showLog = () => setLogText(formatLog() || t("settings.noLog"))
 
-  const exportLog = async () => {
+  const exportLog = async (chooseLocation = false) => {
     if (filePickerBusy) return
     setFilePickerBusy(true)
     setLogResult(null)
     try {
-      const result = await saveUserFile("log", "pawkemoviewer-log.txt", formatLog())
+      const result = await saveUserFile("log", "pawkemoviewer-log.txt", formatLog(), chooseLocation)
       if (result.kind === "saved") {
         setLogResult(result.path
-          ? t("settings.exported", { path: result.path, clip: "" })
+          ? t("settings.exported", { path: describeExportPath(result.path, Boolean(appDirectory && !chooseLocation)), clip: "" })
           : t("settings.logSaved"))
       }
     } catch (e) {
@@ -574,18 +583,6 @@ export function SettingsPage() {
           )}
         </div>
 
-        {localeUseCases.canPickLocale && (
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.localePickerExport")}</span>
-              <small>{t("settings.localePickerExportDesc")}</small>
-            </div>
-            <button className="btn" disabled={filePickerBusy || !canExportLocale} onClick={() => void useLocalePicker("export")}>
-              {t("settings.localePickerSave")}
-            </button>
-          </div>
-        )}
-
         {localeUseCases.canSaveLocaleToAppDirectory && (
           <div className="setting-item">
             <div className="setting-text">
@@ -594,6 +591,18 @@ export function SettingsPage() {
             </div>
             <button className="btn" disabled={filePickerBusy || !canExportLocale} onClick={() => void useLocalePicker("export-to-app")}>
               {t("settings.localeAppFolderSave")}
+            </button>
+          </div>
+        )}
+
+        {localeUseCases.canPickLocale && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>{t("settings.localePickerExport")}</span>
+              <small>{t("settings.localePickerExportDesc")}</small>
+            </div>
+            <button className="btn" disabled={filePickerBusy || !canExportLocale} onClick={() => void useLocalePicker("export")}>
+              {t(localeUseCases.canSaveLocaleToAppDirectory ? "settings.chooseOtherDestination" : "settings.localePickerSave")}
             </button>
           </div>
         )}
@@ -764,11 +773,18 @@ export function SettingsPage() {
         <div className="setting-item">
           <div className="setting-text">
             <span>{t("settings.exportTitle")}</span>
-            <small>{t("settings.exportDesc")}</small>
+            <small>{appDirectory ? t("settings.backupDefaultDesc", { path: mobileFolderLabel }) : t("settings.exportDesc")}</small>
           </div>
-          <button className="btn" disabled={filePickerBusy} onClick={doExportBackup}>
-            {t("settings.backupSave")}
-          </button>
+          <div className="settings-actions">
+            {appDirectory && (
+              <button className="btn" disabled={filePickerBusy} onClick={() => void doExportBackup()}>
+                {t("settings.backupDefaultSave")}
+              </button>
+            )}
+            <button className="btn" disabled={filePickerBusy} onClick={() => void doExportBackup(true)}>
+              {t(appDirectory ? "settings.chooseOtherDestination" : "settings.backupSave")}
+            </button>
+          </div>
         </div>
 
         <div className="setting-item">
@@ -777,9 +793,14 @@ export function SettingsPage() {
             <small>{t("settings.importDesc")}</small>
           </div>
           <div className="settings-actions">
+            {appDirectory && (
+              <button className="btn" disabled={filePickerBusy} onClick={() => void doImportBackupFile(undefined, true)}>
+                {t("settings.backupOpenDefault")}
+              </button>
+            )}
             {services.userFiles ? (
               <button className="btn" disabled={filePickerBusy} onClick={() => void doImportBackupFile()}>
-                {t("settings.backupOpen")}
+                {t(appDirectory ? "settings.backupOpenOther" : "settings.backupOpen")}
               </button>
             ) : (
               <label className="field">
@@ -933,14 +954,19 @@ export function SettingsPage() {
             <div className="setting-text">
               <span>{t("settings.logTitle")}</span>
               <small>{t("settings.logDesc", { count: logCount })}</small>
-              <small>{t("settings.logSaveDesc")}</small>
+              <small>{appDirectory ? t("settings.logDefaultDesc", { path: mobileFolderLabel }) : t("settings.logSaveDesc")}</small>
             </div>
             <div className="settings-actions">
               <button className="btn" onClick={showLog}>
                 {t("settings.show")}
               </button>
-              <button className="btn" disabled={filePickerBusy} onClick={exportLog}>
-                {t("settings.logSave")}
+              {appDirectory && (
+                <button className="btn" disabled={filePickerBusy} onClick={() => void exportLog()}>
+                  {t("settings.logDefaultSave")}
+                </button>
+              )}
+              <button className="btn" disabled={filePickerBusy} onClick={() => void exportLog(true)}>
+                {t(appDirectory ? "settings.chooseOtherDestination" : "settings.logSave")}
               </button>
               <button
                 className="btn"

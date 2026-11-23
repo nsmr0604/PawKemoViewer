@@ -5,12 +5,13 @@ import UniformTypeIdentifiers
 
 private struct ImportArguments: Decodable {
     let maxBytes: Int
+    let folder: String
 }
 
 private struct ExportArguments: Decodable {
     let filename: String
     let json: String
-    let locale: Bool
+    let folder: String
     let maxBytes: Int
 }
 
@@ -26,7 +27,9 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
                 invoke.reject("The JSON picker requires iOS 14 or later")
                 return
             }
-            self.present(UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: true), invoke, importLimit: args.maxBytes)
+            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: true)
+            picker.directoryURL = try? self.filesDirectory(args.folder)
+            self.present(picker, invoke, importLimit: args.maxBytes)
         }
     }
 
@@ -53,9 +56,7 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
                 }
                 try bytes.write(to: file, options: .atomic)
                 let picker = UIDocumentPickerViewController(forExporting: [file], asCopy: true)
-                if args.locale {
-                    picker.directoryURL = try self.filesLanguageDirectory()
-                }
+                picker.directoryURL = try? self.filesDirectory(args.folder)
                 self.exportDirectory = directory
                 self.present(picker, invoke)
             } catch {
@@ -65,10 +66,10 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
         }
     }
 
-    private func filesLanguageDirectory() throws -> URL {
+    private func filesDirectory(_ folder: String) throws -> URL {
         let manager = FileManager.default
         let documents = try manager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let directory = documents.appendingPathComponent("Languages", isDirectory: true)
+        let directory = documents.appendingPathComponent(folder, isDirectory: true)
         try manager.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }

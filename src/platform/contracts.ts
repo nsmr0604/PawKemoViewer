@@ -37,6 +37,10 @@ export type FileSaveResult = { kind: "cancelled" } | { kind: "saved"; path?: str
 export interface UserFilePicker {
   open(purpose: JsonPurpose): Promise<JsonOpenResult>
   save(purpose: JsonPurpose | "log", filename: string, text: string): Promise<FileSaveResult>
+  appDirectory?: {
+    openBackup(): Promise<JsonOpenResult | { kind: "missing" }>
+    save(purpose: "backup" | "log", filename: string, text: string): Promise<FileSaveResult>
+  }
 }
 
 export interface LocalePicker {
