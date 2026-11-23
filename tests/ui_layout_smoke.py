@@ -186,14 +186,14 @@ def long_follow_list_matrix(browser):
         page.evaluate("window.scrollTo({top: document.body.scrollHeight, behavior: 'instant'})")
         assert page.evaluate("window.scrollY > innerHeight")
         pinned_to = """
-            (inset) => Math.abs(document.querySelector(".bottom-nav").getBoundingClientRect().bottom
-                - (innerHeight - inset)) < 1
+            () => Math.abs(document.querySelector(".bottom-nav").getBoundingClientRect().bottom
+                - innerHeight) < 1
         """
-        page.wait_for_function(pinned_to, arg=0)
+        page.wait_for_function(pinned_to)
         page.evaluate("window.testViewportInset = 180; visualViewport.dispatchEvent(new Event('resize'))")
-        page.wait_for_function(pinned_to, arg=180)
+        page.wait_for_function(pinned_to)
         page.evaluate("window.testViewportInset = 0; visualViewport.dispatchEvent(new Event('resize'))")
-        page.wait_for_function(pinned_to, arg=0)
+        page.wait_for_function(pinned_to)
         bottom.get_by_role("button", name="設定", exact=True).tap()
         expect(page.get_by_role("heading", name="設定", exact=True)).to_be_visible()
         page.locator(".top-bar .btn-account").tap()

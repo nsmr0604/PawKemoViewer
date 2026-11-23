@@ -2240,7 +2240,7 @@ textarea:focus {
 .app-mobile .home-page .view-mode-bar > .hint-row {
   min-width: 0;
   overflow-wrap: anywhere;
-
+}
 
 /* Prevent mobile viewport drift caused by accidental page-level horizontal overflow. */
 @media (max-width: 680px) {
