@@ -27,7 +27,7 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
                 invoke.reject("The JSON picker requires iOS 14 or later")
                 return
             }
-            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: true)
+            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: false)
             picker.directoryURL = try? self.filesDirectory(args.folder)
             self.present(picker, invoke, importLimit: args.maxBytes)
         }
@@ -119,25 +119,56 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
             invoke.resolve(["kind": "saved"])
             return
         }
-        do {
-            let handle = try FileHandle(forReadingFrom: url)
-            defer { try? handle.close() }
-            var data = Data()
-            while let chunk = try handle.read(upToCount: 8192), !chunk.isEmpty {
-                if chunk.count > importLimit - data.count {
-                    invoke.reject("JSON file exceeds the size limit")
-                    return
+        let maxBytes = importLimit
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = Self.readSelectedDocument(url, maxBytes: maxBytes)
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let json):
+                    invoke.resolve(["kind": "selected", "name": url.lastPathComponent, "json": json])
+                case .failure(let error):
+                    invoke.reject(error.localizedDescription)
                 }
-                data.append(chunk)
             }
-            guard let json = String(data: data, encoding: .utf8) else {
-                invoke.reject("JSON file is not UTF-8")
-                return
-            }
-            invoke.resolve(["kind": "selected", "name": url.lastPathComponent, "json": json])
-        } catch {
-            invoke.reject("Could not read the selected JSON file")
         }
+    }
+
+    private enum ReadError: LocalizedError {
+        case tooLarge
+        case invalidEncoding
+        case unavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .tooLarge: return "JSON file exceeds the size limit"
+            case .invalidEncoding: return "JSON file is not UTF-8"
+            case .unavailable: return "Could not read the selected JSON file"
+            }
+        }
+    }
+
+    private static func readSelectedDocument(_ url: URL, maxBytes: Int) -> Result<String, Error> {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        var coordinationError: NSError?
+        var result: Result<String, Error> = .failure(ReadError.unavailable)
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { readableURL in
+            result = Result {
+                let handle = try FileHandle(forReadingFrom: readableURL)
+                defer { try? handle.close() }
+
+                var data = Data()
+                while let chunk = try handle.read(upToCount: 8192), !chunk.isEmpty {
+                    guard chunk.count <= maxBytes - data.count else { throw ReadError.tooLarge }
+                    data.append(chunk)
+                }
+                guard let json = String(data: data, encoding: .utf8) else { throw ReadError.invalidEncoding }
+                return json
+            }
+        }
+        if let coordinationError { return .failure(coordinationError) }
+        return result
     }
 }
 

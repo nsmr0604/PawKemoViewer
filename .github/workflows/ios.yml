@@ -193,7 +193,9 @@ jobs:
               info = plistlib.loads(ipa.read(info_path))
               if info.get("CFBundleDisplayName") != "PawKemoViewer":
                   raise SystemExit("The IPA is missing the PawKemoViewer display name")
-              for key in ("UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"):
+              for key in (
+                  "UISupportsDocumentBrowser", "UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"
+              ):
                   if info.get(key) is not True:
                       raise SystemExit(f"{key} must be enabled for the local Files folder")
               primary = info["CFBundleIcons"]["CFBundlePrimaryIcon"]

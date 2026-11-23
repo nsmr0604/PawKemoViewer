@@ -30,10 +30,14 @@ PawKemoViewer (v0.5.1) のビルド・パッケージング・CI 構成。
 
 紹介サイトの公開と Wiki の同期には、それぞれ `pages.yml` と `wiki.yml` を使う。
 
-iOS・iPadOS はアプリを初回起動すると、「ファイル」→「このiPhone内」または「このiPad内」に
-`PawKemoViewer` の専用フォルダーを用意する。フォルダーのアイコンは OS がアプリのアイコンを
-使って表示する。手動ビルドでは最終 IPA にファイル共有設定、アプリ名、iPhone・iPad の
-アイコン設定が入っていることを検査する。
+iOS・iPadOS では Document Based Apps の共有設定 `UISupportsDocumentBrowser` を有効にする。
+初回起動後、「ファイル」→「このiPhone内」または「このiPad内」→ `PawKemoViewer` で
+`Languages`、`Backups`、`Logs` を管理できる。フォルダーのアイコンは OS が
+アプリアイコンを使って表示する。
+
+アプリの設定から外部の JSON を選ぶと、iOS が許可した URL を使い、
+`NSFileCoordinator` で読み込む。バックアップの復元はアプリ内で確認してから行う。
+手動ビルドは最終 IPA の共有設定、アプリ名、iPhone・iPad のアイコンを検査する。
 
 ## 成果物
 
