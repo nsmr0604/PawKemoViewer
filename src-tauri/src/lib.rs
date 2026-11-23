@@ -938,10 +938,20 @@ fn pkv_proxy_fetch(
     };
     // Pawchive 本体/API/画像サーバーは pkv 経由にしない。
     if !is_proxyable(&target) {
+        log::warn!(
+            target: "Pawchive::Proxy",
+            "PROXY_BLOCKED destination={} reason=host",
+            safe_log_url(&target)
+        );
         return bad(403, "forbidden host");
     }
     // 名前解決後に内部アドレスへ向かうホストも拒否する (DNS リバインディング対策)
     if !host_is_public(&target) {
+        log::warn!(
+            target: "Pawchive::Proxy",
+            "PROXY_BLOCKED destination={} reason=address",
+            safe_log_url(&target)
+        );
         return bad(403, "forbidden address");
     }
 
