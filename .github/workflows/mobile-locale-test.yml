@@ -1,0 +1,155 @@
+name: Mobile locale integration test
+
+on:
+  push:
+    branches: [arch/m7-native-validation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-locale-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VITE_DEBUG_DIAG: "1"
+  VITE_BUILD_COMMIT: ${{ github.sha }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: android
+            target: aarch64-linux-android
+            suffix: apk
+          - os: macos-15
+            platform: ios
+            target: aarch64-apple-ios
+            suffix: ipa
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: actions/setup-java@v4
+        if: matrix.platform == 'android'
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v4
+        if: matrix.platform == 'android'
+      - name: Prepare Android SDK
+        if: matrix.platform == 'android'
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "platforms;android-36" "build-tools;35.0.0" "ndk;27.2.12479018"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Prepare Xcode
+        if: matrix.platform == 'ios'
+        run: |
+          xcodebuild -version
+          command -v xcodegen || brew install xcodegen
+      - name: Install dependencies and give test builds a separate app ID
+        run: |
+          npm ci
+          node --input-type=module <<'JS'
+          import fs from "node:fs"
+          const path = "src-tauri/tauri.conf.json"
+          const config = JSON.parse(fs.readFileSync(path, "utf8"))
+          config.identifier = "com.nsmr0604.pawkemoviewer.localetest"
+          fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\n")
+          JS
+      - name: Generate native app icons
+        run: npm run icons:generate
+      - name: Initialize iOS project
+        # src-tauri/gen/apple は git 管理外 (Android と同じく CI で毎回生成)
+        if: matrix.platform == 'ios'
+        run: npx tauri ios init
+
+      - name: Apply primary (dark) app icon
+        # init 後に実行すると tauri icon が gen/apple/Assets.xcassets/AppIcon.appiconset
+        # へ直接書き込む (init 前だと src-tauri/icons/ios にしか生成されない)
+        if: matrix.platform == 'ios'
+        run: npx tauri icon src-tauri/app-icons/dark.png
+
+      - name: Prepare alternate app icons in Xcode spec
+        # tauri ios init が生成する project.yml に、代替アイコンの映射ブロックと
+        # 全 AppIcon アセットをコンパイルする設定を入れる (冪等)。
+        if: matrix.platform == 'ios'
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+          const p = 'src-tauri/gen/apple/project.yml'
+          let s = fs.readFileSync(p, 'utf8')
+          const start = '        # APP-ICON ALIASES START'
+          const end = '        # APP-ICON ALIASES END'
+          if (!s.includes(start)) {
+            const m = s.match(/(\n[ \t]+properties:\n)/)
+            if (!m) throw new Error('info.properties not found in project.yml')
+            s = s.replace(m[0], m[0] + start + '\n' + end + '\n')
+          }
+          if (!s.includes('ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS')) {
+            const m = s.match(/(\n[ \t]+ENABLE_BITCODE: false\n)/)
+            if (!m) throw new Error('ENABLE_BITCODE not found in project.yml')
+            s = s.replace(m[0], m[0] + '        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES\n')
+          }
+          fs.writeFileSync(p, s)
+          NODE
+          grep -nE 'APP-ICON ALIASES|INCLUDE_ALL_APPICON' src-tauri/gen/apple/project.yml
+
+      - name: Generate alternate app icon (light)
+        if: matrix.platform == 'ios'
+        run: |
+          node scripts/app-icon/generate-ios.mjs --config src-tauri/app-icons.json
+          grep -n 'TauriAppIconAliases' src-tauri/gen/apple/project.yml
+
+      - name: Regenerate Xcode project with alternate icons
+        # tauri ios init が作った pbxproj / Info.plist はパッチ前に生成されている。
+        # project.yml の映射・ビルド設定を反映させるため xcodegen を再実行する。
+        if: matrix.platform == 'ios'
+        run: |
+          set -e
+          cd src-tauri/gen/apple
+          xcodegen generate --spec project.yml
+          grep -n 'TauriAppIconAliases' PawKemoViewer_iOS/Info.plist
+          grep -n 'ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS' PawKemoViewer.xcodeproj/project.pbxproj
+
+      - name: Build Android APK
+        if: matrix.platform == 'android'
+        run: |
+          npx tauri android init --ci
+          npx tauri icon src-tauri/app-icons/dark.png
+          npm run icons:generate:android
+          npx tauri android build --apk --target aarch64 --features debug-diag
+          mkdir -p artifacts
+          apk=$(find src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' -print -quit)
+          test -n "$apk"
+          tools="$ANDROID_HOME/build-tools/35.0.0"
+          "$tools/zipalign" -f 4 "$apk" "$RUNNER_TEMP/locale-aligned.apk"
+          "$tools/apksigner" sign --ks src-tauri/android-debug.keystore --ks-pass pass:android \
+            --key-pass pass:android --ks-key-alias androiddebugkey \
+            --out artifacts/PawKemoViewer-Locale-Test-arm64.apk "$RUNNER_TEMP/locale-aligned.apk"
+          "$tools/apksigner" verify artifacts/PawKemoViewer-Locale-Test-arm64.apk
+      - name: Build unsigned iOS IPA
+        if: matrix.platform == 'ios'
+        run: |
+          npx tauri ios build --no-sign --features debug-diag
+          mkdir -p artifacts
+          ipa=$(find src-tauri/gen/apple/build -type f -name '*.ipa' -print -quit)
+          test -n "$ipa"
+          unzip -t "$ipa"
+          cp "$ipa" artifacts/PawKemoViewer-Locale-Test-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PawKemoViewer-Locale-Test-${{ matrix.platform }}
+          path: artifacts/*.${{ matrix.suffix }}
+          if-no-files-found: error

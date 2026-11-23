@@ -1,5 +1,4 @@
 name: Build Tauri
-run-name: ${{ github.workflow }} - ${{ github.event.head_commit.message || (inputs.release && 'manual release' || 'manual debug') }}
 
 on:
   push:
@@ -20,6 +19,10 @@ on:
     inputs:
       release:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
+        type: boolean
+        default: false
+      artifact_only:
+        description: "デバッグ検証用の成果物を Actions にのみ保存"
         type: boolean
         default: false
 
@@ -44,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(jq -r '.version' src-tauri/tauri.conf.json)
+          VER=$(jq -r '.version' package.json)
           TAG="pawkemoviewer-v${VER}"
 
           # 同じバージョンの既存リリースからPC向け成果物だけを削除する。
@@ -52,7 +55,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             mapfile -t assets < <(gh release view "$TAG" --json assets --jq '.assets[].name')
             for asset in "${assets[@]}"; do
-              if [[ "$asset" == PawKemoViewer* && "$asset" != *.apk ]]; then
+              if [[ "$asset" == PawKemoViewer* && "$asset" != *.apk && "$asset" != *.ipa ]]; then
                 gh release delete-asset "$TAG" "$asset" --yes
                 echo "removed previous PC asset: $asset"
               fi
@@ -60,12 +63,12 @@ jobs:
           fi
 
       - name: Clean debug prerelease assets (デバッグビルド時)
-        if: ${{ inputs.release != true }}
+        if: ${{ inputs.release != true && inputs.artifact_only != true }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(jq -r '.version' src-tauri/tauri.conf.json)
+          VER=$(jq -r '.version' package.json)
           TAG=debug-latest
 
           # rolling prerelease debug-latest から現行バージョン以外のアセットを掃除
@@ -84,9 +87,11 @@ jobs:
     needs: prepare
     strategy:
       fail-fast: false
-      # push (コミット時) は Windows / Linux のみ。macOS は手動実行時だけビルドする
       matrix:
-        platform: ${{ fromJSON(github.event_name == 'push' && '["windows-latest", "ubuntu-24.04"]' || '["windows-latest", "ubuntu-24.04", "macos-15"]') }}
+        include:
+          - platform: windows-latest
+          - platform: ubuntu-24.04
+          - platform: macos-15
 
     runs-on: ${{ matrix.platform }}
 
@@ -98,14 +103,12 @@ jobs:
       VITE_DEBUG_DIAG: ${{ inputs.release == true && '0' || '1' }}
       # デバッグビルドの表記用ビルド番号 (バージョン番号は変えない)。リリースは 'release'
       VITE_BUILD_REV: ${{ inputs.release == true && 'release' || github.run_number }}
-      # デバッグビルドの版表記 x.y.z(commit) に使うビルド commit
       VITE_BUILD_COMMIT: ${{ github.sha }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # リリースノート / サマリに直近のコミットメッセージを表示するため履歴を取得
           fetch-depth: 0
 
       - name: Show recent commits
@@ -152,22 +155,24 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ inputs.release == true && 'pawkemoviewer-v__VERSION__' || 'debug-latest' }}
-          releaseName: ${{ inputs.release == true && 'PawKemoViewer v__VERSION__' || 'PawKemoViewer debug build' }}
+          tagName: ${{ (inputs.release == true || inputs.artifact_only != true) && (inputs.release == true && 'pawkemoviewer-v__VERSION__' || 'debug-latest') || '' }}
+          releaseCommitish: ${{ github.sha }}
+          releaseName: ${{ (inputs.release == true || inputs.artifact_only != true) && (inputs.release == true && 'PawKemoViewer v__VERSION__' || 'PawKemoViewer debug build') || '' }}
           releaseBody: ${{ inputs.release == true && 'Automated release build.' || 'Automated debug build. デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式).' }}
           releaseDraft: false
           prerelease: ${{ inputs.release != true }}
           args: ${{ inputs.release == true && '' || '--features debug-diag' }}
 
+
       - name: Add recent commits to release notes
         # 同じリリースへの書き込みが競合しないようLinuxジョブだけが実行する
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && (inputs.release == true || inputs.artifact_only != true)
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VER=$(node -p "require('./package.json').version")
           if [ "${{ inputs.release }}" = "true" ]; then
             TAG="pawkemoviewer-v${VER}"
             TITLE="PawKemoViewer v${VER}"
@@ -185,3 +190,16 @@ jobs:
             echo
           } > release-notes.md
           gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
+
+      - uses: actions/upload-artifact@v4
+        if: inputs.artifact_only == true && inputs.release != true
+        with:
+          name: PawKemoViewer-debug-${{ matrix.platform }}
+          path: |
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.rpm
+          if-no-files-found: error

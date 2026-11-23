@@ -9,6 +9,10 @@ on:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
+      artifact_only:
+        description: "デバッグ検証用の成果物を Actions にのみ保存"
+        type: boolean
+        default: false
 
 # 同一ブランチの新しい iOS ビルドを優先し、古い実行中ビルドはキャンセルする
 concurrency:
@@ -29,7 +33,6 @@ jobs:
       VITE_DEBUG_DIAG: ${{ inputs.release == true && '0' || '1' }}
       # デバッグビルドの表記用ビルド番号 (バージョン番号は変えない)。リリースは 'release'
       VITE_BUILD_REV: ${{ inputs.release == true && 'release' || github.run_number }}
-      # デバッグビルドの版表記 x.y.z(commit) に使うビルド commit
       VITE_BUILD_COMMIT: ${{ github.sha }}
 
     steps:
@@ -144,7 +147,7 @@ jobs:
       - name: Collect unsigned IPA
         run: |
           set -euo pipefail
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VER=$(node -p "require('./package.json').version")
           mkdir -p dist-ios
           ipa=$(printf '%s\n' src-tauri/gen/apple/build/arm64/*.ipa | head -n 1)
           if [ ! -f "$ipa" ]; then
@@ -156,6 +159,31 @@ jobs:
           echo "packaged: $out"
           ls -la dist-ios
 
+      - name: Verify iPhone and iPad icons in the IPA
+        run: |
+          python3 - dist-ios/*.ipa <<'PYTHON'
+          import plistlib
+          import sys
+          from zipfile import ZipFile
+
+          with ZipFile(sys.argv[1]) as ipa:
+              info_path, = (
+                  name for name in ipa.namelist()
+                  if name.startswith("Payload/") and name.count("/") == 2
+                  and name.endswith(".app/Info.plist")
+              )
+              info = plistlib.loads(ipa.read(info_path))
+              if set(info["UIDeviceFamily"]) != {1, 2}:
+                  raise SystemExit("The IPA must target both iPhone and iPad")
+              for key in ("CFBundleIcons", "CFBundleIcons~ipad"):
+                  icons = info[key]
+                  if "AppIconLight" not in icons["CFBundleAlternateIcons"]:
+                      raise SystemExit(f"{key} is missing the light alternate icon")
+              ipad_primary = info["CFBundleIcons~ipad"]["CFBundlePrimaryIcon"]
+              if "AppIcon76x76" not in ipad_primary["CFBundleIconFiles"]:
+                  raise SystemExit("The IPA is missing the iPad home screen icon")
+          PYTHON
+
       - name: Upload iOS artifact
         uses: actions/upload-artifact@v4
         with:
@@ -163,13 +191,14 @@ jobs:
           path: dist-ios/*.ipa
 
       - name: Attach iOS builds to Release
+        if: inputs.release == true || inputs.artifact_only != true
         # push (main) = デバッグビルド → rolling prerelease `debug-latest` へ添付
         # 手動 release=true のみ正式リリース pawkemoviewer-v{VER} へ添付。
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VER=$(node -p "require('./package.json').version")
 
           if [ "${{ inputs.release }}" = "true" ]; then
             TAG="pawkemoviewer-v${VER}"
@@ -204,6 +233,7 @@ jobs:
 
           gh release upload "$TAG" dist-ios/*.ipa --clobber \
             || gh release create "$TAG" dist-ios/*.ipa \
+                 --target "$GITHUB_SHA" \
                  $PRERELEASE_FLAG \
                  --title "$TITLE" \
                  --notes-file release-notes.md

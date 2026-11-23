@@ -171,15 +171,6 @@ body {
   padding: 6px;
 }
 
-.desktop-shortcuts-hint {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--fg2);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .kbd {
   background: var(--bg3);
   border: 1px solid color-mix(in srgb, var(--fg2) 30%, transparent);
@@ -202,6 +193,8 @@ body {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
+  /* Tauri モバイルのステータスバー (時計/通知) と重ならないよう上部に safe area を確保 */
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
   background: color-mix(in srgb, var(--bg) 85%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--bg3);
@@ -247,6 +240,7 @@ body {
 
 .bottom-nav button {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -259,6 +253,10 @@ body {
   cursor: pointer;
 }
 .bottom-nav button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
 }
 .bottom-nav .nav-active {
@@ -496,6 +494,7 @@ input:not([type]) {
   padding: 8px 10px 10px;
 }
 .post-card-title {
+  overflow-wrap: anywhere;
   font-size: 13px;
   line-height: 1.35;
   display: -webkit-box;
@@ -582,12 +581,27 @@ input:not([type]) {
 .creator-name .badge-new {
   position: static;
 }
+.creator-row-copy {
+  flex: 1;
+  min-width: 0;
+}
 .creator-sub {
   color: var(--fg2);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* フォロー一覧の記事名: 最大 2 行で折り返し、収まらない場合は省略 */
+.creator-post-title {
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 .link {
   color: var(--accent);
@@ -703,6 +717,10 @@ input:not([type]) {
 /* ------------------------------------------------------------------ */
 /* 投稿詳細                                                            */
 /* ------------------------------------------------------------------ */
+
+.post-title-wrap {
+  overflow-wrap: anywhere;
+}
 
 .post-page .post-title-wrap h1 {
   font-size: 18px;
@@ -1037,6 +1055,55 @@ input:not([type]) {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+/* 左右スイッチ型トグル: 現在の状態を状態テキスト + ノブ位置で明示 */
+.toggle-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.toggle-state {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 7em;
+  text-align: right;
+  color: var(--fg2);
+}
+.toggle-state.is-on {
+  color: var(--accent);
+}
+.toggle-switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex: 0 0 46px;
+  padding: 0;
+  border: 1px solid var(--bg3);
+  border-radius: 999px;
+  background: var(--bg3);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.toggle-switch.is-on {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-color: transparent;
+}
+.toggle-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--fg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.18s ease;
+}
+.toggle-switch.is-on .toggle-switch-thumb {
+  transform: translateX(20px);
+  background: #14161a;
 }
 .setting-text {
   display: flex;
@@ -1548,13 +1615,8 @@ button, a, input, select, textarea {
 .nav-rail-brand-icon {
   width: 42px;
   height: 42px;
-  display: grid;
-  place-items: center;
+  object-fit: contain;
   flex: 0 0 auto;
-  border-radius: 13px;
-  background: linear-gradient(145deg, var(--accent), var(--accent2));
-  color: #171820;
-  font-size: 23px;
 }
 
 .nav-rail-brand-copy,
@@ -1579,6 +1641,13 @@ button, a, input, select, textarea {
 .nav-rail-items {
   align-items: stretch;
   gap: 5px;
+}
+
+.nav-rail-caption,
+.nav-rail-label,
+.nav-rail-account-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .nav-rail-caption {
@@ -1707,6 +1776,7 @@ button, a, input, select, textarea {
 .top-bar {
   min-height: 62px;
   padding: 10px 24px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
   border-bottom-color: var(--surface-border);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.035);
 }
@@ -1724,6 +1794,7 @@ button, a, input, select, textarea {
 }
 
 .top-bar-actions {
+  max-width: 50%;
   margin-left: auto;
 }
 
@@ -1741,6 +1812,10 @@ button, a, input, select, textarea {
 }
 
 .topbar-context {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding-left: 14px;
   border-left: 1px solid var(--surface-border);
   color: var(--fg2);
@@ -1749,6 +1824,7 @@ button, a, input, select, textarea {
 }
 
 .btn-account {
+  min-width: 0;
   min-height: 40px;
   border-color: var(--surface-border);
   background: var(--bg2);
@@ -1756,15 +1832,30 @@ button, a, input, select, textarea {
   font-weight: 650;
 }
 
+.btn-account span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .btn-account svg {
+  flex-shrink: 0;
   width: 17px;
   height: 17px;
 }
 
-.desktop-shortcuts-hint {
-  gap: 5px;
-  font-size: 10px;
-  opacity: 0.8;
+.detail-bar .btn {
+  min-width: 0;
+}
+
+.detail-back-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-bar .logo {
+  flex-shrink: 0;
 }
 
 .kbd {
@@ -1876,12 +1967,26 @@ textarea:focus {
   scrollbar-width: none;
 }
 
+.app-desktop .settings-nav {
+  top: 0;
+}
+
+.desktop-back {
+  margin-bottom: 12px;
+}
+
+.desktop-back .btn {
+  max-width: 100%;
+}
+
 .settings-nav::-webkit-scrollbar {
   display: none;
 }
 
 .settings-nav button {
   flex: 0 0 auto;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: 8px 12px;
   border: 1px solid var(--surface-border);
   border-radius: 999px;
@@ -1952,9 +2057,16 @@ textarea:focus {
 }
 
 .bottom-nav {
-  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
-  border-top-color: var(--surface-border);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  background: color-mix(in srgb, var(--bg2) 92%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--bg3);
+  padding: env(safe-area-inset-bottom) 14px;
 }
 
 .bottom-nav button {
@@ -1993,24 +2105,22 @@ textarea:focus {
     padding-left: 18px;
     padding-right: 18px;
   }
-  .desktop-shortcuts-hint {
-    display: none;
-  }
 }
 
 @media (max-width: 680px) {
   .top-bar {
     min-height: 54px;
     padding: 8px 14px;
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  }
+  .top-bar-actions {
+    max-width: 45%;
   }
   .topbar-context {
     display: none;
   }
   .content {
     padding: 16px 12px calc(86px + env(safe-area-inset-bottom));
-  }
-  .app-desktop .content {
-    padding-bottom: calc(86px + env(safe-area-inset-bottom));
   }
   .settings-nav {
     top: 54px;
@@ -2060,4 +2170,27 @@ textarea:focus {
 }
 .setting-subsection .section-label {
   margin-bottom: 12px;
+}
+
+/* Home keeps one control tree as the application shell changes. */
+.home-page .search-bar input {
+  min-width: 0;
+}
+
+.app-mobile .home-page .search-bar > .btn,
+.app-mobile .home-page .view-mode-toggles > .btn-icon {
+  min-height: 44px;
+}
+
+.app-mobile .home-page .view-mode-toggles > .btn-icon {
+  min-width: 44px;
+}
+
+.app-mobile .home-page .view-mode-bar {
+  flex-wrap: wrap;
+}
+
+.app-mobile .home-page .view-mode-bar > .hint-row {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

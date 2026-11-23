@@ -16,12 +16,10 @@ export function isFanboxCoverFile(f: PawFile): boolean {
 }
 
 /** 投稿の表示対象ファイル (本体 → 添付の順)。
- *  FANBOX の cover.jpeg は設定 (excludeFanboxCover) が有効なら除く。
- *  投稿詳細・一覧カードの両方がこの関数を使うため、設定が全画面に一貫して効く */
+ *  一覧カードのサムネイル・枚数は cover.jpeg を含めて常に表示する。
+ *  cover.jpeg の除外は投稿詳細 (PostPage) 側の設定だけで行う。 */
 export function visiblePostFiles(post: PawPost): PawFile[] {
-  const all: PawFile[] = [...(post.file?.path ? [post.file] : []), ...(post.attachments || [])]
-  if (post.service !== "fanbox" || !getSettings().excludeFanboxCover) return all
-  return all.filter((f) => !isFanboxCoverFile(f))
+  return [...(post.file?.path ? [post.file] : []), ...(post.attachments || [])]
 }
 
 /** 投稿カード用のマーク状態 (フォロー中クリエイター / お気に入り投稿)。
@@ -120,6 +118,39 @@ export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => v
 
 export function Empty({ text = t("common.noData") }: { text?: string }) {
   return <div className="empty">{text}</div>
+}
+
+/** 左右スイッチ型のオン/オフトグル。
+ *  ラベル・状態テキストを明示してオンオフの意味を分かりやすくする。 */
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  onLabel,
+  offLabel,
+}: {
+  checked: boolean
+  onChange: (value: boolean) => void
+  label?: string
+  onLabel?: string
+  offLabel?: string
+}) {
+  const stateText = checked ? (onLabel ?? t("common.on")) : (offLabel ?? t("common.off"))
+  return (
+    <div className="toggle-wrap">
+      <span className={`toggle-state ${checked ? "is-on" : "is-off"}`}>{stateText}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        className={`toggle-switch ${checked ? "is-on" : ""}`}
+        onClick={() => onChange(!checked)}
+      >
+        <span className="toggle-switch-thumb" />
+      </button>
+    </div>
+  )
 }
 
 /** 無限スクロール用ローダー: scroll イベント + 幾何判定で確実に発火する

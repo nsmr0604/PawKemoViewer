@@ -1,10 +1,17 @@
 // クリエイターフォローは pawchive アカウントを同期元とし、ローカルはそのミラーとして扱う。
 import { api, getSettings } from "./api"
+import { getPlatformRuntime } from "./platform/runtime"
 
 const KEY = "pawkemo-follows"
 const CHANGED_EVENT = "pawkemo-follows-changed"
 const MIGRATED_KEY = "pawkemo-follows-migrated-to-account"
 let syncInFlight: Promise<number> | null = null
+
+function storage() {
+  const service = getPlatformRuntime().services.storage
+  if (!service) throw new Error("Follow storage unavailable")
+  return service
+}
 
 export interface FollowEntry {
   service: string
@@ -18,7 +25,7 @@ function notifyChanged() {
 
 export function loadFollows(): FollowEntry[] {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = storage().get(KEY)
     if (raw) return JSON.parse(raw)
   } catch {
     /* ignore */
@@ -27,7 +34,7 @@ export function loadFollows(): FollowEntry[] {
 }
 
 function save(list: FollowEntry[]) {
-  localStorage.setItem(KEY, JSON.stringify(list))
+  storage().set(KEY, JSON.stringify(list))
   notifyChanged()
 }
 
@@ -71,7 +78,7 @@ export function syncFollowsWithAccount(): Promise<number> {
     const remote = await api.accountFavorites("artist")
     // 既存ローカルデータの移行は初回だけ。以降はアカウント側を正として反映し、
     // 別端末で解除されたフォローを古いローカルデータから復活させない。
-    if (localStorage.getItem(MIGRATED_KEY) !== "1") {
+    if (storage().get(MIGRATED_KEY) !== "1") {
       const remoteKeys = new Set(remote.filter((f) => f.service && f.id).map((f) => `${f.service}:${f.id}`))
       for (const f of loadFollows()) {
         if (!remoteKeys.has(`${f.service}:${f.id}`)) {
@@ -85,7 +92,7 @@ export function syncFollowsWithAccount(): Promise<number> {
       .filter((f) => !!f.service && !!f.id)
       .map((f) => ({ service: f.service!, id: f.id, name: f.name || f.id }))
     replaceFollows(synced)
-    localStorage.setItem(MIGRATED_KEY, "1")
+    storage().set(MIGRATED_KEY, "1")
     return synced.length
   })()
 

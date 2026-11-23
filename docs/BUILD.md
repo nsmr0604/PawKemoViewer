@@ -1,6 +1,6 @@
 # ビルドガイド
 
-PawKemoViewer (v0.4.1) のビルド・パッケージング・CI 構成。
+PawKemoViewer (v0.5.1) のビルド・パッケージング・CI 構成。
 
 ## ビルドフロー (原則: CI 委任)
 
@@ -34,11 +34,11 @@ rolling prerelease "debug-latest" (デバッグビルド)
 
 | プラットフォーム | ファイル例 |
 |---|---|
-| Windows | `PawKemoViewer_0.4.1_x64-setup.exe` / `_x64_en-US.msi` |
-| Linux | `PawKemoViewer_0.4.1_amd64.AppImage` / `_amd64.deb` |
-| macOS | `PawKemoViewer_0.4.1_aarch64.dmg` |
-| Android | `PawKemoViewer_0.4.1_universal.apk` (debug.keystore 署名) |
-| iOS | `PawKemoViewer_0.4.1_ios-unsigned.ipa` (未署名・実機インストールには再署名が必要) |
+| Windows | `PawKemoViewer_0.5.1_x64-setup.exe` / `_x64_en-US.msi` |
+| Linux | `PawKemoViewer_0.5.1_amd64.AppImage` / `_amd64.deb` |
+| macOS | `PawKemoViewer_0.5.1_aarch64.dmg` |
+| Android | `PawKemoViewer_0.5.1_universal.apk` (debug.keystore 署名) |
+| iOS | `PawKemoViewer_0.5.1_ios-unsigned.ipa` (未署名・実機インストールには再署名が必要) |
 
 - 実行ファイル名は `pawkemoviewer` (crate 名由来)。Android packageId は
   `com.nsmr0604.pawkemoviewer`
@@ -148,7 +148,7 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
   `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`
 - v0.3.0 は破壊的変更 (内部キー・identifier・crate 名の全面改名)。**0.2.x からの
   引継ぎはバックアップ書き出し→読み込み**で行う
-- **デバッグビルドの表示**: `x.y.z(<short commit>)` (例: `0.4.1(6ed682e)`)。
+- **デバッグビルドの表示**: `x.y.z(<short commit>)` (例: `0.5.1(6ed682e)`)。
   CI は `VITE_BUILD_COMMIT=github.sha`、ローカルは `vite.config.ts` が
   `git rev-parse --short=7 HEAD` を埋め込む。正式リリース
   (`VITE_BUILD_REV=release`) では commit を表示しない

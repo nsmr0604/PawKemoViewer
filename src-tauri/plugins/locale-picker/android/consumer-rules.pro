@@ -1,0 +1,2 @@
+-keep class org.pawkemoviewer.localepicker.LocalePickerPlugin { *; }
+-keep class org.pawkemoviewer.localepicker.LocaleExportArgs { *; }

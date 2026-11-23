@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { api, clearApiCache, creatorBannerUrl } from "../api"
-import {
-  searchCreators,
-  saveCreators,
-  creatorsCount,
-  getAllCreatorRows,
-  getMeta,
-  invalidateCreatorIndex,
-  SEARCH_INDEX_VERSION,
-  type CreatorRow,
-} from "../db"
+import { getApplication } from "../application/composition"
+import { creatorBannerUrl } from "../api"
+import type { CreatorRow } from "../application/creator-index-repository"
 import type { PawCreator } from "../types"
 import { Spinner, ErrorBox, Empty, fmtDate, CreatorAvatar } from "../components"
 import { navigate } from "../router"
@@ -17,33 +9,7 @@ import { logError } from "../log"
 import { isFollowed } from "../follows"
 import { readClipboardTextSafe, extractCreatorFromText, type ExtractedCreator } from "../platform"
 import { getSearchHistory, addSearchHistory, clearSearchHistory } from "../history"
-import { normalizeCreatorQuery } from "../db"
 import { t } from "../i18n"
-
-/** API の日時値 (Unix 秒/ミリ秒または ISO 文字列) を比較用数値へ変換 */
-function toTimestamp(value: number | string | undefined): number {
-  if (value === undefined || value === "") return 0
-  const numeric = Number(value)
-  if (Number.isFinite(numeric)) return numeric
-  const parsed = Date.parse(String(value))
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-/** API レスポンス → 索引行 (slug / 人気度 / 更新日を保持) */
-function toRow(c: PawCreator): CreatorRow {
-  const slug = (c.public_id || "").toLowerCase()
-  return {
-    key: `${c.service}:${c.id}`,
-    id: c.id,
-    service: c.service,
-    name: c.name,
-    nameLower: (c.name || "").toLowerCase(),
-    ...(slug ? { publicId: c.public_id, publicIdLower: slug } : {}),
-    ...(c.favorited !== undefined ? { favorited: Number(c.favorited) || 0 } : {}),
-    ...(c.updated !== undefined ? { updated: toTimestamp(c.updated) } : {}),
-    ...(c.indexed !== undefined ? { indexed: toTimestamp(c.indexed) } : {}),
-  }
-}
 
 export function CreatorsPage() {
   const [q, setQ] = useState("")
@@ -61,6 +27,7 @@ export function CreatorsPage() {
   const qRef = useRef(q)
   qRef.current = q
   const searchSeq = useRef(0)
+  const indexLoad = useRef<AbortController | null>(null)
 
   // クリップボードの URL 検出 (JHenTai の Check Gallery URL in Clipboard 参考)
   useEffect(() => {
@@ -82,63 +49,46 @@ export function CreatorsPage() {
   // メモリ索引から即時検索 (構築途中でも部分結果を表示)
   const runSearch = useCallback(async (value: string) => {
     const seq = ++searchSeq.current
-    const res = await searchCreators(value, 100000)
+    const result = await getApplication().creators.searchCreatorIndex(value)
     if (seq !== searchSeq.current) return
-    setRows(res)
-    // fanbox 投稿 URL 貼り付け (@{slug}/posts/{id} 両パターン) → 直接開けるリンクを出す
-    const norm = normalizeCreatorQuery(value)
-    if (norm.postId && norm.service && res[0] && res[0].service === norm.service) {
-      setPostLink({ service: norm.service, creatorId: res[0].id, postId: norm.postId, name: res[0].name })
-    } else {
-      setPostLink(null)
-    }
+    setRows(result.rows)
+    setPostLink(result.postLink)
   }, [])
 
-  // 初期表示
+  // Show the cached results before checking whether the index needs a rebuild.
   useEffect(() => {
-    let alive = true
-    ;(async () => {
-      const count = await creatorsCount()
-      if (!alive) return
-      setBuilt(count > 0 ? count : null)
-      await runSearch("")
-      if (alive) setReady(true)
-      // パック索引が現行バージョンなら何もしない
-      const version = count > 0 ? await getMeta<number>("creatorsIndexVersion") : null
-      if (version === SEARCH_INDEX_VERSION) return
-      setBuilding(true)
-      setError(null)
+    const controller = new AbortController()
+    indexLoad.current = controller
+    const { signal } = controller
+    const useCases = getApplication().creators
+    const initializeIndex = async () => {
       try {
-        // 移行: slug 付き per-row 索引 (v2 で構築済み) があれば API 不要でパック化。
-        // 無ければ (未構築 or v1) API から取得して構築
-        const legacy = count > 0 ? await getAllCreatorRows() : []
-        const hasCurrentFields = legacy.length > 0 && legacy.every((row) => row.publicIdLower !== undefined && row.updated !== undefined)
-        let total: number
-        if (hasCurrentFields) {
-          invalidateCreatorIndex()
-          await saveCreators(legacy)
-          total = legacy.length
-        } else {
-          const all = await api.creators()
-          if (!alive) return
-          const mapped = all.map(toRow)
-          await saveCreators(mapped)
-          total = mapped.length
-        }
-        if (!alive) return
+        const count = await useCases.countCreators()
+        if (signal.aborted) return
+        setBuilt(count > 0 ? count : null)
+        await runSearch("")
+        if (signal.aborted) return
+        setReady(true)
+        const needsBuild = await useCases.needsCreatorIndexBuild(count)
+        if (signal.aborted || !needsBuild) return
+        setBuilding(true)
+        setError(null)
+        const total = await useCases.buildCreatorIndex(count, signal)
+        if (signal.aborted) return
         setBuilt(total)
-        // 構築完了で現在の検索をやり直す (フルデータで)
         await runSearch(qRef.current)
-      } catch (e) {
-        if (alive) setError(e)
+      } catch (error) {
+        if (!signal.aborted) setError(error)
       } finally {
-        if (alive) setBuilding(false)
+        if (!signal.aborted) setBuilding(false)
       }
-    })()
-    return () => {
-      alive = false
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    void initializeIndex()
+    return () => {
+      controller.abort()
+      searchSeq.current++
+    }
+  }, [runSearch])
 
   const onSearch = useCallback(
     async (value: string) => {
@@ -265,20 +215,18 @@ export function CreatorsPage() {
             className="btn btn-ghost"
             onClick={async () => {
               if (!window.confirm(t("creators.refreshConfirm"))) return
-              clearApiCache()
-              invalidateCreatorIndex()
+              const signal = indexLoad.current?.signal
               setBuilding(true)
               try {
-                const all = await api.creators()
-                const mapped = all.map(toRow)
-                await saveCreators(mapped)
-                setBuilt(mapped.length)
-                await runSearch(q)
-                setVisibleCount(60)
-              } catch (e) {
-                setError(e)
+                const total = await getApplication().creators.refreshCreatorIndex(signal)
+                if (signal?.aborted) return
+                setBuilt(total)
+                await runSearch(qRef.current)
+                if (!signal?.aborted) setVisibleCount(60)
+              } catch (error) {
+                if (!signal?.aborted) setError(error)
               } finally {
-                setBuilding(false)
+                if (!signal?.aborted) setBuilding(false)
               }
             }}
           >
@@ -349,7 +297,7 @@ export function CreatorsPage() {
 }
 
 export function CreatorHeader({ service, id }: { service: string; id: string }) {
-  const [profile, setProfile] = useState<Awaited<ReturnType<typeof api.creatorProfile>> | null>(null)
+  const [profile, setProfile] = useState<PawCreator | null>(null)
   const [error, setError] = useState<unknown>(null)
   // バナーは存在しない場合 204 が返るので、読み込み失敗時はフォールバック表示
   // (アイコンは CreatorAvatar がキャッシュ付きで処理)
@@ -358,8 +306,7 @@ export function CreatorHeader({ service, id }: { service: string; id: string }) 
     let alive = true
     setProfile(null)
     setBannerOk(true)
-    api
-      .creatorProfile(service, id)
+    getApplication().loadCreatorProfile(service, id)
       .then((p) => alive && setProfile(p))
       .catch((e) => alive && setError(e))
     return () => {

@@ -11,6 +11,7 @@
 
 import { invoke } from "@tauri-apps/api/core"
 import { logError } from "./log"
+import { getPlatformRuntime } from "./platform/runtime"
 
 const DB_NAME = "pawkemo-icons"
 const STORE = "icons"
@@ -26,15 +27,10 @@ const memory = new Map<string, string | null>()
 const inflight = new Map<string, Promise<string | null>>()
 
 function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(STORE)) {
-        req.result.createObjectStore(STORE)
-      }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+  const service = getPlatformRuntime().services.indexedDatabase
+  if (!service) return Promise.reject(new Error("IndexedDB platform service unavailable"))
+  return service.open(DB_NAME, 1, (database) => {
+    if (!database.objectStoreNames.contains(STORE)) database.createObjectStore(STORE)
   })
 }
 
@@ -42,8 +38,12 @@ function idbGet(db: IDBDatabase, key: string): Promise<IconRecord | undefined> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly")
     const r = tx.objectStore(STORE).get(key)
-    r.onsuccess = () => resolve(r.result as IconRecord | undefined)
+    let result: IconRecord | undefined
+    r.onsuccess = () => { result = r.result as IconRecord | undefined }
     r.onerror = () => reject(r.error)
+    tx.oncomplete = () => resolve(result)
+    tx.onerror = () => reject(tx.error || new Error("Icon cache transaction failed"))
+    tx.onabort = () => reject(tx.error || new Error("Icon cache transaction aborted"))
   })
 }
 
@@ -52,7 +52,8 @@ function idbPut(db: IDBDatabase, key: string, rec: IconRecord): Promise<void> {
     const tx = db.transaction(STORE, "readwrite")
     tx.objectStore(STORE).put(rec, key)
     tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.onerror = () => reject(tx.error || new Error("Icon cache transaction failed"))
+    tx.onabort = () => reject(tx.error || new Error("Icon cache transaction aborted"))
   })
 }
 
@@ -83,10 +84,15 @@ async function prune(db: IDBDatabase): Promise<void> {
 let dbPromise: Promise<IDBDatabase> | null = null
 function db(): Promise<IDBDatabase> {
   if (!dbPromise) {
-    dbPromise = openDb().catch((e) => {
+    const opening = openDb().then((database) => {
+      database.onversionchange = () => database.close()
+      return database
+    }).catch((e) => {
+      if (dbPromise === opening) dbPromise = null
       logError(`アイコンキャッシュ DB を開けません: ${String(e)}`)
       throw e
     })
+    dbPromise = opening
   }
   return dbPromise
 }

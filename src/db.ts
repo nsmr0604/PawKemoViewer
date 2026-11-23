@@ -1,4 +1,7 @@
+import type { CreatorRow } from "./application/creator-index-repository"
+export type { CreatorRow } from "./application/creator-index-repository"
 // IndexedDB ヘルパー: クリエイターキャッシュと未読管理
+import { getPlatformRuntime } from "./platform/runtime"
 // 注意: DB_NAME は v0.3.0 (PawKemoViewer 改名) で "pawkemoviewer" に変更。
 // v0.2.x からの引継ぎは バックアップ書き出し→読み込み で行う
 
@@ -11,25 +14,25 @@ let dbPromise: Promise<IDBDatabase> | null = null
 
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise
-  dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains("creators")) {
-        const s = db.createObjectStore("creators", { keyPath: "key" })
-        s.createIndex("name", "nameLower")
-      }
-      if (!db.objectStoreNames.contains("seen")) {
-        db.createObjectStore("seen", { keyPath: "key" })
-      }
-      if (!db.objectStoreNames.contains("meta")) {
-        db.createObjectStore("meta", { keyPath: "key" })
-      }
+  const service = getPlatformRuntime().services.indexedDatabase
+  if (!service) return Promise.reject(new Error("IndexedDB platform service unavailable"))
+  const opening = service.open(DB_NAME, DB_VERSION, (db) => {
+    if (!db.objectStoreNames.contains("creators")) {
+      const s = db.createObjectStore("creators", { keyPath: "key" })
+      s.createIndex("name", "nameLower")
     }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
+    if (!db.objectStoreNames.contains("seen")) db.createObjectStore("seen", { keyPath: "key" })
+    if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" })
+  }).then((db) => {
+    db.onversionchange = () => db.close()
+    return db
+  }).catch((error) => {
+    // Failed open must not poison the cache permanently; allow later retry.
+    if (dbPromise === opening) dbPromise = null
+    throw error
   })
-  return dbPromise
+  dbPromise = opening
+  return opening
 }
 
 function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
@@ -37,9 +40,14 @@ function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStor
     (db) =>
       new Promise<T>((resolve, reject) => {
         const t = db.transaction(store, mode)
+        let result: T
+        let requestFailed = false
         const req = fn(t.objectStore(store))
-        req.onsuccess = () => resolve(req.result)
-        req.onerror = () => reject(req.error)
+        req.onsuccess = () => { result = req.result }
+        req.onerror = () => { requestFailed = true; reject(req.error) }
+        t.oncomplete = () => { if (!requestFailed) resolve(result) }
+        t.onerror = () => reject(t.error || new Error("IndexedDB transaction failed"))
+        t.onabort = () => reject(t.error || new Error("IndexedDB transaction aborted"))
       }),
   )
 }
@@ -47,23 +55,6 @@ function tx<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStor
 // ---------------------------------------------------------------------------
 // creators キャッシュ: /creators (約10万件) を 1 回取得して永続化
 // ---------------------------------------------------------------------------
-
-export interface CreatorRow {
-  key: string // "service:id"
-  id: string
-  service: string
-  name: string
-  nameLower: string
-  /** URL slug (fanbox: tateha 等)。索引 v1 には存在しない (再構築で付与) */
-  publicId?: string
-  publicIdLower?: string
-  /** お気に入り数 (人気度順) */
-  favorited?: number
-  /** 最終更新日時 (API の updated) */
-  updated?: number
-  /** インデックス日時 */
-  indexed?: number
-}
 
 /**
  * クリエイター索引のバージョン。
@@ -499,4 +490,18 @@ export async function getAllSeen(): Promise<SeenEntry[]> {
 
 export async function deleteSeen(key: string) {
   await tx("seen", "readwrite", (s) => s.delete(key))
+}
+
+/** Replace the complete read-state set atomically (backup restore). */
+export async function replaceSeen(entries: SeenEntry[]): Promise<void> {
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const t = db.transaction("seen", "readwrite")
+    const store = t.objectStore("seen")
+    store.clear()
+    for (const entry of entries) store.put(entry)
+    t.oncomplete = () => resolve()
+    t.onerror = () => reject(t.error)
+    t.onabort = () => reject(t.error || new Error("既読状態の復元に失敗しました"))
+  })
 }

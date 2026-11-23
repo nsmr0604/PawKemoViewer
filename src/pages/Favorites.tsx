@@ -6,6 +6,7 @@ import { loadFollows, removeFollow, syncFollowsWithAccount } from "../follows"
 import { ErrorBox, Empty, PostGrid, fmtDate, CreatorAvatar } from "../components"
 import { navigate } from "../router"
 import { t } from "../i18n"
+import { getPlatformRuntime } from "../platform/runtime"
 
 /** NEW を表示する投稿の公開日時の範囲 (直近 7 日)。 */
 const NEW_POST_WINDOW_MS = 7 * 24 * 60 * 60_000
@@ -47,13 +48,14 @@ function restoreCachedPost(
 export function FavoritesPage() {
   const { sessionKey } = getSettings()
   // 選択タブを保存しておき、次回起動時に復元する (FANBOX Viewer「ホーム既定タブ」型)
+  const storage = getPlatformRuntime().services.storage
   const [tab, setTabState] = useState<"follows" | "account">(() => {
-    const t = localStorage.getItem("pawkemo-fav-tab")
+    const t = storage?.get("pawkemo-fav-tab")
     return t === "account" ? "account" : "follows"
   })
   const setTab = (t: "follows" | "account") => {
     setTabState(t)
-    localStorage.setItem("pawkemo-fav-tab", t)
+    storage?.set("pawkemo-fav-tab", t)
   }
   const [follows, setFollows] = useState<FollowState[]>([])
   const [accountFavs, setAccountFavs] = useState<AccountFavorite[] | null>(null)
@@ -331,7 +333,7 @@ export function FavoritesPage() {
                   onClick={() => navigate(`/creator/${f.service}/${f.id}`)}
                 >
                   <CreatorAvatar service={f.service} id={f.id} name={f.name} />
-                  <div>
+                  <div className="creator-row-copy">
                     <div className="creator-name">
                       {f.name || f.id}
                       {f.isNew && <span className="badge-new">NEW</span>}
@@ -343,7 +345,7 @@ export function FavoritesPage() {
                     </div>
                     {f.newest && (
                       <div
-                        className="creator-sub link"
+                        className="creator-post-title link"
                         onClick={(e) => {
                           e.stopPropagation()
                           navigate(`/post/${f.newest!.service}/${f.newest!.user}/${f.newest!.id}`)
@@ -396,7 +398,7 @@ export function FavoritesPage() {
               </button>
             )}
           </div>
-          
+
           {accountErr !== null && <ErrorBox error={accountErr} onRetry={loadAccount} />}
           {accountErr instanceof ApiError && apiStatus(accountErr) === 401 && (
             <div className="error-box">

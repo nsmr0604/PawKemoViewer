@@ -1,6 +1,6 @@
 [package]
 name = "pawkemoviewer"
-version = "0.4.1"
+version = "0.5.1"
 description = "PawKemoViewer"
 authors = ["nsmr0604"]
 license = "MIT"
@@ -18,14 +18,13 @@ name = "pawkemoviewer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.7.4", features = [] }
+tauri-build = { version = "2.7.4" }
 
 [dependencies]
 
 # Tauri
 tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
-# モバイルのライト/ダークアプリアイコン切替 (desktop では unsupported を返す)
 tauri-plugin-app-icon = "0.1.0"
 
 # Logging
@@ -51,3 +50,6 @@ regex = "1"
 # クリエイターアイコンの data URL 変換 (fetch_creator_icon)
 base64 = "0.22"
 
+
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+tauri-plugin-locale-picker = { path = "plugins/locale-picker" }

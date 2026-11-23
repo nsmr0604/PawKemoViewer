@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react"
+import { getPlatformRuntime } from "./platform/runtime"
 
 /** 値の変更を delay ms 遅延させて反映する (検索入力用) */
 export function useDebounced<T>(value: T, delay = 400): T {
@@ -20,7 +21,7 @@ type ScrollMap = Record<string, number>
 
 function readMap(): ScrollMap {
   try {
-    return JSON.parse(sessionStorage.getItem(SCROLL_KEY) || "{}")
+    return JSON.parse(getPlatformRuntime().services.sessionStorage?.get(SCROLL_KEY) || "{}")
   } catch {
     return {}
   }
@@ -30,7 +31,7 @@ export function saveScroll(key: string, y: number) {
   const map = readMap()
   map[key] = Math.round(y)
   try {
-    sessionStorage.setItem(SCROLL_KEY, JSON.stringify(map))
+    getPlatformRuntime().services.sessionStorage?.set(SCROLL_KEY, JSON.stringify(map))
   } catch {
     /* ignore */
   }
@@ -78,7 +79,7 @@ export function useScrollMemory(key: string, ready: boolean) {
       const map = readMap()
       delete map[prevKey.current]
       try {
-        sessionStorage.setItem(SCROLL_KEY, JSON.stringify(map))
+        getPlatformRuntime().services.sessionStorage?.set(SCROLL_KEY, JSON.stringify(map))
       } catch {
         /* ignore */
       }

@@ -1,7 +1,7 @@
 # PawKemoViewer アイコン統合引継ぎ
 
-更新日: 2026-11-21  
-対象: Mobile Standard (light) / Mobile Dark / Desktop  
+更新日: 2026-11-21
+対象: Mobile Standard (light) / Mobile Dark / Desktop
 このファイルをアイコン作業の唯一の引継ぎ資料とする。
 
 ## 1. ブランドと共通デザイン
@@ -12,7 +12,7 @@
 - **Viewer**: 投稿・画像を閲覧するアプリ。動画プレイヤーを示す再生マークは使用しない。
 - 共通モチーフ: 狐耳娘、流れる髪、大きめの肉球、狐しっぽ。
 - モバイルと PC は共通ブランドの別表現とし、シンボルの連続性を優先する。
-- 文字、月、星、光点、背景の幾何学模様は正式デザインに含めない。
+- 採用する意匠と配色は、下記のマスター画像に準拠する。
 
 ## 2. 決定済みデザイン
 
@@ -35,19 +35,19 @@
   背景の装飾は増やさない。
 - **禁止要素**: 月、星、光点、再生マーク、文字、背景幾何学模様。
 
-## 3. リポジトリ上の素材 (2026-11-21 現在)
+## 3. リポジトリ上のマスター画像
 
 アイコン画像は以下の **3 枚のみ** を正としている。
 
 | ファイル | サイズ | 用途 |
 |---|---|---|
-| `src-tauri/app-icons/pc.png` | 1254×1254 PNG | PC (desktop) アイコンの元画像 |
-| `src-tauri/app-icons/dark.png` | 532×532 PNG (四隅透過) | モバイル既定アイコンの元画像 |
-| `src-tauri/app-icons/light.png` | 532×532 PNG (四隅透過) | モバイル代替アイコンの元画像 |
+| `src-tauri/app-icons/pc.png` | 1024×1024 RGBA PNG | PC (desktop) アイコンの元画像 |
+| `src-tauri/app-icons/dark.png` | 1254×1254 RGB PNG | モバイル既定アイコンの元画像 |
+| `src-tauri/app-icons/light.png` | 1254×1254 RGB PNG | モバイル代替アイコンの元画像 |
 
-- 2026-11-22: dark / light の白い四隅を透明化し、コンテンツを中央寄せして
-  正方形に再出力した (元画像はローカル `.agent-work/icon-originals/` に退避)。
-  アプリ内ロゴでもこの透過画像を使い、`object-fit: contain` でサイズを調整する。
+- 提供された ZIP の PNG を原本のまま収録する。モバイル用 2 枚は ZIP 内のファイル名に
+  1024 とあるが、実寸は 1254×1254。各プラットフォーム用のサイズへ原本から直接変換する。
+- アプリ内ロゴもモバイルのマスター画像を使い、`object-fit: contain` で表示する。
 
 - 旧 `assets/icons/*.svg` は「SVG は崩れるため PNG / BMP を使う」というユーザー指示で
   **削除済み**。SVG をリネームしただけの代理登録は禁止。
@@ -75,6 +75,9 @@
   (`scripts/app-icon/generate-ios.mjs`)。既定は dark の `AppIcon.appiconset`。
   `tauri ios init` が作った pbxproj / Info.plist はパッチ前のままなので、
   **生成後に `xcodegen generate` を再実行**して反映する (2026-11-21 修正)。
+- iPhone と iPad は共通の IPA を使用する。iPad 向けのホーム画面用 76×76 pt
+  (152×152 px) と 83.5×83.5 pt (167×167 px) を既定・代替アイコンに生成する。
+  CI では IPA の対象端末と、iPad 用の既定・代替アイコンの登録を確認する。
 - アプリ内左上のロゴも 🐾 テキストから `dark.png` / `light.png` の画像に変更し、
   テーマに合わせて表示を切り替える (`src/App.tsx` / `src/styles.css`)。
 

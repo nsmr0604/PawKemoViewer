@@ -1,0 +1,4 @@
+/.tauri/
+/ios/.build/
+/android/.gradle/
+/android/build/

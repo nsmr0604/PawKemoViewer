@@ -1,0 +1,36 @@
+name: Linux installed candidate smoke
+
+on:
+  push:
+    branches: [arch/m7-native-validation]
+    paths:
+      - '.github/workflows/linux-installed-smoke.yml'
+      - 'tests/linux_installed_smoke.py'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the validated 0.5.0 candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 44936122546 --name PawKemoViewer-Desktop-Test-linux --dir artifacts
+          test "$(dpkg-deb -f artifacts/*.deb Version)" = 0.5.0
+
+      - name: Install the package and the smoke test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y "$PWD"/artifacts/*.deb xvfb xauth dbus-x11 at-spi2-core python3-pyatspi
+
+      - name: Verify WebView and public API through the installed app
+        run: |
+          xvfb-run -a --server-args="-screen 0 1280x900x24" dbus-run-session -- \
+            /usr/bin/python3 tests/linux_installed_smoke.py

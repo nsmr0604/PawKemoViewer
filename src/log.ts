@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { DEBUG_DIAG } from "./buildFlags"
+import { getPlatformRuntime } from "./platform/runtime"
 
 export interface LogEntry {
   ts: number
@@ -44,7 +45,7 @@ function push(level: LogEntry["level"], msg: string) {
   if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES)
   // 詳細ファイルログはFull 開発診断を含むデバッグビルドだけでロードする。
   if (DEBUG_DIAG) {
-    void import("./debug").then(({ debugAppendLog }) => debugAppendLog(formatEntry(entry)))
+    try { getPlatformRuntime().services.logging?.append(formatEntry(entry)) } catch { /* bootstrap before runtime initialization */ }
   }
 }
 

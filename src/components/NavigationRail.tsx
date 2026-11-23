@@ -1,5 +1,7 @@
+import pcIcon from "../../src-tauri/app-icons/pc.png"
 import { navigate } from "../router"
 import { t } from "../i18n"
+import { navigationItems } from "./navigation-items"
 
 export type NavIconName = "home" | "creators" | "favorites" | "settings" | "account"
 
@@ -36,18 +38,13 @@ export interface NavigationRailProps {
 }
 
 export function NavigationRail({ currentPath, followCount, hasSession }: NavigationRailProps) {
-  const items: { path: string; label: string; icon: NavIconName; active: boolean; badge?: number }[] = [
-    { path: "/", label: t("nav.home"), icon: "home", active: currentPath === "home" || currentPath === "search" },
-    { path: "/creators", label: t("nav.creators"), icon: "creators", active: currentPath === "creators" || currentPath === "creator" },
-    { path: "/favorites", label: t("nav.favorites"), icon: "favorites", active: currentPath === "favorites", badge: followCount },
-    { path: "/settings", label: t("nav.settings"), icon: "settings", active: currentPath === "settings" },
-  ]
+  const items = navigationItems(currentPath, followCount)
 
   return (
     <aside className="nav-rail">
       <div className="nav-rail-top">
         <button className="nav-rail-brand" onClick={() => navigate("/", true)} title="PawKemoViewer">
-          <span className="nav-rail-brand-icon">🐾</span>
+          <img className="nav-rail-brand-icon" src={pcIcon} alt="" />
           <span className="nav-rail-brand-copy">
             <strong>PawKemoViewer</strong>
             <small>pawchive client</small>

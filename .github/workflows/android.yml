@@ -15,6 +15,9 @@ on:
       - "tsconfig.json"
       - "package.json"
       - "package-lock.json"
+      - "scripts/app-icon/**"
+      - "src-tauri/app-icons.json"
+      - "src-tauri/app-icons/**"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
@@ -34,6 +37,10 @@ on:
     inputs:
       release:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
+        type: boolean
+        default: false
+      artifact_only:
+        description: "デバッグ検証用の成果物を Actions にのみ保存"
         type: boolean
         default: false
 
@@ -59,7 +66,6 @@ jobs:
       VITE_DEBUG_DIAG: ${{ inputs.release == true && '0' || '1' }}
       # デバッグビルドの表記用ビルド番号 (バージョン番号は変えない)。リリースは 'release'
       VITE_BUILD_REV: ${{ inputs.release == true && 'release' || github.run_number }}
-      # デバッグビルドの版表記 x.y.z(commit) に使うビルド commit
       VITE_BUILD_COMMIT: ${{ github.sha }}
 
     steps:
@@ -67,7 +73,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # リリースノート / サマリに直近のコミットメッセージを表示するため履歴を取得
           fetch-depth: 0
 
       - name: Show recent commits
@@ -149,7 +154,7 @@ jobs:
           set -e
           BT="$ANDROID_HOME/build-tools/35.0.0"
           KS="$GITHUB_WORKSPACE/src-tauri/android-debug.keystore"
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          VER=$(node -p "require('./package.json').version")
           mkdir -p dist-apk
 
           for apk in $(find src-tauri/gen/android/app/build/outputs -type f -name "*.apk"); do
@@ -184,48 +189,38 @@ jobs:
         # (旧バージョンのアセットは掃除する)。
         # 手動 release=true のみ正式リリース pawkemoviewer-v{VER} へ添付。
         # PR ビルドは artifact のみ (リリースへは出さない)
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' && (inputs.release == true || inputs.artifact_only != true) }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          VER=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          SHA=$(git rev-parse --short HEAD)
+          VER=$(node -p "require('./package.json').version")
 
           if [ "${{ inputs.release }}" = "true" ]; then
-            TAG="pawkemoviewer-v${VER}"
-            TITLE="PawKemoViewer v${VER}"
-            HEADLINE="Automated build (APK: dev-signed for testing)."
-            PRERELEASE_FLAG=""
-          else
-            # デバッグビルド: rolling prerelease debug-latest
-            TAG=debug-latest
-            TITLE="PawKemoViewer debug build"
-            HEADLINE="Automated debug build (${SHA}, v${VER}). デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式)."
-            PRERELEASE_FLAG="--prerelease"
-
-            # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
-            if gh release view "$TAG" >/dev/null 2>&1; then
-              gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r a; do
-                case "$a" in
-                  *"_${VER}_"*) ;; # 現行バージョンは残す
-                  *) gh release delete-asset "$TAG" "$a" --yes || true ;;
-                esac
-              done
-            fi
+            gh release upload "pawkemoviewer-v${VER}" dist-apk/*.apk --clobber \
+              || gh release create "pawkemoviewer-v${VER}" dist-apk/*.apk \
+                   --target "$GITHUB_SHA" \
+                   --title "PawKemoViewer v${VER}" \
+                   --notes "Automated build (APK: dev-signed for testing)."
+            exit 0
           fi
 
-          {
-            echo "$HEADLINE"
-            echo
-            echo "### 最近のコミット"
-            git log -5 --pretty=format:'- %h %s'
-            echo
-          } > release-notes.md
+          # --- デバッグビルド: rolling prerelease debug-latest ---
+          TAG=debug-latest
+          SHA=$(git rev-parse --short HEAD)
+
+          # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r a; do
+              case "$a" in
+                *"_${VER}_"*) ;; # 現行バージョンは残す
+                *) gh release delete-asset "$TAG" "$a" --yes || true ;;
+              esac
+            done
+          fi
 
           gh release upload "$TAG" dist-apk/*.apk --clobber \
             || gh release create "$TAG" dist-apk/*.apk \
-                 $PRERELEASE_FLAG \
-                 --title "$TITLE" \
-                 --notes-file release-notes.md
-          gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
+                 --prerelease \
+                 --title "PawKemoViewer debug build" \
+                 --notes "Automated debug build (${SHA}, v${VER}). デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式)."

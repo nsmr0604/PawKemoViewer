@@ -14,10 +14,10 @@
 
 import i18n from "i18next"
 import { initReactI18next } from "react-i18next"
-import { invoke } from "@tauri-apps/api/core"
 // 日本語は静的 import (JS に埋め込み)。外部ファイルや言語ファイルの喪失に依存しない
 import ja from "./locales/ja.json"
 import { logWarn } from "./log"
+import type { LocaleRepository } from "./application/locale-repository"
 
 export type Locale = string
 type Dict = Record<string, string>
@@ -39,7 +39,8 @@ const BUNDLED_LOADERS: Record<string, () => Promise<{ default: Dict }>> = {
 const BUNDLED_NAMES: Record<string, string> = { ja: "日本語", en: "English" }
 
 const external = new Map<string, Dict>()
-let externalDir = ""
+const secondary = new Map<string, Dict>()
+let secondaryDir = ""
 let invalidFiles: string[] = []
 
 i18n.use(initReactI18next).init({
@@ -56,6 +57,8 @@ i18n.use(initReactI18next).init({
 
 /** 言語ファイルを検証して辞書にする。不正なら null */
 export function parseLocaleJson(text: string): Dict | null {
+  // Keep locale import/overlay parsing bounded to avoid oversized or pathological JSON.
+  if (typeof text !== "string" || text.length > 1024 * 1024) return null
   let raw: unknown
   try {
     raw = JSON.parse(text)
@@ -63,25 +66,26 @@ export function parseLocaleJson(text: string): Dict | null {
     return null
   }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
-  const dict: Dict = {}
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof v === "string") dict[k] = v
+  const entries = Object.entries(raw as Record<string, unknown>)
+  if (entries.length > 10000) return null
+  const dict: Dict = Object.create(null) as Dict
+  for (const [k, v] of entries) {
+    if (!k || k.length > 512 || k === "__proto__" || k === "prototype" || k === "constructor") continue
+    if (typeof v === "string" && v.length <= 10000) dict[k] = v
   }
   if (!dict["locale.name"]?.trim()) return null
   return Object.keys(dict).length > 1 ? dict : null
 }
 
 /** 外部ファイルを再スキャンする (app_data/locales)。ブラウザ実行などでは何もしない */
-export async function refreshLocales(): Promise<void> {
+export async function refreshLocales(repository: LocaleRepository | undefined): Promise<void> {
   external.clear()
+  secondary.clear()
   invalidFiles = []
+  secondaryDir = ""
   try {
-    const res = await invoke<{
-      dir: string
-      files: { code: string; json: string }[]
-      invalid: string[]
-    }>("list_locale_files")
-    externalDir = res.dir
+    const res = await repository?.listPrivate()
+    if (!res) throw new Error("External locale list unavailable")
     invalidFiles = [...res.invalid]
     for (const f of res.files) {
       const dict = parseLocaleJson(f.json)
@@ -95,23 +99,35 @@ export async function refreshLocales(): Promise<void> {
   } catch {
     // Tauri 以外の実行環境では外部ファイルは無い (同梱の言語のみ)
   }
+  try {
+    const res = await repository?.listSecondary?.()
+    if (res) {
+      secondaryDir = res.dir
+      invalidFiles.push(...res.invalid.map((name) => `secondary:${name}`))
+      for (const f of res.files) {
+        const dict = parseLocaleJson(f.json)
+        if (dict) secondary.set(f.code, dict)
+        else { invalidFiles.push(`secondary:${f.code}.json`); logWarn(`共有言語ファイルを読み込めません: ${f.code}.json`) }
+      }
+    }
+  } catch { /* optional secondary area */ }
   // 外部の ja.json による上書きを反映する
   i18n.addResourceBundle("ja", "translation", (await dictionaryFor("ja")) ?? BASE_JA, true, true)
 }
 
 /** 選択できる言語の一覧 (同梱 + 外部)。日本語を先頭に */
 export function availableLocales(): LocaleInfo[] {
-  const codes = new Set<string>(["ja", ...Object.keys(BUNDLED_LOADERS), ...external.keys()])
+  const codes = new Set<string>(["ja", ...Object.keys(BUNDLED_LOADERS), ...external.keys(), ...secondary.keys()])
   return [...codes].map((code) => ({
     code,
-    name: external.get(code)?.["locale.name"] || BUNDLED_NAMES[code] || code,
+    name: secondary.get(code)?.["locale.name"] || external.get(code)?.["locale.name"] || BUNDLED_NAMES[code] || code,
     external: external.has(code),
   }))
 }
 
-/** 外部ファイルの読み込み結果 (表示用) */
-export function localeFolder(): string {
-  return externalDir
+/** 追加の言語フォルダーの読み込み結果 (表示用) */
+export function secondaryLocaleFolder(): string {
+  return secondaryDir
 }
 export function invalidLocaleFiles(): string[] {
   return invalidFiles
@@ -122,8 +138,9 @@ async function dictionaryFor(code: string): Promise<Dict | null> {
   const bundled: Dict | null =
     code === "ja" ? BASE_JA : BUNDLED_LOADERS[code] ? (await BUNDLED_LOADERS[code]()).default : null
   const ext = external.get(code) ?? null
-  if (!bundled && !ext) return null
-  return { ...(bundled ?? {}), ...(ext ?? {}) }
+  const shared = secondary.get(code) ?? null
+  if (!bundled && !ext && !shared) return null
+  return { ...(bundled ?? {}), ...(ext ?? {}), ...(shared ?? {}) }
 }
 
 /** 言語を読み込んで適用する。未知・失敗は日本語へフォールバックし、適用された言語を返す */

@@ -1,6 +1,6 @@
+import { getApplication } from "../application/composition"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
-import { invoke } from "@tauri-apps/api/core"
 import { getSettings, updateSettings, api, apiStatus } from "../api"
 import { clearCreatorCache, creatorCacheInfo, CreatorCacheInfo } from "../db"
 import {
@@ -11,21 +11,21 @@ import {
 } from "../log"
 import { DEBUG_DIAG } from "../buildFlags"
 import { navigate } from "../router"
-import { getPlatformName, readClipboardTextSafe, type LayoutMode } from "../platform"
+import { Toggle } from "../components"
+import { getPlatformName, type LayoutMode } from "../platform"
 import { exportBackup, applyBackup, buildBackup } from "../backup"
 import { clearIconCache, creatorIconInfo } from "../icons"
 import {
   t,
   loadLocale,
-  refreshLocales,
   availableLocales,
-  localeFolder,
+  secondaryLocaleFolder,
   invalidLocaleFiles,
-  parseLocaleJson,
   type Locale,
   type LocaleInfo,
 } from "../i18n"
 import { displayAppVersion } from "../version"
+import { getPlatformRuntime } from "../platform/runtime"
 const DeveloperFullDiagnostics = DEBUG_DIAG ? lazy(() => import("../components/DeveloperFullDiagnostics").then((module) => ({ default: module.DeveloperFullDiagnostics }))) : null
 
 const DeveloperLiteTools = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
@@ -47,6 +47,13 @@ function fmtTs(ms: number | undefined): string {
 
 export function SettingsPage() {
   const s = getSettings()
+  const localeUseCases = getApplication().locales
+  const platform = getPlatformRuntime().descriptor
+  const supportsSecondaryLocale = platform.family === "desktop"
+  const secondaryFolder = secondaryLocaleFolder()
+  const folderLabel = secondaryFolder && platform.isNative && platform.os === "ios"
+    ? t("settings.localeFolderIos")
+    : secondaryFolder.replace(/^.*\/(Android\/data\/)/, "$1")
 
   const [theme, setTheme] = useState<"dark" | "light">(s.theme)
   const [layoutMode, setLayoutModeState] = useState<LayoutMode>(s.layoutMode || "auto")
@@ -70,6 +77,7 @@ export function SettingsPage() {
   const [backupPaste, setBackupPaste] = useState("")
   const [showBackupPaste, setShowBackupPaste] = useState(false)
   const [localeList, setLocaleList] = useState<LocaleInfo[]>(() => availableLocales())
+  const [localePickerBusy, setLocalePickerBusy] = useState(false)
   const [localeMsg, setLocaleMsg] = useState<string | null>(null)
   const [localeAddOpen, setLocaleAddOpen] = useState(false)
   const [localeAddCode, setLocaleAddCode] = useState("")
@@ -156,29 +164,26 @@ export function SettingsPage() {
   }
 
   const reloadLocales = async () => {
-    await refreshLocales()
+    await getApplication().refreshLocales()
     setLocaleList(availableLocales())
     // 外部の ja.json 等を反映させるため、現在の言語を読み直す
     await applyLocale(locale)
   }
 
   const addLocale = async () => {
-    const code = localeAddCode.trim()
-    if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(code)) {
-      setLocaleMsg(t("settings.localeBadCode"))
-      return
-    }
-    if (!parseLocaleJson(localeAddJson)) {
-      setLocaleMsg(t("settings.localeBadJson"))
-      return
-    }
+    let code: string
     try {
-      await invoke("write_locale_file", { code, json: localeAddJson })
+      const result = await getApplication().locales.addLocale(localeAddCode, localeAddJson)
+      if (result.kind !== "saved") {
+        setLocaleMsg(t(result.kind === "invalid-code" ? "settings.localeBadCode" : "settings.localeBadJson"))
+        return
+      }
+      code = result.code
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
     }
-    await refreshLocales()
+    await getApplication().refreshLocales()
     setLocaleList(availableLocales())
     setLocaleAddCode("")
     setLocaleAddJson("")
@@ -187,15 +192,72 @@ export function SettingsPage() {
     await applyLocale(locale)
   }
 
+  const importLocaleFiles = async (files: FileList | null, target: "private" | "secondary" = "private") => {
+    if (!files?.length) return
+    const result = await getApplication().locales.importLocaleFiles(files, target)
+    if (result.kind === "unavailable") {
+      setLocaleMsg(target === "secondary"
+        ? "共有領域への言語ファイル書き込みはこのプラットフォームでは未対応です"
+        : t("settings.failedMsg", { msg: "Locale service unavailable" }))
+      return
+    }
+    const { imported, failures } = result
+    const suffix = { code: "", size: " (1 MiB超過)", json: " (JSON形式不正)", write: " (保存失敗)" }
+    const skipped = failures.map(({ name, reason }) => name + suffix[reason]).join(", ")
+    await getApplication().refreshLocales()
+    setLocaleList(availableLocales())
+    if (target === "secondary") {
+      setLocaleMsg(failures.length ? `共有領域へ保存: ${imported}; スキップ: ${skipped}` : `共有領域へ ${imported} 件保存しました`)
+    } else {
+      setLocaleMsg(failures.length ? `インポート数: ${imported}; スキップ: ${skipped}` : `Imported ${imported} 件の言語ファイル`)
+    }
+    await applyLocale(locale)
+  }
+
+  const useLocalePicker = async (operation: "import" | "export" | "export-to-app") => {
+    if (localePickerBusy) return
+    setLocalePickerBusy(true)
+    try {
+      if (operation === "import") {
+        const result = await localeUseCases.pickLocale()
+        switch (result.kind) {
+          case "cancelled": break
+          case "invalid-code": setLocaleMsg(t("settings.localeBadCode")); break
+          case "invalid-json": setLocaleMsg(t("settings.localeBadJson")); break
+          case "conflict": setLocaleMsg(t("settings.localePickerConflict", { code: result.code })); break
+          case "saved":
+            await reloadLocales()
+            setLocaleMsg(t("settings.localeAdded", { code: result.code }))
+            break
+        }
+      } else {
+        const result = await localeUseCases.exportPrivateLocale(locale, operation === "export-to-app" ? "app" : "picker")
+        if (result.kind === "missing") setLocaleMsg(t("settings.localePickerMissing"))
+        if (result.kind === "invalid-json") setLocaleMsg(t("settings.localeBadJson"))
+        if (result.kind === "saved") {
+          if (operation === "export-to-app") await reloadLocales()
+          const path = result.path && operation === "export-to-app" && platform.os === "ios"
+            ? `${t("settings.localeFolderIos")} / ${result.path}`
+            : result.path
+          setLocaleMsg(path ? t("settings.localePickerSavedTo", { path }) : t("settings.localePickerSaved"))
+        }
+      }
+    } catch (error) {
+      setLocaleMsg(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) }))
+    } finally {
+      setLocalePickerBusy(false)
+    }
+  }
+
   const deleteLocale = async (code: string) => {
     if (!window.confirm(t("settings.localeDeleteConfirm", { code }))) return
     try {
-      await invoke("delete_locale_file", { code })
+      await getApplication().locales.deleteLocale(code)
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
     }
-    await refreshLocales()
+    await getApplication().refreshLocales()
     setLocaleList(availableLocales())
     setLocaleMsg(t("settings.localeDeleted", { code }))
     // 削除した言語を選択中なら日本語へ戻す
@@ -225,8 +287,8 @@ export function SettingsPage() {
       const path = await exportBackup()
       let clip = ""
       try {
-        await navigator.clipboard.writeText(buildBackup())
-        clip = t("settings.clipCopied")
+        const clipboard = getPlatformRuntime().services.clipboard
+        if (clipboard && await clipboard.writeText(await buildBackup())) clip = t("settings.clipCopied")
       } catch {
         /* クリップボード失敗は無視 (ファイル保存で十分) */
       }
@@ -239,7 +301,7 @@ export function SettingsPage() {
   }
 
   const doImportFromClipboard = async () => {
-    const text = await readClipboardTextSafe()
+    const text = await getPlatformRuntime().services.clipboard?.readText()
     if (!text) {
       setBackupResult(t("settings.clipEmpty"))
       return
@@ -276,7 +338,9 @@ export function SettingsPage() {
 
   const exportLog = async () => {
     try {
-      const path = await invoke<string>("export_log", { text: formatLog() })
+      const files = getPlatformRuntime().services.files
+      if (!files) throw new Error("File export service unavailable")
+      const path = await files.exportText("pawchive-log.txt", formatLog())
       setLogResult(t("settings.exported", { path, clip: "" }))
     } catch (e) {
       setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
@@ -367,7 +431,7 @@ export function SettingsPage() {
         <div className="setting-item">
           <div className="setting-text">
             <span>{t("settings.localeFolder")}</span>
-            <small>{localeFolder() || "-"}</small>
+            <small>{folderLabel || "-"}</small>
             {invalidLocaleFiles().length > 0 && (
               <small>{t("settings.localeInvalid", { files: invalidLocaleFiles().join(", ") })}</small>
             )}
@@ -386,6 +450,59 @@ export function SettingsPage() {
             {t("settings.localeAddButton")}
           </button>
         </div>
+        {supportsSecondaryLocale && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>共有領域へ言語JSONをインポート</span>
+              <small>Desktop: Documents/Pawchive/languages に保存し、アプリ専用ファイルとは分離します。</small>
+            </div>
+            <label className="btn">
+              共有ファイル選択
+              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files, "secondary"); e.currentTarget.value = "" }} />
+            </label>
+          </div>
+        )}
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>言語JSONファイルをインポート</span>
+            <small>{localeUseCases.canPickLocale ? t("settings.localePickerImportDesc") : "端末からJSONファイルを複数選択できます。検証後、アプリ専用領域へコピーします。"}</small>
+          </div>
+          {localeUseCases.canPickLocale ? (
+            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("import")}>
+              {t("settings.localePickerOpen")}
+            </button>
+          ) : (
+            <label className="btn">
+              ファイル選択
+              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
+            </label>
+          )}
+        </div>
+
+        {localeUseCases.canPickLocale && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>{t("settings.localePickerExport")}</span>
+              <small>{t("settings.localePickerExportDesc")}</small>
+            </div>
+            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("export")}>
+              {t("settings.localePickerSave")}
+            </button>
+          </div>
+        )}
+
+        {localeUseCases.canSaveLocaleToAppDirectory && (
+          <div className="setting-item">
+            <div className="setting-text">
+              <span>{t("settings.localePickerAppFolder")}</span>
+              <small>{t(platform.os === "ios" ? "settings.localePickerAppFolderDescIos" : "settings.localePickerAppFolderDesc")}</small>
+            </div>
+            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("export-to-app")}>
+              {t("settings.localePickerSave")}
+            </button>
+          </div>
+        )}
 
         {localeAddOpen && (
           <div className="field">
@@ -507,12 +624,13 @@ export function SettingsPage() {
             <span>{t("settings.noImage")}</span>
             <small>{t("settings.noImageDesc")}</small>
           </div>
-          <button
-            className={`btn ${noImageMode ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => toggleNoImageMode(!noImageMode)}
-          >
-            {noImageMode ? t("settings.noImageOn") : t("settings.noImageOff")}
-          </button>
+          <Toggle
+            checked={noImageMode}
+            onChange={toggleNoImageMode}
+            label={t("settings.noImage")}
+            onLabel={t("settings.noImageOn")}
+            offLabel={t("settings.noImageOff")}
+          />
         </div>
 
         <div className="setting-item">
@@ -520,12 +638,13 @@ export function SettingsPage() {
             <span>{t("settings.proxy")}</span>
             <small>{t("settings.proxyDesc")}</small>
           </div>
-          <button
-            className={`btn ${proxyImages ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => toggleProxyImages(!proxyImages)}
-          >
-            {proxyImages ? t("settings.proxyOn") : t("settings.proxyOff")}
-          </button>
+          <Toggle
+            checked={proxyImages}
+            onChange={toggleProxyImages}
+            label={t("settings.proxy")}
+            onLabel={t("settings.proxyOn")}
+            offLabel={t("settings.proxyOff")}
+          />
         </div>
       </div>
 
@@ -538,12 +657,13 @@ export function SettingsPage() {
             <span>{t("settings.fileList")}</span>
             <small>{t("settings.fileListDesc")}</small>
           </div>
-          <button
-            className={`btn ${postFileListMode ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => togglePostFileListMode(!postFileListMode)}
-          >
-            {postFileListMode ? t("settings.fileListOn") : t("settings.fileListOff")}
-          </button>
+          <Toggle
+            checked={postFileListMode}
+            onChange={togglePostFileListMode}
+            label={t("settings.fileList")}
+            onLabel={t("settings.fileListOn")}
+            offLabel={t("settings.fileListOff")}
+          />
         </div>
 
         <div className="setting-item">
@@ -551,13 +671,13 @@ export function SettingsPage() {
             <span>{t("settings.excludeAiTitle")}</span>
             <small>{t("settings.excludeAiDesc")}</small>
           </div>
-          <button
-            className={`btn ${excludeAiPosts ? "btn-primary" : "btn-ghost"}`}
-            aria-pressed={excludeAiPosts}
-            onClick={() => toggleExcludeAiPosts(!excludeAiPosts)}
-          >
-            {excludeAiPosts ? t("settings.excludeAiOn") : t("settings.excludeAiOff")}
-          </button>
+          <Toggle
+            checked={excludeAiPosts}
+            onChange={toggleExcludeAiPosts}
+            label={t("settings.excludeAiTitle")}
+            onLabel={t("settings.excludeAiOn")}
+            offLabel={t("settings.excludeAiOff")}
+          />
         </div>
 
         <div className="setting-item">
@@ -565,12 +685,13 @@ export function SettingsPage() {
             <span>{t("settings.coverTitle")}</span>
             <small>{t("settings.coverDesc")}</small>
           </div>
-          <button
-            className={`btn ${excludeFanboxCover ? "btn-primary" : "btn-ghost"}`}
-            onClick={() => toggleExcludeFanboxCover(!excludeFanboxCover)}
-          >
-            {excludeFanboxCover ? t("settings.coverOn") : t("settings.coverOff")}
-          </button>
+          <Toggle
+            checked={excludeFanboxCover}
+            onChange={toggleExcludeFanboxCover}
+            label={t("settings.coverTitle")}
+            onLabel={t("settings.coverOn")}
+            offLabel={t("settings.coverOff")}
+          />
         </div>
       </div>
 
@@ -765,17 +886,16 @@ export function SettingsPage() {
               <span>{t("settings.developerTools")}</span>
               <small>{t("settings.developerToolsDesc")}</small>
             </div>
-            <button
-              className={`btn ${developerToolsEnabled ? "btn-primary" : "btn-ghost"}`}
-              aria-pressed={developerToolsEnabled}
-              onClick={() => {
-                const next = !developerToolsEnabled
+            <Toggle
+              checked={developerToolsEnabled}
+              onChange={(next) => {
                 setDeveloperToolsEnabled(next)
                 updateSettings({ developerToolsEnabled: next })
               }}
-            >
-              {developerToolsEnabled ? t("settings.developerToolsOn") : t("settings.developerToolsOff")}
-            </button>
+              label={t("settings.developerTools")}
+              onLabel={t("settings.developerToolsOn")}
+              offLabel={t("settings.developerToolsOff")}
+            />
           </div>
         )}
 

@@ -1,6 +1,5 @@
-import {
-  invoke
-} from "@tauri-apps/api/core"
+import { InvalidPostContextError, isValidPostContext } from "./domain/post-identity"
+import type { CreatorIndexDto } from "./infrastructure/creator-index-dto"
 import type { Locale } from "./i18n"
 
 import type {
@@ -15,6 +14,7 @@ import type {
   PawFile,
 } from "./types"
 import { logApiFailure } from "./log"
+import { getPlatformRuntime } from "./platform/runtime"
 
 // ---------------------------------------------------------------------------
 // 設定
@@ -56,9 +56,11 @@ export interface Settings {
  *  変更をイベントで通知する (レイアウトモード即時反映バグの再発防止) */
 export const SETTINGS_CHANGED_EVENT = "pawkemo-settings-changed"
 
+function settingsStorage() { return getPlatformRuntime().services.storage }
+
 export function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
+    const raw = settingsStorage()?.get(SETTINGS_KEY)
     if (raw) return { ...defaultSettings(), ...JSON.parse(raw) }
   } catch {
     /* ignore */
@@ -84,10 +86,15 @@ function defaultSettings(): Settings {
 }
 
 export function saveSettings(s: Settings) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s))
+  try { settingsStorage()?.set(SETTINGS_KEY, JSON.stringify(s)) } catch { /* unavailable storage */ }
 }
 
 let settings: Settings = loadSettings()
+
+/** Reload settings after runtime adapter initialization so the service boundary is used. */
+export function initializeSettingsStorage() {
+  settings = loadSettings()
+}
 
 export function getSettings(): Settings {
   return settings
@@ -257,20 +264,14 @@ async function request<T>(
 
   const exec = scheduled(async () => {
     try {
-      // 注意: Tauri v2 のコマンド引数は Rust 側 snake_case を camelCase で渡す
-      // (session_key ではなく sessionKey。snake_case だとバインドされず
-      //  常にセッション無しになり認証系 API が 401 になる)
-      const result = await invoke<string>(
-        "api_request",
-        {
-          path,
-          method,
-          sessionKey:
-            requestSessionKey || null,
-          timeoutSecs:
-            settings.timeoutSecs || null,
-        }
-      )
+      const transport = getPlatformRuntime().services.network
+      if (!transport) throw new Error("Pawchive API requires a native runtime")
+      const result = await transport.request({
+        path,
+        method,
+        sessionKey: requestSessionKey || null,
+        timeoutSecs: settings.timeoutSecs || null,
+      })
 
       try {
         return JSON.parse(result) as T
@@ -329,7 +330,7 @@ export const api = {
   },
 
   /** 全クリエイター (約10万件) */
-  creators: () => request<PawCreator[]>("/creators"),
+  creators: () => request<CreatorIndexDto[]>("/creators"),
 
   /** クリエイター投稿一覧 */
   creatorPosts: (
@@ -362,13 +363,8 @@ export const api = {
   postRevisions: (service: string, creatorId: string, postId: string) => {
     // 投稿詳細と同じ識別子を使い、URL segment ごとに encode して要求する。
     // 不正な識別子は /undefined/... のような API URL に変換しない。
-    const validService = service === "fanbox" || service === "patreon"
-    const validIds = [creatorId, postId].every(
-      (value) => typeof value === "string" && !!value.trim() &&
-        value !== "undefined" && value !== "null" && !value.includes("/"),
-    )
-    if (!validService || !validIds) {
-      return Promise.reject(new Error(
+    if (!isValidPostContext({ service, creatorId, postId })) {
+      return Promise.reject(new InvalidPostContextError(
         `Invalid post revision context: service=${String(service)} creatorId=${String(creatorId)} postId=${String(postId)}`,
       ))
     }
