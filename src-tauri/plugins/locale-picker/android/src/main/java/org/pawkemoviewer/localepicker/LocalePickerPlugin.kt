@@ -19,9 +19,15 @@ import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 
 @InvokeArg
+class JsonReadArgs {
+    var maxBytes: Int = 1024 * 1024
+}
+
+@InvokeArg
 class LocaleExportArgs {
     lateinit var filename: String
     lateinit var json: String
+    var maxBytes: Int = 1024 * 1024
 }
 
 @InvokeArg
@@ -87,23 +93,24 @@ class LocalePickerPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
-    fun importLocale(invoke: Invoke) {
+    fun pickJson(invoke: Invoke) {
         launch(invoke, picker(Intent.ACTION_OPEN_DOCUMENT), "importResult")
     }
 
     @Command
-    fun exportLocale(invoke: Invoke) {
+    fun saveJson(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(LocaleExportArgs::class.java)
             val intent = picker(Intent.ACTION_CREATE_DOCUMENT).putExtra(Intent.EXTRA_TITLE, args.filename)
             launch(invoke, intent, "exportResult")
         } catch (_: Exception) {
-            invoke.reject("Invalid locale export arguments")
+            invoke.reject("Invalid JSON export arguments")
         }
     }
 
     @ActivityCallback
     fun importResult(invoke: Invoke, result: ActivityResult) = handle(invoke, result) { uri ->
+        val maxBytes = invoke.parseArgs(JsonReadArgs::class.java).maxBytes
         val resolver = activity.contentResolver
         val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
             if (it.moveToFirst()) it.getString(0) else null
@@ -114,7 +121,7 @@ class LocalePickerPlugin(private val activity: Activity) : Plugin(activity) {
             while (true) {
                 val count = input.read(chunk)
                 if (count == -1) break
-                check(count <= maxBytes - bytes.size()) { "Locale file exceeds 1 MiB" }
+                check(count <= maxBytes - bytes.size()) { "JSON file exceeds the size limit" }
                 bytes.write(chunk, 0, count)
             }
         } ?: error("Could not open document")
@@ -124,8 +131,9 @@ class LocalePickerPlugin(private val activity: Activity) : Plugin(activity) {
 
     @ActivityCallback
     fun exportResult(invoke: Invoke, result: ActivityResult) = handle(invoke, result) { uri ->
-        val bytes = invoke.parseArgs(LocaleExportArgs::class.java).json.toByteArray(Charsets.UTF_8)
-        check(bytes.size <= maxBytes)
+        val args = invoke.parseArgs(LocaleExportArgs::class.java)
+        val bytes = args.json.toByteArray(Charsets.UTF_8)
+        check(bytes.size <= args.maxBytes)
         activity.contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
             ?: error("Could not open document for export")
         JSObject().put("kind", "saved")

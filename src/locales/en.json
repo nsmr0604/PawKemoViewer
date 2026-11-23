@@ -1,4 +1,7 @@
 {
+  "settings.backupOpen": "Open backup file",
+  "settings.backupSaved": "Backup saved.{{clip}}",
+  "settings.backupTooLarge": "Backups are limited to 5 MiB.",
   "settings.localePickerAppFolder": "Export to app folder",
   "settings.localePickerAppFolderDesc": "Saves to Documents/Languages inside Android/data. An existing export for the same language is updated.",
   "settings.localePickerAppFolderDescIos": "Saves to On My iPhone / PawKemoViewer / Languages. An existing export for the same language is updated.",
@@ -247,7 +250,7 @@
   "settings.exportDesc": "Save follows, read state and settings to a JSON file (for device transfer or before a reset)",
   "settings.export": "Export",
   "settings.importTitle": "Backup (import)",
-  "settings.importDesc": "Import an exported JSON to restore follows, read state and settings (overwrites current data)",
+  "settings.importDesc": "Open a backup JSON to restore follows, read state and settings.",
   "settings.importClipboard": "From clipboard",
   "settings.importPaste": "Paste",
   "settings.backupJson": "Backup JSON",

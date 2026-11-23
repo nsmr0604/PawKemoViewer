@@ -1,3 +1,4 @@
+mod json_files;
 mod locale_storage;
 
 use regex::Regex;
@@ -1164,6 +1165,8 @@ async fn set_android_launcher_icon(app: tauri::AppHandle, light: bool) -> Result
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    let builder = builder.plugin(tauri_plugin_dialog::init());
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let builder = builder.plugin(tauri_plugin_locale_picker::init());
     #[cfg(target_os = "ios")]
@@ -1215,10 +1218,8 @@ pub fn run() {
                 locale_storage::write_locale_file,
                 locale_storage::delete_locale_file,
                 locale_storage::resolve_storage_location,
-                #[cfg(any(target_os = "android", target_os = "ios"))]
-                locale_storage::pick_locale_file,
-                #[cfg(any(target_os = "android", target_os = "ios"))]
-                locale_storage::save_locale_file,
+                json_files::pick_json_file,
+                json_files::save_json_file,
                 #[cfg(any(target_os = "android", target_os = "ios"))]
                 locale_storage::save_locale_file_to_app_directory,
                 #[cfg(target_os = "android")]

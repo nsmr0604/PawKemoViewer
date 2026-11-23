@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core"
 import { DEBUG_DIAG } from "../../build-flags"
-import type { LocaleFileSet, LocaleService, PlatformServices, StorageLocationService } from "../contracts"
+import type { JsonFilePicker, LocalePicker, LocaleFileSet, LocaleService, PlatformServices, StorageLocationService } from "../contracts"
 import { browserStorage, clipboard, indexedDatabase } from "./browser"
 
 async function listLocaleFiles(command: string): Promise<LocaleFileSet | null> {
@@ -29,6 +29,16 @@ export const resolveNativeStorageLocation: StorageLocationService["resolve"] = a
   }
 }
 
+const jsonFiles: JsonFilePicker = {
+  open: (purpose) => invoke("pick_json_file", { purpose }),
+  save: (purpose, filename, json) => invoke("save_json_file", { purpose, filename, json }),
+}
+
+const localePicker: LocalePicker = {
+  open: () => jsonFiles.open("locale"),
+  save: (code, json) => jsonFiles.save("locale", `${code}.json`, json),
+}
+
 export function createNativeServices() {
   return {
     indexedDatabase,
@@ -47,6 +57,8 @@ export function createNativeServices() {
       exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }),
     },
     locale,
+    jsonFiles,
+    localePicker,
     clipboard,
   } satisfies PlatformServices
 }

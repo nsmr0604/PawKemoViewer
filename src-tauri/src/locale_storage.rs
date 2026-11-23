@@ -286,57 +286,6 @@ pub(crate) fn resolve_storage_location(
 }
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
-struct LocalePickerGuard;
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-static LOCALE_PICKER_BUSY: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-impl Drop for LocalePickerGuard {
-    fn drop(&mut self) {
-        LOCALE_PICKER_BUSY.store(false, std::sync::atomic::Ordering::Release);
-    }
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-async fn run_locale_picker(
-    app: &tauri::AppHandle,
-    command: &str,
-    payload: serde_json::Value,
-) -> Result<serde_json::Value, String> {
-    if LOCALE_PICKER_BUSY.swap(true, std::sync::atomic::Ordering::AcqRel) {
-        return Err("A locale picker is already open".into());
-    }
-    let _guard = LocalePickerGuard;
-    tauri_plugin_locale_picker::run(app, command, payload).await
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-#[tauri::command]
-pub(crate) async fn pick_locale_file(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    run_locale_picker(&app, "importLocale", serde_json::json!({})).await
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-#[tauri::command]
-pub(crate) async fn save_locale_file(
-    app: tauri::AppHandle,
-    code: String,
-    json: String,
-) -> Result<serde_json::Value, String> {
-    if !valid_locale_code(&code) || json.len() as u64 > LOCALE_MAX_BYTES {
-        return Err("Invalid locale export".into());
-    }
-    run_locale_picker(
-        &app,
-        "exportLocale",
-        serde_json::json!({ "filename": format!("{code}.json"), "json": json }),
-    )
-    .await
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
 #[tauri::command]
 pub(crate) async fn save_locale_file_to_app_directory(
     app: tauri::AppHandle,
@@ -357,7 +306,7 @@ pub(crate) async fn save_locale_file_to_app_directory(
     #[cfg(target_os = "android")]
     {
         let payload = serde_json::json!({ "filename": filename, "json": json });
-        run_locale_picker(&app, "exportToAppDirectory", payload).await
+        crate::json_files::run_mobile_picker(&app, "exportToAppDirectory", payload).await
     }
 }
 

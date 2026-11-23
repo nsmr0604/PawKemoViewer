@@ -13,7 +13,7 @@ import { DEBUG_DIAG } from "../build-flags"
 import { navigate } from "../router"
 import { Toggle } from "../components/Toggle"
 import { getPlatformName, type LayoutMode } from "../platform/environment"
-import { exportBackup, applyBackup, buildBackup } from "../backup"
+import { applyBackup, buildBackup, MAX_BACKUP_BYTES } from "../backup"
 import { clearIconCache, creatorIconInfo } from "../icons"
 import {
   t,
@@ -48,7 +48,7 @@ function fmtTs(ms: number | undefined): string {
 export function SettingsPage() {
   const s = getSettings()
   const localeUseCases = getApplication().locales
-  const platform = getPlatformRuntime().descriptor
+  const { descriptor: platform, services } = getPlatformRuntime()
   const supportsSecondaryLocale = platform.family === "desktop"
   const secondaryFolder = secondaryLocaleFolder()
   const folderLabel = secondaryFolder && platform.isNative && platform.os === "ios"
@@ -77,7 +77,7 @@ export function SettingsPage() {
   const [backupPaste, setBackupPaste] = useState("")
   const [showBackupPaste, setShowBackupPaste] = useState(false)
   const [localeList, setLocaleList] = useState<LocaleInfo[]>(() => availableLocales())
-  const [localePickerBusy, setLocalePickerBusy] = useState(false)
+  const [jsonPickerBusy, setJsonPickerBusy] = useState(false)
   const [localeMsg, setLocaleMsg] = useState<string | null>(null)
   const [localeAddOpen, setLocaleAddOpen] = useState(false)
   const [localeAddCode, setLocaleAddCode] = useState("")
@@ -215,8 +215,8 @@ export function SettingsPage() {
   }
 
   const useLocalePicker = async (operation: "import" | "export" | "export-to-app") => {
-    if (localePickerBusy) return
-    setLocalePickerBusy(true)
+    if (jsonPickerBusy) return
+    setJsonPickerBusy(true)
     try {
       if (operation === "import") {
         const result = await localeUseCases.pickLocale()
@@ -245,7 +245,7 @@ export function SettingsPage() {
     } catch (error) {
       setLocaleMsg(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) }))
     } finally {
-      setLocalePickerBusy(false)
+      setJsonPickerBusy(false)
     }
   }
 
@@ -283,20 +283,54 @@ export function SettingsPage() {
   }
 
   const doExportBackup = async () => {
+    if (jsonPickerBusy) return
+    setJsonPickerBusy(true)
+    setBackupResult(null)
     try {
-      const path = await exportBackup()
+      const json = await buildBackup()
+      if (new TextEncoder().encode(json).length > MAX_BACKUP_BYTES) {
+        throw new Error(t("settings.backupTooLarge"))
+      }
+      const filename = "pawkemoviewer-backup.json"
+      if (!services.jsonFiles && !services.files) throw new Error("File export service unavailable")
+      const result = services.jsonFiles
+        ? await services.jsonFiles.save("backup", filename, json)
+        : { kind: "saved" as const, path: await services.files?.exportText(filename, json) }
+      if (result.kind === "cancelled") return
+
       let clip = ""
       try {
-        const clipboard = getPlatformRuntime().services.clipboard
-        if (clipboard && await clipboard.writeText(await buildBackup())) clip = t("settings.clipCopied")
+        if (await services.clipboard?.writeText(json)) clip = t("settings.clipCopied")
       } catch {
-        /* クリップボード失敗は無視 (ファイル保存で十分) */
+        /* ファイル保存の結果を優先する */
       }
-      setBackupResult(t("settings.exported", { path, clip }))
+      setBackupResult(result.path
+        ? t("settings.exported", { path: result.path, clip })
+        : t("settings.backupSaved", { clip }))
       logInfo("バックアップを書き出しました")
-
     } catch (e) {
       setBackupResult(t("settings.exportFailed", { msg: e instanceof Error ? e.message : String(e) }))
+    } finally {
+      setJsonPickerBusy(false)
+    }
+  }
+
+  const doImportBackupFile = async (file?: File) => {
+    if (jsonPickerBusy || (!file && !services.jsonFiles)) return
+    setJsonPickerBusy(true)
+    setBackupResult(null)
+    try {
+      if (file) {
+        if (file.size > MAX_BACKUP_BYTES) throw new Error(t("settings.backupTooLarge"))
+        await doImport(new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer()))
+      } else {
+        const result = await services.jsonFiles?.open("backup")
+        if (result?.kind === "selected") await doImport(result.json)
+      }
+    } catch (e) {
+      setBackupResult(t("settings.importFailed", { msg: e instanceof Error ? e.message : String(e) }))
+    } finally {
+      setJsonPickerBusy(false)
     }
   }
 
@@ -550,7 +584,7 @@ export function SettingsPage() {
             <small>{localeUseCases.canPickLocale ? t("settings.localePickerImportDesc") : "端末からJSONファイルを複数選択できます。検証後、アプリ専用領域へコピーします。"}</small>
           </div>
           {localeUseCases.canPickLocale ? (
-            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("import")}>
+            <button className="btn" disabled={jsonPickerBusy} onClick={() => void useLocalePicker("import")}>
               {t("settings.localePickerOpen")}
             </button>
           ) : (
@@ -567,7 +601,7 @@ export function SettingsPage() {
               <span>{t("settings.localePickerExport")}</span>
               <small>{t("settings.localePickerExportDesc")}</small>
             </div>
-            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("export")}>
+            <button className="btn" disabled={jsonPickerBusy} onClick={() => void useLocalePicker("export")}>
               {t("settings.localePickerSave")}
             </button>
           </div>
@@ -579,7 +613,7 @@ export function SettingsPage() {
               <span>{t("settings.localePickerAppFolder")}</span>
               <small>{t(platform.os === "ios" ? "settings.localePickerAppFolderDescIos" : "settings.localePickerAppFolderDesc")}</small>
             </div>
-            <button className="btn" disabled={localePickerBusy} onClick={() => void useLocalePicker("export-to-app")}>
+            <button className="btn" disabled={jsonPickerBusy} onClick={() => void useLocalePicker("export-to-app")}>
               {t("settings.localePickerSave")}
             </button>
           </div>
@@ -739,7 +773,7 @@ export function SettingsPage() {
             <span>{t("settings.exportTitle")}</span>
             <small>{t("settings.exportDesc")}</small>
           </div>
-          <button className="btn" onClick={doExportBackup}>
+          <button className="btn" disabled={jsonPickerBusy} onClick={doExportBackup}>
             {t("settings.export")}
           </button>
         </div>
@@ -750,6 +784,25 @@ export function SettingsPage() {
             <small>{t("settings.importDesc")}</small>
           </div>
           <div className="settings-actions">
+            {services.jsonFiles ? (
+              <button className="btn" disabled={jsonPickerBusy} onClick={() => void doImportBackupFile()}>
+                {t("settings.backupOpen")}
+              </button>
+            ) : (
+              <label className="field">
+                <span>{t("settings.backupOpen")}</span>
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  disabled={jsonPickerBusy}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0]
+                    event.currentTarget.value = ""
+                    if (file) void doImportBackupFile(file)
+                  }}
+                />
+              </label>
+            )}
             <button className="btn" onClick={doImportFromClipboard}>
               {t("settings.importClipboard")}
             </button>

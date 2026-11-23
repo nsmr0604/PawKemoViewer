@@ -1,9 +1,7 @@
 // フォロー・既読・設定のローカルバックアップ
 // (EhViewer「お気に入りリストをバックアップ / データをエクスポート・インポート」相当)
 //
-// - 書き出し: Rust (export_file) で %APPDATA%/backup/ に JSON 保存 +
-//   クリップボードにもコピー (ファイルが見つからないときの貼り付け用)
-// - 読み込み: クリップボード or 貼り付けテキストから JSON を復元
+// 設定画面から JSON ファイル、クリップボード、貼り付けを使って入出力する。
 //
 // 注意: セッションキーは復元完結性のため含める (端末ローカルの JSON のみ)。
 // ログや notes には絶対に出力しないこと。
@@ -14,6 +12,7 @@ import { replaceSeen, getAllSeen, type SeenEntry } from "./db"
 import { getPlatformRuntime } from "./platform/runtime"
 
 export const BACKUP_TYPE = "pawkemoviewer-backup"
+export const MAX_BACKUP_BYTES = 5 * 1024 * 1024
 const BACKUP_VERSION = 1
 
 export interface BackupData {
@@ -38,16 +37,9 @@ export async function buildBackup(): Promise<string> {
   return JSON.stringify(data, null, 2)
 }
 
-/** バックアップをファイルに書き出し (Rust 側で %APPDATA%/backup/) */
-export async function exportBackup(): Promise<string> {
-  const files = getPlatformRuntime().services.files
-  if (!files) throw new Error("File export service unavailable")
-  return files.exportText("pawkemoviewer-backup.json", await buildBackup())
-}
-
 /** バックアップ JSON を検証してパースする */
 export function parseBackup(text: string): BackupData {
-  if (typeof text !== "string" || text.length > 5 * 1024 * 1024) throw new Error("バックアップファイルが大きすぎます")
+  if (typeof text !== "string" || text.length > MAX_BACKUP_BYTES || new TextEncoder().encode(text).length > MAX_BACKUP_BYTES) throw new Error("バックアップファイルが大きすぎます")
   let j: unknown
   try {
     j = JSON.parse(text)

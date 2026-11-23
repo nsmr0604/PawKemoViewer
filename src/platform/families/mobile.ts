@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core"
 import { onBackButtonPress, exit } from "@tauri-apps/api/app"
-import type { LifecycleService, LocalePicker, PlatformDescriptor, PlatformServices } from "../contracts"
+import type { LifecycleService, PlatformDescriptor, PlatformServices } from "../contracts"
 import { createNativeServices, resolveNativeStorageLocation } from "./native"
 
 const lifecycle: LifecycleService = {
@@ -16,14 +16,10 @@ const lifecycle: LifecycleService = {
   exit: async () => { await exit(0) },
 }
 
-const localePicker: LocalePicker = {
-  open: () => invoke("pick_locale_file"),
-  save: (code, json) => invoke("save_locale_file", { code, json }),
-}
-
 export function createMobileServices(os?: PlatformDescriptor["os"]): PlatformServices {
+  const native = createNativeServices()
   return {
-    ...createNativeServices(),
+    ...native,
     storageLocations: {
       resolve: async (area, purpose) => {
         if (area === "secondary-accessible") return null
@@ -31,9 +27,9 @@ export function createMobileServices(os?: PlatformDescriptor["os"]): PlatformSer
       },
     },
     localePicker: os === "android" || os === "ios" ? {
-      ...localePicker,
+      ...native.localePicker,
       saveToAppDirectory: (code, json) => invoke("save_locale_file_to_app_directory", { code, json }),
-    } : localePicker,
+    } : native.localePicker,
     lifecycle,
   }
 }

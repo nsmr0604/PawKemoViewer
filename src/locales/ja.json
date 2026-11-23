@@ -1,4 +1,7 @@
 {
+  "settings.backupOpen": "バックアップファイルを開く",
+  "settings.backupSaved": "バックアップを保存しました。{{clip}}",
+  "settings.backupTooLarge": "バックアップは 5 MiB までです。",
   "settings.localePickerAppFolder": "アプリ用フォルダーに書き出す",
   "settings.localePickerAppFolderDesc": "Android/data 内の Documents/Languages に保存します。同じ言語コードの書き出し済みファイルは更新されます。",
   "settings.localePickerAppFolderDescIos": "「このiPhone内 / PawKemoViewer / Languages」に保存します。同じ言語コードの書き出し済みファイルは更新されます。",
@@ -247,7 +250,7 @@
   "settings.exportDesc": "フォロー・既読・設定を JSON ファイルに保存します (端末移行・初期化前に使用)",
   "settings.export": "書き出す",
   "settings.importTitle": "バックアップ (読み込み)",
-  "settings.importDesc": "書き出した JSON を読み込み、フォロー・既読・設定を復元します (現在の内容を上書きします)",
+  "settings.importDesc": "バックアップ JSON を読み込み、フォロー・既読・設定を復元します。",
   "settings.importClipboard": "クリップボードから",
   "settings.importPaste": "貼り付ける",
   "settings.backupJson": "バックアップ JSON",
