@@ -1,17 +1,6 @@
 name: Desktop candidate validation
 
 on:
-  push:
-    branches: [arch/m7-native-validation]
-    paths:
-      - '.github/workflows/desktop-candidate.yml'
-      - 'src/**'
-      - 'src-tauri/**'
-      - 'scripts/**'
-      - 'package*.json'
-      - 'index.html'
-      - 'tsconfig*.json'
-      - 'vite.config.ts'
   workflow_dispatch:
 
 permissions:
@@ -45,8 +34,10 @@ jobs:
       VITE_DEBUG_DIAG: "1"
       VITE_BUILD_COMMIT: ${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -90,7 +81,7 @@ jobs:
           dpkg-deb -x "${packages[0]}" "$unpacked"
           test -x "$unpacked/usr/bin/pawkemoviewer"
           test -n "$(find "$unpacked/usr/share/icons" -type f -name '*.png' -print -quit)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: PawKemoViewer-Desktop-Test-${{ matrix.platform }}
           path: ${{ matrix.artifact }}

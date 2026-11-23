@@ -14,6 +14,8 @@ on:
       - "tsconfig.json"
       - "package.json"
       - "package-lock.json"
+      - "scripts/app-icon/**"
+      - "scripts/generate-icons.mjs"
       - ".github/workflows/tauri.yml"
   workflow_dispatch:
     inputs:
@@ -37,9 +39,12 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Remove previous PC build assets for this version (正式リリース時)
         if: ${{ inputs.release == true }}
@@ -51,14 +56,16 @@ jobs:
           TAG="pawkemoviewer-v${VER}"
 
           # 同じバージョンの既存リリースからPC向け成果物だけを削除する。
-          # Android APKはAndroid workflowが管理するため残す。
+          # Android と iOS の成果物は各プラットフォームのワークフローが管理する。
           if gh release view "$TAG" >/dev/null 2>&1; then
             mapfile -t assets < <(gh release view "$TAG" --json assets --jq '.assets[].name')
             for asset in "${assets[@]}"; do
-              if [[ "$asset" == PawKemoViewer* && "$asset" != *.apk && "$asset" != *.ipa ]]; then
-                gh release delete-asset "$TAG" "$asset" --yes
-                echo "removed previous PC asset: $asset"
-              fi
+              case "$asset" in
+                PawKemoViewer*.exe|PawKemoViewer*.msi|PawKemoViewer*.dmg|PawKemoViewer*.deb|PawKemoViewer*.rpm|PawKemoViewer*.AppImage|PawKemoViewer*.app.tar.gz)
+                  gh release delete-asset "$TAG" "$asset" --yes
+                  echo "removed previous PC asset: $asset"
+                  ;;
+              esac
             done
           fi
 
@@ -74,11 +81,12 @@ jobs:
           # rolling prerelease debug-latest から現行バージョン以外のアセットを掃除
           # (バージョンはファイル名に含まれる。PC/APK 両方に同じフィルタが使える)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r asset; do
+            gh release view "$TAG" --json assets --jq '.assets[].name' | while IFS= read -r asset; do
               case "$asset" in
                 *"_${VER}_"*) ;; # 現行バージョンは残す
-                *) gh release delete-asset "$TAG" "$asset" --yes || true
-                   echo "removed stale debug asset: $asset" ;;
+                PawKemoViewer*.exe|PawKemoViewer*.msi|PawKemoViewer*.dmg|PawKemoViewer*.deb|PawKemoViewer*.rpm|PawKemoViewer*.AppImage|PawKemoViewer*.app.tar.gz)
+                  gh release delete-asset "$TAG" "$asset" --yes || true
+                  ;;
               esac
             done
           fi
@@ -94,6 +102,7 @@ jobs:
           - platform: macos-15
 
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 45
 
     env:
       # push = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
@@ -107,9 +116,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Show recent commits
         shell: bash
@@ -121,7 +131,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -190,8 +200,7 @@ jobs:
             echo
           } > release-notes.md
           gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: inputs.artifact_only == true && inputs.release != true
         with:
           name: PawKemoViewer-debug-${{ matrix.platform }}

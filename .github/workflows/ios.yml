@@ -25,6 +25,7 @@ permissions:
 jobs:
   build:
     runs-on: macos-15
+    timeout-minutes: 35
 
     env:
       # push = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
@@ -37,10 +38,11 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # リリースノート / サマリに直近のコミットメッセージを表示するため履歴を取得
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Show recent commits
         shell: bash
@@ -52,7 +54,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -149,11 +151,13 @@ jobs:
           set -euo pipefail
           VER=$(node -p "require('./package.json').version")
           mkdir -p dist-ios
-          ipa=$(printf '%s\n' src-tauri/gen/apple/build/arm64/*.ipa | head -n 1)
-          if [ ! -f "$ipa" ]; then
-            echo "no unsigned IPA found in src-tauri/gen/apple/build/arm64" >&2
+          shopt -s nullglob
+          packages=(src-tauri/gen/apple/build/arm64/*.ipa)
+          if [[ "${#packages[@]}" -ne 1 ]]; then
+            echo "Expected one unsigned IPA, found ${#packages[@]}" >&2
             exit 1
           fi
+          ipa=${packages[0]}
           out="dist-ios/PawKemoViewer_${VER}_ios-unsigned.ipa"
           cp "$ipa" "$out"
           echo "packaged: $out"
@@ -185,10 +189,11 @@ jobs:
           PYTHON
 
       - name: Upload iOS artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pawchive-ios
           path: dist-ios/*.ipa
+          if-no-files-found: error
 
       - name: Attach iOS builds to Release
         if: inputs.release == true || inputs.artifact_only != true
@@ -214,10 +219,10 @@ jobs:
 
             # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
             if gh release view "$TAG" >/dev/null 2>&1; then
-              gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r a; do
+              gh release view "$TAG" --json assets --jq '.assets[].name' | while IFS= read -r a; do
                 case "$a" in
                   *"_${VER}_"*) ;; # 現行バージョンは残す
-                  *) gh release delete-asset "$TAG" "$a" --yes || true ;;
+                  PawKemoViewer_*.ipa) gh release delete-asset "$TAG" "$a" --yes || true ;;
                 esac
               done
             fi

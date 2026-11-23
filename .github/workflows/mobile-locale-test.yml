@@ -1,8 +1,6 @@
 name: Mobile locale integration test
 
 on:
-  push:
-    branches: [arch/m7-native-validation]
   workflow_dispatch:
 
 permissions:
@@ -33,15 +31,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         if: matrix.platform == 'android'
         with:
           distribution: temurin
@@ -148,7 +148,7 @@ jobs:
           test -n "$ipa"
           unzip -t "$ipa"
           cp "$ipa" artifacts/PawKemoViewer-Locale-Test-unsigned.ipa
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: PawKemoViewer-Locale-Test-${{ matrix.platform }}
           path: artifacts/*.${{ matrix.suffix }}

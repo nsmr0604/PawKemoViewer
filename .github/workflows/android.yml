@@ -16,6 +16,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "scripts/app-icon/**"
+      - "scripts/generate-icons.mjs"
       - "src-tauri/app-icons.json"
       - "src-tauri/app-icons/**"
       - ".github/workflows/android.yml"
@@ -30,6 +31,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "scripts/app-icon/**"
+      - "scripts/generate-icons.mjs"
       - "src-tauri/app-icons.json"
       - "src-tauri/app-icons/**"
       - ".github/workflows/android.yml"
@@ -50,13 +52,12 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-
   build:
-
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
 
     env:
       # push / PR = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
@@ -69,11 +70,11 @@ jobs:
       VITE_BUILD_COMMIT: ${{ github.sha }}
 
     steps:
-
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Show recent commits
         shell: bash
@@ -85,7 +86,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -94,7 +95,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
@@ -157,7 +158,12 @@ jobs:
           VER=$(node -p "require('./package.json').version")
           mkdir -p dist-apk
 
-          for apk in $(find src-tauri/gen/android/app/build/outputs -type f -name "*.apk"); do
+          mapfile -d '' -t packages < <(find src-tauri/gen/android/app/build/outputs -type f -name '*.apk' -print0)
+          if [[ "${#packages[@]}" -eq 0 ]]; then
+            echo "No APK found" >&2
+            exit 1
+          fi
+          for apk in "${packages[@]}"; do
             base=$(basename "$apk")
             # app-{abi}-release.apk / app-{abi}-unsigned-release.apk から abi を抽出
             abi=$(echo "$base" | sed -n 's/^app-\([a-z0-9_]*\)-\(unsigned-\)\{0,1\}release\.apk$/\1/p')
@@ -179,19 +185,32 @@ jobs:
           ls -la dist-apk
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pawchive-android
           path: dist-apk/*.apk
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.event_name != 'pull_request' && (inputs.release == true || inputs.artifact_only != true)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: pawchive-android
+          path: dist-apk
 
       - name: Attach APK to Release
-        # push (main) = デバッグビルド → rolling prerelease `debug-latest` へ添付
-        # (旧バージョンのアセットは掃除する)。
-        # 手動 release=true のみ正式リリース pawkemoviewer-v{VER} へ添付。
-        # PR ビルドは artifact のみ (リリースへは出さない)
-        if: ${{ github.event_name != 'pull_request' && (inputs.release == true || inputs.artifact_only != true) }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -e
           VER=$(node -p "require('./package.json').version")
@@ -211,10 +230,10 @@ jobs:
 
           # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release view "$TAG" --json assets --jq '.assets[].name' | while read -r a; do
+            gh release view "$TAG" --json assets --jq '.assets[].name' | while IFS= read -r a; do
               case "$a" in
                 *"_${VER}_"*) ;; # 現行バージョンは残す
-                *) gh release delete-asset "$TAG" "$a" --yes || true ;;
+                PawKemoViewer_*.apk) gh release delete-asset "$TAG" "$a" --yes || true ;;
               esac
             done
           fi
