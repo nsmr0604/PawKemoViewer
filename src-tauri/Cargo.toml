@@ -1,6 +1,6 @@
 [package]
 name = "pawkemoviewer"
-version = "0.5.2"
+version = "0.5.3"
 description = "PawKemoViewer"
 authors = ["nsmr0604"]
 license = "MIT"
