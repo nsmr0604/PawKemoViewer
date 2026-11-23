@@ -1,0 +1,96 @@
+name: macOS Build
+run-name: ${{ github.workflow }} - ${{ inputs.release == true && 'release' || 'debug' }} - ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
+        type: boolean
+        default: false
+      artifact_only:
+        description: "成果物を Actions にのみ保存"
+        type: boolean
+        default: false
+
+concurrency:
+  group: macos-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}
+  cancel-in-progress: ${{ inputs.release != true }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      VITE_DEBUG_DIAG: ${{ inputs.release == true && '0' || '1' }}
+      VITE_BUILD_REV: ${{ inputs.release == true && 'release' || github.run_number }}
+      VITE_BUILD_COMMIT: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: npm ci
+      - run: npm run icons:generate
+
+      - name: Tauri をビルド
+        shell: bash
+        env:
+          BUILD_MODE: ${{ inputs.release == true && 'release' || 'debug' }}
+        run: |
+          if [[ "$BUILD_MODE" == release ]]; then
+            npx tauri build
+          else
+            npx tauri build --features debug-diag
+          fi
+
+      - name: macOS のアプリをアーカイブ
+        run: |
+          shopt -s nullglob
+          packages=(src-tauri/target/release/bundle/dmg/*.dmg)
+          test "${#packages[@]}" -eq 1
+          mkdir -p artifacts
+          tar -czf artifacts/PawKemoViewer_aarch64.app.tar.gz \
+            -C src-tauri/target/release/bundle/macos PawKemoViewer.app
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: PawKemoViewer-macos
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            artifacts/*.app.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: inputs.artifact_only != true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: PawKemoViewer-macos
+          path: artifacts
+
+      - name: GitHub Releases に公開
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_MODE: ${{ inputs.release == true && 'release' || 'debug' }}
+        run: bash scripts/ci/publish-build.sh macos "$BUILD_MODE" artifacts

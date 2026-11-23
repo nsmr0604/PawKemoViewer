@@ -6,29 +6,20 @@ PawKemoViewer (v0.5.1) のビルド・パッケージング・CI 構成。
 
 **通常のビルドは GitHub Actions に委任する** (ローカルは検証のみ)。
 
-```text
-git push (main)
-  ↓
-GitHub Actions
-  ├─ Build Tauri (tauri.yml)   Windows / Linux のみ (macOS は手動)
-  └─ Android Build (android.yml) universal APK
-  ↓
-rolling prerelease "debug-latest" (デバッグビルド)
+| ワークフロー | main へのプッシュ | 手動実行 |
+|---|---|---|
+| Build Tauri (`tauri.yml`) | Windows・Linux のデバッグ版 | デバッグ版・製品版 |
+| Android Build (`android.yml`) | Android のデバッグ版 | デバッグ版・製品版 |
+| iOS Build (`ios.yml`) | なし | iPhone・iPad のデバッグ版・製品版 |
+| macOS Build (`macos.yml`) | なし | macOS のデバッグ版・製品版 |
 
-手動 workflow_dispatch
-  ├─ Build Tauri (tauri.yml)   Windows / Linux / macOS
-  └─ iOS Build (ios.yml)       iOS 端末向け未署名 IPA
-```
+デバッグ版は `VITE_DEBUG_DIAG=1` と Cargo の `debug-diag` を有効にし、
+`debug-latest` プレリリースに公開する。アプリのバージョン欄には短いコミット ID を表示する。
+製品版は手動で `release=true` を指定し、詳細診断コードをビルドから除き、
+`pawkemoviewer-v{VER}` に公開する。`artifact_only=true` なら公開せず、Actions 成果物だけを作る。
 
-- **push (main) = デバッグビルド**: 診断コード (`VITE_DEBUG_DIAG=1`) を注入し、
-  **rolling prerelease `debug-latest`** へアセット添付 (旧バージョン分は自動掃除)。
-  macOS / iOS はコミット時にはビルドしない
-- **macOS / iOS = 手動のみ**: Actions 画面から `workflow_dispatch` を実行
-  (`release=true` で正式リリース `pawkemoviewer-v{VER}` へ添付、
-  無指定なら debug-latest へ添付)
-- 各 workflow は `run-name` にコミットメッセージ (手動実行はモード)、
-  Actions のステップサマリとリリースノートに **直近 5 件のコミットメッセージ**
-  (`git log -5`) を表示する (`fetch-depth: 0` で履歴を取得)
+各ワークフローはビルド完了後に担当プラットフォームの成果物を公開する。
+同名のファイルは置き換え、デバッグ版の古いファイルはアップロードが成功してから担当分だけ削除する。
 
 ## 成果物
 
@@ -73,30 +64,16 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
 
 ## CI 構成の詳細
 
-### tauri.yml (Build Tauri)
-- matrix: push は `windows-latest` / `ubuntu-24.04` のみ、`workflow_dispatch` 時は
-  `macos-15` も含む (fail-fast: false)
-- `prepare` ジョブ: release=true 時は旧 PC アセット削除 / debug 時は
-  debug-latest の現行バージョン以外を掃除
-- `VITE_DEBUG_DIAG` は **ジョブレベル env** (tauri-action の beforeBuildCommand 内
-  ビルドにも適用される)。デバッグ時は `args: --features debug-diag` も渡し、Rust 側の開発コマンド・詳細トレースを注入
-- concurrency: 同一ブランチの新ランが旧ランをキャンセル
+### PC と macOS
 
-### android.yml (Android Build)
-- デバッグビルド: `npx tauri android build --features debug-diag`。正式リリース: feature 無し
-- `npx tauri android init` → `npx tauri android build` → zipalign + apksigner
-  (debug.keystore) → リリース添付
-### ios.yml (iOS Build)
-- **手動 `workflow_dispatch` のみ** (push トリガは削除済み)
-- `macos-15` runner。`npx tauri ios init` で Xcode プロジェクトを毎回生成
-  (`src-tauri/gen/apple` は git 管理外)。XcodeGen は `brew install xcodegen` で導入
-- Rust target は `aarch64-apple-ios` (端末向け arm64)
-- `npx tauri ios build --no-sign` (既定 target = aarch64) で Codesign を無効化した
-  archive を作り、`PawKemoViewer.ipa` を生成 (Apple Developer 不要)。
-  デバッグビルドは `--features debug-diag` も付ける
-- 成果物は `PawKemoViewer_{VER}_ios-unsigned.ipa` として artifact + リリースへ添付。
-  **未署名のためそのままでは実機/TestFlight にインストール不可**。
-  配布には Apple Developer の証明書/Provisioning Profile での再署名が必要
+- `tauri.yml` は Windows と Linux を別のランナーでビルドする。
+- `macos.yml` は `macos-15` で Apple シリコン向け DMG とアプリのアーカイブを作る。
+
+### Android と iOS/iPadOS
+
+- Android は Tauri で生成した APK を zipalign し、開発用キーストアで署名する。
+- iOS は `macos-15` と XcodeGen で Xcode プロジェクトを生成し、iPhone・iPad 共通の arm64 IPA を作る。無署名 IPA を実機にインストールするには再署名が必要。
+- 診断の有無は全対象で共通とし、デバッグ版だけを `--features debug-diag` 付きでビルドする。
 
 ### モバイルアプリアイコン (ライト / ダーク)
 - デザイン決定事項・素材一覧・引継ぎは
@@ -148,7 +125,7 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
   `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`
 - v0.3.0 は破壊的変更 (内部キー・identifier・crate 名の全面改名)。**0.2.x からの
   引継ぎはバックアップ書き出し→読み込み**で行う
-- **デバッグビルドの表示**: `x.y.z(<short commit>)` (例: `0.5.1(6ed682e)`)。
+- **デバッグビルドの表示**: `x.y.z(<short commit>)` (例: `0.5.1 (6ed682e)`)。
   CI は `VITE_BUILD_COMMIT=github.sha`、ローカルは `vite.config.ts` が
   `git rev-parse --short=7 HEAD` を埋め込む。正式リリース
   (`VITE_BUILD_REV=release`) では commit を表示しない
@@ -156,7 +133,7 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
 ## 手動リリース手順 (正式版)
 
 1. バージョンを上げてコミット・push (デバッグビルドが回る)
-2. Actions → 「Build Tauri」/「Android Build」/「iOS Build」→ Run workflow → `release=true`
+2. Actions → 「Build Tauri」/「Android Build」/「iOS Build」/「macOS Build」→ Run workflow → `release=true`
 3. 全ワークフロー success を確認 → リリース `pawkemoviewer-v{VER}` のアセットを確認
 4. (将来) 正式配布時: リリース鍵を Secrets 化し debug.keystore をリポジトリから削除
 
@@ -186,7 +163,7 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
 
 
 ### Android API logcat (Full)
-- PR / push の Android デバッグビルドは workflow が `--features debug-diag` を付けるため、API request / response body が logcat に出力される
+- push または手動の Android デバッグビルドは workflow が `--features debug-diag` を付けるため、API request / response body が logcat に出力される
 - 正式リリース workflow (`inputs.release=true`) は feature を付けず、API本文ログを含めない
 - 実機確認: `adb logcat | grep 'Pawchive::API'` で対象ログを絞り込める (Android logger の実際の tag 表示により grep 文字列は調整)
 - API本文には投稿・アカウント等のデータが含まれる可能性がある。デバッグログを共有する前に内容を確認する

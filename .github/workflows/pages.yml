@@ -3,7 +3,7 @@ name: 紹介サイトを公開
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: [Build Tauri, Android Build, iOS Build]
+    workflows: [Build Tauri, Android Build, iOS Build, macOS Build]
     types: [completed]
 
 concurrency:
@@ -92,7 +92,8 @@ jobs:
               tag = quote(release["tag_name"], safe="")
               sha = api(f"commits/{tag}")["sha"]
               platforms = {
-                  "tauri.yml": ("windows", "macos", "linux"),
+                  "tauri.yml": ("windows", "linux"),
+                  "macos.yml": ("macos",),
                   "android.yml": ("android",),
                   "ios.yml": ("ios",),
               }.get(Path(run["path"].split("@", 1)[0]).name, ())

@@ -10,17 +10,17 @@ on:
         type: boolean
         default: false
       artifact_only:
-        description: "デバッグ検証用の成果物を Actions にのみ保存"
+        description: "成果物を Actions にのみ保存"
         type: boolean
         default: false
 
 # 同一ブランチの新しい iOS ビルドを優先し、古い実行中ビルドはキャンセルする
 concurrency:
-  group: ios-build-${{ github.ref }}
-  cancel-in-progress: true
+  group: ios-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}
+  cancel-in-progress: ${{ inputs.release != true }}
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -195,51 +195,25 @@ jobs:
           path: dist-ios/*.ipa
           if-no-files-found: error
 
-      - name: Attach iOS builds to Release
-        if: inputs.release == true || inputs.artifact_only != true
-        # push (main) = デバッグビルド → rolling prerelease `debug-latest` へ添付
-        # 手動 release=true のみ正式リリース pawkemoviewer-v{VER} へ添付。
+  publish:
+    needs: build
+    if: inputs.artifact_only != true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: pawchive-ios
+          path: artifacts
+
+      - name: GitHub Releases に公開
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          VER=$(node -p "require('./package.json').version")
-
-          if [ "${{ inputs.release }}" = "true" ]; then
-            TAG="pawkemoviewer-v${VER}"
-            TITLE="PawKemoViewer v${VER}"
-            HEADLINE="Automated build (iOS unsigned IPA / 要再署名で実機インストール)."
-            PRERELEASE_FLAG=""
-          else
-            # デバッグビルド: rolling prerelease debug-latest
-            TAG=debug-latest
-            TITLE="PawKemoViewer debug build"
-            HEADLINE="Automated debug build (v${VER}). iOS IPA is unsigned (VITE_DEBUG_DIAG=1・テスト用・非公式)。実機インストールには再署名が必要。"
-            PRERELEASE_FLAG="--prerelease"
-
-            # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
-            if gh release view "$TAG" >/dev/null 2>&1; then
-              gh release view "$TAG" --json assets --jq '.assets[].name' | while IFS= read -r a; do
-                case "$a" in
-                  *"_${VER}_"*) ;; # 現行バージョンは残す
-                  PawKemoViewer_*.ipa) gh release delete-asset "$TAG" "$a" --yes || true ;;
-                esac
-              done
-            fi
-          fi
-
-          {
-            echo "$HEADLINE"
-            echo
-            echo "### 最近のコミット"
-            git log -5 --pretty=format:'- %h %s'
-            echo
-          } > release-notes.md
-
-          gh release upload "$TAG" dist-ios/*.ipa --clobber \
-            || gh release create "$TAG" dist-ios/*.ipa \
-                 --target "$GITHUB_SHA" \
-                 $PRERELEASE_FLAG \
-                 --title "$TITLE" \
-                 --notes-file release-notes.md
-          gh release edit "$TAG" --title "$TITLE" --notes-file release-notes.md
+          GH_TOKEN: ${{ github.token }}
+          BUILD_MODE: ${{ inputs.release == true && 'release' || 'debug' }}
+        run: bash scripts/ci/publish-build.sh ios "$BUILD_MODE" artifacts

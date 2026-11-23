@@ -1,26 +1,11 @@
 name: Android Build
-run-name: ${{ github.workflow }} - ${{ github.event.head_commit.message || github.event.pull_request.title || (inputs.release && 'manual release' || 'manual debug') }}
+run-name: ${{ github.workflow }} - ${{ github.event.head_commit.message || (inputs.release && 'manual release' || 'manual debug') }}
 
 on:
   push:
     branches:
       - main
     # ビルド関連ファイルの変更時のみ発火 (ドキュメントのみのコミットではスキップ)
-    paths:
-      - "src/**"
-      - "src-tauri/**"
-      - "public/**"
-      - "index.html"
-      - "vite.config.ts"
-      - "tsconfig.json"
-      - "package.json"
-      - "package-lock.json"
-      - "scripts/app-icon/**"
-      - "scripts/generate-icons.mjs"
-      - "src-tauri/app-icons.json"
-      - "src-tauri/app-icons/**"
-      - ".github/workflows/android.yml"
-  pull_request:
     paths:
       - "src/**"
       - "src-tauri/**"
@@ -42,14 +27,14 @@ on:
         type: boolean
         default: false
       artifact_only:
-        description: "デバッグ検証用の成果物を Actions にのみ保存"
+        description: "成果物を Actions にのみ保存"
         type: boolean
         default: false
 
-# 同一ブランチ/PR の新しいビルドを優先し、古い実行中ビルドはキャンセルする
+
 concurrency:
-  group: android-build-${{ github.ref }}
-  cancel-in-progress: true
+  group: android-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}
+  cancel-in-progress: ${{ inputs.release != true }}
 
 permissions:
   contents: read
@@ -60,7 +45,7 @@ jobs:
     timeout-minutes: 45
 
     env:
-      # push / PR = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
+      # push = デバッグビルド (診断コード VITE_DEBUG_DIAG=1 を注入)。
       # 手動 release=true のみ診断コード無しの正式リリースビルド。
       # ジョブレベルで設定する (tauri build の beforeBuildCommand でも同じフラグを使うため)
       # 注意: `true && '' || '1'` は空文字が偽のため '1' になる。リリースは '0' を明示する
@@ -193,7 +178,7 @@ jobs:
 
   publish:
     needs: build
-    if: github.event_name != 'pull_request' && (inputs.release == true || inputs.artifact_only != true)
+    if: inputs.artifact_only != true
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -206,40 +191,10 @@ jobs:
       - uses: actions/download-artifact@v7
         with:
           name: pawchive-android
-          path: dist-apk
+          path: artifacts
 
-      - name: Attach APK to Release
+      - name: GitHub Releases に公開
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -e
-          VER=$(node -p "require('./package.json').version")
-
-          if [ "${{ inputs.release }}" = "true" ]; then
-            gh release upload "pawkemoviewer-v${VER}" dist-apk/*.apk --clobber \
-              || gh release create "pawkemoviewer-v${VER}" dist-apk/*.apk \
-                   --target "$GITHUB_SHA" \
-                   --title "PawKemoViewer v${VER}" \
-                   --notes "Automated build (APK: dev-signed for testing)."
-            exit 0
-          fi
-
-          # --- デバッグビルド: rolling prerelease debug-latest ---
-          TAG=debug-latest
-          SHA=$(git rev-parse --short HEAD)
-
-          # 現行バージョン以外のアセットを掃除 (バージョンはファイル名に含まれる)
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release view "$TAG" --json assets --jq '.assets[].name' | while IFS= read -r a; do
-              case "$a" in
-                *"_${VER}_"*) ;; # 現行バージョンは残す
-                PawKemoViewer_*.apk) gh release delete-asset "$TAG" "$a" --yes || true ;;
-              esac
-            done
-          fi
-
-          gh release upload "$TAG" dist-apk/*.apk --clobber \
-            || gh release create "$TAG" dist-apk/*.apk \
-                 --prerelease \
-                 --title "PawKemoViewer debug build" \
-                 --notes "Automated debug build (${SHA}, v${VER}). デバッグ診断コード有効 (VITE_DEBUG_DIAG=1・テスト用・非公式)."
+          BUILD_MODE: ${{ inputs.release == true && 'release' || 'debug' }}
+        run: bash scripts/ci/publish-build.sh android "$BUILD_MODE" artifacts
