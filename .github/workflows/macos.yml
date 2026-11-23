@@ -60,6 +60,12 @@ jobs:
           shopt -s nullglob
           packages=(src-tauri/target/release/bundle/dmg/*.dmg)
           test "${#packages[@]}" -eq 1
+          app=src-tauri/target/release/bundle/macos/PawKemoViewer.app
+          plist="$app/Contents/Info.plist"
+          exe=$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$plist")
+          icon=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIconFile' "$plist")
+          test -x "$app/Contents/MacOS/$exe"
+          test -s "$app/Contents/Resources/$icon"
           mkdir -p artifacts
           tar -czf artifacts/PawKemoViewer_aarch64.app.tar.gz \
             -C src-tauri/target/release/bundle/macos PawKemoViewer.app

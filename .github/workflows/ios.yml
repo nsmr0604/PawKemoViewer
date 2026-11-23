@@ -9,6 +9,10 @@ on:
         description: "正式リリースビルド (診断コード無し・pawkemoviewer-v{VER} リリースへ添付)。無指定時はデバッグビルド"
         type: boolean
         default: false
+      locale_test:
+        description: "言語ファイル検証用のアプリ ID でビルド (デバッグ・成果物のみ)"
+        type: boolean
+        default: false
       artifact_only:
         description: "成果物を Actions にのみ保存"
         type: boolean
@@ -16,7 +20,7 @@ on:
 
 # 同一ブランチの新しい iOS ビルドを優先し、古い実行中ビルドはキャンセルする
 concurrency:
-  group: ios-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}
+  group: ios-build-${{ github.ref }}-${{ inputs.release == true && 'release' || 'debug' }}-${{ inputs.locale_test && 'validation' || 'standard' }}
   cancel-in-progress: ${{ inputs.release != true }}
 
 permissions:
@@ -43,6 +47,12 @@ jobs:
           # リリースノート / サマリに直近のコミットメッセージを表示するため履歴を取得
           fetch-depth: 0
           persist-credentials: false
+
+      - name: 製品版と検証モードの同時指定を拒否
+        if: inputs.release && inputs.locale_test
+        run: |
+          echo "locale_test requires a debug build" >&2
+          exit 1
 
       - name: Show recent commits
         shell: bash
@@ -79,6 +89,10 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: 言語検証用のアプリ ID を設定
+        if: inputs.locale_test
+        run: node scripts/ci/set-locale-test-id.mjs
 
       - name: Build Frontend
         # ジョブレベル env (VITE_DEBUG_DIAG) を使用
@@ -197,7 +211,7 @@ jobs:
 
   publish:
     needs: build
-    if: inputs.artifact_only != true
+    if: inputs.artifact_only != true && inputs.locale_test != true
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

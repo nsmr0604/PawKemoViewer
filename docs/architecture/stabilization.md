@@ -29,9 +29,9 @@ M7.2 remains partial. M5 still requires native evidence, and a browser fixture i
 
 ### Mobile candidate 2af56d5
 
-The [candidate workflow](../../.github/workflows/mobile-locale-test.yml) built both packages in
+The former mobile locale workflow built both packages in
 [Actions run 44934090212](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212).
-The app ID is `com.nsmr0604.pawkemoviewer.localetest`.
+The app ID is `com.nsmr0604.pawkemoviewer.localetest`. The [current build instructions](../BUILD.md) describe the `locale_test` option in Android and iOS.
 
 | Target | Evidence |
 |---|---|
