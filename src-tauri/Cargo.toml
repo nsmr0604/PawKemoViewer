@@ -53,3 +53,6 @@ base64 = "0.22"
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-locale-picker = { path = "plugins/locale-picker" }
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-dialog = "2"

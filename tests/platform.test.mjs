@@ -329,21 +329,52 @@ test("revision requests preserve typed validation errors and encode valid argume
   assert.equal(invoke.mock.calls[0].arguments[1].path, "/fanbox/user/42/post/a%20b/revisions")
 })
 
-test("mobile locale picker routes selected-file IO through native IPC", async (t) => {
+test("locale and backup file pickers share native commands and preserve cancellation", async (t) => {
   const { createMobileServices, createWebServices, createDesktopServices } =
     await server.ssrLoadModule("/src/platform/families/index.ts")
-  const invoke = t.mock.fn(async (command) => command === "pick_locale_file"
+  const invoke = t.mock.fn(async (command) => command === "pick_json_file"
     ? { kind: "selected", name: "es.json", json: "{}" }
     : { kind: "cancelled" })
   mockGlobal(t, "window", { __TAURI_INTERNALS__: { invoke } })
-  const picker = createMobileServices().localePicker
+  const mobile = createMobileServices("android")
+  const desktop = createDesktopServices()
+  const picker = mobile.localePicker
   assert.deepEqual(await picker.open(), { kind: "selected", name: "es.json", json: "{}" })
   assert.deepEqual(await picker.save("es", "{}"), { kind: "cancelled" })
+  assert.equal((await desktop.userFiles.open("backup")).kind, "selected")
+  assert.deepEqual(await mobile.userFiles.save("backup", "backup.json", "{}"), { kind: "cancelled" })
+  assert.deepEqual(await desktop.userFiles.save("log", "log.txt", "message"), { kind: "cancelled" })
   assert.deepEqual(invoke.mock.calls.map(({ arguments: args }) => args.slice(0, 2)), [
-    ["pick_locale_file", {}], ["save_locale_file", { code: "es", json: "{}" }],
+    ["pick_json_file", { purpose: "locale" }],
+    ["save_user_file", { purpose: "locale", filename: "es.json", text: "{}" }],
+    ["pick_json_file", { purpose: "backup" }],
+    ["save_user_file", { purpose: "backup", filename: "backup.json", text: "{}" }],
+    ["save_user_file", { purpose: "log", filename: "log.txt", text: "message" }],
   ])
   assert.equal(createWebServices().localePicker, undefined)
-  assert.equal(createDesktopServices().localePicker, undefined)
+  assert.equal(typeof desktop.localePicker.open, "function")
+  assert.equal(createWebServices().userFiles, undefined)
+})
+
+test("mobile standard backup and log use the app documents directory", async (t) => {
+  const { createMobileServices, createDesktopServices } = await server.ssrLoadModule("/src/platform/families/index.ts")
+  const invoke = t.mock.fn(async (command) => command === "pick_json_file"
+    ? { kind: "missing" }
+    : { kind: "saved", path: "Logs/pawkemoviewer-log.txt" })
+  mockGlobal(t, "window", { __TAURI_INTERNALS__: { invoke } })
+  assert.equal(createDesktopServices().userFiles.appDirectory, undefined)
+  for (const os of ["android", "ios"]) {
+    const directory = createMobileServices(os).userFiles.appDirectory
+    assert.deepEqual(await directory.openBackup(), { kind: "missing" })
+    await directory.save("backup", "pawkemoviewer-backup.json", "{}")
+    await directory.save("log", "pawkemoviewer-log.txt", "sample")
+  }
+  const expected = [
+    ["pick_json_file", { purpose: "backup", appDirectory: true }],
+    ["save_user_file", { purpose: "backup", filename: "pawkemoviewer-backup.json", text: "{}", appDirectory: true }],
+    ["save_user_file", { purpose: "log", filename: "pawkemoviewer-log.txt", text: "sample", appDirectory: true }],
+  ]
+  assert.deepEqual(invoke.mock.calls.map(({ arguments: args }) => args.slice(0, 2)), [...expected, ...expected])
 })
 
 test("app-specific language export routes Android and iOS to native IPC", async (t) => {

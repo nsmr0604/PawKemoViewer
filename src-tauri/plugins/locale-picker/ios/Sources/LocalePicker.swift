@@ -3,64 +3,80 @@ import Tauri
 import UIKit
 import UniformTypeIdentifiers
 
+private struct ImportArguments: Decodable {
+    let maxBytes: Int
+    let folder: String
+}
+
 private struct ExportArguments: Decodable {
     let filename: String
     let json: String
+    let folder: String
+    let maxBytes: Int
 }
 
 private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
     private var pending: Invoke?
     private var exportDirectory: URL?
-    private let maxBytes = 1024 * 1024
+    private var importLimit = 0
 
-    @objc public func importLocale(_ invoke: Invoke) {
+    @objc public func pickJson(_ invoke: Invoke) throws {
+        let args = try invoke.parseArgs(ImportArguments.self)
         DispatchQueue.main.async {
             guard #available(iOS 14.0, *) else {
-                invoke.reject("The locale picker requires iOS 14 or later")
+                invoke.reject("The JSON picker requires iOS 14 or later")
                 return
             }
-            self.present(UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: true), invoke)
+            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: false)
+            picker.directoryURL = try? self.filesDirectory(args.folder)
+            self.present(picker, invoke, importLimit: args.maxBytes)
         }
     }
 
-    @objc public func exportLocale(_ invoke: Invoke) throws {
+    @objc public func saveDocument(_ invoke: Invoke) throws {
         let args = try invoke.parseArgs(ExportArguments.self)
         DispatchQueue.main.async {
             guard #available(iOS 14.0, *) else {
-                invoke.reject("The locale picker requires iOS 14 or later")
+                invoke.reject("The JSON picker requires iOS 14 or later")
                 return
             }
             guard self.pending == nil else {
-                invoke.reject("A locale picker is already open")
+                invoke.reject("A JSON picker is already open")
                 return
             }
             let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
             do {
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                 let file = directory.appendingPathComponent(args.filename)
-                try Data(args.json.utf8).write(to: file, options: .atomic)
+                let bytes = Data(args.json.utf8)
+                guard bytes.count <= args.maxBytes else {
+                    try FileManager.default.removeItem(at: directory)
+                    invoke.reject("File exceeds the size limit")
+                    return
+                }
+                try bytes.write(to: file, options: .atomic)
                 let picker = UIDocumentPickerViewController(forExporting: [file], asCopy: true)
-                picker.directoryURL = try self.filesLanguageDirectory()
+                picker.directoryURL = try? self.filesDirectory(args.folder)
                 self.exportDirectory = directory
                 self.present(picker, invoke)
             } catch {
                 try? FileManager.default.removeItem(at: directory)
-                invoke.reject("Could not stage the locale export")
+                invoke.reject("Could not stage the export")
             }
         }
     }
 
-    private func filesLanguageDirectory() throws -> URL {
+    private func filesDirectory(_ folder: String) throws -> URL {
         let manager = FileManager.default
         let documents = try manager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let directory = documents.appendingPathComponent("Languages", isDirectory: true)
+        let directory = documents.appendingPathComponent(folder, isDirectory: true)
         try manager.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
 
-    private func present(_ picker: UIDocumentPickerViewController, _ invoke: Invoke) {
+    private func present(_ picker: UIDocumentPickerViewController, _ invoke: Invoke, importLimit: Int = 0) {
         guard pending == nil else {
-            invoke.reject("A locale picker is already open")
+            invoke.reject("A JSON picker is already open")
             return
         }
         guard let host = manager.viewController, host.presentedViewController == nil else {
@@ -68,6 +84,7 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
             invoke.reject("Could not open the system file picker")
             return
         }
+        self.importLimit = importLimit
         pending = invoke
         picker.delegate = self
         picker.allowsMultipleSelection = false
@@ -102,25 +119,56 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
             invoke.resolve(["kind": "saved"])
             return
         }
-        do {
-            let handle = try FileHandle(forReadingFrom: url)
-            defer { try? handle.close() }
-            var data = Data()
-            while let chunk = try handle.read(upToCount: 8192), !chunk.isEmpty {
-                if chunk.count > maxBytes - data.count {
-                    invoke.reject("Locale file exceeds 1 MiB")
-                    return
+        let maxBytes = importLimit
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = Self.readSelectedDocument(url, maxBytes: maxBytes)
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let json):
+                    invoke.resolve(["kind": "selected", "name": url.lastPathComponent, "json": json])
+                case .failure(let error):
+                    invoke.reject(error.localizedDescription)
                 }
-                data.append(chunk)
             }
-            guard let json = String(data: data, encoding: .utf8) else {
-                invoke.reject("Locale file is not UTF-8")
-                return
-            }
-            invoke.resolve(["kind": "selected", "name": url.lastPathComponent, "json": json])
-        } catch {
-            invoke.reject("Could not read the selected locale file")
         }
+    }
+
+    private enum ReadError: LocalizedError {
+        case tooLarge
+        case invalidEncoding
+        case unavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .tooLarge: return "JSON file exceeds the size limit"
+            case .invalidEncoding: return "JSON file is not UTF-8"
+            case .unavailable: return "Could not read the selected JSON file"
+            }
+        }
+    }
+
+    private static func readSelectedDocument(_ url: URL, maxBytes: Int) -> Result<String, Error> {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        var coordinationError: NSError?
+        var result: Result<String, Error> = .failure(ReadError.unavailable)
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { readableURL in
+            result = Result {
+                let handle = try FileHandle(forReadingFrom: readableURL)
+                defer { try? handle.close() }
+
+                var data = Data()
+                while let chunk = try handle.read(upToCount: 8192), !chunk.isEmpty {
+                    guard chunk.count <= maxBytes - data.count else { throw ReadError.tooLarge }
+                    data.append(chunk)
+                }
+                guard let json = String(data: data, encoding: .utf8) else { throw ReadError.invalidEncoding }
+                return json
+            }
+        }
+        if let coordinationError { return .failure(coordinationError) }
+        return result
     }
 }
 

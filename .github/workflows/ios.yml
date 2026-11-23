@@ -177,7 +177,7 @@ jobs:
           echo "packaged: $out"
           ls -la dist-ios
 
-      - name: Verify iPhone and iPad icons in the IPA
+      - name: Verify Files integration and app icons in the IPA
         run: |
           python3 - dist-ios/*.ipa <<'PYTHON'
           import plistlib
@@ -191,6 +191,16 @@ jobs:
                   and name.endswith(".app/Info.plist")
               )
               info = plistlib.loads(ipa.read(info_path))
+              if info.get("CFBundleDisplayName") != "PawKemoViewer":
+                  raise SystemExit("The IPA is missing the PawKemoViewer display name")
+              for key in (
+                  "UISupportsDocumentBrowser", "UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"
+              ):
+                  if info.get(key) is not True:
+                      raise SystemExit(f"{key} must be enabled for the local Files folder")
+              primary = info["CFBundleIcons"]["CFBundlePrimaryIcon"]
+              if primary.get("CFBundleIconName") != "AppIcon" or not primary.get("CFBundleIconFiles"):
+                  raise SystemExit("The IPA is missing the primary iPhone app icon")
               if set(info["UIDeviceFamily"]) != {1, 2}:
                   raise SystemExit("The IPA must target both iPhone and iPad")
               for key in ("CFBundleIcons", "CFBundleIcons~ipad"):

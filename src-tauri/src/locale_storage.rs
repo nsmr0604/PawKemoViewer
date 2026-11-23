@@ -7,19 +7,18 @@ use tauri::Manager;
 
 const LOCALE_MAX_BYTES: u64 = 1024 * 1024;
 
-// Write locale JSON to a sibling temp file and rename only after the full write.
-// This prevents readers from observing a truncated locale file after interruption.
-fn atomic_locale_write(path: &std::path::Path, contents: &[u8]) -> Result<(), String> {
+// Write to a sibling temp file and rename only after the full write.
+pub(crate) fn atomic_document_write(path: &std::path::Path, contents: &[u8]) -> Result<(), String> {
     use std::io::Write;
     static NEXT_TEMP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let parent = path
         .parent()
-        .ok_or_else(|| "locale path has no parent".to_string())?;
+        .ok_or_else(|| "Document path has no parent".to_string())?;
     std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     let mut temp = None;
     for _ in 0..20 {
         let n = NEXT_TEMP.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let candidate = parent.join(format!(".locale-{}-{}.tmp", std::process::id(), n));
+        let candidate = parent.join(format!(".document-{}-{}.tmp", std::process::id(), n));
         match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -37,14 +36,14 @@ fn atomic_locale_write(path: &std::path::Path, contents: &[u8]) -> Result<(), St
             Err(e) => return Err(e.to_string()),
         }
     }
-    let temp = temp.ok_or_else(|| "could not allocate locale temp file".to_string())?;
+    let temp = temp.ok_or_else(|| "could not allocate temporary document".to_string())?;
     if let Err(first_error) = std::fs::rename(&temp, path) {
         // Windows rename may not replace an existing destination.
-        if path.exists() {
+        if cfg!(target_os = "windows") && path.exists() {
             if let Err(remove_error) = std::fs::remove_file(path) {
                 let _ = std::fs::remove_file(&temp);
                 return Err(format!(
-                    "replace locale destination failed (rename: {}; remove: {})",
+                    "replace document destination failed (rename: {}; remove: {})",
                     first_error, remove_error
                 ));
             }
@@ -174,7 +173,7 @@ pub(crate) fn write_locale_file(
         }
     }
     let path = dir.join(filename);
-    atomic_locale_write(&path, json.as_bytes())?;
+    atomic_document_write(&path, json.as_bytes())?;
     Ok(path.to_string_lossy().to_string())
 }
 
@@ -225,7 +224,7 @@ pub(crate) fn write_secondary_locale_file(
         let dir = secondary_locale_dir(&app)?;
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         let path = dir.join(format!("{}.json", code));
-        atomic_locale_write(&path, json.as_bytes())?;
+        atomic_document_write(&path, json.as_bytes())?;
         return Ok(path.to_string_lossy().to_string());
     }
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
@@ -286,57 +285,6 @@ pub(crate) fn resolve_storage_location(
 }
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
-struct LocalePickerGuard;
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-static LOCALE_PICKER_BUSY: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-impl Drop for LocalePickerGuard {
-    fn drop(&mut self) {
-        LOCALE_PICKER_BUSY.store(false, std::sync::atomic::Ordering::Release);
-    }
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-async fn run_locale_picker(
-    app: &tauri::AppHandle,
-    command: &str,
-    payload: serde_json::Value,
-) -> Result<serde_json::Value, String> {
-    if LOCALE_PICKER_BUSY.swap(true, std::sync::atomic::Ordering::AcqRel) {
-        return Err("A locale picker is already open".into());
-    }
-    let _guard = LocalePickerGuard;
-    tauri_plugin_locale_picker::run(app, command, payload).await
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-#[tauri::command]
-pub(crate) async fn pick_locale_file(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
-    run_locale_picker(&app, "importLocale", serde_json::json!({})).await
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
-#[tauri::command]
-pub(crate) async fn save_locale_file(
-    app: tauri::AppHandle,
-    code: String,
-    json: String,
-) -> Result<serde_json::Value, String> {
-    if !valid_locale_code(&code) || json.len() as u64 > LOCALE_MAX_BYTES {
-        return Err("Invalid locale export".into());
-    }
-    run_locale_picker(
-        &app,
-        "exportLocale",
-        serde_json::json!({ "filename": format!("{code}.json"), "json": json }),
-    )
-    .await
-}
-
-#[cfg(any(target_os = "android", target_os = "ios"))]
 #[tauri::command]
 pub(crate) async fn save_locale_file_to_app_directory(
     app: tauri::AppHandle,
@@ -351,13 +299,13 @@ pub(crate) async fn save_locale_file_to_app_directory(
     {
         prepare_ios_files_directory(&app)?;
         let path = secondary_locale_dir(&app)?.join(&filename);
-        atomic_locale_write(&path, json.as_bytes())?;
+        atomic_document_write(&path, json.as_bytes())?;
         Ok(serde_json::json!({ "kind": "saved", "path": filename }))
     }
     #[cfg(target_os = "android")]
     {
         let payload = serde_json::json!({ "filename": filename, "json": json });
-        run_locale_picker(&app, "exportToAppDirectory", payload).await
+        crate::json_files::run_mobile_picker(&app, "exportToAppDirectory", payload).await
     }
 }
 
@@ -366,6 +314,9 @@ pub(crate) fn prepare_ios_files_directory(app: &tauri::AppHandle) -> Result<(), 
     use std::io::{ErrorKind, Write};
     let languages = secondary_locale_dir(app)?;
     std::fs::create_dir_all(&languages).map_err(|error| error.to_string())?;
+    for folder in ["Backups", "Logs"] {
+        crate::json_files::app_document_directory(app, folder)?;
+    }
 
     // A visible file in Documents gives Files an item to index for this app.
     let documents = languages
@@ -374,7 +325,7 @@ pub(crate) fn prepare_ios_files_directory(app: &tauri::AppHandle) -> Result<(), 
     let guide = documents.join("PawKemoViewer-Files.txt");
     match std::fs::OpenOptions::new().write(true).create_new(true).open(&guide) {
         Ok(mut file) => file.write_all(
-            b"PawKemoViewer\n\nLanguages is the suggested destination for exported language JSON files.\n",
+            b"PawKemoViewer\n\nLanguages contains added translations. Backups and Logs contain exports from Settings.\n",
         ).map_err(|error| error.to_string()),
         Err(error) if error.kind() == ErrorKind::AlreadyExists => Ok(()),
         Err(error) => Err(error.to_string()),

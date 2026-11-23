@@ -79,38 +79,36 @@ export function parseLocaleJson(text: string): Dict | null {
 
 /** 外部ファイルを再スキャンする (app_data/locales)。ブラウザ実行などでは何もしない */
 export async function refreshLocales(repository: LocaleRepository | undefined): Promise<void> {
+  const [privateResult, secondaryResult] = await Promise.allSettled([
+    repository?.listPrivate(),
+    repository?.listSecondary?.(),
+  ])
   external.clear()
   secondary.clear()
   invalidFiles = []
   secondaryDir = ""
-  try {
-    const res = await repository?.listPrivate()
-    if (!res) throw new Error("External locale list unavailable")
-    invalidFiles = [...res.invalid]
-    for (const f of res.files) {
-      const dict = parseLocaleJson(f.json)
-      if (dict) {
-        external.set(f.code, dict)
+
+  // 同梱辞書にアプリ専用、追加フォルダーの順に重ねる。
+  const privateFiles = privateResult.status === "fulfilled" ? privateResult.value : null
+  const secondaryFiles = secondaryResult.status === "fulfilled" ? secondaryResult.value : null
+  for (const [source, files, dictionaries] of [
+    ["", privateFiles, external],
+    ["secondary:", secondaryFiles, secondary],
+  ] as const) {
+    if (!files) continue
+    invalidFiles.push(...files.invalid.map((name) => source + name))
+    for (const file of files.files) {
+      const dictionary = parseLocaleJson(file.json)
+      if (dictionary) {
+        dictionaries.set(file.code, dictionary)
       } else {
-        invalidFiles.push(`${f.code}.json`)
-        logWarn(`言語ファイルを読み込めません: ${f.code}.json`)
+        const filename = `${source}${file.code}.json`
+        invalidFiles.push(filename)
+        logWarn(`言語ファイルを読み込めません: ${filename}`)
       }
     }
-  } catch {
-    // Tauri 以外の実行環境では外部ファイルは無い (同梱の言語のみ)
   }
-  try {
-    const res = await repository?.listSecondary?.()
-    if (res) {
-      secondaryDir = res.dir
-      invalidFiles.push(...res.invalid.map((name) => `secondary:${name}`))
-      for (const f of res.files) {
-        const dict = parseLocaleJson(f.json)
-        if (dict) secondary.set(f.code, dict)
-        else { invalidFiles.push(`secondary:${f.code}.json`); logWarn(`共有言語ファイルを読み込めません: ${f.code}.json`) }
-      }
-    }
-  } catch { /* optional secondary area */ }
+  secondaryDir = secondaryFiles?.dir ?? ""
   // 外部の ja.json による上書きを反映する
   i18n.addResourceBundle("ja", "translation", (await dictionaryFor("ja")) ?? BASE_JA, true, true)
 }
