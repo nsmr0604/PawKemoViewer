@@ -32,16 +32,16 @@ export interface LocaleService {
 
 export type JsonPurpose = "locale" | "backup"
 export type JsonOpenResult = { kind: "cancelled" } | { kind: "selected"; name: string; json: string }
-export type JsonSaveResult = { kind: "cancelled" } | { kind: "saved"; path?: string }
+export type FileSaveResult = { kind: "cancelled" } | { kind: "saved"; path?: string }
 
-export interface JsonFilePicker {
+export interface UserFilePicker {
   open(purpose: JsonPurpose): Promise<JsonOpenResult>
-  save(purpose: JsonPurpose, filename: string, json: string): Promise<JsonSaveResult>
+  save(purpose: JsonPurpose | "log", filename: string, text: string): Promise<FileSaveResult>
 }
 
 export interface LocalePicker {
   open(): Promise<JsonOpenResult>
-  save(code: string, json: string): Promise<JsonSaveResult>
+  save(code: string, json: string): Promise<FileSaveResult>
   saveToAppDirectory?(code: string, json: string): Promise<{ kind: "saved"; path: string }>
 }
 
@@ -90,7 +90,7 @@ export interface PlatformServices {
   logging?: LoggingService
   files?: FileExportService
   locale?: LocaleService
-  jsonFiles?: JsonFilePicker
+  userFiles?: UserFilePicker
   localePicker?: LocalePicker
   clipboard?: ClipboardService
   lifecycle?: LifecycleService

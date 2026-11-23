@@ -27,6 +27,7 @@ class JsonReadArgs {
 class LocaleExportArgs {
     lateinit var filename: String
     lateinit var json: String
+    var extension: String = "json"
     var maxBytes: Int = 1024 * 1024
 }
 
@@ -98,10 +99,11 @@ class LocalePickerPlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
-    fun saveJson(invoke: Invoke) {
+    fun saveDocument(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(LocaleExportArgs::class.java)
-            val intent = picker(Intent.ACTION_CREATE_DOCUMENT).putExtra(Intent.EXTRA_TITLE, args.filename)
+            val mimeType = if (args.extension == "txt") "text/plain" else "application/json"
+            val intent = picker(Intent.ACTION_CREATE_DOCUMENT, mimeType).putExtra(Intent.EXTRA_TITLE, args.filename)
             launch(invoke, intent, "exportResult")
         } catch (_: Exception) {
             invoke.reject("Invalid JSON export arguments")
@@ -139,9 +141,9 @@ class LocalePickerPlugin(private val activity: Activity) : Plugin(activity) {
         JSObject().put("kind", "saved")
     }
 
-    private fun picker(action: String) = Intent(action)
+    private fun picker(action: String, mimeType: String = "application/json") = Intent(action)
         .addCategory(Intent.CATEGORY_OPENABLE)
-        .setType("application/json")
+        .setType(mimeType)
 
     private fun launch(invoke: Invoke, intent: Intent, callback: String) {
         activity.runOnUiThread {

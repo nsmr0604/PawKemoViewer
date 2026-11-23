@@ -30,7 +30,7 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
         }
     }
 
-    @objc public func saveJson(_ invoke: Invoke) throws {
+    @objc public func saveDocument(_ invoke: Invoke) throws {
         let args = try invoke.parseArgs(ExportArguments.self)
         DispatchQueue.main.async {
             guard #available(iOS 14.0, *) else {
@@ -48,7 +48,7 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
                 let bytes = Data(args.json.utf8)
                 guard bytes.count <= args.maxBytes else {
                     try FileManager.default.removeItem(at: directory)
-                    invoke.reject("JSON file exceeds the size limit")
+                    invoke.reject("File exceeds the size limit")
                     return
                 }
                 try bytes.write(to: file, options: .atomic)
@@ -60,7 +60,7 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
                 self.present(picker, invoke)
             } catch {
                 try? FileManager.default.removeItem(at: directory)
-                invoke.reject("Could not stage the JSON export")
+                invoke.reject("Could not stage the export")
             }
         }
     }

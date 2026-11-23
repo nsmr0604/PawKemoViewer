@@ -49,7 +49,7 @@ export function SettingsPage() {
   const s = getSettings()
   const localeUseCases = getApplication().locales
   const { descriptor: platform, services } = getPlatformRuntime()
-  const supportsSecondaryLocale = platform.family === "desktop"
+  const supportsSecondaryLocale = Boolean(services.locale?.writeSecondary)
   const secondaryFolder = secondaryLocaleFolder()
   const folderLabel = secondaryFolder && platform.isNative && platform.os === "ios"
     ? t("settings.localeFolderIos")
@@ -77,9 +77,9 @@ export function SettingsPage() {
   const [backupPaste, setBackupPaste] = useState("")
   const [showBackupPaste, setShowBackupPaste] = useState(false)
   const [localeList, setLocaleList] = useState<LocaleInfo[]>(() => availableLocales())
-  const [jsonPickerBusy, setJsonPickerBusy] = useState(false)
+  const canExportLocale = localeList.some((entry) => entry.code === locale && entry.external)
+  const [filePickerBusy, setFilePickerBusy] = useState(false)
   const [localeMsg, setLocaleMsg] = useState<string | null>(null)
-  const [localeAddOpen, setLocaleAddOpen] = useState(false)
   const [localeAddCode, setLocaleAddCode] = useState("")
   const [localeAddJson, setLocaleAddJson] = useState("")
 
@@ -183,13 +183,10 @@ export function SettingsPage() {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
       return
     }
-    await getApplication().refreshLocales()
-    setLocaleList(availableLocales())
+    await reloadLocales()
     setLocaleAddCode("")
     setLocaleAddJson("")
-    setLocaleAddOpen(false)
     setLocaleMsg(t("settings.localeAdded", { code }))
-    await applyLocale(locale)
   }
 
   const importLocaleFiles = async (files: FileList | null, target: "private" | "secondary" = "private") => {
@@ -197,26 +194,20 @@ export function SettingsPage() {
     const result = await getApplication().locales.importLocaleFiles(files, target)
     if (result.kind === "unavailable") {
       setLocaleMsg(target === "secondary"
-        ? "共有領域への言語ファイル書き込みはこのプラットフォームでは未対応です"
+        ? t("settings.localeFolderUnavailable")
         : t("settings.failedMsg", { msg: "Locale service unavailable" }))
       return
     }
     const { imported, failures } = result
-    const suffix = { code: "", size: " (1 MiB超過)", json: " (JSON形式不正)", write: " (保存失敗)" }
-    const skipped = failures.map(({ name, reason }) => name + suffix[reason]).join(", ")
-    await getApplication().refreshLocales()
-    setLocaleList(availableLocales())
-    if (target === "secondary") {
-      setLocaleMsg(failures.length ? `共有領域へ保存: ${imported}; スキップ: ${skipped}` : `共有領域へ ${imported} 件保存しました`)
-    } else {
-      setLocaleMsg(failures.length ? `インポート数: ${imported}; スキップ: ${skipped}` : `Imported ${imported} 件の言語ファイル`)
-    }
-    await applyLocale(locale)
+    const skipped = failures.map(({ name, reason }) => `${name} (${t(`settings.localeFailure.${reason}`)})`).join(", ")
+    if (imported) await reloadLocales()
+    setLocaleMsg(t(skipped ? "settings.localeImportPartial" : "settings.localeImportComplete", { imported, skipped }))
   }
 
   const useLocalePicker = async (operation: "import" | "export" | "export-to-app") => {
-    if (jsonPickerBusy) return
-    setJsonPickerBusy(true)
+    if (filePickerBusy) return
+    setFilePickerBusy(true)
+    setLocaleMsg(null)
     try {
       if (operation === "import") {
         const result = await localeUseCases.pickLocale()
@@ -245,7 +236,7 @@ export function SettingsPage() {
     } catch (error) {
       setLocaleMsg(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) }))
     } finally {
-      setJsonPickerBusy(false)
+      setFilePickerBusy(false)
     }
   }
 
@@ -282,20 +273,22 @@ export function SettingsPage() {
     updateSettings({ timeoutSecs: v })
   }
 
+  const saveUserFile = async (purpose: "backup" | "log", filename: string, text: string) => {
+    if (services.userFiles) return services.userFiles.save(purpose, filename, text)
+    if (!services.files) throw new Error("File export service unavailable")
+    return { kind: "saved" as const, path: await services.files.exportText(filename, text) }
+  }
+
   const doExportBackup = async () => {
-    if (jsonPickerBusy) return
-    setJsonPickerBusy(true)
+    if (filePickerBusy) return
+    setFilePickerBusy(true)
     setBackupResult(null)
     try {
       const json = await buildBackup()
       if (new TextEncoder().encode(json).length > MAX_BACKUP_BYTES) {
         throw new Error(t("settings.backupTooLarge"))
       }
-      const filename = "pawkemoviewer-backup.json"
-      if (!services.jsonFiles && !services.files) throw new Error("File export service unavailable")
-      const result = services.jsonFiles
-        ? await services.jsonFiles.save("backup", filename, json)
-        : { kind: "saved" as const, path: await services.files?.exportText(filename, json) }
+      const result = await saveUserFile("backup", "pawkemoviewer-backup.json", json)
       if (result.kind === "cancelled") return
 
       let clip = ""
@@ -311,26 +304,26 @@ export function SettingsPage() {
     } catch (e) {
       setBackupResult(t("settings.exportFailed", { msg: e instanceof Error ? e.message : String(e) }))
     } finally {
-      setJsonPickerBusy(false)
+      setFilePickerBusy(false)
     }
   }
 
   const doImportBackupFile = async (file?: File) => {
-    if (jsonPickerBusy || (!file && !services.jsonFiles)) return
-    setJsonPickerBusy(true)
+    if (filePickerBusy || (!file && !services.userFiles)) return
+    setFilePickerBusy(true)
     setBackupResult(null)
     try {
       if (file) {
         if (file.size > MAX_BACKUP_BYTES) throw new Error(t("settings.backupTooLarge"))
         await doImport(new TextDecoder("utf-8", { fatal: true }).decode(await file.arrayBuffer()))
       } else {
-        const result = await services.jsonFiles?.open("backup")
+        const result = await services.userFiles?.open("backup")
         if (result?.kind === "selected") await doImport(result.json)
       }
     } catch (e) {
       setBackupResult(t("settings.importFailed", { msg: e instanceof Error ? e.message : String(e) }))
     } finally {
-      setJsonPickerBusy(false)
+      setFilePickerBusy(false)
     }
   }
 
@@ -371,13 +364,20 @@ export function SettingsPage() {
   const showLog = () => setLogText(formatLog() || t("settings.noLog"))
 
   const exportLog = async () => {
+    if (filePickerBusy) return
+    setFilePickerBusy(true)
+    setLogResult(null)
     try {
-      const files = getPlatformRuntime().services.files
-      if (!files) throw new Error("File export service unavailable")
-      const path = await files.exportText("pawchive-log.txt", formatLog())
-      setLogResult(t("settings.exported", { path, clip: "" }))
+      const result = await saveUserFile("log", "pawkemoviewer-log.txt", formatLog())
+      if (result.kind === "saved") {
+        setLogResult(result.path
+          ? t("settings.exported", { path: result.path, clip: "" })
+          : t("settings.logSaved"))
+      }
     } catch (e) {
-      setLogResult(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
+      setLogResult(t("settings.exportFailed", { msg: e instanceof Error ? e.message : String(e) }))
+    } finally {
+      setFilePickerBusy(false)
     }
   }
 
@@ -546,7 +546,8 @@ export function SettingsPage() {
         <div className="setting-item">
           <div className="setting-text">
             <span>{t("settings.localeFolder")}</span>
-            <small>{folderLabel || "-"}</small>
+            <small>{folderLabel || t("settings.localeFolderUnavailable")}</small>
+            {folderLabel && <small>{t("settings.localeFolderReadDesc")}</small>}
             {invalidLocaleFiles().length > 0 && (
               <small>{t("settings.localeInvalid", { files: invalidLocaleFiles().join(", ") })}</small>
             )}
@@ -558,38 +559,16 @@ export function SettingsPage() {
 
         <div className="setting-item">
           <div className="setting-text">
-            <span>{t("settings.localeAddTitle")}</span>
-            <small>{t("settings.localeAddDesc")}</small>
-          </div>
-          <button className="btn" onClick={() => setLocaleAddOpen((v) => !v)}>
-            {t("settings.localeAddButton")}
-          </button>
-        </div>
-        {supportsSecondaryLocale && (
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>共有領域へ言語JSONをインポート</span>
-              <small>Desktop: Documents/Pawchive/languages に保存し、アプリ専用ファイルとは分離します。</small>
-            </div>
-            <label className="btn">
-              共有ファイル選択
-              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files, "secondary"); e.currentTarget.value = "" }} />
-            </label>
-          </div>
-        )}
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>言語JSONファイルをインポート</span>
-            <small>{localeUseCases.canPickLocale ? t("settings.localePickerImportDesc") : "端末からJSONファイルを複数選択できます。検証後、アプリ専用領域へコピーします。"}</small>
+            <span>{t("settings.localeImportFile")}</span>
+            <small>{localeUseCases.canPickLocale ? t("settings.localePickerImportDesc") : t("settings.localeImportFilesDesc")}</small>
           </div>
           {localeUseCases.canPickLocale ? (
-            <button className="btn" disabled={jsonPickerBusy} onClick={() => void useLocalePicker("import")}>
+            <button className="btn" disabled={filePickerBusy} onClick={() => void useLocalePicker("import")}>
               {t("settings.localePickerOpen")}
             </button>
           ) : (
             <label className="btn">
-              ファイル選択
+              {t("settings.localeChooseFiles")}
               <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
             </label>
           )}
@@ -601,7 +580,7 @@ export function SettingsPage() {
               <span>{t("settings.localePickerExport")}</span>
               <small>{t("settings.localePickerExportDesc")}</small>
             </div>
-            <button className="btn" disabled={jsonPickerBusy} onClick={() => void useLocalePicker("export")}>
+            <button className="btn" disabled={filePickerBusy || !canExportLocale} onClick={() => void useLocalePicker("export")}>
               {t("settings.localePickerSave")}
             </button>
           </div>
@@ -613,13 +592,27 @@ export function SettingsPage() {
               <span>{t("settings.localePickerAppFolder")}</span>
               <small>{t(platform.os === "ios" ? "settings.localePickerAppFolderDescIos" : "settings.localePickerAppFolderDesc")}</small>
             </div>
-            <button className="btn" disabled={jsonPickerBusy} onClick={() => void useLocalePicker("export-to-app")}>
-              {t("settings.localePickerSave")}
+            <button className="btn" disabled={filePickerBusy || !canExportLocale} onClick={() => void useLocalePicker("export-to-app")}>
+              {t("settings.localeAppFolderSave")}
             </button>
           </div>
         )}
 
-        {localeAddOpen && (
+        <details className="setting-subsection">
+          <summary>{t("settings.localeAdvanced")}</summary>
+          {supportsSecondaryLocale && (
+            <div className="setting-item">
+              <div className="setting-text">
+                <span>{t("settings.localeCopyToFolder")}</span>
+                <small>{t("settings.localeCopyToFolderDesc")}</small>
+              </div>
+              <label className="btn">
+                {t("settings.localeChooseFiles")}
+                <input type="file" accept=".json,application/json" multiple hidden disabled={filePickerBusy} onChange={(e) => { void importLocaleFiles(e.target.files, "secondary"); e.currentTarget.value = "" }} />
+              </label>
+            </div>
+          )}
+          <p className="small">{t("settings.localeAddDesc")}</p>
           <div className="field">
             <label>
               <span>{t("settings.localeCode")}</span>
@@ -644,7 +637,7 @@ export function SettingsPage() {
               {t("settings.localeAddButton")}
             </button>
           </div>
-        )}
+        </details>
 
         {localeList.some((l) => l.external) && (
           <div className="setting-item">
@@ -773,8 +766,8 @@ export function SettingsPage() {
             <span>{t("settings.exportTitle")}</span>
             <small>{t("settings.exportDesc")}</small>
           </div>
-          <button className="btn" disabled={jsonPickerBusy} onClick={doExportBackup}>
-            {t("settings.export")}
+          <button className="btn" disabled={filePickerBusy} onClick={doExportBackup}>
+            {t("settings.backupSave")}
           </button>
         </div>
 
@@ -784,8 +777,8 @@ export function SettingsPage() {
             <small>{t("settings.importDesc")}</small>
           </div>
           <div className="settings-actions">
-            {services.jsonFiles ? (
-              <button className="btn" disabled={jsonPickerBusy} onClick={() => void doImportBackupFile()}>
+            {services.userFiles ? (
+              <button className="btn" disabled={filePickerBusy} onClick={() => void doImportBackupFile()}>
                 {t("settings.backupOpen")}
               </button>
             ) : (
@@ -794,7 +787,7 @@ export function SettingsPage() {
                 <input
                   type="file"
                   accept=".json,application/json"
-                  disabled={jsonPickerBusy}
+                  disabled={filePickerBusy}
                   onChange={(event) => {
                     const file = event.currentTarget.files?.[0]
                     event.currentTarget.value = ""
@@ -940,13 +933,14 @@ export function SettingsPage() {
             <div className="setting-text">
               <span>{t("settings.logTitle")}</span>
               <small>{t("settings.logDesc", { count: logCount })}</small>
+              <small>{t("settings.logSaveDesc")}</small>
             </div>
             <div className="settings-actions">
               <button className="btn" onClick={showLog}>
                 {t("settings.show")}
               </button>
-              <button className="btn" onClick={exportLog}>
-                {t("settings.export")}
+              <button className="btn" disabled={filePickerBusy} onClick={exportLog}>
+                {t("settings.logSave")}
               </button>
               <button
                 className="btn"

@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core"
 import { DEBUG_DIAG } from "../../build-flags"
-import type { JsonFilePicker, LocalePicker, LocaleFileSet, LocaleService, PlatformServices, StorageLocationService } from "../contracts"
+import type { UserFilePicker, LocalePicker, LocaleFileSet, LocaleService, PlatformServices, StorageLocationService } from "../contracts"
 import { browserStorage, clipboard, indexedDatabase } from "./browser"
 
 async function listLocaleFiles(command: string): Promise<LocaleFileSet | null> {
@@ -29,14 +29,14 @@ export const resolveNativeStorageLocation: StorageLocationService["resolve"] = a
   }
 }
 
-const jsonFiles: JsonFilePicker = {
+const userFiles: UserFilePicker = {
   open: (purpose) => invoke("pick_json_file", { purpose }),
-  save: (purpose, filename, json) => invoke("save_json_file", { purpose, filename, json }),
+  save: (purpose, filename, text) => invoke("save_user_file", { purpose, filename, text }),
 }
 
 const localePicker: LocalePicker = {
-  open: () => jsonFiles.open("locale"),
-  save: (code, json) => jsonFiles.save("locale", `${code}.json`, json),
+  open: () => userFiles.open("locale"),
+  save: (code, json) => userFiles.save("locale", `${code}.json`, json),
 }
 
 export function createNativeServices() {
@@ -53,11 +53,8 @@ export function createNativeServices() {
         void import("../../native-debug-log").then(({ debugAppendLog }) => debugAppendLog(line))
       },
     } : undefined,
-    files: {
-      exportText: (filename, content) => invoke<string>("export_file", { fileName: filename, text: content }),
-    },
     locale,
-    jsonFiles,
+    userFiles,
     localePicker,
     clipboard,
   } satisfies PlatformServices

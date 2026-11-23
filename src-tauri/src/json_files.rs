@@ -14,6 +14,24 @@ impl JsonPurpose {
     }
 }
 
+#[derive(Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum ExportPurpose {
+    Locale,
+    Backup,
+    Log,
+}
+
+impl ExportPurpose {
+    fn format(self) -> (&'static str, &'static str, usize) {
+        match self {
+            Self::Locale => ("JSON", "json", JsonPurpose::Locale.max_bytes()),
+            Self::Backup => ("JSON", "json", JsonPurpose::Backup.max_bytes()),
+            Self::Log => ("Text", "txt", 5 * 1024 * 1024),
+        }
+    }
+}
+
 #[cfg(any(target_os = "android", target_os = "ios"))]
 pub(crate) async fn run_mobile_picker(
     app: &tauri::AppHandle,
@@ -84,28 +102,29 @@ pub(crate) async fn pick_json_file(
 }
 
 #[tauri::command]
-pub(crate) async fn save_json_file(
+pub(crate) async fn save_user_file(
     app: tauri::AppHandle,
-    purpose: JsonPurpose,
+    purpose: ExportPurpose,
     filename: String,
-    json: String,
+    text: String,
 ) -> Result<serde_json::Value, String> {
-    let max_bytes = purpose.max_bytes();
-    let safe_name = filename.strip_suffix(".json").is_some_and(|stem| {
-        !stem.is_empty()
+    let (_label, extension, max_bytes) = purpose.format();
+    let safe_name = filename.rsplit_once('.').is_some_and(|(stem, suffix)| {
+        suffix == extension
+            && !stem.is_empty()
             && stem
                 .bytes()
                 .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
     });
-    if !safe_name || json.len() > max_bytes {
-        return Err("Invalid JSON file name or size".into());
+    if !safe_name || text.len() > max_bytes {
+        return Err("Invalid export file name or size".into());
     }
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
     return run_mobile_picker(
         &app,
-        "saveJson",
-        serde_json::json!({ "filename": filename, "json": json, "maxBytes": max_bytes, "locale": matches!(purpose, JsonPurpose::Locale) }),
+        "saveDocument",
+        serde_json::json!({ "filename": filename, "json": text, "maxBytes": max_bytes, "locale": matches!(purpose, ExportPurpose::Locale), "extension": extension }),
     ).await;
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -115,14 +134,14 @@ pub(crate) async fn save_json_file(
         let Some(file) = app
             .dialog()
             .file()
-            .add_filter("JSON", &["json"])
+            .add_filter(_label, &[extension])
             .set_file_name(filename)
             .blocking_save_file()
         else {
             return Ok(serde_json::json!({ "kind": "cancelled" }));
         };
         let path = file.into_path().map_err(|error| error.to_string())?;
-        std::fs::write(&path, json).map_err(|error| error.to_string())?;
+        std::fs::write(&path, text).map_err(|error| error.to_string())?;
         Ok(serde_json::json!({ "kind": "saved", "path": path.to_string_lossy() }))
     })
     .await

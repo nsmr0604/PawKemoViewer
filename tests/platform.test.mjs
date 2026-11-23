@@ -341,17 +341,19 @@ test("locale and backup file pickers share native commands and preserve cancella
   const picker = mobile.localePicker
   assert.deepEqual(await picker.open(), { kind: "selected", name: "es.json", json: "{}" })
   assert.deepEqual(await picker.save("es", "{}"), { kind: "cancelled" })
-  assert.equal((await desktop.jsonFiles.open("backup")).kind, "selected")
-  assert.deepEqual(await mobile.jsonFiles.save("backup", "backup.json", "{}"), { kind: "cancelled" })
+  assert.equal((await desktop.userFiles.open("backup")).kind, "selected")
+  assert.deepEqual(await mobile.userFiles.save("backup", "backup.json", "{}"), { kind: "cancelled" })
+  assert.deepEqual(await desktop.userFiles.save("log", "log.txt", "message"), { kind: "cancelled" })
   assert.deepEqual(invoke.mock.calls.map(({ arguments: args }) => args.slice(0, 2)), [
     ["pick_json_file", { purpose: "locale" }],
-    ["save_json_file", { purpose: "locale", filename: "es.json", json: "{}" }],
+    ["save_user_file", { purpose: "locale", filename: "es.json", text: "{}" }],
     ["pick_json_file", { purpose: "backup" }],
-    ["save_json_file", { purpose: "backup", filename: "backup.json", json: "{}" }],
+    ["save_user_file", { purpose: "backup", filename: "backup.json", text: "{}" }],
+    ["save_user_file", { purpose: "log", filename: "log.txt", text: "message" }],
   ])
   assert.equal(createWebServices().localePicker, undefined)
   assert.equal(typeof desktop.localePicker.open, "function")
-  assert.equal(createWebServices().jsonFiles, undefined)
+  assert.equal(createWebServices().userFiles, undefined)
 })
 
 test("app-specific language export routes Android and iOS to native IPC", async (t) => {

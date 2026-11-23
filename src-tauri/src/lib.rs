@@ -1219,7 +1219,7 @@ pub fn run() {
                 locale_storage::delete_locale_file,
                 locale_storage::resolve_storage_location,
                 json_files::pick_json_file,
-                json_files::save_json_file,
+                json_files::save_user_file,
                 #[cfg(any(target_os = "android", target_os = "ios"))]
                 locale_storage::save_locale_file_to_app_directory,
                 #[cfg(target_os = "android")]
