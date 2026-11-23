@@ -376,3 +376,10 @@
       `tauri * init` 後に light の代替アイコンと alias を生成
 - [ ] Android / iOS 実機でテーマ切替 → アイコン反映・ランチャーにエントリが 1 つだけ
       残ることを確認 (未実施)。iOS は OS の確認ダイアログが出る仕様
+
+## モバイル横方向オーバーフロー対策 (2026-11-20)
+- [x] 680px 以下でページ全体の横方向 overflow を clip し、viewport幅を超える root / app / main / content / page を抑制する CSS を追加
+- [x] Flex 要素や画像・動画・iframe・canvas・svg の幅制約を補強
+- [ ] Android / iOS 実機で画面を左右にスワイプして viewport のずれ・余白が再発しないか確認
+- [ ] 意図した内部横スクロール (設定カテゴリナビ・コード等) が維持されることを確認
+- PR: この変更を含む PR の CI / 実機確認は未実施
