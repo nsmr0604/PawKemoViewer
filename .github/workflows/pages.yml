@@ -1,0 +1,142 @@
+name: 紹介サイトを公開
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Build Tauri, Android Build, iOS Build]
+    types: [completed]
+
+concurrency:
+  group: pawkemoviewer-pages
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  prepare:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.release.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: site
+          persist-credentials: false
+
+      - name: 完成した正式リリースを選択
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+          from urllib.parse import quote
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+          run = event.get("workflow_run")
+
+          def api(path):
+              output = subprocess.check_output(["gh", "api", f"repos/{repo}/{path}"])
+              return json.loads(output)
+
+          def collect(release):
+              tag = release["tag_name"]
+              match = re.fullmatch(r"pawkemoviewer-v(\d+\.\d+\.\d+)", tag)
+              if not match or release["draft"] or release["prerelease"] or not release["published_at"]:
+                  return
+              version = match[1]
+              prefix = f"PawKemoViewer_{version}_"
+              patterns = {
+                  "windows": r"x64-setup\.exe",
+                  "macos": r"aarch64\.dmg",
+                  "linux": r"amd64\.deb",
+                  "android": r"universal\.apk",
+                  "ios": r"ios-unsigned\.ipa",
+              }
+              assets = {}
+              for platform, suffix in patterns.items():
+                  matching = [
+                      asset for asset in release["assets"]
+                      if asset["state"] == "uploaded" and asset["size"] > 0
+                      and re.fullmatch(re.escape(prefix) + suffix, asset["name"])
+                  ]
+                  if len(matching) != 1:
+                      return
+                  assets[platform] = matching[0]
+              return version, assets
+
+          releases = api("releases?per_page=50")
+          selected = None
+          for release in sorted(releases, key=lambda item: item["published_at"] or "", reverse=True):
+              data = collect(release)
+              if data:
+                  selected = release, *data
+                  break
+
+          publish = selected is not None
+          if selected and run:
+              release, version, assets = selected
+              tag = quote(release["tag_name"], safe="")
+              sha = api(f"commits/{tag}")["sha"]
+              platforms = {
+                  "tauri.yml": ("windows", "macos", "linux"),
+                  "android.yml": ("android",),
+                  "ios.yml": ("ios",),
+              }.get(Path(run["path"].split("@", 1)[0]).name, ())
+              # 同じコミットのデバッグビルドや古いリリースの再実行を除外する。
+              publish = sha == run["head_sha"] and any(
+                  run["run_started_at"] <= assets[platform]["updated_at"] <= run["updated_at"]
+                  for platform in platforms
+              )
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              print(f"publish={str(publish).lower()}", file=output)
+
+          if not publish:
+              print("公開対象の正式リリースはありません。")
+              if not run:
+                  raise SystemExit("公開には5プラットフォームの成果物が必要です。")
+              raise SystemExit(0)
+
+          release, version, assets = selected
+          metadata = {
+              "version": f"v{version}",
+              "published": release["published_at"],
+              "url": release["html_url"],
+              "assets": {platform: asset["browser_download_url"] for platform, asset in assets.items()},
+          }
+          Path("site/release.json").write_text(json.dumps(metadata) + "\n", encoding="utf-8")
+          print(f"公開対象: {release['tag_name']}")
+          PY
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.release.outputs.publish == 'true'
+        with:
+          path: site
+
+  deploy:
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: GitHub Pages にデプロイ
+        id: deployment
+        uses: actions/deploy-pages@v4
