@@ -1,10 +1,11 @@
+import { createPortal } from "react-dom"
 import { t } from "../i18n"
 import { navigate } from "../router"
 import { NavIcon } from "./NavigationRail"
 import { navigationItems } from "./navigation-items"
 
 export function BottomNavigation({ currentPath, followCount }: { currentPath: string; followCount: number }) {
-  return (
+  return createPortal(
     <nav className="bottom-nav" aria-label={t("nav.primary")}>
       {navigationItems(currentPath, followCount).map(({ path, label, icon, active, badge }) => (
         <button
@@ -18,6 +19,7 @@ export function BottomNavigation({ currentPath, followCount }: { currentPath: st
           <span>{label}{badge !== undefined && badge > 0 ? ` (${badge})` : ""}</span>
         </button>
       ))}
-    </nav>
+    </nav>,
+    document.body,
   )
 }

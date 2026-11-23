@@ -1,0 +1,57 @@
+name: Desktop installed smoke
+
+on:
+  push:
+    branches: [arch/m7-desktop-startup]
+    paths:
+      - '.github/workflows/desktop-installed-smoke.yml'
+      - 'tests/desktop_installed_smoke.py'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-latest, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    env:
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 検証用の 0.5.1 を取得
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 44937715356 --name PawKemoViewer-debug-${{ matrix.runner }} --dir artifacts
+      - name: Windows にインストールして起動
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer, $extra = @(Get-ChildItem artifacts -Recurse -Filter '*-setup.exe')
+          if (-not $installer -or $extra) { throw 'NSIS インストーラーは1個必要です' }
+          $target = Join-Path $env:RUNNER_TEMP 'PawKemoViewer'
+          $result = Start-Process $installer.FullName -ArgumentList '/S', "/D=$target" -PassThru -Wait
+          if ($result.ExitCode -ne 0) { throw "NSIS が終了コード $($result.ExitCode) を返しました" }
+          python tests/desktop_installed_smoke.py "$target/pawkemoviewer.exe"
+      - name: macOS に配置して起動
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          dmg=$(find artifacts -type f -name '*.dmg' -print -quit)
+          test -n "$dmg"
+          mount=$(mktemp -d)
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount"
+          trap 'hdiutil detach "$mount"' EXIT
+          app="$RUNNER_TEMP/PawKemoViewer.app"
+          ditto "$mount/PawKemoViewer.app" "$app"
+          exe=$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$app/Contents/Info.plist")
+          python tests/desktop_installed_smoke.py "$app/Contents/MacOS/$exe"

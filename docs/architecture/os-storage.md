@@ -85,19 +85,19 @@ On Android the native plugin prepares `getExternalFilesDir(DIRECTORY_DOCUMENTS)/
 
 On iOS and iPadOS the app creates `Documents/Languages` at startup and exposes Documents in Files. Settings can export directly there or use the system picker with Languages as its initial location. Settings displays the secondary folder, and Reload Languages rescans it. Both exports require a selected language with a private copy created by import or manual addition. The private catalogue remains in app data.
 
-### Integrated device pass
+### モバイル統合版の実機確認
 
-Use the locale test package for each device. On iPhone or iPad, launch once and open
-**Files → On My iPhone / On My iPad → PawKemoViewer → Languages**. On Android, verify
-the app-owned Documents/Languages path reported by Settings. Record device model, OS,
-provider, package commit and observed result for each check:
+0.5.1 の APK と署名済み IPA、または検証用パッケージを使用する。
+端末名、OS バージョン、ファイルの保存先、アプリのバージョン、有効な結果を記録する。
+iPhone・iPad は一度起動し、「ファイル」→「このiPhone内」または「このiPad内」
+→「PawKemoViewer」→「Languages」を開く。Android は設定に表示される
+アプリ専用の `Documents/Languages` を確認する。
 
-1. Cancel the open picker and confirm the language catalogue is unchanged.
-2. Import a valid, unused language code. Select it and verify its translated text.
-   Repeat the import to verify duplicate rejection. Check that malformed or oversized
-   input leaves the list unchanged.
-3. Export the selected language to the app folder and verify the exported JSON.
-   Put a second distinct language JSON in the secondary folder, reload, select it
-   and verify the displayed translations. Restart the app to verify discovery on launch.
-4. Export through the system picker to a local provider and reopen the exported file
-   to verify its contents. Cancel an export and confirm no destination is written.
+1. ファイル選択をキャンセルし、言語一覧に変化がないことを確認する。
+2. 未使用の言語コードで有効な JSON を取り込み、選択後に翻訳が反映されることを確認する。
+   同じファイルを再度取り込んで重複が拒否されることと、不正 JSON・1 MiB 超のファイルで
+   言語一覧が変化しないことも確認する。
+3. 取り込んだ言語を選び、アプリ用フォルダーに書き出して JSON の内容を確認する。
+   別の言語コードの JSON を追加フォルダーに置き、再読み込み後と再起動後に選択できることを確認する。
+4. システムのファイル選択画面からローカルの保存先に書き出し、ファイルを開き直して内容を確認する。
+   書き出しをキャンセルした場合は保存先にファイルが作成されないことを確認する。

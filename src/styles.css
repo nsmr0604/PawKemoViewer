@@ -1,26 +1,30 @@
 :root {
-  --bg: #14161a;
-  --bg2: #1c1f26;
-  --bg3: #242833;
-  --fg: #e8eaf0;
-  --fg2: #9aa3b2;
-  --accent: #ff7a9c;
-  --accent2: #b57fe0;
-  --danger: #ff5c5c;
+  --bg: #101821;
+  --bg2: #182430;
+  --bg3: #243545;
+  --fg: #edf5fb;
+  --fg2: #b3c3d1;
+  --accent: #63dfd1;
+  --accent2: #80b7ff;
+  --danger: #ff9c9d;
+  --on-accent: #0d2428;
+  --accent-surface: #203c43;
   --radius: 10px;
   color-scheme: dark;
 }
 
 /* ライトテーマ (設定 → 表示 で切替) */
 :root[data-theme="light"] {
-  --bg: #f2f3f6;
+  --bg: #f1f6fa;
   --bg2: #ffffff;
-  --bg3: #dfe3ea;
-  --fg: #1c1f26;
-  --fg2: #5b6270;
-  --accent: #e05577;
-  --accent2: #8f4fc4;
-  --danger: #d63b3b;
+  --bg3: #dce8f0;
+  --fg: #182430;
+  --fg2: #42586a;
+  --accent: #00685e;
+  --accent2: #245eb2;
+  --danger: #a92e3b;
+  --on-accent: #ffffff;
+  --accent-surface: #dcefe9;
   color-scheme: light;
 }
 
@@ -151,7 +155,7 @@ body {
   top: -4px;
   right: -8px;
   background: var(--accent);
-  color: #14161a;
+  color: var(--on-accent);
   font-size: 9px;
   font-weight: 800;
   border-radius: 9px;
@@ -225,19 +229,6 @@ body {
   justify-content: space-between;
 }
 
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  display: flex;
-  background: color-mix(in srgb, var(--bg2) 92%, transparent);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid var(--bg3);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
 .bottom-nav button {
   flex: 1;
   min-width: 0;
@@ -307,9 +298,9 @@ body {
   cursor: default;
 }
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  border: none;
-  color: #14161a;
+  background: var(--accent);
+  border: 1px solid transparent;
+  color: var(--on-accent);
   font-weight: 600;
 }
 .btn-ghost {
@@ -413,7 +404,7 @@ input:not([type]) {
 
 .badge {
   background: var(--accent);
-  color: #14161a;
+  color: var(--on-accent);
   border-radius: 999px;
   font-size: 10px;
   padding: 1px 7px;
@@ -471,7 +462,7 @@ input:not([type]) {
   top: 6px;
   right: 6px;
   background: var(--accent);
-  color: #14161a;
+  color: var(--on-accent);
   font-size: 10px;
   font-weight: 800;
   border-radius: 999px;
@@ -553,8 +544,8 @@ input:not([type]) {
   height: 38px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #14161a;
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1147,8 +1138,8 @@ input:not([type]) {
   cursor: pointer;
 }
 .seg-active {
-  background: linear-gradient(135deg, var(--accent), var(--accent2));
-  color: #14161a;
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -1373,7 +1364,7 @@ input:not([type]) {
 
 .clipboard-badge {
   background: var(--accent);
-  color: #14161a;
+  color: var(--on-accent);
   font-size: 10px;
   font-weight: 800;
   border-radius: 4px;
@@ -1433,7 +1424,7 @@ input:not([type]) {
   top: 6px;
   left: 6px;
   background: var(--accent);
-  color: #14161a;
+  color: var(--on-accent);
   font-size: 11px;
   font-weight: 800;
   border-radius: 999px;
@@ -1541,12 +1532,12 @@ input:not([type]) {
 
 :root {
   --radius: 14px;
-  --surface-border: color-mix(in srgb, var(--fg2) 13%, transparent);
+  --surface-border: color-mix(in srgb, var(--fg2) 21%, var(--bg2));
   --surface-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
 }
 
 :root[data-theme="light"] {
-  --surface-border: rgba(28, 31, 38, 0.10);
+  --surface-border: #c5d5e2;
   --surface-shadow: 0 10px 28px rgba(32, 42, 58, 0.07);
 }
 
@@ -1557,9 +1548,7 @@ html {
 
 body {
   line-height: 1.5;
-  background:
-    radial-gradient(ellipse at 85% 0%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 36rem),
-    var(--bg);
+  background: var(--bg);
 }
 
 button, input, select, textarea {
@@ -1571,7 +1560,7 @@ button, a, input, select, textarea {
 }
 
 :where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent) 75%, white);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -1948,27 +1937,18 @@ textarea:focus {
   margin: 0 auto;
 }
 
-.settings > h2 {
-  margin: 0 0 2px;
-  font-size: 23px;
-  letter-spacing: -0.03em;
+.page-title {
+  margin: 0;
+  font-size: clamp(23px, 3vw, 32px);
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
 }
 
 .settings-nav {
-  position: sticky;
-  top: 62px;
-  z-index: 12;
-  display: flex;
-  gap: 7px;
-  overflow-x: auto;
-  padding: 9px 0;
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
-  backdrop-filter: blur(12px);
-  scrollbar-width: none;
-}
-
-.app-desktop .settings-nav {
-  top: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));
+  gap: 8px;
 }
 
 .desktop-back {
@@ -1979,19 +1959,15 @@ textarea:focus {
   max-width: 100%;
 }
 
-.settings-nav::-webkit-scrollbar {
-  display: none;
-}
-
 .settings-nav button {
-  flex: 0 0 auto;
-  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
   overflow-wrap: anywhere;
   padding: 8px 12px;
   border: 1px solid var(--surface-border);
-  border-radius: 999px;
+  border-radius: 10px;
   background: var(--bg2);
-  color: var(--fg2);
+  color: var(--fg);
   font: inherit;
   font-size: 12px;
   font-weight: 650;
@@ -2010,10 +1986,15 @@ textarea:focus {
 .settings-section {
   padding: 18px;
   gap: 16px;
-  scroll-margin-top: 132px;
+  scroll-margin-top: calc(72px + env(safe-area-inset-top, 0px));
+}
+
+.app-desktop .settings-section {
+  scroll-margin-top: 16px;
 }
 
 .section-label {
+  margin: 0;
   color: var(--fg);
   font-size: 14px;
   font-weight: 800;
@@ -2063,10 +2044,10 @@ textarea:focus {
   right: 0;
   z-index: 20;
   display: flex;
-  background: color-mix(in srgb, var(--bg2) 92%, transparent);
-  backdrop-filter: blur(10px);
+  background: var(--bg2);
   border-top: 1px solid var(--bg3);
-  padding: env(safe-area-inset-bottom) 14px;
+  gap: 4px;
+  padding: 4px max(12px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }
 
 .bottom-nav button {
@@ -2083,7 +2064,7 @@ textarea:focus {
 }
 
 .bottom-nav .nav-active {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: var(--accent-surface);
   color: var(--accent);
 }
 
@@ -2123,8 +2104,7 @@ textarea:focus {
     padding: 16px 12px calc(86px + env(safe-area-inset-bottom));
   }
   .settings-nav {
-    top: 54px;
-    margin: 0 -2px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .settings-section {
     padding: 14px;
@@ -2172,9 +2152,76 @@ textarea:focus {
   margin-bottom: 12px;
 }
 
+.discovery-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: clamp(12px, 2.5vw, 20px);
+  background: var(--bg2);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+}
+
+.discovery-panel .home-filter-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.discovery-panel .history-chips {
+  margin: 0;
+}
+
+.discovery-panel .chip {
+  max-width: 100%;
+  min-height: 38px;
+  overflow-wrap: anywhere;
+}
+
+.search-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.search-bar input::placeholder {
+  color: var(--fg2);
+  opacity: 1;
+}
+
+.search-bar input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.feed-title {
+  margin: 0;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.home-page .view-mode-toggles > .btn-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.home-page .btn-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+}
+
 /* Home keeps one control tree as the application shell changes. */
 .home-page .search-bar input {
   min-width: 0;
+}
+
+.home-page .search-bar > .btn {
+  max-width: 45%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .app-mobile .home-page .search-bar > .btn,

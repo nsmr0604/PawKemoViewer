@@ -64,11 +64,12 @@
   - Android / iOS (`src-tauri/icons/android` / `ios`) → `dark.png`
 - 各 workflow (tauri / android / ios) も `tauri * init`・`tauri build` の前に
   `npm run icons:generate` を実行する。
-- モバイルの切替は `tauri-plugin-app-icon` + capability `app-icon:default`。
-  `src/appIcon.ts` が light テーマ時のみ `set_icon('light')`、dark 時は `set_icon(null)`
-  で既定 (dark) に戻す。
-- Android: light 用 mipmap + `activity-alias` を Manifest に注入
-  (`scripts/app-icon/generate-android.mjs`)。
+- アプリのテーマ変更時に `src/appIcon.ts` がホーム画面用アイコンを同期する。
+  Android ではネイティブコマンドが既定とライトのランチャーエイリアスだけを切り替える。
+  iOS/iPadOS では `tauri-plugin-app-icon` の公開コマンドで `AppIconLight` を選択し、
+  ダーク時に既定へ戻す。現在と同じアイコンへの再設定は省略する。
+- Android: light 用 mipmap + `activity-alias` を Manifest に注入する。
+  Android 13 以降は切り替えを一括適用し、それ以前は新しいエイリアスを先に有効にする。
 - iOS: `tauri ios init` **後に** `npx tauri icon dark.png` を実行して既定アイコンを
   `gen/apple/Assets.xcassets/AppIcon.appiconset` へ直接書き込む (2026-11-22 修正)。
   `AppIconLight.appiconset` のみ生成し、`project.yml` にエイリアス設定を注入
@@ -94,7 +95,7 @@
 ## 5. 未完了タスク
 
 1. Android / iOS 実機でテーマ切替 → アイコンが反映され、ランチャーのエントリが
-   1 つだけ残ることを確認する (未実施)。iOS は切替時に OS の確認ダイアログが出る。
+   1 つだけ残ることを確認する (未実施)。iOS は切替時に OS の通知が出る場合がある。
 2. 上記 CI (Build Tauri / Android / iOS) の完了結果を確認する。
 3. 必要になったら iOS 配布用に署名証明書・Provisioning Profile を GitHub Secrets 化し、
    `tauri ios build --export-method` を追加する。
