@@ -1418,6 +1418,14 @@ async fn save_locale_file_to_app_directory(
     }
 }
 
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn set_android_launcher_icon(app: tauri::AppHandle, light: bool) -> Result<(), String> {
+    tauri_plugin_locale_picker::run(&app, "setLauncherIcon", serde_json::json!({ "light": light }))
+        .await
+        .map(|_| ())
+}
+
 #[cfg(target_os = "ios")]
 fn prepare_ios_files_directory(app: &tauri::AppHandle) -> Result<(), String> {
     use std::io::{ErrorKind, Write};
@@ -1496,6 +1504,8 @@ pub fn run() {
                 save_locale_file,
                 #[cfg(any(target_os = "android", target_os = "ios"))]
                 save_locale_file_to_app_directory,
+                #[cfg(target_os = "android")]
+                set_android_launcher_icon,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している

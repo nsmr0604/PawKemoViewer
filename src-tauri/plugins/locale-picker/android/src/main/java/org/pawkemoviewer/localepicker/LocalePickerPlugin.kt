@@ -24,6 +24,11 @@ class LocaleExportArgs {
     lateinit var json: String
 }
 
+@InvokeArg
+class LauncherIconArgs {
+    var light: Boolean = false
+}
+
 @TauriPlugin
 class LocalePickerPlugin(private val activity: Activity) : Plugin(activity) {
     private val maxBytes = 1024 * 1024
@@ -42,6 +47,18 @@ class LocalePickerPlugin(private val activity: Activity) : Plugin(activity) {
         val folder = File(documents, "Languages")
         check(folder.mkdirs() || folder.isDirectory) { "Could not create the app language folder" }
         return folder
+    }
+
+    @Command
+    fun setLauncherIcon(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(LauncherIconArgs::class.java)
+            setLauncherIcon(activity, args.light)
+            invoke.resolve()
+        } catch (error: Exception) {
+            Log.w("LauncherIcons", "Could not switch launcher icon", error)
+            invoke.reject("Could not switch launcher icon")
+        }
     }
 
     @Command
