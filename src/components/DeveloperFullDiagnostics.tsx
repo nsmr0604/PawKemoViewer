@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { buildBackup } from "../backup"
-import { debugOpenLogFolder } from "../debug"
+import { debugOpenLogFolder } from "../native-debug-log"
 import { t } from "../i18n"
 import { logInfo } from "../log"
 

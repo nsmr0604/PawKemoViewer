@@ -96,7 +96,7 @@ npm run icons:generate                         # pc.png / dark.png から src-ta
   は削除した (Tauri のネイティブアプリアイコンには不要。`index.html` 自体は
   WebView のエントリなので全プラットフォームで残す)
 - 切替は `tauri-plugin-app-icon` (Rust) + `app-icon:default` capability を使用。
-  フロントは `src/appIcon.ts` の `syncAppIcon()` をテーマ変更時に呼び、
+  フロントは `src/app-icon.ts` の `syncAppIcon()` をテーマ変更時に呼び、
   light テーマでは `light` を選択、dark テーマでは `set_icon(null)` で
   既定の dark アイコンへ戻す (desktop / web は未対応のため無視)
 - 設定: `src-tauri/app-icons.json`。生成スクリプトは

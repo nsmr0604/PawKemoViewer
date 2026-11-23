@@ -2,16 +2,13 @@ import { getApplication } from "../application/composition"
 import { isValidPostContext } from "../domain/post-identity"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
-import { setFavPost } from "../favstate"
-import { CreatorAvatar, isFanboxCoverFile } from "../components"
+import { setFavoritePost } from "../post-favorites"
+import { CreatorAvatar } from "../components/CreatorAvatar"
+import { isFanboxCoverFile } from "../post-files"
 import type { PawComment, PawPost, PawRevision, PawFile } from "../types"
-import {
-  Spinner,
-  ErrorBox,
-  Empty,
-  fmtDate,
-  sanitizeContent,
-} from "../components"
+import { Spinner, ErrorBox, Empty } from "../components/Feedback"
+import { formatDate } from "../format-date"
+import { sanitizePostContent } from "../post-content"
 import { navigate } from "../router"
 import { FollowButton } from "../components/FollowButton"
 import { logError, logInfo, logWarn } from "../log"
@@ -280,7 +277,7 @@ export function PostPage({
       }
       // キャッシュを消して次の詳細表示で最新状態を判定させる
       clearApiCache()
-      setFavPost(postContext.service, postContext.postId, next === "yes")
+      setFavoritePost(postContext.service, postContext.postId, next === "yes")
       setFaved(next)
       logInfo(`お気に入り${next === "yes" ? "追加" : "解除"} service=${postContext.service} postId=${postContext.postId}`)
     } catch (e) {
@@ -315,9 +312,9 @@ export function PostPage({
             {postContext.service} / {postContext.creatorId}
           </span>
           {" · "}
-          {tr("post.published", { date: fmtDate(displayPost.published) })}
-          {displayPost.edited && displayPost.edited !== displayPost.published && ` · ${tr("post.edited", { date: fmtDate(displayPost.edited) })}`}
-          {displayPost.added && ` · ${tr("post.added", { date: fmtDate(displayPost.added) })}`}
+          {tr("post.published", { date: formatDate(displayPost.published) })}
+          {displayPost.edited && displayPost.edited !== displayPost.published && ` · ${tr("post.edited", { date: formatDate(displayPost.edited) })}`}
+          {displayPost.added && ` · ${tr("post.added", { date: formatDate(displayPost.added) })}`}
           {revisions && revisions.length > 0 && (activeRevision ? ` · ${tr("post.oldVersion", { i: revisions.findIndex((r) => r.revision_id === activeRevision.revision_id) + 1, n: revisions.length })}` : ` · ${tr("post.latestVersion")}`)}
         </div>
         {(() => {
@@ -394,7 +391,7 @@ export function PostPage({
       </div>
 
       {displayPost.content && (
-        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizeContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
+        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
       )}
 
       {sourceFiles.length > 0 && !listMode && (
@@ -548,9 +545,9 @@ export function PostPage({
             {comments.map((c) => (
               <li key={c.id} className="comment">
                 <div className="comment-head">
-                  <b>{c.commenter_name || c.commenter}</b> · {fmtDate(c.published)}
+                  <b>{c.commenter_name || c.commenter}</b> · {formatDate(c.published)}
                 </div>
-                <div className="comment-body">{sanitizeContent(c.content, postContext.service, postContext.postId, proxyReferer)}</div>
+                <div className="comment-body">{sanitizePostContent(c.content, postContext.service, postContext.postId, proxyReferer)}</div>
               </li>
             ))}
           </ul>
@@ -575,7 +572,7 @@ export function PostPage({
                 <option value="latest">{tr("post.latestOption")}</option>
                 {revisions.map((r, index) => (
                   <option key={r.revision_id} value={String(r.revision_id)}>
-                    {tr("post.oldOption", { i: index + 1 })} · {fmtDate(r.added)} · {r.title || tr("common.untitled")}
+                    {tr("post.oldOption", { i: index + 1 })} · {formatDate(r.added)} · {r.title || tr("common.untitled")}
                   </option>
                 ))}
               </select>

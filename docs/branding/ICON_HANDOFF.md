@@ -64,7 +64,7 @@
   - Android / iOS (`src-tauri/icons/android` / `ios`) → `dark.png`
 - 各 workflow (tauri / android / ios) も `tauri * init`・`tauri build` の前に
   `npm run icons:generate` を実行する。
-- アプリのテーマ変更時に `src/appIcon.ts` がホーム画面用アイコンを同期する。
+- アプリのテーマ変更時に `src/app-icon.ts` がホーム画面用アイコンを同期する。
   Android ではネイティブコマンドが既定とライトのランチャーエイリアスだけを切り替える。
   iOS/iPadOS では `tauri-plugin-app-icon` の公開コマンドで `AppIconLight` を選択し、
   ダーク時に既定へ戻す。現在と同じアイコンへの再設定は省略する。

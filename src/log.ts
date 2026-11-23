@@ -6,7 +6,7 @@
 // 失敗などの切り分けに使う。設定 → 診断 から閲覧・書き出しできる。
 // ---------------------------------------------------------------------------
 
-import { DEBUG_DIAG } from "./buildFlags"
+import { DEBUG_DIAG } from "./build-flags"
 import { getPlatformRuntime } from "./platform/runtime"
 
 export interface LogEntry {

@@ -1,4 +1,4 @@
-// This module is dynamically imported only while debug diagnostics are active (debug build or product developer-tools toggle).
+// 詳細診断を含むデバッグビルドでのみ読み込む。
 const CHUNK_LEN = 1800
 
 export function splitDebugLog(message: string): string[] {

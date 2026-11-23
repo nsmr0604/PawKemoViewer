@@ -6,10 +6,10 @@
 
 | Area | Current entry points | Direct dependency / responsibility | Migration destination |
 |---|---|---|---|
-| Platform / layout | src/platform.ts, src/App.tsx | UA detection, layout mode, clipboard helper, window size and app back/exit | Common capability contracts; Desktop/Mobile family; OS adapters |
+| Platform / layout | src/platform/environment.ts, src/App.tsx | UA detection, layout mode, clipboard helper, window size and app back/exit | Common capability contracts; Desktop/Mobile family; OS adapters |
 | API/network | src/api.ts | Tauri invoke, settings stored in localStorage, scheduler and GET cache | Network service, Settings storage, cache/scheduler contracts |
 | Persistent DB | src/db.ts | IndexedDB open/schema/transactions | Common DB contract + family adapters; preserve schema |
-| Logs | src/log.ts, src/debug.ts, src/debug-log.ts | ring buffer, debug native commands/file logging | Common Log service + family-specific persistence/export |
+| Logs | src/log.ts, src/native-debug-log.ts, src/debug-log.ts | ring buffer, debug native commands/file logging | Common Log service + family-specific persistence/export |
 | Backup | src/backup.ts | backup assembly and native export command | Common backup serialization + file/export service |
 | Locale | src/i18n.ts | locale listing and native commands, JSON validation/overlay | Locale service + layered storage |
 | Follow | src/follows.ts | localStorage mirror and account synchronization/API | storage contract + domain sync workflow |
@@ -61,7 +61,7 @@ Other Rust responsibilities visible in lib.rs:
 ## Next audit tasks
 
 - Inventory all Tauri invoke sites and registered command argument/result contracts.
-- Inspect icons.ts, favstate.ts, router.ts, hooks.ts and settings state for browser/native dependencies.
+- Inspect icons.ts, post-favorites.ts, router.ts, hooks.ts and settings state for browser/native dependencies.
 - Categorize OS branches in Rust and enumerate filesystem / process / clipboard / lifecycle capabilities.
 - Build a dependency map before adding interfaces, so adapter selection is centralized and no service duplicates capability detection.
 
@@ -73,7 +73,7 @@ Other Rust responsibilities visible in lib.rs:
 | Source | Command(s) |
 |---|---|
 | src/api.ts | api_request |
-| src/debug.ts | debug_append_log, debug_open_log_folder |
+| src/native-debug-log.ts | debug_append_log, debug_open_log_folder |
 | src/backup.ts | export_file |
 | src/i18n.ts | list_locale_files; locale write/delete operations should be checked for dynamic invocation forms |
 | src/icons.ts | fetch_creator_icon, clear_creator_icon_cache, creator_icon_cache_info |
@@ -88,7 +88,7 @@ Other Rust responsibilities visible in lib.rs:
 - follows.ts: localStorage data and migration flag, window event dispatch.
 - history.ts: localStorage read/write/remove.
 - icons.ts: IndexedDB and native icon-cache commands.
-- router.ts: hashchange listener; hooks.ts: scroll event and scroll restore; favstate.ts: window custom event.
+- router.ts: hashchange listener; hooks.ts: scroll event and scroll restore; post-favorites.ts: window custom event.
 - DeveloperDiagnostics.tsx: window timeout for UI feedback.
 
 ### Important architecture distinction

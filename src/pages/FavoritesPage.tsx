@@ -3,7 +3,10 @@ import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
 import { getAllSeen, setSeen, getSeen, updateSeenCheck } from "../db"
 import { loadFollows, removeFollow, syncFollowsWithAccount } from "../follows"
-import { ErrorBox, Empty, PostGrid, fmtDate, CreatorAvatar } from "../components"
+import { ErrorBox, Empty } from "../components/Feedback"
+import { PostGrid } from "../components/PostGrid"
+import { formatDate } from "../format-date"
+import { CreatorAvatar } from "../components/CreatorAvatar"
 import { navigate } from "../router"
 import { t } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
@@ -341,7 +344,7 @@ export function FavoritesPage() {
                     </div>
                     <div className="creator-sub">
                       {f.service}
-                      {f.newest ? ` · ${t("favorites.latest", { date: fmtDate(f.newest.published || f.newest.added) })}` : ""}
+                      {f.newest ? ` · ${t("favorites.latest", { date: formatDate(f.newest.published || f.newest.added) })}` : ""}
                       {f.error ? ` · ${f.error}` : ""}
                     </div>
                     {f.newest && (
