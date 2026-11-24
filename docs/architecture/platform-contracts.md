@@ -1,22 +1,22 @@
-# Platform contract semantics
+# プラットフォーム契約の意味論
 
-## Request and persistence boundaries
+## リクエストと永続化の境界
 
-- `network` is an optional `PawchiveApiTransport` on native desktop/mobile. The input mirrors the Rust command arguments and the result is the raw response string. Tauri failures propagate to `api.ts`, which continues to wrap them in `ApiError` and preserve status recovery. A web runtime has no native transport. It reports the missing capability through the same API error boundary.
-- Cache, request deduplication, scheduling, session snapshotting and response decoding stay in `api.ts`. Login, icon IO and media keep their existing separate paths.
-- `indexedDatabase` is the typed database opening boundary. Its clients retain their schema, transactions and caching. The unused generic database slot is removed.
+- `network` は、ネイティブのデスクトップ/モバイルでは任意の `PawchiveApiTransport` である。入力は Rust コマンドの引数をそのまま反映し、結果は生のレスポンス文字列である。Tauri の失敗は `api.ts` へ伝播し、`api.ts` は引き続きそれを `ApiError` でラップし、ステータスの復元を保つ。Web ランタイムにはネイティブのトランスポートがない。欠けている機能は、同じ API エラー境界を通じて報告する。
+- キャッシュ、リクエストの重複排除、スケジューリング、セッションのスナップショット、レスポンスのデコードは `api.ts` に残る。ログイン、アイコン IO、メディアは、既存の別経路を維持する。
+- `indexedDatabase` は型付きのデータベースオープン境界である。そのクライアントは、スキーマ、トランザクション、キャッシュを保持する。未使用の汎用 database スロットは削除する。
 
-## Capability and failure rules
+## 機能と失敗のルール
 
-An optional service or method is absent when the adapter cannot provide the operation. A registered service can still fail at call time. Check optional methods for capabilities such as secondary locale storage. Keep the existing platform behavior until the consumer is migrated.
+任意のサービスやメソッドは、アダプターがその操作を提供できないときは存在しない。登録済みのサービスでも、呼び出し時に失敗し得る。セカンダリのロケールストレージのような機能については、任意メソッドの存在を確認する。利用者を移行するまでは、既存のプラットフォーム挙動を維持する。
 
-| Surface | Absence and failure |
+| 対象 | 不在と失敗 |
 |---|---|
-| Key/value and session storage | An inaccessible browser storage getter means the service is unavailable. Use the typed service, since a raw Web Storage object has a different API. Settings, scroll and tab preferences can fall back to their default or in-memory state in the consumer. Follow writes and restores require storage and must surface a failure when data cannot be persisted. |
-| IndexedDB | `open` rejects when unavailable or blocked and propagates request errors. It does not report a database handle on failure. |
-| Network and file export | A failed operation rejects. File export keeps the existing returned path or filename. File picker cancellation will need an explicit result when a picker is introduced. |
-| Clipboard | Reads return null and writes return false for unavailable/denied access. No clipboard permission probe is required. |
-| Locale and storage locations | Listing or resolving may return null when unavailable or on probe failure. Native mutations reject on failure. Web locale write rejects and web deletion returns false. |
-| Lifecycle and diagnostics | Desktop lifecycle is absent. The web adapter has a no-op back listener and rejects exit. Mobile unregisters the listener on cleanup, including when registration finishes late. Diagnostics remain build-gated. |
+| キー/バリューとセッションストレージ | アクセス不能なブラウザストレージのゲッターは、サービスが利用不能であることを意味する。生の Web Storage オブジェクトは API が異なるため、型付きサービスを使う。設定、スクロール、タブの設定は、利用者側で既定値やメモリ内の状態にフォールバックできる。フォローの書き込みと復元にはストレージが必須であり、データを永続化できない場合は失敗を表面化させなければならない。 |
+| IndexedDB | `open` は利用不能またはブロックされたときに拒否し、リクエストのエラーを伝播する。失敗時にデータベースハンドルを返さない。 |
+| ネットワークとファイル書き出し | 失敗した操作は拒否する。ファイルの書き出しは、既存の返却パスまたはファイル名を維持する。ファイルピッカーを導入する際、ピッカーのキャンセルには明示的な結果が必要になる。 |
+| クリップボード | 利用不能または拒否時、読み取りは null、書き込みは false を返す。クリップボード権限のプローブは不要である。 |
+| ロケールとストレージの場所 | 利用不能時やプローブ失敗時、一覧取得や解決は null を返すことがある。ネイティブの変更操作は失敗時に拒否する。Web のロケール書き込みは拒否し、Web の削除は false を返す。 |
+| ライフサイクルと診断 | デスクトップのライフサイクルは存在しない。Web アダプターは何もしない戻るリスナーを持ち、終了は拒否する。モバイルはクリーンアップ時にリスナーを解除し、登録が遅れて完了した場合も同様である。診断はビルド時のゲートのままである。 |
 
-These contracts do not infer SAF or iOS Files support from a user agent or a path. A separate feasibility check is required for the selected-file workflows in M5.
+これらの契約は、ユーザーエージェントやパスから SAF や iOS Files の対応を推測しない。M5 の選択ファイルのワークフローには、別途の実現性チェックが必要である。

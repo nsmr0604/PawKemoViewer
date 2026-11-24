@@ -1,0 +1,29 @@
+# 開発者向けドキュメント
+
+PawKemoViewer の開発・設計・ビルド・API の資料です。利用者向けの使い方と設定は
+[Wiki](https://github.com/nsmr0604/pawchive/wiki) にまとめています。
+
+## まず読む
+
+| 資料 | 内容 |
+|---|---|
+| [開発状況と残課題](STATUS.md) | 現在のリリース状態、既知の制約、次の作業 |
+| [開発ガイド](DEVELOPMENT.md) | アーキテクチャ、構成、規約、テスト |
+| [ビルドガイド](BUILD.md) | ローカルビルド、CI、リリース |
+| [API 仕様](API.md) | pawchive API、Tauri コマンド、pkv、診断ログ |
+
+## 設計と検証
+
+- [設計資料の目次](architecture/README.md): 棚卸し、プラットフォーム契約、ユースケース、
+  リポジトリ、ドメイン、OS ストレージ、画面構成、検証記録
+
+## 引継ぎ
+
+- [引継ぎ資料](handoff/README.md): 経緯、決定事項、未完了事項、次の作業
+- [現在の引継ぎ (2026-11-24)](handoff/2026-11-24.md)
+- [アイコン引継ぎ](handoff/icons.md)
+
+## その他
+
+- [変更履歴](HISTORY.md)
+- [ライセンス一覧](LICENSES.md)

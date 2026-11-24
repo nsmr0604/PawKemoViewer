@@ -1,18 +1,18 @@
 # 開発状況と残課題
 
-最終更新: 2026-11-24 / 対象バージョン: **0.5.6**
+最終更新: 2026-11-24 / 対象バージョン: **0.5.7**
 
 この文書は現在の状態だけをまとめたものです。リリースごとの変更は [変更履歴](HISTORY.md)、
 アーキテクチャの詳細は [開発ガイド](DEVELOPMENT.md) と [設計資料](architecture/README.md) を参照してください。
 
 ## 1. 現在のリリース状態
 
-- 最新リリース: **`pawkemoviewer-v0.5.5`**(Latest / prerelease=false)
+- 最新リリース: **`pawkemoviewer-v0.5.7`**(Latest / prerelease=false)
   - Windows setup.exe / msi、Linux rpm / AppImage / deb、macOS dmg / app.tar.gz、
     Android universal APK、iOS 無署名 IPA の 9 アセット
   - 4 系統のリリースビルド (Android / Build Tauri / iOS / macOS) が success
 - 開発ビルド: `debug-latest` プレリリース (push 時に自動更新)
-- main のバージョン: `0.5.6` (`package.json` / `src-tauri/Cargo.toml`)
+- main のバージョン: `0.5.7` (`package.json` / `src-tauri/Cargo.toml`)
 - ブランチ運用: 統合先は `main`。リリースは `workflow_dispatch` の `release=true` で作成する
 
 ## 2. 対象プラットフォーム
@@ -40,6 +40,9 @@
 - **pkv プロキシ**: ホットリンク対策ホストと投稿コンテキストのある外部メディアを中継する。
   OS 別 URL 形式、Referer 許可リスト、SSRF 検査 (名前解決 IP を含む)、リダイレクト検査、
   タイムアウトとサイズ上限、固定ワーカーでの処理を実装済み
+- **元記事リンクの解決**: 投稿本文内の fanbox / patreon の投稿 URL を解析し、
+  対応する pawchive の投稿へアプリ内で遷移する。見つからない場合は元記事を開く導線を出す
+- **キャッシュ**: クリエイター索引、アイコン、投稿サムネイルを端末に保存する
 
 ## 4. マイルストーン
 
@@ -58,7 +61,9 @@
 - 診断検証ブランチで `npm run test:domain` / `test:application` / `test:platform` の合計 39 件が通過
 - `npm run build` (境界チェック + 型検査 + Vite) と `cargo check` (通常 / `debug-diag`) が通過
 - 0.5.5 のリリースビルド 4 系統が success。9 アセットを確認
+- 0.5.7 のリリースビルド 4 系統が success。`pawkemoviewer-v0.5.7` に 9 アセットを確認
 - Android 実機で、設定・投稿一覧・投稿詳細・外部ページ (sakura.ne.jp) の表示と戻る操作を確認
+- iPadOS 16.5 + TrollStore で、iOS 判定・テストページ・診断ログ・投稿リンクの表示と復帰を確認
 - 詳細な検証記録は [安定化の検証記録](architecture/stabilization.md) と各設計資料にある
 
 ## 6. 既知の制約・未解決事項

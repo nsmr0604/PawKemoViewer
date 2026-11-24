@@ -1,26 +1,26 @@
-# Adaptive presentation
+# 適応型の表示
 
-## M6.1 — Layout selection and responsibilities
+## M6.1 — レイアウトの選択と責務
 
-The user preference `layoutMode` selects desktop or mobile explicitly, or uses automatic mode. Automatic mode uses the desktop rail on a desktop-class user agent at 768 CSS pixels and above. Mobile-class user agents use the bottom navigation in automatic mode. Layout is independent of the Tauri runtime family, so a presentation preference does not change storage, API or lifecycle capabilities.
+ユーザー設定 `layoutMode` は、明示的にデスクトップまたはモバイルを選ぶか、自動モードを使う。自動モードは、768 CSS ピクセル以上ではデスクトップ相当のユーザーエージェントに対してデスクトップのレールを使う。モバイル相当のユーザーエージェントは、自動モードで下部ナビゲーションを使う。レイアウトは Tauri のランタイムファミリーとは独立しているため、表示上の設定がストレージ、API、ライフサイクルの機能を変えることはない。
 
-App owns route selection, settings listeners, shortcuts, and the native back subscription. A common shell keeps the header and screen outlet mounted across viewport changes. Its desktop rail and mobile navigation share the route groups and navigation actions. Login hides primary navigation, and post detail and login use the back header. Maintain the existing focus, history replacement, account routing and badge behavior.
+App は、ルートの選択、設定のリスナー、ショートカット、ネイティブの戻るの購読を所有する。共通のシェルは、ビューポートが変わってもヘッダーと画面のアウトレットをマウントしたまま保つ。デスクトップのレールとモバイルのナビゲーションは、ルートグループとナビゲーションの操作を共有する。ログインは主ナビゲーションを隠し、投稿詳細とログインは戻る用のヘッダーを使う。既存のフォーカス、履歴の置き換え、アカウントのルーティング、バッジの挙動を維持する。
 
-Migrate Home first. The page continues to own the query, API-backed workflow, filters, history and view preferences. Keep one search/control tree for both presentations so resizing preserves focus, typed input and loaded results. Apply compact wrapping and touch-friendly view toggles to the mobile presentation. Retain desktop visual behavior and existing pagination/transport.
+まず Home を移行する。ページは引き続き、クエリ、API 連携のワークフロー、フィルター、履歴、表示設定を所有する。両方の表示で 1 つの検索/操作ツリーを保ち、サイズ変更でフォーカス、入力中の文字、読み込み済みの結果が保たれるようにする。モバイル表示には、コンパクトな折り返しとタッチしやすい表示の切り替えを適用する。デスクトップの見た目と既存のページング/トランスポートを維持する。
 
-## M6.4 — Layout and interaction matrix
+## M6.4 — レイアウトと操作のマトリクス
 
-The browser smoke test uses Chromium with fixture Tauri IPC and blocks external requests. It exercises the live Vite frontend.
+ブラウザのスモークテストは、フィクスチャの Tauri IPC を備えた Chromium を使い、外部リクエストをブロックする。実際の Vite フロントエンドを対象に実行する。
 
-| Context | Observed result |
+| 状況 | 観測した結果 |
 |---|---|
-| Desktop UA at 1280, 767 and 768 px | The rail gives way to bottom navigation below 768 px. Home retains its search element, focus, unsent input and loaded results across both switches. |
-| Desktop keyboard and layout preferences | Slash focuses search. S opens Settings. Explicit mobile and desktop selections switch the shell while Settings remains active. Login hides primary navigation, and Escape returns to Settings. |
-| Android UA and touch at 320 px | The bottom navigation shows the active route. The Home list toggle is at least 44 px high and responds to tap. Service chips filter fixture results. A 320-character query wraps without horizontal overflow. |
-| Post and simulated native Android Back | The detail header and post with missing revisions load. A Back event with WebView history returns to the query, and a Back event without history invokes the app exit command. The simulated Android UA keeps bottom navigation at 900 px in auto mode. |
-| Native desktop/mobile and safe areas | Device insets, real WebView key handling, physical Back/gestures and iOS landscape were not exercised. |
+| 1280、767、768 px のデスクトップ UA | レールは 768 px 未満で下部ナビゲーションに譲る。Home は両方の切り替えを通じて、検索要素、フォーカス、未送信の入力、読み込み済みの結果を保つ。 |
+| デスクトップのキーボードとレイアウト設定 | スラッシュで検索にフォーカスする。S で設定を開く。明示的なモバイル/デスクトップの選択でシェルが切り替わり、設定は有効なままである。ログインは主ナビゲーションを隠し、Escape で設定に戻る。 |
+| 320 px の Android UA とタッチ | 下部ナビゲーションが有効なルートを表示する。Home のリストの切り替えは高さ 44 px 以上で、タップに反応する。サービスのチップがフィクスチャの結果を絞り込む。320 文字のクエリが、水平方向のオーバーフローなしで折り返す。 |
+| 投稿とシミュレートしたネイティブの Android 戻る | リビジョンが欠落した投稿と詳細ヘッダーが読み込まれる。WebView の履歴がある状態の戻るイベントはクエリに戻り、履歴のない戻るイベントはアプリの終了コマンドを呼ぶ。シミュレートした Android UA は、自動モードで 900 px でも下部ナビゲーションを保つ。 |
+| ネイティブのデスクトップ/モバイルとセーフエリア | 端末のインセット、実際の WebView のキー処理、物理的な戻る/ジェスチャー、iOS の横向きは未実施。 |
 
-Run the Vite server and the smoke test in separate shells. The smoke test expects Python Playwright and Chromium. Set `CHROMIUM_BIN` if Chromium is installed elsewhere. On hosts with an unwritable user directory, point `XDG_CONFIG_HOME` and `XDG_CACHE_HOME` at a writable test directory.
+Vite サーバーとスモークテストは、別々のシェルで実行する。スモークテストは Python Playwright と Chromium を必要とする。Chromium が別の場所にインストールされている場合は `CHROMIUM_BIN` を設定する。ユーザーディレクトリに書き込めないホストでは、`XDG_CONFIG_HOME` と `XDG_CACHE_HOME` を書き込み可能なテスト用ディレクトリに向ける。
 
 ```bash
 npm run dev -- --host 127.0.0.1 --port 5181 --strictPort

@@ -62,7 +62,7 @@ npm run icons:generate                          # pc.png / dark.png から src-t
 - デバッグ診断ビルド (PC): `npm run dev` / `npm run tauri:dev` は `.env.development` により
   `VITE_DEBUG_DIAG` が自動有効。`tauri:dev` は Cargo feature `debug-diag` も指定する。
   debug exe は `src-tauri/target/debug/pawkemoviewer.exe`
-- アイコンの素材と設計は [ブランディング資料](branding/ICON_HANDOFF.md) を参照
+- アイコンの素材と設計は [アイコン引継ぎ](handoff/icons.md) を参照
 - Rust のテストは `cargo test --lib`。既定の debuginfo で LLVM が OOM する環境では
   `CARGO_PROFILE_TEST_DEBUG=0` を指定する
 - ワークフロー YAML の検証: `npx --yes js-yaml .github/workflows/*.yml`

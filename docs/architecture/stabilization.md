@@ -1,78 +1,79 @@
-# Stabilization and release evidence
+# 安定化とリリースの証跡
 
 > この文書は **0.5.0 系のマイルストーンで実施した検証記録** です。現在の状態は
 > [開発状況](../STATUS.md) を参照してください。バージョン番号や実行 ID は記録時点のものです。
 
-## M7.1 — Import boundaries
+## M7.1 — インポート境界
 
-`npm run check:boundaries` uses the project's TypeScript configuration and module resolver. Normal and diagnostic frontend builds run it before type checking. The check covers static imports, re-exports, explicit import-type references and literal dynamic imports recognized by TypeScript.
+`npm run check:boundaries` はプロジェクトの TypeScript 設定とモジュールリゾルバーを使う。通常ビルドと診断ビルドは、型チェックの前にこれを実行する。このチェックは、静的インポート、再エクスポート、明示的な import type の参照、TypeScript が認識するリテラルの動的インポートを対象とする。
 
-- The domain imports only domain modules. Its separate isolation test type-checks against the ES2022 library without DOM or ambient runtime packages.
-- Application use cases can import peer use cases, domain rules and the shared `types.ts` model. The composition root is the explicit wiring point for infrastructure, platform services and legacy modules; use cases do not import it.
-- Infrastructure may import application repository contracts, and presentation may use the composition root. Presentation cannot import infrastructure directly. Platform adapters cannot import application or infrastructure.
-- Existing cross-layer calls through legacy root modules are outside this scoped rule. This is an import check, with computed module paths and runtime effects outside its coverage.
+- ドメインはドメインのモジュールだけをインポートする。分離テストは、DOM やアンビエントなランタイムパッケージを使わず、ES2022 ライブラリに対して型チェックする。
+- アプリケーションのユースケースは、同階層のユースケース、ドメインのルール、共有の `types.ts` モデルをインポートできる。コンポジションルートは、インフラ、プラットフォームサービス、レガシーモジュールを明示的に配線する場所であり、ユースケースはこれをインポートしない。
+- インフラはアプリケーションのリポジトリ契約をインポートでき、表示層はコンポジションルートを使える。表示層はインフラを直接インポートできない。プラットフォームアダプターは、アプリケーションもインフラもインポートできない。
+- レガシーのルートモジュール経由の既存の層またぎ呼び出しは、この限定ルールの対象外である。これはインポートの検査であり、計算されたモジュールパスと実行時の効果は対象外となる。
 
-The checker passed on the project. A temporary page containing a literal dynamic import of the creator infrastructure repository failed with the offending source and resolved target as expected. Both builds run the same check.
+チェッカーはプロジェクトで合格した。クリエイターのインフラリポジトリをリテラルで動的インポートする一時ページは、想定どおり違反元と解決先を報告して失敗した。両方のビルドが同じチェックを実行する。
 
-## M7.2 — Platform validation snapshot
+## M7.2 — プラットフォーム検証スナップショット
 
-| Target | Observed in Codex Cloud | Pending outside this environment |
+| 対象 | Codex Cloud で観測した内容 | この環境の外で残る確認 |
 |---|---|---|
-| Frontend build and regression | Architecture check, 3 domain tests, 10 application tests, 14 platform tests, production and diagnostic builds passed. The existing Vite mixed-import warning for `db.ts` remained. | Package-level verification on each native target. |
-| Chromium with fixture IPC | The [layout matrix](adaptive-ui.md) passed. An additional smoke run covered locale discovery, Home, invalid and valid post routes, revisions with HTTP 404, creator profile/posts, and index reload from browser IndexedDB without refetch. | Real WebView IPC, authentication, provider dialogs, OS insets and physical gestures. |
-| Linux Tauri | Host Rust check passed with and without diagnostics. A linked Linux diagnostic build passed. With Xvfb, the binary stopped during startup because the system WebKitGTK child `/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitNetworkProcess` was unavailable. | Repeat the native smoke on a Linux machine with system WebKitGTK 4.1 and verify the packaging target. |
-| Windows / macOS | No native execution in this Linux environment. | Build, launch and confirm login, backup, clipboard, keyboard and locale behavior. |
-| Android | Standalone SAF probe compiled against SDK 35 and passed five JVM grant-mask checks. Chromium covered simulated navigation Back/exit. | Build and run the app. Validate the Android picker against a real provider, permission persistence/revocation, and physical Back. |
-| iOS | Source-only document picker prototype, no Xcode/UIKit. | Compile on macOS, then test Files providers, cancel/export, safe-area placement and physical navigation. |
-| Pawchive public HTTP | Schema request returned HTTP 200. One unauthenticated GET to `/api/v1/posts?o=0` returned HTTP 200 and a JSON list of 50 records with `id`, `service` and `user`. | Native IPC/reqwest end-to-end, login and authenticated flows. No account credentials were used in the HTTP probe. |
+| フロントエンドのビルドとリグレッション | アーキテクチャチェック、ドメインテスト 3 件、アプリケーションテスト 10 件、プラットフォームテスト 14 件、本番ビルドと診断ビルドが合格。`db.ts` に関する既存の Vite 混在インポート警告は残った。 | 各ネイティブ対象でのパッケージ単位の検証。 |
+| フィクスチャ IPC 付き Chromium | [レイアウトマトリクス](adaptive-ui.md) が合格。追加のスモーク実行で、ロケール検出、ホーム、不正/正当な投稿ルート、HTTP 404 を返すリビジョン、クリエイタープロフィール/投稿、再取得なしのブラウザ IndexedDB からの索引再読み込みを確認した。 | 実際の WebView IPC、認証、プロバイダーのダイアログ、OS のインセット、物理ジェスチャー。 |
+| Linux Tauri | ホストの Rust チェックが診断あり/なしで合格。リンクした Linux 診断ビルドも合格。Xvfb では、システムの WebKitGTK 子プロセス `/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitNetworkProcess` が利用できなかったため、バイナリは起動中に停止した。 | システムの WebKitGTK 4.1 を備えた Linux マシンでネイティブのスモークを再実行し、パッケージ対象を検証する。 |
+| Windows / macOS | この Linux 環境ではネイティブ実行なし。 | ビルド、起動、ログイン、バックアップ、クリップボード、キーボード、ロケールの挙動を確認する。 |
+| Android | SDK 35 に対してコンパイルした単体の SAF プローブが、JVM のグラントマスク検査 5 件に合格。Chromium でシミュレートしたナビゲーションの戻る/終了を確認した。 | アプリをビルドして実行する。実際のプロバイダーに対する Android ピッカー、権限の永続化/取り消し、物理的な戻るを検証する。 |
+| iOS | ソースのみのドキュメントピッカーのプロトタイプで、Xcode/UIKit なし。 | macOS でコンパイルし、次に Files プロバイダー、キャンセル/書き出し、セーフエリアの配置、物理ナビゲーションを試す。 |
+| Pawchive 公開 HTTP | スキーマ要求が HTTP 200 を返した。`/api/v1/posts?o=0` への未認証 GET 1 回が HTTP 200 と、`id`、`service`、`user` を含む 50 件のレコードの JSON リストを返した。 | ネイティブの IPC/reqwest のエンドツーエンド、ログイン、認証付きフロー。HTTP プローブではアカウントの資格情報を使っていない。 |
 
-Commands run from the repository root included `npm run test:domain`, `npm run test:application`, `npm run test:platform`, `npm run build`, `npm run build:debug`, and `python tests/ui_layout_smoke.py` against Vite on port 5181. Rust checks used `cargo check --locked --offline --manifest-path src-tauri/Cargo.toml -j 4`, then the same command with `--features debug-diag`. Native linking used `cargo build --locked --offline --manifest-path src-tauri/Cargo.toml --features debug-diag -j 4`. Android probe commands are in the [storage handoff](os-storage.md).
+リポジトリルートから実行したコマンドには `npm run test:domain`、`npm run test:application`、`npm run test:platform`、`npm run build`、`npm run build:debug`、ポート 5181 の Vite に対する `python tests/ui_layout_smoke.py` が含まれる。Rust のチェックは `cargo check --locked --offline --manifest-path src-tauri/Cargo.toml -j 4` を使い、続いて同じコマンドに `--features debug-diag` を付けた。ネイティブのリンクは `cargo build --locked --offline --manifest-path src-tauri/Cargo.toml --features debug-diag -j 4` を使った。Android プローブのコマンドは [ストレージの引き継ぎ](os-storage.md) にある。
 
-M7.2 remains partial. M5 still requires native evidence, and a browser fixture is evidence for frontend wiring only.
+M7.2 は依然として部分的である。M5 にはまだネイティブの証跡が必要であり、ブラウザのフィクスチャはフロントエンドの配線に対する証跡にすぎない。
 
-### Mobile candidate 2af56d5
+### モバイル候補 2af56d5
 
-The former mobile locale workflow built both packages in
-[Actions run 44934090212](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212).
-The app ID is `com.nsmr0604.pawkemoviewer.localetest`. The [current build instructions](../BUILD.md) describe the `locale_test` option in Android and iOS.
+以前のモバイルロケールのワークフローは、
+[Actions run 44934090212](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212) で両方のパッケージをビルドした。
+アプリ ID は `com.nsmr0604.pawkemoviewer.localetest` である。[現在のビルド手順](../BUILD.md) は
+Android と iOS の `locale_test` オプションを説明している。
 
-| Target | Evidence |
+| 対象 | 証跡 |
 |---|---|
-| [Android arm64 APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212/artifacts/14718659514) | Debug signature verified in CI. Downloaded manifest contains both launcher aliases. The ARM64 library exposes the selected-file and direct folder-export commands. |
-| [Unsigned iOS/iPadOS IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212/artifacts/14718772648) | Downloaded IPA contains iPhone and iPad device families, Files sharing and in-place settings, the iPad light icon, and the selected-file and direct folder-export commands. |
-| Linux and browser | Rust checks with and without diagnostics, a Linux diagnostic link with embedded frontend, 33 tests, both frontend builds and the Chromium shell matrix passed. Xvfb did not yield a usable WebView for the Linux binary. |
+| [Android arm64 APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212/artifacts/14718659514) | CI でデバッグ署名を検証。ダウンロードしたマニフェストには両方のランチャーエイリアスが含まれる。ARM64 ライブラリは、選択ファイルと直接フォルダー書き出しのコマンドを公開している。 |
+| [署名なし iOS/iPadOS IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44934090212/artifacts/14718772648) | ダウンロードした IPA には、iPhone と iPad のデバイスファミリー、Files 共有とインプレース設定、iPad 用のライトアイコン、選択ファイルと直接フォルダー書き出しのコマンドが含まれる。 |
+| Linux とブラウザ | 診断あり/なしの Rust チェック、フロントエンドを埋め込んだ Linux 診断リンク、33 件のテスト、両方のフロントエンドビルド、Chromium のシェルマトリクスが合格。Xvfb では Linux バイナリ用の使用可能な WebView が得られなかった。 |
 
-The candidate permits an [integrated device pass](os-storage.md#モバイル統合版の実機確認).
-Device behavior, real provider dialogs and desktop package startup still require validation.
+この候補により [統合版の実機確認](os-storage.md#モバイル統合版の実機確認) が可能になる。
+端末の挙動、実際のプロバイダーのダイアログ、デスクトップパッケージの起動は、まだ検証が必要である。
 
-### Desktop candidate 3ec9392
+### デスクトップ候補 3ec9392
 
 [Actions run 44936122546](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546)
-used `npx tauri build --features debug-diag --bundles <platform-bundle>` on each native runner.
-The downloaded packages passed these inspections:
+は、各ネイティブランナーで `npx tauri build --features debug-diag --bundles <platform-bundle>` を使った。
+ダウンロードしたパッケージは次の検査に合格した:
 
-| Target | Package inspection |
+| 対象 | パッケージの検査 |
 |---|---|
-| [Windows x64 NSIS](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719098731) | Setup executable has the MZ and PE headers. |
-| [macOS app ZIP](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719364345) | Archive passes ZIP integrity. The bundled Info.plist resolves to the app executable and icon, and reports version 0.5.0. |
-| [Linux amd64 DEB](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719728314) | `dpkg-deb` reports version 0.5.0. Extraction contains the ELF application executable, desktop entry and PNG icons. |
+| [Windows x64 NSIS](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719098731) | セットアップ実行ファイルは MZ と PE のヘッダーを持つ。 |
+| [macOS app ZIP](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719364345) | アーカイブは ZIP の整合性検査に合格。同梱の Info.plist はアプリの実行ファイルとアイコンを指し、バージョン 0.5.0 を報告する。 |
+| [Linux amd64 DEB](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122546/artifacts/14719728314) | `dpkg-deb` はバージョン 0.5.0 を報告する。展開内容には ELF のアプリ実行ファイル、デスクトップエントリー、PNG アイコンが含まれる。 |
 
-`node --test tests/{platform,application,domain}.test.mjs` passed all 33 tests.
-The same source commit also built the [Android APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488/artifacts/14719793355)
-and [unsigned iPhone/iPad IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488/artifacts/14719957324).
-Inspection confirmed the separate test app ID and locale commands on both, plus Files sharing
-and iPad icon declarations inside the IPA. Desktop installation, app startup, live API/IPC
-and integrated provider checks remain pending.
+`node --test tests/{platform,application,domain}.test.mjs` は 33 件すべてのテストに合格した。
+同じソースコミットから [Android APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488/artifacts/14719793355)
+と [署名なし iPhone/iPad IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44936122488/artifacts/14719957324) もビルドされた。
+検査により、両方で別個のテスト用アプリ ID とロケールコマンド、さらに IPA 内の Files 共有
+と iPad アイコンの宣言が確認された。デスクトップのインストール、アプリの起動、ライブ API/IPC
+と統合されたプロバイダーの確認は、まだ残っている。
 
-### Installed Linux candidate
+### インストール済みの Linux 候補
 
 [Actions run 44937149049](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44937149049)
-installed the `3ec9392` DEB using APT on Ubuntu 24.04. Under Xvfb and a fresh D-Bus
-and XDG session, `/usr/bin/pawkemoviewer` exposed the Home search field via
-WebKitGTK/AT-SPI. The same app logged HTTP 200 and a nonempty body from the native
-public posts request. This covers installed startup, Home rendering and live
-unauthenticated WebView-to-Rust API transport. Login and interactive desktop flows
-remain pending.
+は Ubuntu 24.04 で APT を使って `3ec9392` の DEB をインストールした。Xvfb と新しい D-Bus
+および XDG セッションの下で、`/usr/bin/pawkemoviewer` は WebKitGTK/AT-SPI 経由で
+ホームの検索フィールドを公開した。同じアプリは、ネイティブの公開投稿リクエストから
+HTTP 200 と空でない本文をログに記録した。これはインストール済みの起動、ホームの描画、
+未認証の WebView から Rust へのライブ API 通信を対象とする。ログインと対話的な
+デスクトップのフローは、まだ残っている。
 
 ## M7.3 — リリース判定と残課題
 

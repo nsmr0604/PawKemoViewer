@@ -1,24 +1,24 @@
-# Application use cases
+# アプリケーションのユースケース
 
-## M2.1 — Conventions
+## M2.1 — 規約
 
-- Name workflows with a verb and the feature it acts on, such as `loadPostDetail` or `importLocaleFiles`. Inject only the operations the workflow needs. The composition root binds those operations to the current API, persistence and platform modules.
-- Use named inputs for related identifiers and typed results for expected outcomes. Let operational failures reject with the original error when the caller already handles it. Keep translation, confirmation prompts, React state and display policy in the screen.
-- Represent expected partial results explicitly. For example, a missing revision history is an empty list, a different revision failure can accompany a valid post, and locale import reports a reason for each skipped input.
-- Keep response ordering under the screen's control. Before committing a result, check that its route/request is still current. A workflow that may persist after an await can receive an AbortSignal and check it before starting a subsequent write. This is cooperative cancellation. It does not cancel native requests already sent or writes already started.
-- Preserve API cache/scheduler policy and IndexedDB schema. Tests inject operations and assert data, sequencing, partial results and cancellation without live API calls.
+- ワークフローは、動作を表す動詞と対象の機能で命名する (例: `loadPostDetail`、`importLocaleFiles`)。そのワークフローが必要とする操作だけを注入する。コンポジションルートが、それらの操作を現在の API、永続化、プラットフォームのモジュールに結び付ける。
+- 関連する識別子には名前付きの入力を、想定される結果には型付きの結果を使う。呼び出し側がすでに扱っている運用上の失敗は、元のエラーで拒否させる。翻訳、確認プロンプト、React の状態、表示ポリシーは画面側に残す。
+- 想定される部分的な結果を明示的に表現する。たとえば、リビジョン履歴がない場合は空のリスト、リビジョンの別の失敗は有効な投稿に付随し得る、ロケールの取り込みはスキップした各入力の理由を報告する、など。
+- レスポンスの順序は画面側の制御下に置く。結果を確定する前に、そのルート/リクエストがまだ最新かを確認する。await の後に永続化する可能性があるワークフローは AbortSignal を受け取り、後続の書き込みを始める前に確認できる。これは協調的なキャンセルである。送信済みのネイティブリクエストや開始済みの書き込みをキャンセルするものではない。
+- API キャッシュ/スケジューラのポリシーと IndexedDB スキーマを維持する。テストは操作を注入し、ライブ API 呼び出しなしでデータ、順序、部分的な結果、キャンセルを検証する。
 
-## Scope
+## 対象範囲
 
-Settings locale CRUD is the first slice. Post detail loading, home paging and creator paging/index workflows follow. React retains subscriptions, loading indicators, scroll, navigation and the rendering state. Existing media URL, login, favorite and flag paths keep their separate responsibilities.
+設定のロケール CRUD が最初のスライスである。続いて投稿詳細の読み込み、ホームのページング、クリエイターのページング/索引のワークフローが来る。React は購読、読み込み表示、スクロール、ナビゲーション、描画状態を保持する。既存のメディア URL、ログイン、お気に入り、フラグの経路は、それぞれの責務を維持する。
 
-## M2 implementation
+## M2 の実装
 
-| Slice | Application behavior | Presentation behavior |
+| スライス | アプリケーションの挙動 | 表示層の挙動 |
 |---|---|---|
-| Locales | Trim and validate a locale code, validate a dictionary, snapshot selected files before the input resets, enforce the 1 MiB import limit, and report per-file results. Private and secondary writes stay separate. | Confirm deletion, display messages, refresh available locales and reapply the active locale. |
-| Post detail | Validate the route, fetch the post followed by revisions, order revisions and preserve the 404/no-history outcome. Comments load separately after the post is available. | Reset state on navigation and ignore stale results. Keep lightbox, favorite/flag interactions and media presentation in the screen. |
-| Home and creator posts | Keep the API query/offset/tag arguments and compute whether a page ends the list. | Retain paging, filter/scroll state, retry and response sequence guards. |
-| Creator index and profile | Keep cached search, direct post links, legacy migration without a download when possible, and refresh order. The composition root also binds profile, tag and origin URL reads. | Show cached rows while checking the index, confirm manual refresh and render the profile. Abort stale rebuild work before beginning a new write. |
+| ロケール | ロケールコードを trim して検証し、辞書を検証し、入力がリセットされる前に選択ファイルをスナップショットし、1 MiB の取り込み上限を適用し、ファイルごとの結果を報告する。プライベートとセカンダリの書き込みは分けたままにする。 | 削除を確認し、メッセージを表示し、利用可能なロケールを再読み込みし、有効なロケールを再適用する。 |
+| 投稿詳細 | ルートを検証し、投稿を取得した後にリビジョンを取得し、リビジョンを整列し、404/履歴なしの結果を保持する。コメントは、投稿が利用可能になった後に別途読み込む。 | 遷移時に状態をリセットし、古い結果を無視する。ライトボックス、お気に入り/フラグの操作、メディアの表示は画面に残す。 |
+| ホームとクリエイターの投稿 | API のクエリ/オフセット/タグの引数を維持し、ページがリストの終端かどうかを計算する。 | ページング、フィルター/スクロールの状態、再試行、レスポンス順序のガードを保持する。 |
+| クリエイター索引とプロフィール | キャッシュ済み検索、直接投稿リンク、可能な場合はダウンロードを伴わないレガシー移行、更新の順序を維持する。コンポジションルートは、プロフィール、タグ、オリジン URL の読み取りも結び付ける。 | 索引を確認している間はキャッシュ済みの行を表示し、手動更新を確認し、プロフィールを描画する。新しい書き込みを始める前に、古い再構築の処理を中断する。 |
 
-The entrypoint initializes platform services, then constructs the use cases, reloads settings and locales, and mounts React. The use cases receive current backend functions in the composition root. Existing API and persistence modules remain the implementations for M3 to review. Run `npm run test:application` for the workflow tests.
+エントリーポイントはプラットフォームサービスを初期化し、次にユースケースを構築し、設定とロケールを再読み込みし、React をマウントする。ユースケースは、コンポジションルートで現在のバックエンド関数を受け取る。既存の API と永続化のモジュールは、M3 がレビューする実装として残る。ワークフローのテストは `npm run test:application` で実行する。

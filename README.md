@@ -70,13 +70,13 @@ DNS フィルタ (AdGuard など) で pawchive.pw が遮断される環境では
 
 ## ドキュメント
 
-- [言語・翻訳ファイル](docs/wiki/Languages.md) · [バックアップとログ](docs/wiki/Files.md)
-
+- [Wiki](https://github.com/nsmr0604/pawchive/wiki): インストール、使い方、設定、言語、バックアップ、困ったとき (利用者向け)
 - [開発状況・残課題](docs/STATUS.md): 現在のリリース状態、既知の制約、次の作業
 - [開発ガイド](docs/DEVELOPMENT.md): アーキテクチャ、ディレクトリ構成、実装規約、テスト
 - [ビルドガイド](docs/BUILD.md): ローカルビルド、CI、リリース手順
 - [API 仕様](docs/API.md): pawchive API と Tauri コマンドの仕様
 - [変更履歴](docs/HISTORY.md): リリースごとの主な変更
+- [引継ぎ資料](docs/handoff/README.md): 経緯、決定事項、未完了事項
 - [ライセンス一覧](docs/LICENSES.md): 利用しているオープンソースソフトウェア
 
 ## 開発

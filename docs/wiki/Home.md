@@ -1,29 +1,38 @@
 # PawKemoViewer Wiki
 
-[pawchive.pw](https://pawchive.pw) の非公式クライアント **PawKemoViewer** の開発者・利用者向けドキュメントです。
+[pawchive.pw](https://pawchive.pw) の非公式クライアント **PawKemoViewer** の利用者向けガイドです。
+この Wiki だけで、インストール・使い方・設定・困ったときの対処が分かるようにまとめています。
 
-- ユーザー向けの概要と使い方は [README](https://github.com/nsmr0604/pawchive#readme)
-- 表示言語の切替と言語の追加: [Languages](Languages)
-- バックアップの保存・復元とログの書き出し: [Files](Files)
-- ビルド (ローカル・CI・リリース): [Build](Build)
-- 開発ガイド (構成・規約・テスト): [Development](Development)
-- pawchive API と Tauri コマンド: [API](API)
-- 現在のリリース状態と残課題: [Status](Status)
-- リリースごとの変更: [History](History)
+## はじめる
 
-## 技術構成
+- [インストールとログイン](Install)
+- [画面と使い方](Usage)
+- [設定の一覧](Settings)
+- [表示言語と翻訳ファイル](Languages)
+- [バックアップとログ](Files)
+- [困ったとき](Troubleshooting)
+- [バージョンと更新](Releases)
 
-React + Tauri 2 + Rust (reqwest) の構成です。Windows / Linux / macOS / Android に対応し、
-iOS / iPadOS は未署名 IPA を生成します。Cloudflare を経由した中継は使いません
-(正式構成は pawchive への直接アクセスのみ)。
+## PawKemoViewer とは
+
+pawchive の投稿・クリエイター・お気に入りを閲覧するデスクトップ / モバイルアプリです。
+ブラウザを開かずに、フォロー中の新着や保存した投稿を確認できます。
+
+| 項目 | 内容 |
+|---|---|
+| 対応 | Windows / Linux / macOS / Android / iOS・iPadOS (未署名 IPA) |
+| 構成 | React + Tauri 2 + Rust (reqwest)。pawchive へ直接接続する |
+| ログイン | 任意。ログインするとお気に入りとフォローが使える |
+| データ | 設定・フォロー・既読・キャッシュは端末内に保存する |
 
 ## 主な機能
 
-- 投稿一覧 (グリッド / リスト、サービス絞り込み、AI 除外) とクリエイター検索・フォロー
+- 投稿一覧 (グリッド / リスト、サービス絞り込み、AI 投稿の除外)
+- クリエイター検索・プロフィール・タグ・告知・フォロー
 - 投稿詳細 (本文、画像・動画、コメント、改訂履歴、タグ、前後移動)
-- お気に入り、URL 貼り付け、元サービスで開く
+- お気に入り (投稿 / クリエイター、並べ替え)
+- URL 貼り付けで投稿・クリエイターを直接開く
 - 低通信モード、省データのリスト表示、サムネイル優先表示
 - バックアップ / ログ / 言語ファイルの書き出し・読み込み
-- 外部リンク: Android / iOS は元記事の Referer を付けたネイティブ外部ページビュー、
-  デスクトップは pkv プロキシ
+- 外部リンクの表示 (Android / iOS は元記事の Referer を付けた外部ページビュー)
 - ダーク / ライトテーマ、モバイルのアイコン切替、日本語 / 英語

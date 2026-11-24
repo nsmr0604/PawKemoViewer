@@ -106,4 +106,5 @@
   旧 `docs/branding/desktop-icon-png-handoff.md` (PC 中心) を本ファイルへ統合して削除。
 - 2026-11-21: 復元時に残っていた「SVG が main に登録済み」「PNG 未登録」
   「プラットフォーム組み込み未実施」という記述は、実際のリポジトリ状態に合わせて更新した。
+- 2026-11-24: 引継ぎ資料の分離に伴い `docs/branding/` から `docs/handoff/` へ移動。
 - 技術的なビルド設定・CI の詳細は [`docs/BUILD.md`](../BUILD.md) も参照。

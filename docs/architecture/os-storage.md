@@ -1,25 +1,25 @@
-# OS storage capabilities
+# OS ストレージ機能
 
-## M5.1 — Current support and candidate boundaries
+## M5.1 — 現状の対応と候補の境界
 
-| Runtime | Private storage today | User-accessible storage today | Candidate for explicitly selected files |
+| ランタイム | 現在のプライベートストレージ | 現在のユーザーアクセス可能なストレージ | 明示的に選択したファイルの候補 |
 |---|---|---|---|
-| Windows | Tauri app data | Desktop locale overlay and writes in `Documents/Pawchive/languages` | Desktop open/save picker. Process filesystem permissions apply. No mobile grant semantics. |
-| macOS | Tauri app data | Same Documents locale backend, subject to macOS privacy and sandbox configuration | Desktop open/save picker. Sandboxed builds need the applicable entitlements and access lifecycle. |
-| Linux | Tauri app data | Same Documents locale backend using Tauri's document directory resolution | Desktop picker or document portal when sandboxed. Verify the selected path can be accessed in the installed package. |
-| Android | Tauri app data, including private exports | No secondary locale adapter | SAF `ACTION_OPEN_DOCUMENT` for input and `ACTION_CREATE_DOCUMENT` for export. Work through `ContentResolver` on the selected URI. A provider may offer persistable URI access; accept only returned modes if required. |
-| iOS | Tauri app container, including private exports | No secondary locale adapter | UIKit document picker with copy semantics for the first import/export slice. Use security-scoped access only for an explicit open-in-place path, with balanced scope management and coordinated I/O. |
-| Web | Browser origin storage | Download via Blob and native browser file input for explicitly chosen input | A file input grants access to selected files. A download initiation does not establish a retained writable file or directory. No requirement for File System Access API support. |
+| Windows | Tauri のアプリデータ | `Documents/Pawchive/languages` へのデスクトップのロケールオーバーレイと書き込み | デスクトップの開く/保存ピッカー。プロセスのファイルシステム権限が適用される。モバイルのグラントの意味論はない。 |
+| macOS | Tauri のアプリデータ | 同じ Documents のロケールバックエンド。macOS のプライバシー設定とサンドボックス設定に従う | デスクトップの開く/保存ピッカー。サンドボックス化されたビルドでは、該当する entitlement とアクセスのライフサイクルが必要。 |
+| Linux | Tauri のアプリデータ | Tauri のドキュメントディレクトリ解決を使う同じ Documents のロケールバックエンド | デスクトップのピッカー、またはサンドボックス時はドキュメントポータル。インストール済みパッケージで選択したパスにアクセスできるか検証する。 |
+| Android | Tauri のアプリデータ (プライベートの書き出しを含む) | セカンダリのロケールアダプターなし | 入力に SAF `ACTION_OPEN_DOCUMENT`、書き出しに `ACTION_CREATE_DOCUMENT`。選択した URI に対して `ContentResolver` 経由で操作する。プロバイダーが永続化可能な URI アクセスを提供する場合がある。必要に応じて、返されたモードのみを受け入れる。 |
+| iOS | Tauri のアプリコンテナ (プライベートの書き出しを含む) | セカンダリのロケールアダプターなし | 最初の取り込み/書き出しのスライスでは、コピー方式の UIKit ドキュメントピッカー。開いたまま編集する明示的な経路に限り、セキュリティスコープ付きアクセスを使い、スコープの管理を釣り合わせ、I/O を協調させる。 |
+| Web | ブラウザのオリジンストレージ | Blob によるダウンロードと、明示的に選んだ入力用のブラウザ標準のファイル入力 | ファイル入力は選択したファイルへのアクセスを与える。ダウンロードの開始は、保持された書き込み可能なファイルやディレクトリを確立しない。File System Access API への対応は必須ではない。 |
 
-The general path resolver and desktop locale backend are separate and return different directory layouts. Android content URIs and iOS document URLs require provider-aware I/O. Keep picker capabilities optional and expose distinct completed, cancelled and failed outcomes. A cancelled pick must not modify the locale catalogue. The first native slice should select a single file at a time, retain access only for the operation and enforce the existing locale input limit. Directory selection and persistent grants require their own justified workflow.
+汎用のパスリゾルバーとデスクトップのロケールバックエンドは別物で、異なるディレクトリ構成を返す。Android のコンテンツ URI と iOS のドキュメント URL は、プロバイダーを意識した I/O が必要である。ピッカーの機能は任意のままにし、完了、キャンセル、失敗という別個の結果を公開する。キャンセルされた選択は、ロケールカタログを変更してはならない。最初のネイティブスライスは一度に 1 ファイルを選択し、操作の間だけアクセスを保持し、既存のロケール入力上限を適用すべきである。ディレクトリ選択と永続的なグラントには、それぞれ正当化されたワークフローが必要である。
 
-References: [Android SAF](https://developer.android.com/training/data-storage/shared/documents-files), [Android ContentResolver](https://developer.android.com/reference/android/content/ContentResolver), [Apple UIDocumentPickerViewController](https://developer.apple.com/documentation/uikit/uidocumentpickerviewcontroller), [Apple security-scoped URL access](https://developer.apple.com/documentation/foundation/url/startaccessingsecurityscopedresource).
+参照: [Android SAF](https://developer.android.com/training/data-storage/shared/documents-files)、[Android ContentResolver](https://developer.android.com/reference/android/content/ContentResolver)、[Apple UIDocumentPickerViewController](https://developer.apple.com/documentation/uikit/uidocumentpickerviewcontroller)、[Apple のセキュリティスコープ付き URL アクセス](https://developer.apple.com/documentation/foundation/url/startaccessingsecurityscopedresource)。
 
-## M5.2 — Android SAF prototype
+## M5.2 — Android SAF プロトタイプ
 
-[AndroidLocalePicker.java](prototypes/m5/AndroidLocalePicker.java) creates open/create intents, keeps the selected content URI opaque, and reads or writes through the provider streams. It bounds UTF-8 payloads to 1 MiB. A cancelled activity result returns no document. The explicitly invoked grant probe intersects the offered read/write flags with the requested modes, and lets Android decide whether those modes can be retained. The probe verifies that Android lists the grant and that the URI was saved before reporting success. Normal access is per operation.
+[AndroidLocalePicker.java](prototypes/m5/AndroidLocalePicker.java) は、開く/作成のインテントを生成し、選択したコンテンツ URI を不透明なまま保ち、プロバイダーのストリーム経由で読み書きする。UTF-8 のペイロードを 1 MiB に制限する。キャンセルされたアクティビティの結果は、ドキュメントを返さない。明示的に呼び出したグラントプローブは、提供された読み取り/書き込みのフラグと要求したモードの積をとり、それらのモードを保持できるかを Android に判断させる。プローブは、Android がグラントを一覧に含め、URI が報告の前に保存されたことを検証する。通常のアクセスは操作ごとである。
 
-The standalone host is [ProbeActivity.java](prototypes/m5/ProbeActivity.java). It exercises transient open, fixture export, explicit read-grant retention, reopening and release. Grant state is kept in the probe application's private preferences. Build and sign the APK by running [build-android-probe.sh](prototypes/m5/build-android-probe.sh) with JRE 17+, ECJ 3.40.0, Python 3, zip, Android SDK Platform 35 and Android Build Tools 35.0.0. The SDK and compiler downloads were checked against published digests.
+単体のホストは [ProbeActivity.java](prototypes/m5/ProbeActivity.java) である。一時的な開く操作、フィクスチャの書き出し、明示的な読み取りグラントの保持、再オープン、解放を実行する。グラントの状態は、プローブアプリのプライベート設定に保持する。JRE 17 以上、ECJ 3.40.0、Python 3、zip、Android SDK Platform 35、Android Build Tools 35.0.0 で [build-android-probe.sh](prototypes/m5/build-android-probe.sh) を実行して、APK をビルドし署名する。SDK とコンパイラのダウンロードは、公開されたダイジェストと照合した。
 
 ```bash
 ANDROID_JAR=/path/to/android-35/android.jar \
@@ -30,58 +30,58 @@ adb install -r /path/to/writable/output/saf-probe.apk
 adb shell am start -n org.pawkemoviewer.safprobe/.ProbeActivity
 ```
 
-The script compiles the fixture, runs six grant-mask cases, links and aligns the APK, signs it with a local debug key, and checks its signature. All of these steps passed in Codex Cloud. AAPT2 confirmed the launchable activity and API 23 minimum. The APK is a standalone test application without additional manifest permissions.
+スクリプトはフィクスチャをコンパイルし、6 件のグラントマスクのケースを実行し、APK をリンクして整列し、ローカルのデバッグキーで署名し、その署名を検査する。これらの手順はすべて Codex Cloud で合格した。AAPT2 は、起動可能なアクティビティと API 23 の最小要件を確認した。APK は、追加のマニフェスト権限を持たない単体のテストアプリケーションである。
 
-Before retaining a different document, release the existing grant. After retaining one, force-stop and relaunch the test package, then use **Read remembered document**. After release, force-stop and relaunch again to test denial without the transient grant from the original selection. Use a disposable fixture and check cancellation, import, export and readback against local and external providers. The probe leaves the remembered URI available for the denial test after release.
+別のドキュメントを保持する前に、既存のグラントを解放する。保持した後は、テストパッケージを強制停止して再起動し、**Read remembered document** を使う。解放後は再度強制停止して再起動し、元の選択による一時的なグラントなしでの拒否を試す。使い捨てのフィクスチャを使い、ローカルと外部の両方のプロバイダーに対して、キャンセル、取り込み、書き出し、読み戻しを確認する。プローブは、解放後の拒否テストのために、記憶した URI を利用可能なまま残す。
 
-The user reported successful open and export on a device. The retain picker opened, but reading and releasing the remembered document raised IllegalStateException in 1.0 because the probe had no saved URI. The reason no URI was saved was not captured in that build. Version 1.1 exposes the returned flags and distinguishes denial, missing grants, and a failed save. In 1.1, the user observed flags `0x43` (read, write and persistable offered), a successful read with “Persisted read grant listed”, and “Grant released”. The probe retained read access only. The user clarified that this run included removing the app from the task switcher, force-stopping it from Android app info, and relaunching before the successful read. After releasing the grant, the user force-stopped and relaunched the probe again and observed “Read denied by Android”. This confirms the retain/restart/release lifecycle on the tested device and provider. Cancel and other providers were not reported. This Cloud container exposes neither USB nor KVM, and its ADB server could not create the expected user configuration directory. No production Tauri capability is added by the standalone APK.
+利用者は、端末上で開くと書き出しの成功を報告した。保持のピッカーは開いたが、記憶したドキュメントの読み取りと解放は、プローブに保存 URI がなかったために 1.0 で IllegalStateException を発生させた。URI が保存されなかった理由は、そのビルドでは取得していない。バージョン 1.1 は返されたフラグを公開し、拒否、グラントの欠落、保存の失敗を区別する。1.1 では、利用者はフラグ `0x43` (読み取り、書き込み、永続化可能の提供)、「Persisted read grant listed」を伴う読み取りの成功、「Grant released」を観測した。プローブは読み取りアクセスだけを保持した。利用者は、この実行にタスクスイッチャーからのアプリ削除、Android のアプリ情報からの強制停止、読み取り成功前の再起動が含まれていたと説明した。グラントの解放後、利用者は再度プローブを強制停止して再起動し、「Read denied by Android」を観測した。これは、試験した端末とプロバイダーで保持/再起動/解放のライフサイクルを確認するものである。キャンセルと他のプロバイダーは報告されていない。このクラウドコンテナは USB も KVM も公開しておらず、その ADB サーバーは想定されるユーザー設定ディレクトリを作成できなかった。単体の APK によって本番の Tauri 機能が追加されることはない。
 
-## M5.3 — iOS Files prototype
+## M5.3 — iOS Files プロトタイプ
 
-[IOSLocalePicker.swift](prototypes/m5/IOSLocalePicker.swift) sketches import/export by copy using UIKit. A single delegate completion returns imported text, export completion, cancellation or failure. The host retains the delegate while presented, stages an export file in the app container, and removes the staged file after completion. The workflow avoids retaining provider handles between operations. For an eventual open-in-place flow, use an explicitly selected security-scoped URL, balance start/stop access and use coordinated I/O. Keep bookmarking out of the first slice.
+[IOSLocalePicker.swift](prototypes/m5/IOSLocalePicker.swift) は、UIKit を使ったコピー方式の取り込み/書き出しを概略する。単一のデリゲート完了が、取り込んだテキスト、書き出しの完了、キャンセル、失敗のいずれかを返す。ホストは表示中はデリゲートを保持し、書き出しファイルをアプリコンテナに一時配置し、完了後に一時ファイルを削除する。このワークフローは、操作の間にプロバイダーのハンドルを保持することを避ける。将来の開いたまま編集のフローでは、明示的に選択したセキュリティスコープ付き URL を使い、アクセスの開始/停止を釣り合わせ、協調した I/O を使う。ブックマークは最初のスライスには含めない。
 
-GitHub Actions built the standalone arm64 device IPA on the `test/ios-files-probe` branch at `e9e59da`. The user confirmed that **Open** and **Export** both worked on an iOS device using that build. Cancellation, oversized or invalid files, other providers and export readback were not reported. The prototype has no production iOS wiring. [Build 44921047747](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44921047747).
+GitHub Actions は、`test/ios-files-probe` ブランチの `e9e59da` で単体の arm64 実機用 IPA をビルドした。利用者は、そのビルドで **Open** と **Export** の両方が iOS 端末で動作したことを確認した。キャンセル、サイズ超過や不正なファイル、他のプロバイダー、書き出しの読み戻しは報告されていない。プロトタイプには本番の iOS 配線はない。[Build 44921047747](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44921047747)。
 
-### Unsigned iPhone probe IPA
+### 署名なし iPhone プローブ IPA
 
-[IOSProbeApp.swift](prototypes/m5/IOSProbeApp.swift) is the standalone host for the Files picker. It retains the picker delegate, stages an export fixture and removes the staged directory on completion or cancel.
+[IOSProbeApp.swift](prototypes/m5/IOSProbeApp.swift) は、Files ピッカーの単体ホストである。ピッカーのデリゲートを保持し、書き出し用のフィクスチャを一時配置し、完了またはキャンセル時に一時ディレクトリを削除する。
 
-On macOS with full Xcode selected and the iPhoneOS SDK installed:
+完全な Xcode を選択し、iPhoneOS SDK をインストールした macOS で:
 
 ```bash
 PROBE_OUTPUT=/path/to/writable/output bash docs/architecture/prototypes/m5/build-ios-probe.sh
 ```
 
-The script compiles an arm64 device executable, checks that it has no code-signature load command and packages `Payload/FilesProbe.app` into `PawKemoViewer-Files-Probe-unsigned.ipa`. An unsigned build requires signing before installation on a standard iPhone. The Linux cloud run exercised the shell syntax, plist parsing and missing-Xcode guard. The macOS Actions run subsequently compiled Swift/UIKit and packaged the IPA successfully.
+スクリプトは arm64 の実機用実行ファイルをコンパイルし、コード署名のロードコマンドがないことを確認し、`Payload/FilesProbe.app` を `PawKemoViewer-Files-Probe-unsigned.ipa` にパッケージする。署名なしのビルドは、標準的な iPhone にインストールする前に署名が必要である。Linux のクラウド実行では、シェルの構文、plist の解析、Xcode 不在時のガードを確認した。その後の macOS の Actions 実行で、Swift/UIKit をコンパイルし、IPA のパッケージに成功した。
 
-## Native acceptance checks before M5.4
+## M5.4 より前のネイティブ受け入れ確認
 
-| Scenario | Android SAF | iOS Files |
+| シナリオ | Android SAF | iOS Files |
 |---|---|---|
-| Cancel open/create | No document or state change | Cancel callback once, no locale change, staged export cleaned up |
-| Round trip | Read selected JSON from provider; create a different JSON document and read it back | Import a copy from Files; export the staged file to the chosen provider and reopen it |
-| Permissions and persistence | Observe returned grant flags on local/external providers. Persist only offered modes for this probe, reopen after process restart, release the grant, then verify access fails in a fresh process | Copy flow should succeed without bookmark persistence. Verify scope lifetime separately before implementing open-in-place |
-| Provider and input errors | Include denied or revoked access, provider disappearance, malformed UTF-8 and >1 MiB | Include provider errors, missing selection, malformed UTF-8 and >1 MiB |
+| 開く/作成のキャンセル | ドキュメントも状態の変化もない | キャンセルのコールバックが 1 回、ロケールの変化なし、一時配置した書き出しの後始末 |
+| 往復 | プロバイダーから選択した JSON を読み、別の JSON ドキュメントを作成して読み戻す | Files からコピーを取り込み、一時配置したファイルを選択したプロバイダーへ書き出して再度開く |
+| 権限と永続化 | ローカル/外部のプロバイダーで返されたグラントフラグを観測する。このプローブでは提供されたモードだけを永続化し、プロセス再起動後に再オープンし、グラントを解放し、新しいプロセスでアクセスが失敗することを検証する | コピーのフローは、ブックマークの永続化なしで成功すべきである。開いたまま編集を実装する前に、スコープの寿命を別途検証する |
+| プロバイダーと入力のエラー | 拒否または取り消しされたアクセス、プロバイダーの消失、不正な UTF-8、1 MiB 超を含める | プロバイダーのエラー、選択の欠落、不正な UTF-8、1 MiB 超を含める |
 
-## Locale behavior to preserve in M5.5
+## M5.5 で維持するロケールの挙動
 
-Keep the existing overlay order (bundled, then private, then secondary, with later entries overriding earlier keys) and the locale repository's distinction between private and secondary writes. For a new picker path, validate the filename, byte limit and dictionary before cataloguing a file. Cancellation and validation failure leave the catalogue unchanged. Treat a duplicate locale code or export name as an explicit conflict decision when adding a new destination workflow. M5.4 adapter integration and the M5.5 locale flow depend on the native checks above.
+既存のオーバーレイの順序 (同梱、次にプライベート、次にセカンダリ。後のエントリが前のキーを上書きする) と、ロケールリポジトリのプライベートとセカンダリの書き込みの区別を維持する。新しいピッカーの経路では、ファイルをカタログ化する前に、ファイル名、バイト上限、辞書を検証する。キャンセルと検証の失敗は、カタログを変更しない。新しい保存先のワークフローを追加する際は、ロケールコードや書き出し名の重複を、明示的な競合の判断として扱う。M5.4 のアダプター統合と M5.5 のロケールフローは、上記のネイティブの確認に依存する。
 
-## M5.4–M5.5 — Integrated mobile locale workflow
+## M5.4–M5.5 — モバイル統合版のロケールワークフロー
 
-The app wires the selected-file commands to a bundled native plugin. Android uses SAF open/create and provider streams. iOS uses a copied import and a staged export via the Files picker. Cancel is distinct from failure. The plugin reads at most 1 MiB, and only the bounded UTF-8 text and filename cross the bridge. The selected-file commands retain no URI grant or broad Android storage permission. The app-owned folders below provide a separate secondary catalogue.
+アプリは、選択ファイルのコマンドを同梱のネイティブプラグインに配線する。Android は SAF の開く/作成とプロバイダーのストリームを使う。iOS はコピー方式の取り込みと、Files ピッカー経由の一時配置による書き出しを使う。キャンセルは失敗と区別される。プラグインは最大 1 MiB を読み、ブリッジを越えるのは上限付きの UTF-8 テキストとファイル名だけである。選択ファイルのコマンドは、URI のグラントも Android の広範なストレージ権限も保持しない。以下のアプリ所有のフォルダーが、別個のセカンダリカタログを提供する。
 
-Settings imports a new private locale copy. It validates the locale code and dictionary, refuses a duplicate code (including case variants), and checks the conflict again in Rust under the private-write lock. Export writes the private file for the currently selected language. The existing bundled/private/desktop shared overlay precedence stays in place. The existing desktop and browser file input routes now match their respective private and shared labels.
+設定は、新しいプライベートのロケールコピーを取り込む。ロケールコードと辞書を検証し、重複するコード (大文字小文字の違いを含む) を拒否し、プライベート書き込みのロックの下で Rust でもう一度競合を確認する。書き出しは、現在選択中の言語のプライベートファイルを書き込む。既存の同梱/プライベート/デスクトップ共有のオーバーレイの優先順位は、そのまま残る。既存のデスクトップとブラウザのファイル入力の経路は、それぞれのプライベートと共有のラベルに一致するようになった。
 
-Validation in Cloud covered the application and mock IPC tests, normal/debug frontend builds, and Linux Rust check with and without diagnostics. The earlier device probes establish system-picker feasibility. The integrated Android ARM64 APK and unsigned iOS IPA built in GitHub Actions from `test/mobile-locale` at `2765974`. The two packages were downloaded and checked for the native picker and the separate test app ID `com.nsmr0604.pawkemoviewer.localetest`. The APK signature also verified. Chromium with mock mobile IPC covered cancel, private import, duplicate rejection and export. A device pass still needs to cover the same interactions and readback. On iOS the picker requires iOS 14+.
+Cloud での検証は、アプリケーションとモック IPC のテスト、通常/デバッグのフロントエンドビルド、診断あり/なしの Linux の Rust チェックを対象とした。以前の実機プローブは、システムピッカーの実現性を確立している。統合版の Android ARM64 APK と署名なし iOS IPA は、`test/mobile-locale` の `2765974` から GitHub Actions でビルドされた。2 つのパッケージをダウンロードし、ネイティブピッカーと、別個のテスト用アプリ ID `com.nsmr0604.pawkemoviewer.localetest` を確認した。APK の署名も検証した。モックのモバイル IPC 付き Chromium で、キャンセル、プライベートの取り込み、重複の拒否、書き出しを確認した。実機のパスでは、同じ操作と読み戻しを確認する必要がまだある。iOS ではピッカーに iOS 14 以上が必要である。
 
-- [Build run](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378)
+- [ビルド実行](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378)
 - [Android ARM64 APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378/artifacts/14714862936)
-- [Unsigned iOS IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378/artifacts/14714494818)
+- [署名なし iOS IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/44923710378/artifacts/14714494818)
 
-### App-owned export folders
+### アプリ所有の書き出しフォルダー
 
-Android uses `getExternalFilesDir(DIRECTORY_DOCUMENTS)/Languages`. iOS and iPadOS expose `Documents/Languages` in Files. The desktop path is displayed in Settings.
+Android は `getExternalFilesDir(DIRECTORY_DOCUMENTS)/Languages` を使う。iOS と iPadOS は Files で `Documents/Languages` を公開する。デスクトップのパスは設定に表示される。
 
 **言語フォルダーを同期** は、選択中の有効なアプリ内言語ファイルを、同じ名前のファイルが追加フォルダーにない場合に書き出す。その後フォルダーを再走査し、検証を通った JSON を言語一覧に反映する。追加フォルダーの辞書はその場所から読み込み、アプリ内への複製は行わない。
 

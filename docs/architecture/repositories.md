@@ -1,40 +1,40 @@
-# Repositories and infrastructure
+# リポジトリとインフラ
 
-## M3.1 — Locale repository
+## M3.1 — ロケールリポジトリ
 
-The locale repository provides private listing, writing and deletion, plus optional secondary listing and writing. It accepts validated language codes and raw JSON. A listing keeps file names and the invalid-file report needed by Settings. Keep the native deletion boolean and platform failures intact. If the platform does not supply a locale service, the repository is absent. Secondary methods are present only when supported by the platform adapter.
+ロケールリポジトリは、プライベートの一覧、書き込み、削除と、任意のセカンダリの一覧、書き込みを提供する。検証済みの言語コードと生の JSON を受け取る。一覧は、ファイル名と、設定が必要とする不正ファイルの報告を保持する。ネイティブの削除の真偽値とプラットフォームの失敗は、そのまま保つ。プラットフォームがロケールサービスを提供しない場合、リポジトリは存在しない。セカンダリのメソッドは、プラットフォームアダプターが対応している場合にのみ存在する。
 
-Application code owns form and batch validation, per-file outcomes, and catalogue composition. Infrastructure binds those operations to the current platform service. The screen continues to own confirmation, display messages and active language selection. No new database schema, file location, picker or permissions are introduced by this contract.
+アプリケーションコードは、フォームとバッチの検証、ファイルごとの結果、カタログの構成を所有する。インフラは、それらの操作を現在のプラットフォームサービスに結び付ける。画面は引き続き、確認、メッセージの表示、有効な言語の選択を所有する。この契約によって、新しいデータベーススキーマ、ファイルの場所、ピッカー、権限は導入されない。
 
-## M3.3 — IndexedDB ownership and transaction boundary
+## M3.3 — IndexedDB の所有権とトランザクション境界
 
-| Owner | Storage | Commit and compatibility behavior |
+| 所有者 | ストレージ | コミットと互換性の挙動 |
 |---|---|---|
-| `src/db.ts`, creator index | `pawkemoviewer` v1. Legacy per-row `creators` by `key` with a name index, and a packed index in `meta` with size, count, version and fetch time. | `saveCreators` writes the pack and each metadata field in separate transactions, then best-effort clears legacy rows. The reader prefers a pack and falls back to legacy rows. `clearCreatorCache` clears metadata and legacy rows in separate transactions. |
-| `src/db.ts`, read state | `seen` in the same database, keyed by creator. | Individual writes use one store transaction. `replaceSeen` clears and replaces the full set in one transaction and resolves on completion. Backup follow/settings writes use Web Storage separately. |
-| `src/db.ts`, metadata | `meta` keyed by metadata name with typed reads at the caller. | The generic single-store helper resolves after transaction completion and reports request/abort errors. Pack fields are an implementation detail of the index. |
-| `src/icons.ts` | Separate `pawkemo-icons` v1 database, in-memory cache, and Rust app-local files. | Browser record IO, pruning and clearing are separate from Rust disk caching. No atomicity spans those stores. |
-| Platform IndexedDB opener | Opens the requested database and calls the owner-provided schema upgrade. | Owners choose names, versions and stores, cache their open promises, and close on version change. Browser blocked/unavailable errors reject the open. |
+| `src/db.ts`、クリエイター索引 | `pawkemoviewer` v1。`key` ごとのレガシーな `creators` 行と名前インデックス、およびサイズ、件数、バージョン、取得時刻を持つ `meta` 内のパック索引。 | `saveCreators` はパックと各メタデータフィールドを別々のトランザクションで書き込み、その後にベストエフォートでレガシー行をクリアする。読み手はパックを優先し、なければレガシー行にフォールバックする。`clearCreatorCache` はメタデータとレガシー行を別々のトランザクションでクリアする。 |
+| `src/db.ts`、閲覧状態 | 同じデータベース内の `seen`。クリエイターをキーとする。 | 個別の書き込みは 1 つのストアトランザクションを使う。`replaceSeen` は全セットを 1 つのトランザクションでクリアして置き換え、完了時に解決する。バックアップのフォロー/設定の書き込みは、別途 Web Storage を使う。 |
+| `src/db.ts`、メタデータ | `meta` をメタデータ名でキー付けし、呼び出し側で型付きの読み取りを行う。 | 汎用の単一ストアのヘルパーはトランザクション完了後に解決し、リクエスト/中断のエラーを報告する。パックの各フィールドは索引の実装詳細である。 |
+| `src/icons.ts` | 別の `pawkemo-icons` v1 データベース、メモリ内キャッシュ、Rust のアプリローカルファイル。 | ブラウザのレコード IO、刈り込み、クリアは、Rust のディスクキャッシュと分かれている。これらのストアにまたがるアトミック性はない。 |
+| プラットフォームの IndexedDB オープナー | 要求されたデータベースを開き、所有者が提供するスキーマアップグレードを呼ぶ。 | 所有者が名前、バージョン、ストアを選び、オープンの Promise をキャッシュし、バージョン変更時にクローズする。ブラウザのブロック/利用不能エラーはオープンを拒否する。 |
 
-The infrastructure boundary should own the schema, upgrade callback and transactions. Application-facing repositories receive finished values or rejected operations. They never receive an `IDBDatabase`, object store, raw metadata key, or transaction. A creator-pack replacement and its metadata belong in a single future read/write transaction over `meta`; include the legacy store in the same transaction only if clearing it becomes part of the commit promise. Until a dedicated schema/atomicity change is tested, retain the current pack format, version and legacy fallback.
+インフラの境界は、スキーマ、アップグレードのコールバック、トランザクションを所有すべきである。アプリケーション向けのリポジトリは、完成した値か拒否された操作を受け取る。`IDBDatabase`、オブジェクトストア、生のメタデータキー、トランザクションを受け取ることは決してない。クリエイターパックの置き換えとそのメタデータは、将来 `meta` 上の単一の読み書きトランザクションに属する。レガシーストアのクリアがコミットの Promise の一部になる場合にのみ、同じトランザクションにレガシーストアを含める。専用のスキーマ/アトミック性の変更がテストされるまでは、現在のパック形式、バージョン、レガシーフォールバックを維持する。
 
-Known follow-ups: readers may observe a new pack alongside old metadata after interruption, and the connection owners close on version change without resetting a resolved cached handle. A transaction refactor should cover interrupted writes, upgrade/reopen and legacy compatibility with a real IndexedDB engine. Avoid a cross-store atomicity claim for backup or icon caches.
+既知のフォローアップ: 中断の後、読み手は古いメタデータと並んで新しいパックを観測し得る。また接続の所有者は、解決済みのキャッシュ済みハンドルをリセットせずに、バージョン変更でクローズする。トランザクションのリファクタリングは、実際の IndexedDB エンジンで、中断された書き込み、アップグレード/再オープン、レガシー互換性を扱うべきである。バックアップやアイコンキャッシュについて、ストアをまたぐアトミック性を主張しないこと。
 
-## M3.4 — Creator index transport mapping
+## M3.4 — クリエイター索引の通信マッピング
 
-`GET /creators` returns `CreatorIndexDto[]` with wire fields such as `public_id`. The infrastructure mapper produces index rows and preserves the previous lowercase keys, optional fields, popularity and date conversions. This is a boundary for the index endpoint. Creator profiles still use their existing response type. Epoch seconds, milliseconds and parsed dates retain their existing representations, so this change does not write a new pack format.
+`GET /creators` は `CreatorIndexDto[]` を返し、`public_id` のようなワイヤ上のフィールドを持つ。インフラのマッパーは索引行を生成し、従来の小文字キー、任意フィールド、人気度と日付の変換を維持する。これは索引エンドポイントの境界である。クリエイタープロフィールは引き続き既存のレスポンス型を使う。エポック秒、ミリ秒、パース済みの日付は既存の表現を維持するため、この変更は新しいパック形式を書き出さない。
 
-## M3.5 — API cache and scheduler
+## M3.5 — API キャッシュとスケジューラ
 
-The API module remains the owner of requests, status extraction, cache and scheduling. The repository calls the existing endpoints and does not cache or schedule again.
+API モジュールは、リクエスト、ステータスの抽出、キャッシュ、スケジューリングの所有者であり続ける。リポジトリは既存のエンドポイントを呼び、再度キャッシュやスケジューリングを行わない。
 
-- All native API requests share a FIFO queue. Starts are at least 250 ms apart with at most three active operations. Completion or rejection frees a slot.
-- Cache-enabled GETs reuse in-flight and completed operations by path within a cache generation. Expiry is 60 seconds from insertion. The 150-entry cap evicts the oldest inserted entry. Rejections are removed so a retry can run. Mutations and explicitly uncached GETs still traverse the queue.
-- A session change or explicit clear increments the generation and drops cached references. A queued request retains its original session value. The timeout is read when the queued operation begins. An old response can still fulfill its original caller but cannot populate the new generation.
-- Account lookup with a different supplied session defaults to bypassing the cache. Callers should not force caching for a session outside the current generation. A same-generation request that outlives an expired/reinserted key can remove the replacement entry on rejection. These cases remain follow-up review items; M3 keeps the existing policy.
+- すべてのネイティブ API リクエストは FIFO キューを共有する。開始は少なくとも 250 ms 間隔で、同時実行は最大 3 件である。完了または拒否でスロットが解放される。
+- キャッシュ有効な GET は、キャッシュ世代内でパスにより実行中/完了済みの操作を再利用する。有効期限は挿入から 60 秒である。150 エントリの上限は、最も古く挿入されたエントリを追い出す。拒否されたものは削除され、再試行できる。変更操作と明示的にキャッシュしない GET は、引き続きキューを通る。
+- セッションの変更または明示的なクリアは世代を進め、キャッシュ済みの参照を捨てる。キュー内のリクエストは元のセッション値を保持する。タイムアウトは、キュー内の操作が始まるときに読む。古いレスポンスは元の呼び出し元を満たすことはできるが、新しい世代に値を入れることはできない。
+- 異なるセッションを渡したアカウント検索は、既定でキャッシュをバイパスする。呼び出し側は、現在の世代外のセッションに対してキャッシュを強制すべきでない。期限切れ/再挿入されたキーより長く生き残った同一世代のリクエストは、拒否時に置き換え後のエントリを削除し得る。これらのケースはフォローアップのレビュー項目として残る。M3 は既存のポリシーを維持する。
 
-The mocked IPC tests cover coalescing, expiry, capacity, retry, session invalidation, spacing, and maximum concurrency. No live service is contacted.
+モック IPC のテストは、合流、期限切れ、容量、再試行、セッションの無効化、間隔、最大同時実行を対象とする。実際のサービスには接続しない。
 
-## M3.6 — Creator index repository
+## M3.6 — クリエイター索引リポジトリ
 
-The Creator screen calls the existing creator use cases. The composition root supplies a repository that owns IndexedDB queries, index version lookup, network DTO mapping, persistence, and the existing cache invalidation operations. The use case retains the decisions to reuse eligible legacy rows, fetch new rows when needed, cancel before a subsequent write, and expose a direct post link for a matching result. Profile and post reads still use their separately bound API calls. The creator index repository does not alter the packed storage format or data upgrade path.
+Creator 画面は既存のクリエイターのユースケースを呼ぶ。コンポジションルートは、IndexedDB のクエリ、索引バージョンの参照、ネットワーク DTO のマッピング、永続化、既存のキャッシュ無効化操作を所有するリポジトリを提供する。ユースケースは、再利用可能なレガシー行の再利用、必要時の新規行の取得、後続の書き込み前のキャンセル、一致した結果に対する直接投稿リンクの公開、という判断を保持する。プロフィールと投稿の読み取りは、別々に結び付けた API 呼び出しを引き続き使う。クリエイター索引リポジトリは、パック形式のストレージやデータのアップグレード経路を変更しない。
