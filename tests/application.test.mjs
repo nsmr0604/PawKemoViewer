@@ -18,6 +18,19 @@ const { toCreatorIndexRows } = await server.ssrLoadModule("/src/infrastructure/c
 const { createCreatorUseCases } = await server.ssrLoadModule("/src/application/creators.ts")
 const validateFixture = (text) => text === "{}" ? [] : [{ kind: "json" }]
 
+test("original post links support service URL variants without matching unrelated hosts or pages", async () => {
+  const { parseOriginalPostLink } = await server.ssrLoadModule("/src/original-post-link.ts")
+  const fanbox = { service: "fanbox", creatorSlug: "creator", postId: "123" }
+  assert.deepEqual(parseOriginalPostLink("https://creator.fanbox.cc/posts/123?ref=example"), fanbox)
+  assert.deepEqual(parseOriginalPostLink("//www.fanbox.cc/@Creator/posts/123"), fanbox)
+  assert.deepEqual(parseOriginalPostLink("https://www.patreon.com/creator/posts/title-text-456"), {
+    service: "patreon", creatorSlug: "creator", postId: "456", titleQuery: "title text",
+  })
+  assert.equal(parseOriginalPostLink("https://www.patreon.com/posts/456").postId, "456")
+  assert.equal(parseOriginalPostLink("https://www.patreon.com/join/creator"), null)
+  assert.equal(parseOriginalPostLink("https://www.patreon.com.example.net/posts/456"), null)
+})
+
 test("locale CRUD validates input and sends private and shared writes to their own targets", async (t) => {
   const write = t.mock.fn(async () => {})
   const writeSecondary = t.mock.fn(async () => {})

@@ -65,6 +65,8 @@
   "common.clear": "Clear",
   "common.close": "Close",
   "common.loading": "Loading…",
+  "post.mirrorLinkMissing": "The corresponding post could not be found on Pawchive.",
+  "post.openOriginalLink": "Open original post",
   "common.on": "On",
   "common.off": "Off",
   "common.retry": "Retry",
