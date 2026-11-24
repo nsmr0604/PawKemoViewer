@@ -169,6 +169,10 @@ jobs:
             abi=$(echo "$base" | sed -n 's/^app-\([a-z0-9_]*\)-\(unsigned-\)\{0,1\}release\.apk$/\1/p')
             if [ -z "$abi" ]; then abi="universal"; fi
             out="dist-apk/PawKemoViewer_${VER}_${abi}.apk"
+            if [[ "${{ inputs.release }}" == true ]]; then
+              out="dist-apk/PawKemoViewer_${abi}.apk"
+              if [[ "$abi" == universal ]]; then out="dist-apk/PawKemoViewer.apk"; fi
+            fi
 
             "$BT/zipalign" -f -p 4 "$apk" "$out.aligned"
             "$BT/apksigner" sign \

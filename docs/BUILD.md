@@ -41,13 +41,16 @@ PawKemoViewer 0.5.5 のビルド・パッケージング・CI 構成です。
 
 ## 成果物
 
-| プラットフォーム | ファイル例 |
+| プラットフォーム | 製品版ファイル名 |
 |---|---|
-| Windows | `PawKemoViewer_0.5.5_x64-setup.exe` / `_x64_en-US.msi` |
-| Linux | `PawKemoViewer_0.5.5_amd64.AppImage` / `_amd64.deb` / `PawKemoViewer-0.5.5-1.x86_64.rpm` |
-| macOS | `PawKemoViewer_0.5.5_aarch64.dmg` / `PawKemoViewer_aarch64.app.tar.gz` |
-| Android | `PawKemoViewer_0.5.5_universal.apk` (debug.keystore 署名) |
-| iOS | `PawKemoViewer_0.5.5_ios-unsigned.ipa` (未署名) |
+| Windows | `PawKemoViewer.exe` / `PawKemoViewer.msi` |
+| Linux | `PawKemoViewer.AppImage` / `PawKemoViewer.deb` / `PawKemoViewer.rpm` |
+| macOS | `PawKemoViewer.dmg` / `PawKemoViewer.app.tar.gz` |
+| Android | `PawKemoViewer.apk` (universal、debug.keystore 署名) |
+| iOS | `PawKemoViewer.ipa` (未署名) |
+
+製品版の固定URLは `<リポジトリのURL>/releases/latest/download/<ファイル名>`。
+全対象の製品パッケージが揃った時点で最新版を切り替える。各バージョンのリリースタグは従来どおり保持する。
 
 - 実行ファイル名は `pawkemoviewer` (crate 名由来)。Android packageId は
   `com.nsmr0604.pawkemoviewer`
