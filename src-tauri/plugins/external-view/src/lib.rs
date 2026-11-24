@@ -20,6 +20,15 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
         .build()
 }
 
+#[cfg(all(target_os = "ios", feature = "debug-diag"))]
+pub async fn diagnostic_events<R: Runtime>(app: &AppHandle<R>) -> Result<serde_json::Value, String> {
+    app.state::<ExternalView<R>>()
+        .0
+        .run_mobile_plugin_async("diagnosticEvents", ())
+        .await
+        .map_err(|error| error.to_string())
+}
+
 /// 実オリジンの外部ページを Referer 付きで開く (Android / iOS)
 pub async fn open<R: Runtime>(
     app: &AppHandle<R>,

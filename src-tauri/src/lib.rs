@@ -1439,6 +1439,12 @@ async fn open_external_page(app: tauri::AppHandle, url: String, referer: String)
     tauri_plugin_external_view::open(&app, url, referer).await
 }
 
+#[cfg(all(target_os = "ios", feature = "debug-diag"))]
+#[tauri::command]
+async fn external_page_diagnostic_events(app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    tauri_plugin_external_view::diagnostic_events(&app).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -1510,6 +1516,8 @@ pub fn run() {
                 set_android_launcher_icon,
                 #[cfg(any(target_os = "android", target_os = "ios"))]
                 open_external_page,
+                #[cfg(all(target_os = "ios", feature = "debug-diag"))]
+                external_page_diagnostic_events,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
                 // (リリースビルドでは分離)。tauri v2 の generate_handler は
                 // 属性付き項目に対応している

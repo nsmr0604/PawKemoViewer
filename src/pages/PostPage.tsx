@@ -18,6 +18,8 @@ import { getPlatformRuntime } from "../platform/runtime"
 import { canOpenExternalPage, openExternalPage } from "../external-page"
 import { parseOriginalPostLink } from "../original-post-link"
 import { resolveOriginalPost } from "../original-post-navigation"
+import { DEBUG_DIAG } from "../build-flags"
+import { traceExternalPage } from "../external-page-diagnostics"
 
 export function PostPage({
   service,
@@ -84,6 +86,7 @@ export function PostPage({
     const original = anchor.getAttribute("data-external-url") || anchor.getAttribute("href") || ""
     const postLink = parseOriginalPostLink(original)
     if (postLink) {
+      if (DEBUG_DIAG) traceExternalPage("post_link_internal")
       if (linkState?.kind === "missing" && linkState.url === anchor.href) return
       event.preventDefault()
       const requestId = ++linkRequest.current
@@ -100,13 +103,24 @@ export function PostPage({
       })
       return
     }
-    if (!proxyReferer) return
-    if (!canOpenExternalPage()) return
+    if (!proxyReferer) {
+      if (DEBUG_DIAG) traceExternalPage("post_link_no_referer")
+      return
+    }
+    if (!canOpenExternalPage()) {
+      if (DEBUG_DIAG) traceExternalPage("post_link_unsupported_runtime")
+      return
+    }
     const url = anchor.getAttribute("data-external-url")
-    if (!url) return
+    if (!url) {
+      if (DEBUG_DIAG) traceExternalPage("post_link_no_original_url")
+      return
+    }
+    if (DEBUG_DIAG) traceExternalPage("post_link_native")
     event.preventDefault()
     event.stopPropagation()
     void openExternalPage(url, proxyReferer).catch(() => {
+      if (DEBUG_DIAG) traceExternalPage("post_link_fallback")
       const fallback = anchor.getAttribute("href")
       if (fallback) window.open(fallback, "_blank", "noopener")
     })

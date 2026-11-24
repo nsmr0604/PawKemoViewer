@@ -177,6 +177,30 @@ jobs:
           echo "packaged: $out"
           ls -la dist-ios
 
+      - name: Verify external-view diagnostics in the IPA
+        env:
+          EXPECT_EXTERNAL_DIAG: ${{ inputs.release == true && '0' || '1' }}
+        run: |
+          python3 - dist-ios/*.ipa <<'PYTHON'
+          import os
+          import plistlib
+          import sys
+          from zipfile import ZipFile
+
+          with ZipFile(sys.argv[1]) as ipa:
+              info_path, = (
+                  name for name in ipa.namelist()
+                  if name.startswith("Payload/") and name.count("/") == 2
+                  and name.endswith(".app/Info.plist")
+              )
+              executable = plistlib.loads(ipa.read(info_path))["CFBundleExecutable"]
+              binary = ipa.read(info_path.removesuffix("Info.plist") + executable)
+              expected = os.environ["EXPECT_EXTERNAL_DIAG"] == "1"
+              found = b"diagnosticEvents:" in binary
+              if found != expected:
+                  raise SystemExit(f"Swift external-view diagnostics: expected {expected}, found {found}")
+          PYTHON
+
       - name: Verify Files integration and app icons in the IPA
         run: |
           python3 - dist-ios/*.ipa <<'PYTHON'
