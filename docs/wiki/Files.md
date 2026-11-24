@@ -18,4 +18,4 @@
 | Android | `Android/data/com.nsmr0604.pawkemoviewer/files/Documents` |
 | iOS・iPadOS | ファイル → このiPhone内／このiPad内 → PawKemoViewer |
 
-標準フォルダーには用途に応じて `Backups`、`Logs`、`Languages` が作られます。設定のログ表示からテキストを書き出せます。診断ビルドのログには通信の詳細が含まれることがあるため、共有前に内容を確認してください。
+バックアップは `Backups`、追加の言語ファイルは `Languages` に保存します。
