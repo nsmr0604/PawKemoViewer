@@ -339,6 +339,32 @@ input:not([type]) {
   font-size: 13px;
 }
 
+.download-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  margin: 8px 0;
+  background: var(--bg2);
+}
+.download-picker label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.download-picker .creator-actions {
+  margin-top: 4px;
+}
+.download-failures {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  color: var(--warn, var(--fg2));
+}
+
 .error-box {
   background: color-mix(in srgb, var(--danger) 12%, var(--bg2));
   border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
