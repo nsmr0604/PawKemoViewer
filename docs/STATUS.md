@@ -1,6 +1,6 @@
 # 開発状況と残課題
 
-最終更新: 2026-11-24 / 対象バージョン: **0.5.5**
+最終更新: 2026-11-24 / 対象バージョン: **0.5.6**
 
 この文書は現在の状態だけをまとめたものです。リリースごとの変更は [変更履歴](HISTORY.md)、
 アーキテクチャの詳細は [開発ガイド](DEVELOPMENT.md) と [設計資料](architecture/README.md) を参照してください。
@@ -12,7 +12,7 @@
     Android universal APK、iOS 無署名 IPA の 9 アセット
   - 4 系統のリリースビルド (Android / Build Tauri / iOS / macOS) が success
 - 開発ビルド: `debug-latest` プレリリース (push 時に自動更新)
-- main のバージョン: `0.5.5` (`package.json` / `src-tauri/Cargo.toml`)
+- main のバージョン: `0.5.6` (`package.json` / `src-tauri/Cargo.toml`)
 - ブランチ運用: 統合先は `main`。リリースは `workflow_dispatch` の `release=true` で作成する
 
 ## 2. 対象プラットフォーム
@@ -23,7 +23,7 @@
 | Linux | DEB インストール・起動・公開 API を確認済み |
 | macOS | Apple Silicon の DMG 起動・公開 API を確認済み |
 | Android | 実機 (Redmi K20 Pro) で起動・設定・投稿閲覧・外部ページを確認済み |
-| iOS / iPadOS | 無署名 IPA のビルドと構成検査のみ。実機は未確認 |
+| iOS / iPadOS | 無署名 IPA をビルド済み。iPadOS 16.5 + TrollStore で起動、テストページの表示と診断ログ書き出しを確認。修正後の投稿リンクと iPhone は確認待ち |
 
 ## 3. 実装済みの基盤
 
@@ -55,7 +55,7 @@
 
 ## 5. 検証済みの根拠
 
-- `npm run test:domain` / `test:application` / `test:platform` の合計 36 件が通過
+- 診断検証ブランチで `npm run test:domain` / `test:application` / `test:platform` の合計 39 件が通過
 - `npm run build` (境界チェック + 型検査 + Vite) と `cargo check` (通常 / `debug-diag`) が通過
 - 0.5.5 のリリースビルド 4 系統が success。9 アセットを確認
 - Android 実機で、設定・投稿一覧・投稿詳細・外部ページ (sakura.ne.jp) の表示と戻る操作を確認

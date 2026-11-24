@@ -87,7 +87,7 @@ On iOS and iPadOS the app creates `Documents/Languages` at startup and exposes D
 
 ### モバイル統合版の実機確認
 
-0.5.1 の APK と署名済み IPA、または検証用パッケージを使用する。
+確認対象の APK と署名済み IPA、または検証用パッケージを使用する。
 端末名、OS バージョン、ファイルの保存先、アプリのバージョン、有効な結果を記録する。
 iPhone・iPad は一度起動し、「ファイル」→「このiPhone内」または「このiPad内」
 →「PawKemoViewer」→「Languages」を開く。Android は設定に表示される
@@ -101,3 +101,8 @@ iPhone・iPad は一度起動し、「ファイル」→「このiPhone内」ま
    別の言語コードの JSON を追加フォルダーに置き、再読み込み後と再起動後に選択できることを確認する。
 4. システムのファイル選択画面からローカルの保存先に書き出し、ファイルを開き直して内容を確認する。
    書き出しをキャンセルした場合は保存先にファイルが作成されないことを確認する。
+
+確認用 JSON は [qaa.json（取り込み）](../fixtures/qaa.json)、[qab.json（追加フォルダー）](../fixtures/qab.json)、
+[qac.json（値が不正）](../fixtures/qac.json) を使う。端末に同じ言語コードがある場合は未使用のコードにファイル名を変更する。
+合格時には、取り込み後に `QA Home Import`、追加フォルダーの再読み込み後に `QA Home Folder` がホームのラベルに出る。
+`qac.json` を選んだ後はエラーが表示され、言語一覧が維持される。検証後は元の言語に戻す。

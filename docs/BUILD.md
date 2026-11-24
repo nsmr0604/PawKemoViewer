@@ -141,9 +141,19 @@ npm run icons:generate                          # pc.png / dark.png から src-t
 ### iOS・iPadOS の外部 URL を実機で診断する
 
 1. GitHub Actions の **iOS Build** を `release=false`、`artifact_only=true` で実行し、`pawchive-ios` の IPA を取得する。TrollStore を利用している検証端末では、普段の手順で未署名 IPA をインストールする。
-2. **設定 → 開発者／診断 → 詳細診断 → iOS・iPadOS 外部URL診断** で **テストページを開く** を押す。表示結果を確認し、外部ページを閉じる。
+2. 設定のバージョン表示を Actions のコミットと照合する。**設定 → 開発・診断 → 詳細診断 → iOS・iPadOS 外部URL診断** で **テストページを開く** を押す。表示結果を確認し、外部ページを閉じる。
 3. 同じ起動セッションで問題の投稿リンクをタップし、リンク先の表示を確認する。診断画面に戻って **診断ログを保存** を押す。
 4. **ファイル → このiPad内（またはこのiPhone内）→ PawKemoViewer → Logs** の `external-page-diagnostic.txt` を共有する。診断ログには端末種別、OS とアプリの版、リンク処理、画面表示、HTTP ステータス、WebKit のエラーコードが入る。URL、リファラー、認証情報、レスポンス本文は記録対象から外している。
 
 ログは起動中のメモリーに保持する。アプリを終了する前に保存する。書き出しは同じ名前のファイルを更新する。
+
+| 記録 | 確認箇所 |
+|---|---|
+| `device=pad platform=macos` に相当する記録と `post_link_unsupported_runtime` | iPadOS のプラットフォーム判定で処理が止まった |
+| `invoke_started` の後に `open_received` がない | Tauri コマンドの入力検査、IPC、プラグイン登録 |
+| `present_requested` の後に `present_completed` がない | UIKit の提示元。ログの `attached` と `busy` を確認する |
+| `navigation_http`、`navigation_provisional_failed`、`navigation_failed` | HTTP ステータス、WebKit のエラードメインとコード |
+| `navigation_finished` | WebKit の読み込み完了。画面内容と戻る操作は実機で確認する |
+
+端末名、OS、コミット、テストページと投稿リンクの表示結果をログと一緒に記録する。外部 URL の調査には専用の `external-page-diagnostic.txt` を使用する。言語と認証の実機判定は [プラットフォーム別の確認表](architecture/stabilization.md#056-実機の完了条件) に記録する。
 - 本文には投稿・アカウント等のデータが含まれる可能性がある。共有前に内容を確認する
