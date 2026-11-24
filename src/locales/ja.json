@@ -328,6 +328,8 @@
   "settings.aboutNote": "PawKemoViewer は pawchive.pw の非公式クライアントです。",
   "settings.loadFailed": "取得失敗",
   "settings.cacheTitle": "キャッシュ",
+  "settings.thumbnailCacheLimit": "投稿サムネイルの保存上限",
+  "settings.thumbnailCacheLimitDesc": "保存できる件数を選びます。上限を超えた分は保存日時が古い順に削除します。",
   "settings.creatorIndex": "クリエイター索引",
   "settings.lastFetched": "最終取得",
   "settings.localeFolder": "追加の言語フォルダー",

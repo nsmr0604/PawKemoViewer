@@ -2,6 +2,7 @@ import { getApplication } from "../application/composition"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
 import { getSettings, updateSettings, api, apiStatus } from "../api"
+import { getThumbnailCacheLimit, THUMBNAIL_CACHE_LIMITS, trimThumbnailCache } from "../post-thumbnail-cache"
 import { clearCreatorCache, creatorCacheInfo, CreatorCacheInfo } from "../db"
 import {
   getLogEntries,
@@ -50,6 +51,7 @@ function fmtTs(ms: number | undefined): string {
 
 export function SettingsPage({ layout, section }: { layout: ResolvedLayout; section: string | null }) {
   const s = getSettings()
+  const [thumbnailCacheLimit, setThumbnailCacheLimit] = useState(getThumbnailCacheLimit)
   const localeUseCases = getApplication().locales
   const { descriptor: platform, services } = getPlatformRuntime()
   const supportsSecondaryLocale = Boolean(services.locale?.writeSecondary)
@@ -894,6 +896,22 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
       {/* ------------------------------------------------ キャッシュ */}
       <div id="settings-cache" className="settings-section" tabIndex={-1} hidden={activeSection !== "cache"}>
         <h2 className="section-label">{t("settings.storageTitle")}</h2>
+
+        <label className="setting-item">
+          <span className="setting-text">
+            <span>{t("settings.thumbnailCacheLimit")}</span>
+            <small>{t("settings.thumbnailCacheLimitDesc")}</small>
+          </span>
+          <select className="locale-select" value={thumbnailCacheLimit} onChange={(event) => {
+            const limit = Number(event.target.value)
+            updateSettings({ thumbnailCacheLimit: limit })
+            setThumbnailCacheLimit(limit)
+            void trimThumbnailCache()
+          }}>
+            {THUMBNAIL_CACHE_LIMITS.map((limit) =>
+              <option key={limit} value={limit}>{limit.toLocaleString(locale)}</option>)}
+          </select>
+        </label>
 
         <div className="setting-item">
           <div className="setting-text">
