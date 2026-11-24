@@ -26,10 +26,11 @@ pub async fn open<R: Runtime>(
     url: String,
     referer: String,
 ) -> Result<(), String> {
-    app.state::<ExternalView<R>>()
+    let _: serde_json::Value = app
+        .state::<ExternalView<R>>()
         .0
         .run_mobile_plugin_async("open", serde_json::json!({ "url": url, "referer": referer }))
         .await
-        .map(|_| ())
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(())
 }
