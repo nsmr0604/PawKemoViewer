@@ -182,6 +182,35 @@ static PROXY_HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(||
 });
 
 #[tauri::command]
+async fn fetch_post_thumbnail(path: String) -> Result<tauri::ipc::Response, String> {
+    if !path.starts_with('/') || path.len() > 512 || path.contains("..")
+        || !path.bytes().all(|b| b.is_ascii_alphanumeric() || b"/._-".contains(&b))
+    {
+        return Err("Invalid thumbnail path".into());
+    }
+    const MAX_BYTES: usize = 4 * 1024 * 1024;
+    let mut response = API_HTTP_CLIENT
+        .get(format!("https://img.pawchive.pw/thumbnail/data{path}"))
+        .timeout(std::time::Duration::from_secs(15))
+        .send().await.map_err(|e| e.without_url().to_string())?
+        .error_for_status().map_err(|e| e.without_url().to_string())?;
+    if !response.headers().get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| matches!(value.split(';').next(), Some("image/jpeg" | "image/png" | "image/webp" | "image/gif" | "image/avif")))
+    {
+        return Err("Unsupported thumbnail type".into());
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|e| e.without_url().to_string())? {
+        if bytes.len() + chunk.len() > MAX_BYTES {
+            return Err("Thumbnail is too large".into());
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+#[tauri::command]
 async fn api_request(
     app: tauri::AppHandle,
     path: String,
@@ -1460,6 +1489,7 @@ pub fn run() {
         .invoke_handler(
             tauri::generate_handler![
                 api_request,
+                fetch_post_thumbnail,
                 login_request,
                 export_log,
                 export_file,

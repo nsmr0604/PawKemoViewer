@@ -2,6 +2,7 @@
 
 - [Home](Home)
 - [Languages](Languages)
+- [Files](Files)
 - [Build](Build)
 - [Development](Development)
 - [API](API)

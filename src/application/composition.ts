@@ -5,7 +5,7 @@ import { createHomePostUseCase, createCreatorPostUseCase } from "./post-pages"
 import { api, apiStatus } from "../api"
 import { logError, logInfo, logWarn } from "../log"
 import { createPostDetailUseCases } from "./post-detail"
-import { parseLocaleJson, refreshLocales } from "../i18n"
+import { validateExternalLocale, refreshLocales } from "../i18n"
 import { createLocaleUseCases } from "./locales"
 import { getPlatformRuntime } from "../platform/runtime"
 
@@ -28,7 +28,7 @@ function createApplication() {
       warn: logWarn,
       error: logError,
     }),
-    locales: createLocaleUseCases(locales, (json) => Boolean(parseLocaleJson(json)), services.localePicker),
+    locales: createLocaleUseCases(locales, (json) => validateExternalLocale(json).issues, services.localePicker),
     refreshLocales: () => refreshLocales(locales),
   }
 }

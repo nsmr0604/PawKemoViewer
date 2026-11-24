@@ -8,7 +8,7 @@
 // 規則:
 //   - 外部ファイルは同梱と同じコードなら上書き (ja.json で日本語も差し替え可)
 //   - 欠落キーは日本語 (同梱 ja) で補う。同梱 ja は常に最後の砦として残る
-//   - 外部ファイルが不正 (JSON 不正・locale.name なし・文字列が 0 件) なら読み飛ばす
+//   - 外部ファイルは日本語の辞書を基準に検査する
 // 開発者向けのログ・コメントは日本語のまま。
 // ---------------------------------------------------------------------------
 
@@ -18,6 +18,7 @@ import { initReactI18next } from "react-i18next"
 import ja from "./locales/ja.json"
 import { logWarn } from "./log"
 import type { LocaleRepository } from "./application/locale-repository"
+import { validateLocale, type LocaleIssue } from "./domain/locale-validation"
 
 export type Locale = string
 type Dict = Record<string, string>
@@ -41,7 +42,7 @@ const BUNDLED_NAMES: Record<string, string> = { ja: "日本語", en: "English" }
 const external = new Map<string, Dict>()
 const secondary = new Map<string, Dict>()
 let secondaryDir = ""
-let invalidFiles: string[] = []
+let invalidFiles: (string | { filename: string; issues: LocaleIssue[] })[] = []
 
 i18n.use(initReactI18next).init({
   // i18next は渡したオブジェクトを参照のまま書き換えるため、同梱の辞書はコピーを渡す
@@ -55,26 +56,8 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 })
 
-/** 言語ファイルを検証して辞書にする。不正なら null */
-export function parseLocaleJson(text: string): Dict | null {
-  // Keep locale import/overlay parsing bounded to avoid oversized or pathological JSON.
-  if (typeof text !== "string" || text.length > 1024 * 1024) return null
-  let raw: unknown
-  try {
-    raw = JSON.parse(text)
-  } catch {
-    return null
-  }
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
-  const entries = Object.entries(raw as Record<string, unknown>)
-  if (entries.length > 10000) return null
-  const dict: Dict = Object.create(null) as Dict
-  for (const [k, v] of entries) {
-    if (!k || k.length > 512 || k === "__proto__" || k === "prototype" || k === "constructor") continue
-    if (typeof v === "string" && v.length <= 10000) dict[k] = v
-  }
-  if (!dict["locale.name"]?.trim()) return null
-  return Object.keys(dict).length > 1 ? dict : null
+export function validateExternalLocale(text: string) {
+  return validateLocale(text, BASE_JA)
 }
 
 /** 外部ファイルを再スキャンする (app_data/locales)。ブラウザ実行などでは何もしない */
@@ -98,19 +81,19 @@ export async function refreshLocales(repository: LocaleRepository | undefined): 
     if (!files) continue
     invalidFiles.push(...files.invalid.map((name) => source + name))
     for (const file of files.files) {
-      const dictionary = parseLocaleJson(file.json)
+      const { dictionary, issues } = validateExternalLocale(file.json)
       if (dictionary) {
         dictionaries.set(file.code, dictionary)
       } else {
         const filename = `${source}${file.code}.json`
-        invalidFiles.push(filename)
+        invalidFiles.push({ filename, issues })
         logWarn(`言語ファイルを読み込めません: ${filename}`)
       }
     }
   }
   secondaryDir = secondaryFiles?.dir ?? ""
   // 外部の ja.json による上書きを反映する
-  i18n.addResourceBundle("ja", "translation", (await dictionaryFor("ja")) ?? BASE_JA, true, true)
+  replaceDictionary("ja", (await dictionaryFor("ja")) ?? BASE_JA)
 }
 
 /** 選択できる言語の一覧 (同梱 + 外部)。日本語を先頭に */
@@ -128,7 +111,9 @@ export function secondaryLocaleFolder(): string {
   return secondaryDir
 }
 export function invalidLocaleFiles(): string[] {
-  return invalidFiles
+  return invalidFiles.map((file) => typeof file === "string"
+    ? file
+    : `${file.filename} (${formatLocaleIssues(file.issues)})`)
 }
 
 /** 言語の辞書: 同梱 (あれば) に外部 (あれば) を重ねる。どちらも無ければ null */
@@ -141,12 +126,17 @@ async function dictionaryFor(code: string): Promise<Dict | null> {
   return { ...(bundled ?? {}), ...(ext ?? {}), ...(shared ?? {}) }
 }
 
+function replaceDictionary(code: string, dictionary: Dict) {
+  i18n.removeResourceBundle(code, "translation")
+  i18n.addResourceBundle(code, "translation", { ...dictionary })
+}
+
 /** 言語を読み込んで適用する。未知・失敗は日本語へフォールバックし、適用された言語を返す */
 export async function loadLocale(code: Locale): Promise<Locale> {
   try {
     const dict = await dictionaryFor(code)
     if (!dict) throw new Error(`unknown locale: ${code}`)
-    i18n.addResourceBundle(code, "translation", dict, true, true)
+    replaceDictionary(code, dict)
     await i18n.changeLanguage(code)
     return code
   } catch {
@@ -160,6 +150,15 @@ const translate = i18n.t.bind(i18n) as unknown as (key: string, options?: Record
 /** 翻訳を取得する。{{name}} 形式の補間値は vars で渡す */
 export function t(key: TranslationKey, vars?: Record<string, string | number>): string {
   return translate(key, vars)
+}
+
+export function formatLocaleIssues(issues: LocaleIssue[]): string {
+  const shown = issues.slice(0, 3).map((issue) => t(`settings.localeIssue.${issue.kind}`,
+    "key" in issue ? { key: issue.key } : undefined))
+  if (issues.length > shown.length) {
+    shown.push(t("settings.localeIssue.more", { count: issues.length - shown.length }))
+  }
+  return shown.join(" / ")
 }
 
 export default i18n

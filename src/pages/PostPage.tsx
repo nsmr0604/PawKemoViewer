@@ -16,6 +16,8 @@ import { logError, logInfo, logWarn } from "../log"
 import { t as tr } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
 import { canOpenExternalPage, openExternalPage } from "../external-page"
+import { parseOriginalPostLink } from "../original-post-link"
+import { resolveOriginalPost } from "../original-post-navigation"
 
 export function PostPage({
   service,
@@ -30,6 +32,8 @@ export function PostPage({
   const postContext = { service, creatorId, postId }
   const validContext = isValidPostContext(postContext)
   const currentLoad = useRef<AbortController | null>(null)
+  const linkRequest = useRef(0)
+  const [linkState, setLinkState] = useState<{ kind: "loading" } | { kind: "missing"; url: string } | null>(null)
 
   const [post, setPost] = useState<PawPost | null>(null)
   const [comments, setComments] = useState<PawComment[] | null>(null)
@@ -73,10 +77,31 @@ export function PostPage({
   // 外部リンクはモバイルのネイティブビューで実オリジンのまま開く。
   // pkv プロキシでは reCAPTCHA 付きのページを表示できないため。
   const openExternalLink = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+    const element = event.target as Element
+    const anchor = element.closest?.("a[href]") as HTMLAnchorElement | null
+    if (!anchor) return
+    const original = anchor.getAttribute("data-external-url") || anchor.getAttribute("href") || ""
+    const postLink = parseOriginalPostLink(original)
+    if (postLink) {
+      if (linkState?.kind === "missing" && linkState.url === anchor.href) return
+      event.preventDefault()
+      const requestId = ++linkRequest.current
+      const current = currentLoad.current
+      setLinkState({ kind: "loading" })
+      void resolveOriginalPost(postLink, postContext, anchor.textContent || "").catch(() => null).then((target) => {
+        if (requestId !== linkRequest.current || current?.signal.aborted) return
+        if (target) {
+          setLinkState(null)
+          navigate(`/post/${target.service}/${encodeURIComponent(target.creatorId)}/${encodeURIComponent(target.postId)}`)
+        } else {
+          setLinkState({ kind: "missing", url: anchor.href })
+        }
+      })
+      return
+    }
     if (!proxyReferer) return
-    const element = event.target as HTMLElement
-    const anchor = element.closest?.("a[data-external-url]") as HTMLAnchorElement | null
-    if (!anchor || !canOpenExternalPage()) return
+    if (!canOpenExternalPage()) return
     const url = anchor.getAttribute("data-external-url")
     if (!url) return
     event.preventDefault()
@@ -93,6 +118,8 @@ export function PostPage({
     currentLoad.current = controller
     const { signal } = controller
     const context = { service, creatorId, postId }
+    ++linkRequest.current
+    setLinkState(null)
     setPost(null)
     setError(null)
     setComments(null)
@@ -412,7 +439,17 @@ export function PostPage({
       </div>
 
       {displayPost.content && (
-        <div className="post-content" onClick={openExternalLink} dangerouslySetInnerHTML={{ __html: sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
+        <>
+          <div className="post-content" onClick={openExternalLink} dangerouslySetInnerHTML={{ __html: sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
+          {linkState && (
+            <div className="hint-row" role="status">
+              {tr(linkState.kind === "loading" ? "common.loading" : "post.mirrorLinkMissing")}
+              {linkState.kind === "missing" && (
+                <a className="btn" href={linkState.url} target="_blank" rel="noreferrer">{tr("post.openOriginalLink")}</a>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {sourceFiles.length > 0 && !listMode && (

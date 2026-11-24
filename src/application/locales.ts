@@ -1,17 +1,20 @@
 import type { LocaleFileSelection, LocaleRepository } from "./locale-repository"
+import { MAX_LOCALE_BYTES, type LocaleIssue } from "../domain/locale-validation"
 
 const LOCALE_CODE = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/
-const MAX_LOCALE_BYTES = 1024 * 1024
 
 type LocaleFile = Pick<File, "name" | "size" | "text">
-type ImportFailure = { name: string; reason: "code" | "size" | "json" | "write" }
+type ImportFailure =
+  | { name: string; reason: "code" | "size" | "write" }
+  | { name: string; reason: "json"; issues: LocaleIssue[] }
 
-export function createLocaleUseCases(repository: LocaleRepository | undefined, isValidJson: (json: string) => boolean, picker?: LocaleFileSelection) {
+export function createLocaleUseCases(repository: LocaleRepository | undefined, validate: (json: string) => LocaleIssue[], picker?: LocaleFileSelection) {
   return {
     async addLocale(rawCode: string, json: string) {
       const code = rawCode.trim()
       if (!LOCALE_CODE.test(code)) return { kind: "invalid-code" } as const
-      if (!isValidJson(json)) return { kind: "invalid-json" } as const
+      const issues = validate(json)
+      if (issues.length) return { kind: "invalid-json", issues } as const
       if (!repository) throw new Error("Locale service unavailable")
       await repository.writePrivate(code, json)
       return { kind: "saved", code } as const
@@ -35,8 +38,9 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, i
         }
         try {
           const json = await file.text()
-          if (!isValidJson(json)) {
-            failures.push({ name, reason: "json" })
+          const issues = validate(json)
+          if (issues.length) {
+            failures.push({ name, reason: "json", issues })
             continue
           }
           await write.call(repository, code, json)
@@ -57,9 +61,8 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, i
       if (result.kind === "cancelled") return result
       const code = result.name.replace(/\.json$/i, "")
       if (!LOCALE_CODE.test(code)) return { kind: "invalid-code" } as const
-      if (new TextEncoder().encode(result.json).length > MAX_LOCALE_BYTES || !isValidJson(result.json)) {
-        return { kind: "invalid-json" } as const
-      }
+      const issues = validate(result.json)
+      if (issues.length) return { kind: "invalid-json", issues } as const
       const catalogue = await repository.listPrivate()
       if (!catalogue) throw new Error("Could not check existing locale files")
       const filename = `${code.toLowerCase()}.json`
@@ -75,7 +78,8 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, i
       const catalogue = await repository.listPrivate()
       const file = catalogue?.files.find((entry) => entry.code === code)
       if (!file) return { kind: "missing" } as const
-      if (!isValidJson(file.json)) return { kind: "invalid-json" } as const
+      const issues = validate(file.json)
+      if (issues.length) return { kind: "invalid-json", issues } as const
       if (destination === "app") {
         if (!picker.saveToAppDirectory) throw new Error("App language folder unavailable")
         return picker.saveToAppDirectory(file.code, file.json)

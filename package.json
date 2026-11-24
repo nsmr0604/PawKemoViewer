@@ -1,7 +1,7 @@
 {
   "name": "pawkemoviewer",
   "private": true,
-  "version": "0.5.5",
+  "version": "0.5.6",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -10,7 +10,8 @@
     "test:application": "node --test tests/application.test.mjs",
     "test:domain": "node --test tests/domain.test.mjs",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "build": "npm run check:boundaries && tsc -b && vite build",
+    "check:locales": "node scripts/check-locales.mjs",
+    "build": "npm run check:boundaries && npm run check:locales && tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "icons:generate": "node scripts/generate-icons.mjs",
@@ -19,7 +20,7 @@
     "tauri:dev": "npm run icons:generate && tauri dev --features debug-diag",
     "tauri:build": "npm run icons:generate && tauri build",
     "tauri:android:dev": "npm run icons:generate && tauri android dev --features debug-diag",
-    "build:debug": "npm run check:boundaries && tsc -b && vite build --mode development",
+    "build:debug": "npm run check:boundaries && npm run check:locales && tsc -b && vite build --mode development",
     "sync:version": "node scripts/sync-version.mjs",
     "postversion": "node scripts/sync-version.mjs"
   },

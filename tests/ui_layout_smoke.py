@@ -11,7 +11,7 @@ FIXTURE = """
 (() => {
   const post = {
     service: "patreon", user: "42", id: "123", title: "UI Fixture Post",
-    content: "UI Fixture Body", published: "2025-01-01",
+    content: '<p>UI Fixture Body</p><a href="https://www.patreon.com/posts/linked-post-124">Related Patreon post</a><a href="https://www.fanbox.cc/@fixture-creator/posts/125">Related FANBOX post</a><a href="https://www.patreon.com/posts/126">Unmirrored post</a>', published: "2025-01-01",
     file: {}, embed: {}, attachments: []
   }
   window.fixtureCalls = []
@@ -35,6 +35,9 @@ FIXTURE = """
       if (command !== "api_request") return null
       if (args.path.endsWith("/revisions")) throw "STATUS=404 BODY=[]"
       if (args.path === "/patreon/user/42/post/123") return JSON.stringify(post)
+      if (args.path === "/patreon/user/42/post/124") return JSON.stringify({ ...post, id: "124", title: "Patreon destination" })
+      if (args.path === "/creators") return JSON.stringify([{ service: "fanbox", id: "43", public_id: "fixture-creator" }])
+      if (args.path === "/fanbox/user/43/post/125") return JSON.stringify({ ...post, service: "fanbox", user: "43", id: "125", title: "FANBOX destination" })
       if (args.path.startsWith("/posts")) return JSON.stringify([post])
       return "[]"
     }
@@ -259,6 +262,23 @@ def account_matrix(browser, *, mobile):
         page.context.close()
 
 
+def original_post_links_matrix(browser, *, mobile):
+    page = test_page(browser, width=390 if mobile else 1280, mobile=mobile)
+    try:
+        page.get_by_text("UI Fixture Post", exact=True).click()
+        page.get_by_role("link", name="Related Patreon post").click()
+        expect(page.get_by_role("heading", name="Patreon destination")).to_be_visible()
+        page.go_back()
+        page.get_by_role("link", name="Related FANBOX post").click()
+        expect(page.get_by_role("heading", name="FANBOX destination")).to_be_visible()
+        page.get_by_role("link", name="Unmirrored post").click()
+        expect(page.get_by_role("link", name="元の投稿を開く")).to_have_attribute(
+            "href", "https://www.patreon.com/posts/126"
+        )
+    finally:
+        page.context.close()
+
+
 def launcher_icon_matrix(browser, *, ios):
     init_script = 'Object.defineProperty(navigator, "userAgent", { value: "iPad" })' if ios else None
     page = test_page(browser, width=390, mobile=True, init_script=init_script)
@@ -286,6 +306,8 @@ if __name__ == "__main__":
             long_follow_list_matrix(browser)
             account_matrix(browser, mobile=False)
             account_matrix(browser, mobile=True)
+            original_post_links_matrix(browser, mobile=False)
+            original_post_links_matrix(browser, mobile=True)
             launcher_icon_matrix(browser, ios=False)
             launcher_icon_matrix(browser, ios=True)
         finally:

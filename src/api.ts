@@ -34,6 +34,7 @@ export interface Settings {
   layoutMode: "auto" | "desktop" | "mobile"
   /** 低通信モード (No Image Mode - JHenTai/EhViewer 参考): 画像を読み込まない */
   noImageMode: boolean
+  thumbnailCacheLimit: number
   /** 投稿一覧の表示形式 (FANBOX Viewer 参考): grid (既定) / list */
   postViewMode: "grid" | "list"
   /** 通信タイムアウト秒 (JHenTai の Connect/Receive Timeout 参考)。既定 30 秒 */
@@ -78,6 +79,7 @@ function defaultSettings(): Settings {
     theme: "dark",
     layoutMode: "auto",
     noImageMode: false,
+    thumbnailCacheLimit: 500,
     postViewMode: "grid",
     timeoutSecs: 30,
     proxyImages: false,

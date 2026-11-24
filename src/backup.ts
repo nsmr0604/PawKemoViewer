@@ -10,6 +10,7 @@ import { getSettings, updateSettings, type Settings } from "./api"
 import { loadFollows, replaceFollows, type FollowEntry } from "./follows"
 import { replaceSeen, getAllSeen, type SeenEntry } from "./db"
 import { getPlatformRuntime } from "./platform/runtime"
+import { THUMBNAIL_CACHE_LIMITS, trimThumbnailCache } from "./post-thumbnail-cache"
 
 export const BACKUP_TYPE = "pawkemoviewer-backup"
 export const MAX_BACKUP_BYTES = 5 * 1024 * 1024
@@ -123,6 +124,7 @@ export async function applyBackup(text: string): Promise<{
     theme: (v) => v === "dark" || v === "light",
     layoutMode: (v) => v === "auto" || v === "desktop" || v === "mobile",
     noImageMode: (v) => typeof v === "boolean",
+    thumbnailCacheLimit: (v) => THUMBNAIL_CACHE_LIMITS.some((limit) => limit === v),
     postViewMode: (v) => v === "grid" || v === "list",
     timeoutSecs: (v) => typeof v === "number" && Number.isFinite(v) && v >= 1 && v <= 300,
     proxyImages: (v) => typeof v === "boolean",
@@ -138,6 +140,7 @@ export async function applyBackup(text: string): Promise<{
     if (validator?.(v)) (patch as Record<string, unknown>)[k] = v
   }
   updateSettings(patch)
+  if (patch.thumbnailCacheLimit !== undefined) await trimThumbnailCache()
 
   return { follows: follows.length, seen, settings: Object.keys(patch).length > 0 }
 }
