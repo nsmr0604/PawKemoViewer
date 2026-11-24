@@ -78,7 +78,7 @@ function scroll(nodes) {
 function findBelow(key, accept) {
   for (let attempt = 0; attempt < 12; attempt++) {
     const nodes = screen();
-    const nav = match(nodes, 'nav.home', button);
+    const nav = match(nodes, 'nav.settings', button);
     const control = match(nodes, key, node => (!accept || accept(node))
       && (!nav || node.area[3] <= nav.area[1]));
     if (control) return control;
@@ -127,8 +127,6 @@ try {
     'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', app).trim().split(/\s+/).at(-1);
   assert.ok(resolve.startsWith(`${app}/`), 'PawKemoViewer launcher is unavailable');
   assert.match(shell('am', 'start', '-W', '-n', resolve), /Status: ok/);
-  const home = await waitFor('Home navigation is missing', nodes => match(nodes, 'nav.home', button));
-  tap(home);
   const settings = await waitFor('Settings navigation is missing', nodes => match(nodes, 'nav.settings', button));
   tap(settings);
   tap(findBelow('settings.languageTitle', button));
