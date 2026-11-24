@@ -512,15 +512,20 @@ export function normalizeTags(v: unknown): string[] {
 
 /** 本体ファイル URL (元ファイル名を付けてダウンロード時の名前にする)。
  *  FANBOX / Patreon の配信ホストは設定有効時に pkv:// 経由で取得する。 */
-export function fileUrl(f: PawFile | undefined, service?: string, postId?: string, refererUrl?: string): string {
+/** 元ファイルの URL (プロキシ変換なし)。一括保存など Rust 側で取得する用途に使う。 */
+export function directFileUrl(f: PawFile | undefined): string {
   if (!f) return ""
   // deferred ファイル (動画等) は署名付き一時 URL を使う
-  if (f.temp_download_url) return proxyFileUrl(f.temp_download_url, service, postId, refererUrl)
-  if (!f.path && f.temp_url) return proxyFileUrl(f.temp_url, service, postId, refererUrl)
+  if (f.temp_download_url) return f.temp_download_url
+  if (!f.path && f.temp_url) return f.temp_url
   if (!f.path) return ""
   const server = f.server?.replace(/\/$/, "") || "https://n1.pawchive.pw"
   const name = f.name ? `?f=${encodeURIComponent(f.name)}` : ""
-  return proxyFileUrl(`${server}/data${f.path}${name}`, service, postId, refererUrl)
+  return `${server}/data${f.path}${name}`
+}
+
+export function fileUrl(f: PawFile | undefined, service?: string, postId?: string, refererUrl?: string): string {
+  return proxyFileUrl(directFileUrl(f), service, postId, refererUrl)
 }
 
 /** サムネイル URL (縮小画像が無い場合は画像側でフォールバック) */

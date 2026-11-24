@@ -20,7 +20,7 @@ export interface DownloadSummary {
   failed: DownloadFailure[]
 }
 
-export { isThumbnailUrl, resolveImageUrl } from "./post-image-urls"
+export { isImageFileName, isThumbnailUrl, resolveImageUrl } from "./post-image-urls"
 
 /**
  * 投稿本文 HTML から保存対象の画像 URL を集める。
@@ -52,6 +52,23 @@ export function collectExternalPages(html: string, baseUrl?: string): string[] {
     (anchor) => anchor.getAttribute("href") || "",
   )
   return collectExternalLinks(hrefs, baseUrl).filter((href) => !isImageFileUrl(href))
+}
+
+/**
+ * 投稿の `file` / `attachments` から保存対象の画像を組み立てる。
+ * URL はプロキシ変換前のもの (Rust 側で取得する)。
+ */
+export function collectAttachmentImages(
+  files: { url: string; name?: string }[],
+): DownloadImage[] {
+  const seen = new Set<string>()
+  const images: DownloadImage[] = []
+  for (const file of files) {
+    if (!file.url || seen.has(file.url)) continue
+    seen.add(file.url)
+    images.push({ url: file.url, name: file.name })
+  }
+  return images
 }
 
 /** 画像をまとめて保存する。保存先は Rust 側で解決する。 */

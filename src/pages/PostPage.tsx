@@ -2,7 +2,7 @@ import { getApplication } from "../application/composition"
 import { isValidPostContext } from "../domain/post-identity"
 import { normalizeFanboxSlug, originalPostReferer } from "../domain/post-referer"
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react"
-import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
+import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, directFileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavoritePost } from "../post-favorites"
 import { CreatorAvatar } from "../components/CreatorAvatar"
 import { BrowserLink } from "../components/BrowserLink"
@@ -19,7 +19,7 @@ import { t as tr } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
 import { canOpenExternalPage, openExternalPage } from "../external-page"
 import { listen } from "@tauri-apps/api/event"
-import { cancelImageDownload, collectArticleImages, collectExternalPages, downloadArticleImages } from "../post-download"
+import { cancelImageDownload, collectArticleImages, collectAttachmentImages, collectExternalPages, downloadArticleImages, isImageFileName, type DownloadImage } from "../post-download"
 import { parseOriginalPostLink } from "../original-post-link"
 import { resolveOriginalPost } from "../original-post-navigation"
 import { DEBUG_DIAG } from "../build-flags"
@@ -63,6 +63,18 @@ export function PostPage({
   const [downloadState, setDownloadState] = useState<"idle" | "running">("idle")
   const [downloadProgress, setDownloadProgress] = useState({ done: 0, total: 0 })
   const [downloadMessage, setDownloadMessage] = useState<{ text: string; ok: boolean } | null>(null)
+  const [downloadFailures, setDownloadFailures] = useState<{ host: string; reason: string }[]>([])
+  /** 一括保存の対象候補 (選ぶ前)。null なら選択 UI は閉じている */
+  const [downloadPicker, setDownloadPicker] = useState<{
+    article: DownloadImage[]
+    attachments: DownloadImage[]
+    pages: string[]
+  } | null>(null)
+  const [downloadSources, setDownloadSources] = useState({
+    article: true,
+    attachments: true,
+    external: true,
+  })
   // FANBOX の cover.jpeg は作品カバー画像のため除外できる。設定はグローバル (投稿を跨いで維持)
   const [excludeFanboxCover, setExcludeFanboxCover] = useState(getSettings().excludeFanboxCover)
   const toggleFanboxCover = (value: boolean) => {
@@ -344,10 +356,43 @@ export function PostPage({
       : null
   const displayPost: PawPost = activeRevision || post
 
-  const startImageDownload = async () => {
+  /** 添付 (file / attachments) のうち画像だけを保存候補にする */
+  const attachmentImages = (() => {
+    const files = [
+      ...(displayPost.file ? [displayPost.file] : []),
+      ...(displayPost.attachments || []),
+    ]
+    const candidates = files
+      .filter((f) => !(postContext.service === "fanbox" && excludeFanboxCover && isFanboxCoverFile(f)))
+      .filter((f) => !isVideoFile(f))
+      .filter((f) => isImageFileName(f.name || f.path || f.temp_url || ""))
+      .map((f) => ({ url: directFileUrl(f), name: f.name || undefined }))
+      .filter((f) => !!f.url)
+    return collectAttachmentImages(candidates)
+  })()
+
+  /** 一括保存の対象候補を集めて、選択 UI を開く */
+  const prepareDownload = () => {
     const base = originalUrl || undefined
-    const images = collectArticleImages(displayPost?.content || "", base)
-    const pages = collectExternalPages(displayPost?.content || "", base)
+    const article = collectArticleImages(displayPost.content || "", base)
+    const pages = collectExternalPages(displayPost.content || "", base)
+    if (article.length === 0 && attachmentImages.length === 0 && pages.length === 0) {
+      setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
+      return
+    }
+    setDownloadMessage(null)
+    setDownloadSources({ article: true, attachments: true, external: true })
+    setDownloadPicker({ article, attachments: attachmentImages, pages })
+  }
+
+  const startImageDownload = async () => {
+    const selection = downloadPicker
+    if (!selection) return
+    const images = [
+      ...(downloadSources.article ? selection.article : []),
+      ...(downloadSources.attachments ? selection.attachments : []),
+    ]
+    const pages = downloadSources.external ? selection.pages : []
     if (images.length === 0 && pages.length === 0) {
       setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
       return
@@ -357,9 +402,11 @@ export function PostPage({
       setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
       return
     }
+    setDownloadPicker(null)
     setDownloadState("running")
     setDownloadProgress({ done: 0, total: images.length })
     setDownloadMessage(null)
+    setDownloadFailures([])
     // クリエイター名が未取得のときは Rust 側で service_creatorId を使う
     const downloadCreatorName = creator?.key === creatorKey ? creator.name : ""
     try {
@@ -380,6 +427,17 @@ export function PostPage({
             dir: result.directory,
           })
       setDownloadMessage({ text, ok: !result.cancelled && result.failed.length === 0 })
+      setDownloadFailures(
+        result.failed.slice(0, 5).map((failure) => {
+          let host = failure.url
+          try {
+            host = new URL(failure.url).host
+          } catch {
+            // URL でない場合はそのまま表示する
+          }
+          return { host, reason: failure.reason }
+        }),
+      )
       logInfo(
         `画像ダウンロード saved=${result.saved} failed=${result.failed.length} skipped=${result.skipped} cancelled=${result.cancelled}`,
       )
@@ -526,10 +584,10 @@ export function PostPage({
           >
             {tr("common.openSite")}
           </BrowserLink>
-          {displayPost.content && (
+          {(displayPost.content || attachmentImages.length > 0) && !downloadPicker && (
             <button
               className="btn"
-              onClick={() => void startImageDownload()}
+              onClick={prepareDownload}
               disabled={downloadState === "running"}
               title={tr("post.downloadImagesTitle")}
             >
@@ -548,6 +606,47 @@ export function PostPage({
         </div>
       </div>
 
+      {downloadPicker && downloadState === "idle" && (
+        <div className="download-picker" role="group" aria-label={tr("post.downloadPickTitle")}>
+          <p className="small">{tr("post.downloadPickTitle")}</p>
+          <label>
+            <input
+              type="checkbox"
+              checked={downloadSources.article}
+              disabled={downloadPicker.article.length === 0}
+              onChange={(e) => setDownloadSources((current) => ({ ...current, article: e.target.checked }))}
+            />
+            {tr("post.downloadSourceArticle", { n: downloadPicker.article.length })}
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={downloadSources.attachments}
+              disabled={downloadPicker.attachments.length === 0}
+              onChange={(e) => setDownloadSources((current) => ({ ...current, attachments: e.target.checked }))}
+            />
+            {tr("post.downloadSourceAttachments", { n: downloadPicker.attachments.length })}
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={downloadSources.external}
+              disabled={downloadPicker.pages.length === 0}
+              onChange={(e) => setDownloadSources((current) => ({ ...current, external: e.target.checked }))}
+            />
+            {tr("post.downloadSourceExternal", { n: downloadPicker.pages.length })}
+          </label>
+          <div className="creator-actions">
+            <button className="btn" onClick={() => void startImageDownload()}>
+              {tr("post.downloadStart")}
+            </button>
+            <button className="btn btn-ghost" onClick={() => setDownloadPicker(null)}>
+              {tr("common.close")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {displayPost.content && (
         <>
           <div className="post-content" onClick={openExternalLink} dangerouslySetInnerHTML={{ __html: sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
@@ -559,27 +658,37 @@ export function PostPage({
               )}
             </div>
           )}
-          {downloadState === "running" && (
-            <div className="hint-row" role="status">
-              <span>
-                {downloadProgress.total > 0
-                  ? tr("post.downloadProgress", {
-                      done: downloadProgress.done,
-                      total: downloadProgress.total,
-                    })
-                  : tr("common.loading")}
-              </span>
-              <button className="btn btn-sm" onClick={cancelDownload}>
-                {tr("post.downloadCancel")}
-              </button>
-            </div>
-          )}
-          {downloadMessage && (
-            <div className="hint-row" role="status">
-              <span>{downloadMessage.text}</span>
-            </div>
-          )}
         </>
+      )}
+
+      {downloadState === "running" && (
+        <div className="hint-row" role="status">
+          <span>
+            {downloadProgress.total > 0
+              ? tr("post.downloadProgress", {
+                  done: downloadProgress.done,
+                  total: downloadProgress.total,
+                })
+              : tr("common.loading")}
+          </span>
+          <button className="btn btn-sm" onClick={cancelDownload}>
+            {tr("post.downloadCancel")}
+          </button>
+        </div>
+      )}
+      {downloadMessage && (
+        <div className="hint-row" role="status">
+          <span>{downloadMessage.text}</span>
+        </div>
+      )}
+      {downloadFailures.length > 0 && (
+        <ul className="download-failures small">
+          {downloadFailures.map((failure, index) => (
+            <li key={`${failure.host}-${index}`}>
+              {tr("post.downloadFailure", { host: failure.host, reason: failure.reason })}
+            </li>
+          ))}
+        </ul>
       )}
 
       {sourceFiles.length > 0 && !listMode && (

@@ -4,6 +4,7 @@ import {
   collectExternalLinks,
   collectImageUrls,
   isImageFileUrl,
+  isImageFileName,
   isInternalHost,
   isThumbnailUrl,
   resolveImageUrl,
@@ -87,6 +88,16 @@ test("external link collection respects the limit", () => {
   const hrefs = Array.from({ length: 30 }, (_, index) => `https://example.com/${index}`)
   assert.equal(collectExternalLinks(hrefs).length, 10)
   assert.equal(collectExternalLinks(hrefs, undefined, 3).length, 3)
+})
+
+test("attachment names are filtered by image extension", () => {
+  for (const name of ["a.jpg", "A.JPEG", "b.png", "c.webp", "d.gif", "e.avif", "f.HEIC"]) {
+    assert.equal(isImageFileName(name), true, name)
+  }
+  for (const name of ["a.mp4", "b.zip", "c.pdf", "d.txt", "", "noext"]) {
+    assert.equal(isImageFileName(name), false, name)
+  }
+  assert.equal(isImageFileName("cover.jpeg?f=1"), true)
 })
 
 test("direct image links are detected including mirror query names", () => {

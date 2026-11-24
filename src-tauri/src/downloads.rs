@@ -20,8 +20,8 @@ const MAX_FILE_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 512 * 1024 * 1024;
 /// 1 回の実行で保存する最大ファイル数
 const MAX_FILES: usize = 300;
-/// 外部ページの最大サイズ
-const MAX_PAGE_BYTES: u64 = 5 * 1024 * 1024;
+/// 外部ページの最大サイズ (gzip 展開後の HTML は数 MiB になることがある)
+const MAX_PAGE_BYTES: u64 = 16 * 1024 * 1024;
 /// 1 つの外部ページから拾う最大画像数
 const MAX_PAGE_IMAGES: usize = 100;
 /// 1 回の実行で開く外部ページ数

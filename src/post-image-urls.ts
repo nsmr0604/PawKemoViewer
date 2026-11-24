@@ -39,6 +39,12 @@ export function collectImageUrls(sources: Iterable<string>, baseUrl?: string): {
   return images
 }
 
+/** 画像ファイル名か (拡張子で判定) */
+export function isImageFileName(name: string): boolean {
+  const clean = name.split("?")[0].split("#")[0]
+  return /\.(jpe?g|png|webp|gif|avif|bmp|heic)$/i.test(clean)
+}
+
 /** 記事のリンク先として扱わないホスト (サービス本体とミラー) */
 const INTERNAL_HOSTS = ["pawchive.pw", "fanbox.cc", "patreon.com"]
 
