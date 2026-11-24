@@ -18,6 +18,8 @@ import { logError, logInfo, logWarn } from "../log"
 import { t as tr } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
 import { canOpenExternalPage, openExternalPage } from "../external-page"
+import { listen } from "@tauri-apps/api/event"
+import { cancelImageDownload, collectArticleImages, collectExternalPages, downloadArticleImages } from "../post-download"
 import { parseOriginalPostLink } from "../original-post-link"
 import { resolveOriginalPost } from "../original-post-navigation"
 import { DEBUG_DIAG } from "../build-flags"
@@ -58,6 +60,9 @@ export function PostPage({
   const [loadedFiles, setLoadedFiles] = useState<Set<number>>(() => new Set())
   // 投稿内の画像はサムネイルを初期表示し、操作時に元画像へ一括切替する。
   const [loadOriginalImages, setLoadOriginalImages] = useState(false)
+  const [downloadState, setDownloadState] = useState<"idle" | "running">("idle")
+  const [downloadProgress, setDownloadProgress] = useState({ done: 0, total: 0 })
+  const [downloadMessage, setDownloadMessage] = useState<{ text: string; ok: boolean } | null>(null)
   // FANBOX の cover.jpeg は作品カバー画像のため除外できる。設定はグローバル (投稿を跨いで維持)
   const [excludeFanboxCover, setExcludeFanboxCover] = useState(getSettings().excludeFanboxCover)
   const toggleFanboxCover = (value: boolean) => {
@@ -325,6 +330,71 @@ export function PostPage({
       : null
   const displayPost: PawPost = activeRevision || post
 
+  useEffect(() => {
+    if (downloadState !== "running") return
+    let unlisten: (() => void) | undefined
+    void listen<{ done: number; total: number }>("download-progress", (event) => {
+      setDownloadProgress({ done: event.payload.done, total: event.payload.total })
+    }).then((fn) => {
+      unlisten = fn
+    })
+    return () => {
+      unlisten?.()
+    }
+  }, [downloadState])
+
+  const startImageDownload = async () => {
+    const base = originalUrl || undefined
+    const images = collectArticleImages(displayPost?.content || "", base)
+    const pages = collectExternalPages(displayPost?.content || "", base)
+    if (images.length === 0 && pages.length === 0) {
+      setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
+      return
+    }
+    const referer = proxyReferer || originalUrl
+    if (!referer) {
+      setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
+      return
+    }
+    setDownloadState("running")
+    setDownloadProgress({ done: 0, total: images.length })
+    setDownloadMessage(null)
+    try {
+      const result = await downloadArticleImages(
+        creatorName,
+        postContext.service,
+        postContext.creatorId,
+        referer,
+        images,
+        pages,
+      )
+      const text = result.cancelled
+        ? tr("post.downloadCancelled", { saved: result.saved })
+        : tr("post.downloadDone", {
+            saved: result.saved,
+            failed: result.failed.length,
+            dir: result.directory,
+          })
+      setDownloadMessage({ text, ok: !result.cancelled && result.failed.length === 0 })
+      logInfo(
+        `画像ダウンロード saved=${result.saved} failed=${result.failed.length} skipped=${result.skipped} cancelled=${result.cancelled}`,
+      )
+    } catch (error) {
+      setDownloadMessage({
+        text: tr("post.downloadError", {
+          msg: error instanceof Error ? error.message : String(error),
+        }),
+        ok: false,
+      })
+    } finally {
+      setDownloadState("idle")
+    }
+  }
+
+  const cancelDownload = () => {
+    void cancelImageDownload()
+  }
+
   const onFlag = async () => {
     setFlagged("busy")
     try {
@@ -452,6 +522,16 @@ export function PostPage({
           >
             {tr("common.openSite")}
           </BrowserLink>
+          {displayPost.content && (
+            <button
+              className="btn"
+              onClick={() => void startImageDownload()}
+              disabled={downloadState === "running"}
+              title={tr("post.downloadImagesTitle")}
+            >
+              {tr("post.downloadImages")}
+            </button>
+          )}
           {originalUrl && (
             <BrowserLink
               className="btn"
@@ -473,6 +553,24 @@ export function PostPage({
               {linkState.kind === "missing" && (
                 <a className="btn" href={linkState.url} target="_blank" rel="noreferrer">{tr("post.openOriginalLink")}</a>
               )}
+            </div>
+          )}
+          {downloadState === "running" && (
+            <div className="hint-row" role="status">
+              <span>
+                {tr("post.downloadProgress", {
+                  done: downloadProgress.done,
+                  total: downloadProgress.total,
+                })}
+              </span>
+              <button className="btn btn-sm" onClick={cancelDownload}>
+                {tr("post.downloadCancel")}
+              </button>
+            </div>
+          )}
+          {downloadMessage && (
+            <div className="hint-row" role="status">
+              <span>{downloadMessage.text}</span>
             </div>
           )}
         </>

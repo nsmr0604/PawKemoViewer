@@ -1554,6 +1554,8 @@ pub fn run() {
                 json_files::pick_json_file,
                 json_files::save_user_file,
                 resolve_download_directory,
+                downloads::download_post_images,
+                downloads::cancel_download,
                 open_in_browser,
                 #[cfg(all(feature = "debug-diag", any(target_os = "android", target_os = "ios")))]
                 locale_storage::save_locale_file_to_app_directory,
