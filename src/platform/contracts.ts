@@ -26,8 +26,9 @@ export interface LocaleService {
   listExternal(): Promise<LocaleFileSet | null>
   listSecondary?(): Promise<LocaleFileSet | null>
   writeSecondary?(code: string, json: string): Promise<void>
-  write(code: string, json: string, replaceExisting?: boolean): Promise<void>
-  delete(code: string): Promise<boolean>
+  exportToFolder?(code: string, json: string): Promise<boolean>
+  write?(code: string, json: string, replaceExisting?: boolean): Promise<void>
+  delete?(code: string): Promise<boolean>
 }
 
 export type JsonPurpose = "locale" | "backup"

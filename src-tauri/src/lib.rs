@@ -1504,13 +1504,17 @@ pub fn run() {
                 clear_creator_icon_cache,
                 locale_storage::list_locale_files,
                 locale_storage::list_secondary_locale_files,
+                locale_storage::export_locale_to_folder,
+                #[cfg(feature = "debug-diag")]
                 locale_storage::write_secondary_locale_file,
+                #[cfg(feature = "debug-diag")]
                 locale_storage::write_locale_file,
+                #[cfg(feature = "debug-diag")]
                 locale_storage::delete_locale_file,
                 locale_storage::resolve_storage_location,
                 json_files::pick_json_file,
                 json_files::save_user_file,
-                #[cfg(any(target_os = "android", target_os = "ios"))]
+                #[cfg(all(feature = "debug-diag", any(target_os = "android", target_os = "ios")))]
                 locale_storage::save_locale_file_to_app_directory,
                 #[cfg(target_os = "android")]
                 set_android_launcher_icon,

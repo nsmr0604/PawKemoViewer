@@ -1,6 +1,7 @@
 #[derive(Clone, Copy, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum JsonPurpose {
+    #[cfg(feature = "debug-diag")]
     Locale,
     Backup,
 }
@@ -8,6 +9,7 @@ pub(crate) enum JsonPurpose {
 impl JsonPurpose {
     fn max_bytes(self) -> usize {
         match self {
+            #[cfg(feature = "debug-diag")]
             Self::Locale => 1024 * 1024,
             Self::Backup => 5 * 1024 * 1024,
         }
@@ -17,6 +19,7 @@ impl JsonPurpose {
 #[derive(Clone, Copy, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum ExportPurpose {
+    #[cfg(feature = "debug-diag")]
     Locale,
     Backup,
     Log,
@@ -25,6 +28,7 @@ pub(crate) enum ExportPurpose {
 impl ExportPurpose {
     fn format(self) -> (&'static str, &'static str, usize) {
         match self {
+            #[cfg(feature = "debug-diag")]
             Self::Locale => ("JSON", "json", JsonPurpose::Locale.max_bytes()),
             Self::Backup => ("JSON", "json", JsonPurpose::Backup.max_bytes()),
             Self::Log => ("Text", "txt", 5 * 1024 * 1024),
@@ -36,6 +40,7 @@ impl ExportPurpose {
 impl ExportPurpose {
     fn folder(self) -> &'static str {
         match self {
+            #[cfg(feature = "debug-diag")]
             Self::Locale => "Languages",
             Self::Backup => "Backups",
             Self::Log => "Logs",
@@ -111,6 +116,7 @@ pub(crate) async fn pick_json_file(
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
         let folder = match purpose {
+            #[cfg(feature = "debug-diag")]
             JsonPurpose::Locale => "Languages",
             JsonPurpose::Backup => "Backups",
         };

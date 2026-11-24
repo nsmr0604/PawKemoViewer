@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import { after, test } from "node:test"
 import { createServer } from "vite"
 
+process.env.VITE_DEBUG_DIAG = "1"
 const server = await createServer({
   configFile: false,
   mode: "test",

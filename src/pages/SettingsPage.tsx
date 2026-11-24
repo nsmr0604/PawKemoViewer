@@ -24,12 +24,12 @@ import {
   availableLocales,
   secondaryLocaleFolder,
   invalidLocaleFiles,
-  formatLocaleIssues,
   type Locale,
   type LocaleInfo,
 } from "../i18n"
 import { displayAppVersion } from "../version"
 import { getPlatformRuntime } from "../platform/runtime"
+const DeveloperLocaleDiagnostics = DEBUG_DIAG ? lazy(() => import("../components/DeveloperLocaleDiagnostics").then((module) => ({ default: module.DeveloperLocaleDiagnostics }))) : null
 const DeveloperFullDiagnostics = DEBUG_DIAG ? lazy(() => import("../components/DeveloperFullDiagnostics").then((module) => ({ default: module.DeveloperFullDiagnostics }))) : null
 
 const DeveloperSessionTools = lazy(() => import("../components/DeveloperDiagnostics").then((module) => ({ default: module.DeveloperDiagnostics })))
@@ -52,9 +52,7 @@ function fmtTs(ms: number | undefined): string {
 export function SettingsPage({ layout, section }: { layout: ResolvedLayout; section: string | null }) {
   const s = getSettings()
   const [thumbnailCacheLimit, setThumbnailCacheLimit] = useState(getThumbnailCacheLimit)
-  const localeUseCases = getApplication().locales
   const { descriptor: platform, services } = getPlatformRuntime()
-  const supportsSecondaryLocale = Boolean(services.locale?.writeSecondary)
   const appDirectory = services.userFiles?.appDirectory
   const mobileFolderLabel = t(platform.os === "ios" ? "settings.appFilesIos" : "settings.appFilesAndroid")
   const secondaryFolder = secondaryLocaleFolder()
@@ -84,14 +82,8 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
   const [backupPaste, setBackupPaste] = useState("")
   const [showBackupPaste, setShowBackupPaste] = useState(false)
   const [localeList, setLocaleList] = useState<LocaleInfo[]>(() => availableLocales())
-  const canExportLocale = localeList.some((entry) => entry.code === locale && entry.external)
   const [filePickerBusy, setFilePickerBusy] = useState(false)
-  const [localeMsg, setLocaleMsg] = useState<string | null>(null)
-  const [localeChange, setLocaleChange] = useState<
-    { kind: "replace"; code: string; json: string } | { kind: "delete"; code: string } | null
-  >(null)
-  const [localeAddCode, setLocaleAddCode] = useState("")
-  const [localeAddJson, setLocaleAddJson] = useState("")
+  const [localeFolderResult, setLocaleFolderResult] = useState<string | null>(null)
 
   useEffect(() => {
     getVersion().then(setAppVersion).catch(() => setAppVersion(t("settings.loadFailed")))
@@ -180,119 +172,24 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
     await applyLocale(locale)
   }
 
-  const addLocale = async () => {
-    let code: string
-    try {
-      const result = await getApplication().locales.addLocale(localeAddCode, localeAddJson)
-      if (result.kind !== "saved") {
-        setLocaleMsg(result.kind === "invalid-code"
-          ? t("settings.localeBadCode")
-          : formatLocaleIssues(result.issues))
-        return
-      }
-      code = result.code
-    } catch (e) {
-      setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
-      return
-    }
-    await reloadLocales()
-    setLocaleAddCode("")
-    setLocaleAddJson("")
-    setLocaleMsg(t("settings.localeAdded", { code }))
-  }
-
-  const importLocaleFiles = async (files: FileList | null, target: "private" | "secondary" = "private") => {
-    if (!files?.length) return
-    const result = await getApplication().locales.importLocaleFiles(files, target)
-    if (result.kind === "unavailable") {
-      setLocaleMsg(target === "secondary"
-        ? t("settings.localeFolderUnavailable")
-        : t("settings.failedMsg", { msg: "Locale service unavailable" }))
-      return
-    }
-    const { imported, failures } = result
-    const skipped = failures.map((failure) => {
-      const detail = failure.reason === "json"
-        ? formatLocaleIssues(failure.issues)
-        : t(`settings.localeFailure.${failure.reason}`)
-      return `${failure.name} (${detail})`
-    }).join(", ")
-    if (imported) await reloadLocales()
-    setLocaleMsg(t(skipped ? "settings.localeImportPartial" : "settings.localeImportComplete", { imported, skipped }))
-  }
-
-  const useLocalePicker = async (operation: "import" | "export" | "export-to-app") => {
+  const syncLocaleFolder = async () => {
     if (filePickerBusy) return
     setFilePickerBusy(true)
-    setLocaleMsg(null)
+    setLocaleFolderResult(null)
     try {
-      if (operation === "import") {
-        if (DEBUG_DIAG) logInfo("Locale import: picker requested")
-        const result = await localeUseCases.pickLocale()
-        if (DEBUG_DIAG) logInfo(`Locale import: ${result.kind}`)
-        switch (result.kind) {
-          case "cancelled": break
-          case "invalid-code": setLocaleMsg(t("settings.localeBadCode")); break
-          case "invalid-json": setLocaleMsg(formatLocaleIssues(result.issues)); break
-          case "conflict": setLocaleChange({ kind: "replace", code: result.code, json: result.json }); break
-          case "saved":
-            await reloadLocales()
-            setLocaleMsg(t("settings.localeAdded", { code: result.code }))
-            break
-        }
-      } else {
-        const result = await localeUseCases.exportPrivateLocale(locale, operation === "export-to-app" ? "app" : "picker")
-        if (result.kind === "missing") setLocaleMsg(t("settings.localePickerMissing"))
-        if (result.kind === "invalid-json") setLocaleMsg(formatLocaleIssues(result.issues))
-        if (result.kind === "saved") {
-          if (operation === "export-to-app") await reloadLocales()
-          const path = result.path && operation === "export-to-app" && platform.os === "ios"
-            ? `${t("settings.localeFolderIos")} / ${result.path}`
-            : result.path
-          setLocaleMsg(path ? t("settings.localePickerSavedTo", { path }) : t("settings.localePickerSaved"))
-        }
+      let exported = false
+      try {
+        exported = await getApplication().exportLocaleToFolder(locale)
+      } finally {
+        await reloadLocales()
       }
+      setLocaleFolderResult(t(exported ? "settings.localeFolderExported" : "settings.localeFolderUpdated"))
     } catch (error) {
-      if (DEBUG_DIAG && operation === "import") logInfo("Locale import: failed")
-      setLocaleMsg(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) }))
+      setLocaleFolderResult(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) }))
     } finally {
       setFilePickerBusy(false)
     }
   }
-
-  const confirmLocaleChange = async () => {
-    if (!localeChange || filePickerBusy) return
-    const { code } = localeChange
-    setFilePickerBusy(true)
-    setLocaleChange(null)
-    try {
-      if (localeChange.kind === "replace") {
-        const result = await localeUseCases.addLocale(code, localeChange.json)
-        if (result.kind !== "saved") {
-          setLocaleMsg(result.kind === "invalid-code" ? t("settings.localeBadCode") : formatLocaleIssues(result.issues))
-          return
-        }
-        await reloadLocales()
-        setLocaleMsg(t("settings.localeReplaced", { code }))
-      } else {
-        const deleted = await localeUseCases.deleteLocale(code)
-        await reloadLocales()
-        setLocaleMsg(t(deleted ? "settings.localeDeleted" : "settings.localeDeleteMissing", { code }))
-      }
-    } catch (e) {
-      setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
-    } finally {
-      setFilePickerBusy(false)
-    }
-  }
-
-  const localeChangeControls = localeChange && (
-    <div className="settings-actions" role="group" aria-label={t(localeChange.kind === "replace" ? "settings.localeReplaceConfirm" : "settings.localeDeleteConfirm", { code: localeChange.code })}>
-      <span>{t(localeChange.kind === "replace" ? "settings.localeReplaceConfirm" : "settings.localeDeleteConfirm", { code: localeChange.code })}</span>
-      <button className="btn btn-ghost" onClick={() => setLocaleChange(null)}>{t("settings.localeCancel")}</button>
-      <button className="btn" onClick={() => void confirmLocaleChange()}>{t(localeChange.kind === "replace" ? "settings.localeReplace" : "settings.localeDelete")}</button>
-    </div>
-  )
 
   const doClearIconCache = async () => {
     await clearIconCache()
@@ -620,118 +517,18 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
           <div className="setting-text">
             <span>{t("settings.localeFolder")}</span>
             <small>{folderLabel || t("settings.localeFolderUnavailable")}</small>
-            {folderLabel && <small>{t("settings.localeFolderReadDesc")}</small>}
+            {folderLabel && <small>{t("settings.localeFolderSyncDesc")}</small>}
             {invalidLocaleFiles().length > 0 && (
               <small>{t("settings.localeInvalid", { files: invalidLocaleFiles().join(", ") })}</small>
             )}
           </div>
-          <button className="btn" onClick={() => void reloadLocales()}>
-            {t("settings.localeRefresh")}
-          </button>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>{t("settings.localeImportFile")}</span>
-            <small>{localeUseCases.canPickLocale ? t("settings.localePickerImportDesc") : t("settings.localeImportFilesDesc")}</small>
-          </div>
-          {localeUseCases.canPickLocale ? (
-            <button className="btn" disabled={filePickerBusy || !!localeChange} onClick={() => void useLocalePicker("import")}>
-              {t("settings.localePickerOpen")}
+          {folderLabel && (
+            <button className="btn" disabled={filePickerBusy} onClick={() => void syncLocaleFolder()}>
+              {t("settings.localeFolderSync")}
             </button>
-          ) : (
-            <label className="btn">
-              {t("settings.localeChooseFiles")}
-              <input type="file" accept=".json,application/json" multiple hidden onChange={(e) => { void importLocaleFiles(e.target.files); e.currentTarget.value = "" }} />
-            </label>
           )}
         </div>
-
-        {localeChange?.kind === "replace" && localeChangeControls}
-        {localeUseCases.canSaveLocaleToAppDirectory && (
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.localePickerAppFolder")}</span>
-              <small>{t(platform.os === "ios" ? "settings.localePickerAppFolderDescIos" : "settings.localePickerAppFolderDesc")}</small>
-            </div>
-            <button className="btn" disabled={filePickerBusy || !canExportLocale} onClick={() => void useLocalePicker("export-to-app")}>
-              {t("settings.localeAppFolderSave")}
-            </button>
-          </div>
-        )}
-
-        {localeUseCases.canPickLocale && (
-          <div className="setting-item">
-            <div className="setting-text">
-              <span>{t("settings.localePickerExport")}</span>
-              <small>{t("settings.localePickerExportDesc")}</small>
-            </div>
-            <button className="btn" disabled={filePickerBusy || !canExportLocale} onClick={() => void useLocalePicker("export")}>
-              {t(localeUseCases.canSaveLocaleToAppDirectory ? "settings.chooseOtherDestination" : "settings.localePickerSave")}
-            </button>
-          </div>
-        )}
-
-        <details className="setting-subsection">
-          <summary>{t("settings.localeAdvanced")}</summary>
-          {supportsSecondaryLocale && (
-            <div className="setting-item">
-              <div className="setting-text">
-                <span>{t("settings.localeCopyToFolder")}</span>
-                <small>{t("settings.localeCopyToFolderDesc")}</small>
-              </div>
-              <label className="btn">
-                {t("settings.localeChooseFiles")}
-                <input type="file" accept=".json,application/json" multiple hidden disabled={filePickerBusy} onChange={(e) => { void importLocaleFiles(e.target.files, "secondary"); e.currentTarget.value = "" }} />
-              </label>
-            </div>
-          )}
-          <p className="small">{t("settings.localeAddDesc")}</p>
-          <div className="field">
-            <label>
-              <span>{t("settings.localeCode")}</span>
-              <input
-                type="text"
-                value={localeAddCode}
-                onChange={(e) => setLocaleAddCode(e.target.value)}
-                placeholder="es / zh-Hant"
-              />
-            </label>
-            <label>
-              <span>{t("settings.localeJson")}</span>
-              <textarea
-                rows={5}
-                className="mono"
-                value={localeAddJson}
-                onChange={(e) => setLocaleAddJson(e.target.value)}
-                placeholder='{"locale.name": "Español", ...}'
-              />
-            </label>
-            <button className="btn" disabled={!localeAddCode.trim() || !localeAddJson.trim()} onClick={() => void addLocale()}>
-              {t("settings.localeAddButton")}
-            </button>
-          </div>
-        </details>
-
-        {localeList.some((l) => l.external) && (
-          <div className="setting-item">
-            <div className="setting-text">
-              {localeList
-                .filter((l) => l.external)
-                .map((l) => (
-                  <div key={l.code} className="settings-actions">
-                    <span>{l.name} ({l.code})</span>
-                    <button className="btn btn-ghost" disabled={filePickerBusy || !!localeChange} onClick={() => setLocaleChange({ kind: "delete", code: l.code })}>
-                      {t("settings.localeDelete")}
-                    </button>
-                    {localeChange?.kind === "delete" && localeChange.code === l.code && localeChangeControls}
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-
-        {localeMsg && <span className="small" role="status">{localeMsg}</span>}
+        {localeFolderResult && <span className="small" role="status">{localeFolderResult}</span>}
       </div>
 
       {/* ------------------------------------------------ 投稿表示 (省データ) */}
@@ -1079,6 +876,11 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
           {DEBUG_DIAG && DeveloperFullDiagnostics && (
             <Suspense fallback={<span className="small">{t("common.loading")}</span>}>
               <DeveloperFullDiagnostics />
+            </Suspense>
+          )}
+          {DEBUG_DIAG && DeveloperLocaleDiagnostics && activeSection === "diagnostics" && (
+            <Suspense fallback={null}>
+              <DeveloperLocaleDiagnostics {...{ locale, localeList, reloadLocales, filePickerBusy, setFilePickerBusy }} />
             </Suspense>
           )}
         </div>

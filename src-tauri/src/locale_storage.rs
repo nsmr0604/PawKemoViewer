@@ -8,6 +8,7 @@ use tauri::Manager;
 const LOCALE_MAX_BYTES: u64 = 1024 * 1024;
 
 // Write to a sibling temp file and rename only after the full write.
+#[cfg(any(feature = "debug-diag", target_os = "android", target_os = "ios"))]
 pub(crate) fn atomic_document_write(path: &std::path::Path, contents: &[u8]) -> Result<(), String> {
     use std::io::Write;
     static NEXT_TEMP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -140,6 +141,7 @@ fn list_locale_directory(dir: std::path::PathBuf) -> Result<LocaleList, String> 
     })
 }
 
+#[cfg(feature = "debug-diag")]
 #[tauri::command]
 pub(crate) fn write_locale_file(
     app: tauri::AppHandle,
@@ -177,6 +179,7 @@ pub(crate) fn write_locale_file(
     Ok(path.to_string_lossy().to_string())
 }
 
+#[cfg(feature = "debug-diag")]
 #[tauri::command]
 pub(crate) fn delete_locale_file(app: tauri::AppHandle, code: String) -> Result<bool, String> {
     if !valid_locale_code(&code) {
@@ -207,6 +210,7 @@ pub(crate) fn list_secondary_locale_files(app: tauri::AppHandle) -> Result<Local
     list_locale_directory(secondary_locale_dir(&app)?)
 }
 
+#[cfg(feature = "debug-diag")]
 #[tauri::command]
 pub(crate) fn write_secondary_locale_file(
     app: tauri::AppHandle,
@@ -231,6 +235,44 @@ pub(crate) fn write_secondary_locale_file(
     {
         let _ = app;
         Err("secondary locale storage unavailable".into())
+    }
+}
+
+#[tauri::command]
+pub(crate) fn export_locale_to_folder(
+    app: tauri::AppHandle,
+    code: String,
+    json: String,
+) -> Result<bool, String> {
+    use std::io::{ErrorKind, Write};
+    if !valid_locale_code(&code) || json.len() as u64 > LOCALE_MAX_BYTES {
+        return Err("Invalid locale export".into());
+    }
+    let dir = secondary_locale_dir(&app)?;
+    std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
+    let filename = format!("{code}.json");
+    for entry in std::fs::read_dir(&dir).map_err(|error| error.to_string())? {
+        if entry
+            .map_err(|error| error.to_string())?
+            .file_name()
+            .to_string_lossy()
+            .eq_ignore_ascii_case(&filename)
+        {
+            return Ok(false);
+        }
+    }
+    let path = dir.join(filename);
+    match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+        Ok(mut file) => {
+            if let Err(error) = file.write_all(json.as_bytes()).and_then(|_| file.sync_all()) {
+                drop(file);
+                let _ = std::fs::remove_file(&path);
+                return Err(error.to_string());
+            }
+            Ok(true)
+        }
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => Ok(false),
+        Err(error) => Err(error.to_string()),
     }
 }
 // Foundation storage-location resolver (additive; consumers are migrated separately).
@@ -284,7 +326,7 @@ pub(crate) fn resolve_storage_location(
     Ok(Some(path.to_string_lossy().to_string()))
 }
 
-#[cfg(any(target_os = "android", target_os = "ios"))]
+#[cfg(all(feature = "debug-diag", any(target_os = "android", target_os = "ios")))]
 #[tauri::command]
 pub(crate) async fn save_locale_file_to_app_directory(
     app: tauri::AppHandle,

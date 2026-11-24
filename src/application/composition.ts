@@ -6,12 +6,14 @@ import { api, apiStatus } from "../api"
 import { logError, logInfo, logWarn } from "../log"
 import { createPostDetailUseCases } from "./post-detail"
 import { validateExternalLocale, refreshLocales } from "../i18n"
-import { createLocaleUseCases } from "./locales"
+import { createLocaleUseCases, exportPrivateLocaleToFolder } from "./locales"
 import { getPlatformRuntime } from "../platform/runtime"
+import { DEBUG_DIAG } from "../build-flags"
 
 function createApplication() {
   const services = getPlatformRuntime().services
   const locales = createLocaleRepository(services.locale)
+  const validateLocale = (json: string) => validateExternalLocale(json).issues
   return {
     creators: createCreatorUseCases(creatorIndexRepository),
     loadCreatorPosts: createCreatorPostUseCase(api.creatorPosts),
@@ -28,7 +30,8 @@ function createApplication() {
       warn: logWarn,
       error: logError,
     }),
-    locales: createLocaleUseCases(locales, (json) => validateExternalLocale(json).issues, services.localePicker),
+    locales: DEBUG_DIAG ? createLocaleUseCases(locales, validateLocale, services.localePicker) : undefined,
+    exportLocaleToFolder: (code: string) => exportPrivateLocaleToFolder(locales, code, validateLocale),
     refreshLocales: () => refreshLocales(locales),
   }
 }

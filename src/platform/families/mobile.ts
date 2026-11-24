@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
+import { DEBUG_DIAG } from "../../build-flags"
 import { onBackButtonPress, exit } from "@tauri-apps/api/app"
 import type { LifecycleService, PlatformDescriptor, PlatformServices } from "../contracts"
 import { createNativeServices, resolveNativeStorageLocation } from "./native"
@@ -33,7 +34,7 @@ export function createMobileServices(os?: PlatformDescriptor["os"]): PlatformSer
         save: (purpose, filename, text) => invoke("save_user_file", { purpose, filename, text, appDirectory: true }),
       },
     },
-    localePicker: os === "android" || os === "ios" ? {
+    localePicker: DEBUG_DIAG && native.localePicker && (os === "android" || os === "ios") ? {
       ...native.localePicker,
       saveToAppDirectory: (code, json) => invoke("save_locale_file_to_app_directory", { code, json }),
     } : native.localePicker,
