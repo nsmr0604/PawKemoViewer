@@ -12,11 +12,14 @@ export function BottomNavigation({ currentPath, followCount }: { currentPath: st
           key={path}
           type="button"
           className={active ? "nav-active" : ""}
-          onClick={() => navigate(path, path === "/")}
+          onClick={() => navigate(path)}
           aria-current={active ? "page" : undefined}
         >
-          <NavIcon name={icon} />
-          <span>{label}{badge !== undefined && badge > 0 ? ` (${badge})` : ""}</span>
+          <span className="bottom-nav-icon">
+            <NavIcon name={icon} />
+            {badge !== undefined && badge > 0 && <small className="bottom-nav-badge" aria-label={String(badge)}>{badge > 99 ? "99+" : badge}</small>}
+          </span>
+          <span>{label}</span>
         </button>
       ))}
     </nav>,

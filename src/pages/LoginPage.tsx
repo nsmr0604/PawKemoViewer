@@ -45,7 +45,7 @@ export function LoginPage() {
       })
       if (j.ok) {
         if (j.session) {
-          updateSettings({ sessionKey: j.session })
+          updateSettings({ sessionKey: j.session, accountId: username.trim() })
           // ログイン直後にローカルフォローをアカウントと同期する。
           await syncFollowsWithAccount()
           setResult({ ok: true, msg: t("login.success") })

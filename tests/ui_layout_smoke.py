@@ -21,7 +21,12 @@ FIXTURE = """
       window.fixtureCalls.push(command)
       if (command === "plugin:app|register_listener") window.fixtureBack = args.handler
       if (command === "list_locale_files") return { dir: "", files: [], invalid: [] }
+      if (command === "list_secondary_locale_files") return {
+        dir: "/storage/emulated/0/Android/data/com.nsmr0604.pawkemoviewer/files/Documents/Languages",
+        files: [], invalid: []
+      }
       if (command === "plugin:app|version") return "0.5.0"
+      if (command === "login_request") return { ok: true, session: "fixture-session" }
       if (command === "plugin:app-icon|is_supported") return { value: /iPhone|iPad/.test(navigator.userAgent) }
       if (command === "plugin:app-icon|get_name") return { value: window.fixtureAlternateIcon || null }
       if (command === "plugin:app-icon|change") window.fixtureAlternateIcon = args.options.name
@@ -80,25 +85,28 @@ def desktop_matrix(browser):
         page.keyboard.press("s")
         expect(page.locator(".nav-rail [aria-current=page]")).to_contain_text("設定")
         sections = page.locator(".settings-nav")
-        expect(sections.get_by_role("button")).to_have_count(8 if EXPECT_DIAGNOSTICS else 7)
+        expect(sections.get_by_role("button")).to_have_count(9 if EXPECT_DIAGNOSTICS else 8)
+        expect(sections.locator("[aria-current=page]")).to_contain_text("表示")
         diagnostics = page.locator("#settings-diagnostics")
         diagnostics_link = sections.get_by_role("button", name="開発・診断")
         toggle = page.get_by_role("switch", name="開発・ログ項目を表示")
         if EXPECT_DIAGNOSTICS:
             expect(toggle).to_have_count(0)
-            expect(diagnostics_link).to_be_visible()
+            diagnostics_link.click()
             expect(diagnostics.get_by_text("詳細診断", exact=True)).to_be_visible()
         else:
             expect(diagnostics_link).to_have_count(0)
             expect(diagnostics).to_have_count(0)
+            sections.get_by_role("button", name="情報", exact=True).click()
             expect(toggle).to_have_attribute("aria-checked", "false")
             toggle.click()
-            expect(diagnostics_link).to_be_visible()
+            diagnostics_link.click()
             expect(diagnostics.get_by_text("セッションキーの手動設定", exact=True)).to_be_visible()
             expect(diagnostics.get_by_text("ログ", exact=True)).to_be_visible()
             expect(diagnostics.get_by_text("詳細診断", exact=True)).to_have_count(0)
-            page.reload()
+            page.reload(wait_until="domcontentloaded")
             expect(diagnostics_link).to_be_visible()
+            sections.get_by_role("button", name="情報", exact=True).click()
             expect(toggle).to_have_attribute("aria-checked", "true")
             toggle.click()
             expect(diagnostics_link).to_have_count(0)
@@ -120,6 +128,9 @@ def desktop_matrix(browser):
         expect(page.locator(".bottom-nav, .top-bar")).to_have_count(0)
         page.locator(".desktop-back button").click()
         expect(page.get_by_text("UI Fixture Post", exact=True)).to_be_visible()
+        page.locator(".nav-rail").get_by_role("button", name="設定", exact=True).click()
+        page.keyboard.press("Control+k")
+        expect(search).to_be_focused()
     finally:
         page.context.close()
 
@@ -152,6 +163,7 @@ def mobile_matrix(browser):
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
         page.get_by_text("UI Fixture Post", exact=True).tap()
         expect(page.locator(".detail-bar")).to_be_visible()
+        expect(bottom).to_have_count(0)
         expect(page.get_by_text("UI Fixture Body", exact=True)).to_be_visible()
         page.wait_for_function("window.fixtureBack !== undefined")
         page.evaluate("window.fixtureBack.onmessage({ canGoBack: true })")
@@ -161,6 +173,23 @@ def mobile_matrix(browser):
         page.set_viewport_size({"width": 900, "height": 800})
         expect(bottom).to_be_visible()
         expect(page.locator(".nav-rail")).to_have_count(0)
+        bottom.get_by_role("button", name="設定", exact=True).tap()
+        sections = page.locator(".settings-nav")
+        expect(sections).to_be_visible()
+        expect(page.locator("#settings-display")).to_be_hidden()
+        sections.get_by_role("button", name="言語・翻訳ファイル", exact=True).tap()
+        expect(sections).to_have_count(0)
+        expect(page.locator("#settings-language")).to_be_visible()
+        page.set_viewport_size({"width": 320, "height": 800})
+        assert page.locator("#settings-language .setting-item").first.evaluate(
+            '(row) => getComputedStyle(row).flexDirection === "column"'
+        )
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        path = page.locator("#settings-language small").filter(has_text="com.nsmr0604.pawkemoviewer/files/Documents/Languages")
+        expect(path).to_be_visible()
+        assert path.evaluate("(label) => label.scrollWidth <= label.clientWidth")
+        page.locator(".settings-back").tap()
+        expect(sections).to_be_visible()
     finally:
         page.context.close()
 
@@ -195,10 +224,37 @@ def long_follow_list_matrix(browser):
         page.evaluate("window.testViewportInset = 0; visualViewport.dispatchEvent(new Event('resize'))")
         page.wait_for_function(pinned_to)
         bottom.get_by_role("button", name="設定", exact=True).tap()
-        expect(page.get_by_role("heading", name="設定", exact=True)).to_be_visible()
+        expect(page.locator(".topbar-context")).to_have_text("設定")
         page.locator(".top-bar .btn-account").tap()
         expect(page.locator(".detail-bar")).to_be_visible()
+        expect(bottom).to_have_count(0)
+        page.locator(".detail-bar button").tap()
         expect(bottom).to_be_visible()
+    finally:
+        page.context.close()
+
+
+def account_matrix(browser, *, mobile):
+    page = test_page(browser, width=390 if mobile else 1280, mobile=mobile)
+    account = page.locator(".btn-account" if mobile else ".nav-rail-account")
+    try:
+        account.click()
+        page.locator('input[autocomplete="username"]').fill("test-account")
+        page.locator('input[type="password"]').fill("fixture-password")
+        page.locator(".login-submit").click()
+        expect(account).to_contain_text("test-account")
+        page.reload(wait_until="domcontentloaded")
+        expect(account).to_contain_text("test-account")
+        page.once("dialog", lambda dialog: dialog.dismiss())
+        account.click()
+        expect(account).to_contain_text("test-account")
+        page.once("dialog", lambda dialog: dialog.accept())
+        account.click()
+        expect(account).to_contain_text("ログイン")
+        assert page.evaluate("""() => {
+            const settings = JSON.parse(localStorage.getItem('pawkemo-settings'));
+            return !settings.sessionKey && !settings.accountId;
+        }""")
     finally:
         page.context.close()
 
@@ -228,6 +284,8 @@ if __name__ == "__main__":
             desktop_matrix(browser)
             mobile_matrix(browser)
             long_follow_list_matrix(browser)
+            account_matrix(browser, mobile=False)
+            account_matrix(browser, mobile=True)
             launcher_icon_matrix(browser, ios=False)
             launcher_icon_matrix(browser, ios=True)
         finally:

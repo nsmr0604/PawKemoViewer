@@ -267,13 +267,13 @@ export function FavoritesPage() {
   const newCount = follows.filter((f) => f.isNew).length
 
   return (
-    <div className="page">
+    <div className="page favorites-page">
       <h1 className="page-title">{t("nav.favorites")}</h1>
       <div className="tabs">
-        <button className={`tab ${tab === "follows" ? "tab-active" : ""}`} onClick={() => setTab("follows")}>
+        <button className={`tab ${tab === "follows" ? "tab-active" : ""}`} aria-pressed={tab === "follows"} onClick={() => setTab("follows")}>
           {t("nav.favorites")} {newCount > 0 && <span className="badge">{newCount}</span>}
         </button>
-        <button className={`tab ${tab === "account" ? "tab-active" : ""}`} onClick={() => setTab("account")}>
+        <button className={`tab ${tab === "account" ? "tab-active" : ""}`} aria-pressed={tab === "account"} onClick={() => setTab("account")}>
           {t("favorites.tabAccount")}
         </button>
       </div>
@@ -298,30 +298,20 @@ export function FavoritesPage() {
             <>
             <div className="hint-row">
               <span>{t("favorites.count", { n: follows.length })}</span>
-              <div className="segmented">
-                <button className={`seg ${followSort === "published" ? "seg-active" : ""}`} onClick={() => setFollowSort("published")}>
-                  {t("favorites.sortLatestPost")}
-                </button>
-                <button className={`seg ${followSort === "checked" ? "seg-active" : ""}`} onClick={() => setFollowSort("checked")}>
-                  {t("favorites.sortChecked")}
-                </button>
-                <button className={`seg ${followSort === "name" ? "seg-active" : ""}`} onClick={() => setFollowSort("name")}>
-                  {t("favorites.sortName")}
-                </button>
-                <button className={`seg ${followSort === "followed" ? "seg-active" : ""}`} onClick={() => setFollowSort("followed")}>
-                  {t("favorites.sortFollowed")}
-                </button>
-                <button
-                  className={`seg ${followOrder === "asc" ? "seg-active" : ""}`}
+              <div className="list-sort">
+                <select className="input" aria-label={t("creators.sortBy")} value={followSort}
+                  onChange={(event) => setFollowSort(event.target.value as typeof followSort)}>
+                  <option value="published">{t("favorites.sortLatestPost")}</option>
+                  <option value="checked">{t("favorites.sortChecked")}</option>
+                  <option value="name">{t("favorites.sortName")}</option>
+                  <option value="followed">{t("favorites.sortFollowed")}</option>
+                </select>
+                <button className="btn" type="button"
                   onClick={() => setFollowOrder(followOrder === "desc" ? "asc" : "desc")}
-                  title={followOrder === "desc" ? t("favorites.orderAsc") : t("favorites.orderDesc")}
-                >
+                  title={followOrder === "desc" ? t("favorites.orderAsc") : t("favorites.orderDesc")}>
                   {followOrder === "desc" ? t("favorites.descOrder") : t("favorites.asc")}
                 </button>
               </div>
-            </div>
-            <div className="hint-row">
-              <span />
               <button className="btn btn-ghost" onClick={markAllRead}>
                 {t("favorites.markAllRead")}
               </button>
@@ -413,30 +403,16 @@ export function FavoritesPage() {
           {accountFavs && accountFavs.length > 0 && (
             <div className="hint-row">
               <span>{t("favorites.count", { n: accountFavs.length })}</span>
-              <div className="segmented">
-                <button
-                  className={`seg ${favSort === "faved" ? "seg-active" : ""}`}
-                  onClick={() => setFavSort("faved")}
-                >
-                  {t("favorites.sortFaved")}
-                </button>
-                <button
-                  className={`seg ${favSort === "published" ? "seg-active" : ""}`}
-                  onClick={() => setFavSort("published")}
-                >
-                  {t("favorites.sortPublished")}
-                </button>
-                <button
-                  className={`seg ${favSort === "added" ? "seg-active" : ""}`}
-                  onClick={() => setFavSort("added")}
-                >
-                  {t("favorites.sortAdded")}
-                </button>
-                <button
-                  className={`seg ${favOrder === "asc" ? "seg-active" : ""}`}
+              <div className="list-sort">
+                <select className="input" aria-label={t("creators.sortBy")} value={favSort}
+                  onChange={(event) => setFavSort(event.target.value as typeof favSort)}>
+                  <option value="faved">{t("favorites.sortFaved")}</option>
+                  <option value="published">{t("favorites.sortPublished")}</option>
+                  <option value="added">{t("favorites.sortAdded")}</option>
+                </select>
+                <button className="btn" type="button"
                   onClick={() => setFavOrder(favOrder === "desc" ? "asc" : "desc")}
-                  title={favOrder === "desc" ? t("favorites.orderAsc") : t("favorites.orderDesc")}
-                >
+                  title={favOrder === "desc" ? t("favorites.orderAsc") : t("favorites.orderDesc")}>
                   {favOrder === "desc" ? t("favorites.descOrder") : t("favorites.asc")}
                 </button>
               </div>

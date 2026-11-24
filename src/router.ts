@@ -53,8 +53,21 @@ export function useRoute(): Route {
 
 export function navigate(to: string, replace = false) {
   const url = `#${to}`
-  if (replace) location.replace(url)
-  else location.hash = to
+  if (location.hash === url) return
+  const oldURL = location.href
+  const state = {
+    ...history.state,
+    pawkemoPrevious: replace ? history.state?.pawkemoPrevious : location.hash.slice(1) || "/",
+  }
+  if (replace) history.replaceState(state, "", url)
+  else history.pushState(state, "", url)
+  window.dispatchEvent(new HashChangeEvent("hashchange", { oldURL, newURL: location.href }))
+}
+
+export function goBack(fallback = "/", previous?: string) {
+  const from: unknown = history.state?.pawkemoPrevious
+  if (typeof from === "string" && (previous === undefined || from === previous)) history.back()
+  else navigate(fallback, true)
 }
 
 export function useNavigate() {

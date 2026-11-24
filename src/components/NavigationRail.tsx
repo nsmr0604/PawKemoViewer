@@ -2,6 +2,7 @@ import pcIcon from "../../src-tauri/app-icons/pc.png"
 import { navigate } from "../router"
 import { t } from "../i18n"
 import { navigationItems } from "./navigation-items"
+import { activateAccount } from "../account-action"
 
 export type NavIconName = "home" | "creators" | "favorites" | "settings" | "account"
 
@@ -35,31 +36,30 @@ export interface NavigationRailProps {
   currentPath: string
   followCount: number
   hasSession: boolean
+  accountLabel: string
 }
 
-export function NavigationRail({ currentPath, followCount, hasSession }: NavigationRailProps) {
+export function NavigationRail({ currentPath, followCount, hasSession, accountLabel }: NavigationRailProps) {
   const items = navigationItems(currentPath, followCount)
 
   return (
     <aside className="nav-rail">
       <div className="nav-rail-top">
-        <button className="nav-rail-brand" onClick={() => navigate("/", true)} title="PawKemoViewer">
+        <button className="nav-rail-brand" onClick={() => navigate("/")} title="PawKemoViewer">
           <img className="nav-rail-brand-icon" src={pcIcon} alt="" />
           <span className="nav-rail-brand-copy">
             <strong>PawKemoViewer</strong>
-            <small>pawchive client</small>
           </span>
         </button>
       </div>
 
       <nav className="nav-rail-items" aria-label={t("nav.primary")}>
-        <span className="nav-rail-caption">{t("nav.menu")}</span>
         {items.map((item) => (
           <button
             key={item.path}
             type="button"
             className={`nav-rail-btn ${item.active ? "active" : ""}`}
-            onClick={() => navigate(item.path, item.path === "/")}
+            onClick={() => navigate(item.path)}
             aria-current={item.active ? "page" : undefined}
           >
             <span className="nav-rail-icon"><NavIcon name={item.icon} /></span>
@@ -75,16 +75,17 @@ export function NavigationRail({ currentPath, followCount, hasSession }: Navigat
         <button
           type="button"
           className="nav-rail-account"
-          onClick={() => navigate(hasSession ? "/settings" : "/login")}
+          onClick={() => activateAccount()}
+          title={accountLabel}
         >
           <span className="nav-rail-account-icon"><NavIcon name="account" /></span>
           <span className="nav-rail-account-copy">
-            <strong>{hasSession ? t("nav.account") : t("nav.login")}</strong>
+            <strong>{accountLabel}</strong>
             <small>{hasSession ? t("nav.accountConnected") : t("nav.accountGuest")}</small>
           </span>
           <span className={`nav-rail-status ${hasSession ? "is-connected" : ""}`} />
         </button>
-        <div className="nav-rail-shortcut">{t("nav.keyboardHint")}</div>
+        <div className="nav-rail-shortcut">{t("nav.searchShortcut")}</div>
       </div>
     </aside>
   )

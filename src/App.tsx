@@ -1,4 +1,4 @@
-import { useRoute, navigate } from "./router"
+import { useRoute, navigate, goBack } from "./router"
 import { HomePage } from "./pages/HomePage"
 import { CreatorsPage } from "./pages/CreatorsPage"
 import { CreatorPage } from "./pages/CreatorPage"
@@ -113,13 +113,24 @@ export default function App() {
           target.isContentEditable)
 
       if (e.key === "Escape") {
-        if (route.path === "post" || route.path === "login") {
+        if (!isInput && ["post", "invalid-post", "creator", "login"].includes(route.path)) {
           e.preventDefault()
-          history.back()
+          goBack(route.path === "creator" ? "/creators" : "/")
         }
         return
       }
 
+      if (layout === "desktop" && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        const searchInput = document.querySelector<HTMLInputElement>(".home-page input[type='search']")
+        if (searchInput) {
+          searchInput.focus()
+          searchInput.select()
+        } else {
+          navigate("/?focus=search")
+        }
+        return
+      }
       if (isInput) return
       if (e.ctrlKey || e.altKey || e.metaKey) return
 
@@ -131,7 +142,7 @@ export default function App() {
           searchInput.select()
         }
       } else if (e.key === "h" || e.key === "H") {
-        navigate("/", true)
+        navigate("/")
       } else if (e.key === "c" || e.key === "C") {
         navigate("/creators")
       } else if (e.key === "f" || e.key === "F") {
@@ -140,7 +151,7 @@ export default function App() {
         navigate("/settings")
       }
     },
-    [route.path],
+    [layout, route.path],
   )
 
   useEffect(() => {
@@ -186,10 +197,10 @@ export default function App() {
       )
       break
     case "favorites":
-      content = <FavoritesPage />
+      content = <FavoritesPage key={settings.sessionKey ? "signed-in" : "signed-out"} />
       break
     case "settings":
-      content = <SettingsPage />
+      content = <SettingsPage layout={layout} section={route.query.get("section")} />
       break
     case "login":
       content = <LoginPage />
@@ -199,7 +210,8 @@ export default function App() {
   }
 
   return (
-    <AppShell headerIcon={headerIcon} layout={layout} currentPath={route.path} followCount={followCount} hasSession={!!settings.sessionKey}>
+    <AppShell headerIcon={headerIcon} layout={layout} currentPath={route.path} followCount={followCount}
+      hasSession={!!settings.sessionKey} accountId={settings.accountId}>
       {content}
     </AppShell>
   )

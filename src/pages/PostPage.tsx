@@ -132,9 +132,10 @@ export function PostPage({
     }
   }, [service, creatorId, postId, validContext])
 
+  const { sessionKey } = getSettings()
   // お気に入り状態の初期判定 (アカウントお気に入り一覧に含まれるか・キャッシュ 60 秒)
   useEffect(() => {
-    if (!getSettings().sessionKey) {
+    if (!sessionKey) {
       setFaved("none")
       return
     }
@@ -152,7 +153,7 @@ export function PostPage({
     return () => {
       alive = false
     }
-  }, [postId])
+  }, [postId, sessionKey])
 
   // 元サービス投稿 URL の構成 (fanbox は索引の slug が必要)
   useEffect(() => {
@@ -279,7 +280,7 @@ export function PostPage({
 
   /** お気に入りの追加/解除 (web の ☆ Favorite 相当) */
   const toggleFav = async () => {
-    if (faved !== "yes" && faved !== "no") return
+    if (!sessionKey || (faved !== "yes" && faved !== "no")) return
     const next = faved === "no" ? "yes" : "no"
     setFaved("busy")
     try {
@@ -288,12 +289,14 @@ export function PostPage({
       } else {
         await api.favPostRemove(postContext.service, postContext.creatorId, postContext.postId)
       }
+      if (getSettings().sessionKey !== sessionKey) return
       // キャッシュを消して次の詳細表示で最新状態を判定させる
       clearApiCache()
       setFavoritePost(postContext.service, postContext.postId, next === "yes")
       setFaved(next)
       logInfo(`お気に入り${next === "yes" ? "追加" : "解除"} service=${postContext.service} postId=${postContext.postId}`)
     } catch (e) {
+      if (getSettings().sessionKey !== sessionKey) return
       logError(`お気に入り操作失敗 service=${postContext.service} postId=${postContext.postId}: ${e instanceof Error ? e.message : String(e)}`)
       const st = apiStatus(e)
       if (st === 401) {
@@ -319,24 +322,29 @@ export function PostPage({
       <div className="post-title-wrap">
         <h1 className="post-title">{displayPost.title || tr("common.untitled")}</h1>
         <div className="post-meta">
-          <CreatorAvatar service={postContext.service} id={postContext.creatorId} name={postContext.creatorId} className="small" />
-          {" "}
-          <span className="link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
-            {postContext.service} / {postContext.creatorId}
+          <div className="post-creator">
+            <div aria-hidden="true">
+              <CreatorAvatar service={postContext.service} id={postContext.creatorId} name={postContext.creatorId} className="small" />
+            </div>
+            <button type="button" className="link post-creator-link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
+              {postContext.service} / {postContext.creatorId}
+            </button>
+          </div>
+          <span>
+            {tr("post.published", { date: formatDate(displayPost.published) })}
+            {displayPost.edited && displayPost.edited !== displayPost.published && ` · ${tr("post.edited", { date: formatDate(displayPost.edited) })}`}
+            {displayPost.added && ` · ${tr("post.added", { date: formatDate(displayPost.added) })}`}
+            {revisions && revisions.length > 0 && (activeRevision ? ` · ${tr("post.oldVersion", { i: revisions.findIndex((r) => r.revision_id === activeRevision.revision_id) + 1, n: revisions.length })}` : ` · ${tr("post.latestVersion")}`)}
           </span>
-          {" · "}
-          {tr("post.published", { date: formatDate(displayPost.published) })}
-          {displayPost.edited && displayPost.edited !== displayPost.published && ` · ${tr("post.edited", { date: formatDate(displayPost.edited) })}`}
-          {displayPost.added && ` · ${tr("post.added", { date: formatDate(displayPost.added) })}`}
-          {revisions && revisions.length > 0 && (activeRevision ? ` · ${tr("post.oldVersion", { i: revisions.findIndex((r) => r.revision_id === activeRevision.revision_id) + 1, n: revisions.length })}` : ` · ${tr("post.latestVersion")}`)}
         </div>
         {(() => {
           const tags = normalizeTags(displayPost.tags)
           return tags.length > 0 ? (
             <div className="tag-chips">
               {tags.map((t) => (
-                <span
+                <button
                   key={t}
+                  type="button"
                   className="chip"
                   onClick={() =>
                     navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}?tag=${encodeURIComponent(t)}`)
@@ -344,14 +352,14 @@ export function PostPage({
                   title={tr("post.filterTag", { tag: String(t) })}
                 >
                   {t}
-                </span>
+                </button>
               ))}
             </div>
           ) : null
         })()}
         <div className="creator-actions">
           <FollowButton service={postContext.service} id={postContext.creatorId} />
-          {faved !== "none" && (
+          {sessionKey && faved !== "none" && (
             <button
               className="btn btn-ghost"
               onClick={toggleFav}
@@ -361,7 +369,7 @@ export function PostPage({
               {faved === "checking" ? "…" : faved === "yes" ? tr("post.favYes") : faved === "err" ? tr("post.favErrorShort") : tr("post.favNo")}
             </button>
           )}
-          <div className="post-quick-nav">
+          {(post.prev || post.next) && <div className="post-quick-nav">
             <button
               className="btn btn-sm"
               disabled={!post.prev}
@@ -378,7 +386,7 @@ export function PostPage({
             >
               {tr("post.next")}
             </button>
-          </div>
+          </div>}
           <a
             className="btn btn-ghost"
             href={postUrl(postContext.service, postContext.creatorId, postContext.postId)}
@@ -531,14 +539,14 @@ export function PostPage({
         <pre className="post-embed">{JSON.stringify(displayPost.embed, null, 2)}</pre>
       )}
 
-      <div className="post-nav">
+      {(post.prev || post.next) && <div className="post-nav">
         <button className="btn" disabled={!post.prev} onClick={() => navPost(post.prev)}>
           {tr("post.prevPost")}
         </button>
         <button className="btn" disabled={!post.next} onClick={() => navPost(post.next)}>
           {tr("post.nextPost")}
         </button>
-      </div>
+      </div>}
 
       <div className="section">
         <div className="section-row">

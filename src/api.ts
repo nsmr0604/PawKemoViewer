@@ -27,6 +27,7 @@ const SETTINGS_KEY = "pawkemo-settings"
 export interface Settings {
   /** pawchive.pw の session cookie の値 (お気に入り同期に使用) */
   sessionKey: string
+  accountId: string
   /** テーマ: dark (既定) / light */
   theme: "dark" | "light"
   /** レイアウトモード (JHenTai 参考): auto (既定) / desktop / mobile */
@@ -73,6 +74,7 @@ export function loadSettings(): Settings {
 function defaultSettings(): Settings {
   return {
     sessionKey: "",
+    accountId: "",
     theme: "dark",
     layoutMode: "auto",
     noImageMode: false,
@@ -105,7 +107,7 @@ export function getSettings(): Settings {
 export function updateSettings(patch: Partial<Settings>) {
   const sessionChanged =
     patch.sessionKey !== undefined && patch.sessionKey !== settings.sessionKey
-  settings = { ...settings, ...patch }
+  settings = { ...settings, ...(sessionChanged ? { accountId: "" } : {}), ...patch }
   if (sessionChanged) clearApiCache()
   saveSettings(settings)
   // App 等の上位コンポーネントに変更を通知 (即時反映)

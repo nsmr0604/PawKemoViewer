@@ -10,7 +10,9 @@ import {
   logInfo,
 } from "../log"
 import { DEBUG_DIAG } from "../build-flags"
-import { navigate } from "../router"
+import { navigate, goBack } from "../router"
+import { activateAccount } from "../account-action"
+import type { ResolvedLayout } from "../platform/environment"
 import { Toggle } from "../components/Toggle"
 import { getPlatformName, type LayoutMode } from "../platform/environment"
 import { applyBackup, buildBackup, MAX_BACKUP_BYTES } from "../backup"
@@ -45,7 +47,7 @@ function fmtTs(ms: number | undefined): string {
   ).padStart(2, "0")}`
 }
 
-export function SettingsPage() {
+export function SettingsPage({ layout, section }: { layout: ResolvedLayout; section: string | null }) {
   const s = getSettings()
   const localeUseCases = getApplication().locales
   const { descriptor: platform, services } = getPlatformRuntime()
@@ -105,9 +107,9 @@ export function SettingsPage() {
       }
       setLoginStatus("checking")
       api.accountFavorites("artist", sessionKey, false).then(() => {
-        if (active) setLoginStatus("loggedIn")
+        if (active && getSettings().sessionKey === sessionKey) setLoginStatus("loggedIn")
       }).catch((e) => {
-        if (!active) return
+        if (!active || getSettings().sessionKey !== sessionKey) return
         setLoginStatus(apiStatus(e) === 401 ? "loggedOut" : "unknown")
       })
     }
@@ -401,45 +403,64 @@ export function SettingsPage() {
   const showDiagnostics = DEBUG_DIAG || developerToolsEnabled
   const logCount = showDiagnostics ? getLogEntries().length : 0
 
+  const categories = [
+    ["display", t("settings.displayTitle")],
+    ["post", t("settings.postTitle")],
+    ["language", t("settings.languageTitle")],
+    ["connection", t("settings.navConnection")],
+    ["data", t("settings.navBackup")],
+    ["cache", t("settings.navStorage")],
+    ["account", t("settings.accountTitle")],
+    ["info", t("settings.info")],
+    ...(showDiagnostics ? [["diagnostics", t("settings.diagnostics")]] : []),
+  ]
+  const mobile = layout === "mobile"
+  const validSection = categories.some(([id]) => id === section) ? section : null
+  const activeSection = validSection ?? (mobile ? null : "display")
+
+  useEffect(() => {
+    if (!validSection) return
+    window.scrollTo(0, 0)
+    document.getElementById(`settings-${validSection}`)?.focus({ preventScroll: true })
+  }, [validSection, activeSection])
+
   return (
     <div className="page settings">
       <h1 className="page-title">{t("settings.title")}</h1>
-      <p className="settings-intro">{t("settings.intro")}</p>
-
-      <nav className="settings-nav" aria-label={t("settings.sections")}>
-        {[
-          ["settings-account", t("settings.accountTitle")],
-          ["settings-display", t("settings.displayTitle")],
-          ["settings-post", t("settings.postTitle")],
-          ["settings-connection", t("settings.navConnection")],
-          ["settings-data", t("settings.navBackup")],
-          ["settings-cache", t("settings.navStorage")],
-          ["settings-info", t("settings.info")],
-          ...(showDiagnostics ? [["settings-diagnostics", t("settings.diagnostics")]] : []),
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => {
-              const section = document.getElementById(id)
-              section?.focus({ preventScroll: true })
-              section?.scrollIntoView({ block: "start" })
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
+      {mobile && activeSection && (
+        <button className="btn btn-ghost settings-back" onClick={() => {
+          goBack("/settings", "/settings")
+          window.scrollTo(0, 0)
+        }}>
+          <span aria-hidden="true">←</span> {t("settings.sections")}
+        </button>
+      )}
+      <div className="settings-layout">
+        {(!mobile || !activeSection) && (
+          <nav className="settings-nav" aria-label={t("settings.sections")}>
+            {categories.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={activeSection === id ? "page" : undefined}
+                onClick={() => navigate(`/settings?section=${id}`, !mobile && validSection !== null)}
+              >
+                {label}
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+          </nav>
+        )}
+        <div className="settings-panels" hidden={!activeSection}>
       {/* ------------------------------------------------ アカウント */}
-      <div id="settings-account" className="settings-section" tabIndex={-1}>
+      <div id="settings-account" className="settings-section" tabIndex={-1} hidden={activeSection !== "account"}>
         <h2 className="section-label">{t("settings.accountTitle")}</h2>
 
         <div className="settings-actions">
-          <button className="btn btn-primary" onClick={() => navigate("/login?next=/settings")}>
-            {t("settings.loginButton")}
+          <button className="btn btn-primary" onClick={() => activateAccount("/settings?section=account")}>
+            {s.sessionKey ? s.accountId || t("nav.accountIdUnknown") : t("settings.loginButton")}
           </button>
-          <small className="small">{t("settings.loginHint")}</small>
+          <small className="small">{t(s.sessionKey ? "nav.logoutHint" : "settings.loginHint")}</small>
         </div>
 
         <div className="setting-item">
@@ -455,7 +476,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 表示 */}
-      <div id="settings-display" className="settings-section" tabIndex={-1}>
+      <div id="settings-display" className="settings-section" tabIndex={-1} hidden={activeSection !== "display"}>
         <h2 className="section-label">{t("settings.displayTitle")}</h2>
 
         <div className="setting-item">
@@ -534,12 +555,20 @@ export function SettingsPage() {
           </div>
         </div>
 
+
+
+      </div>
+
+      <div id="settings-language" className="settings-section" tabIndex={-1} hidden={activeSection !== "language"}>
+        <h2 className="section-label">{t("settings.languageTitle")}</h2>
+
         <div className="setting-item">
           <div className="setting-text">
             <span>{t("settings.language")}</span>
             <small>{t("settings.languageDesc")}</small>
           </div>
           <select
+            aria-label={t("settings.language")}
             className="locale-select"
             value={locale}
             onChange={(e) => void applyLocale(e.target.value)}
@@ -666,38 +695,10 @@ export function SettingsPage() {
         )}
 
         {localeMsg && <span className="small">{localeMsg}</span>}
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>{t("settings.noImage")}</span>
-            <small>{t("settings.noImageDesc")}</small>
-          </div>
-          <Toggle
-            checked={noImageMode}
-            onChange={toggleNoImageMode}
-            label={t("settings.noImage")}
-            onLabel={t("settings.noImageOn")}
-            offLabel={t("settings.noImageOff")}
-          />
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-text">
-            <span>{t("settings.proxy")}</span>
-            <small>{t("settings.proxyDesc")}</small>
-          </div>
-          <Toggle
-            checked={proxyImages}
-            onChange={toggleProxyImages}
-            label={t("settings.proxy")}
-            onLabel={t("settings.proxyOn")}
-            offLabel={t("settings.proxyOff")}
-          />
-        </div>
       </div>
 
       {/* ------------------------------------------------ 投稿表示 (省データ) */}
-      <div id="settings-post" className="settings-section" tabIndex={-1}>
+      <div id="settings-post" className="settings-section" tabIndex={-1} hidden={activeSection !== "post"}>
         <h2 className="section-label">{t("settings.postTitle")}</h2>
 
         <div className="setting-item">
@@ -744,8 +745,37 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 接続 */}
-      <div id="settings-connection" className="settings-section" tabIndex={-1}>
+      <div id="settings-connection" className="settings-section" tabIndex={-1} hidden={activeSection !== "connection"}>
         <h2 className="section-label">{t("settings.navConnection")}</h2>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.noImage")}</span>
+            <small>{t("settings.noImageDesc")}</small>
+          </div>
+          <Toggle
+            checked={noImageMode}
+            onChange={toggleNoImageMode}
+            label={t("settings.noImage")}
+            onLabel={t("settings.noImageOn")}
+            offLabel={t("settings.noImageOff")}
+          />
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.proxy")}</span>
+            <small>{t("settings.proxyDesc")}</small>
+          </div>
+          <Toggle
+            checked={proxyImages}
+            onChange={toggleProxyImages}
+            label={t("settings.proxy")}
+            onLabel={t("settings.proxyOn")}
+            offLabel={t("settings.proxyOff")}
+          />
+        </div>
+
 
         <div className="setting-item">
           <div className="setting-text">
@@ -767,7 +797,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ データ (バックアップ) */}
-      <div id="settings-data" className="settings-section" tabIndex={-1}>
+      <div id="settings-data" className="settings-section" tabIndex={-1} hidden={activeSection !== "data"}>
         <h2 className="section-label">{t("settings.backupSection")}</h2>
 
         <div className="setting-item">
@@ -854,7 +884,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ キャッシュ */}
-      <div id="settings-cache" className="settings-section" tabIndex={-1}>
+      <div id="settings-cache" className="settings-section" tabIndex={-1} hidden={activeSection !== "cache"}>
         <h2 className="section-label">{t("settings.storageTitle")}</h2>
 
         <div className="setting-item">
@@ -890,7 +920,7 @@ export function SettingsPage() {
       </div>
 
       {/* ------------------------------------------------ 情報 */}
-      <div id="settings-info" className="settings-section" tabIndex={-1}>
+      <div id="settings-info" className="settings-section" tabIndex={-1} hidden={activeSection !== "info"}>
         <h2 className="section-label">{t("settings.info")}</h2>
 
         <div className="setting-item">
@@ -947,7 +977,7 @@ export function SettingsPage() {
         </p>
       </div>
       {showDiagnostics && (
-        <div id="settings-diagnostics" className="settings-section" tabIndex={-1}>
+        <div id="settings-diagnostics" className="settings-section" tabIndex={-1} hidden={activeSection !== "diagnostics"}>
           <h2 className="section-label">{t("settings.diagnostics")}</h2>
 
           <div className="setting-item">
@@ -1000,6 +1030,8 @@ export function SettingsPage() {
           )}
         </div>
       )}
+        </div>
+      </div>
     </div>
   )
 }
