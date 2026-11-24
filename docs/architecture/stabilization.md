@@ -1,5 +1,8 @@
 # Stabilization and release evidence
 
+> この文書は **0.5.0 系のマイルストーンで実施した検証記録** です。現在の状態は
+> [開発状況](../STATUS.md) を参照してください。バージョン番号や実行 ID は記録時点のものです。
+
 ## M7.1 — Import boundaries
 
 `npm run check:boundaries` uses the project's TypeScript configuration and module resolver. Normal and diagnostic frontend builds run it before type checking. The check covers static imports, re-exports, explicit import-type references and literal dynamic imports recognized by TypeScript.

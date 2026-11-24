@@ -1,6 +1,9 @@
 # Architecture baseline inventory
 
-Baseline: `0.5.0` at `cf81e3d` (PR #12). This inventory describes the existing code.
+> この文書は **0.5.0 時点 (cf81e3d) の棚卸し記録** です。現在の構成は
+> [開発ガイド](../DEVELOPMENT.md) を参照してください。移行完了後も経緯として残します。
+
+Baseline: `0.5.0` at `cf81e3d` (PR #12). This inventory describes the existing code at that time.
 
 ## M0.1 — Entrypoints and dependencies
 

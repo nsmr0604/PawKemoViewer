@@ -16,18 +16,30 @@ const PAGES = [
   { src: "docs/BUILD.md", dst: "Build.md" },
   { src: "docs/DEVELOPMENT.md", dst: "Development.md" },
   { src: "docs/API.md", dst: "API.md" },
+  { src: "docs/STATUS.md", dst: "Status.md" },
+  { src: "docs/HISTORY.md", dst: "History.md" },
 ];
 // 同期対象の Wiki 専用ページ (docs/wiki/*.md はそのままコピー)
 const WIKI_ONLY_DIR = "docs/wiki";
 
+const PAGE_NAME = {
+  "BUILD.md": "Build",
+  "DEVELOPMENT.md": "Development",
+  "API.md": "API",
+  "STATUS.md": "Status",
+  "HISTORY.md": "History",
+};
+
 /** docs 内の相対リンクを Wiki 用に書き換える */
 function toWiki(md) {
-  const pageName = { "BUILD.md": "Build", "DEVELOPMENT.md": "Development", "API.md": "API" };
-  let out = md.replace(/\[([^\]]+)\]\(([A-Za-z_]+\.md)\)/g, (m, label, file) => {
-    if (pageName[file]) return `[${pageName[file]}](${pageName[file]})`;
+  let out = md.replace(/\[([^\]]+)\]\(([A-Za-z_-]+\.md)\)/g, (m, label, file) => {
+    if (PAGE_NAME[file]) return `[${PAGE_NAME[file]}](${PAGE_NAME[file]})`;
     if (file === "LICENSES.md") return `[${label}](${REPO}/blob/main/docs/LICENSES.md)`;
     return m;
   });
+  // docs 配下のサブディレクトリへの参照はリポジトリのファイルへリンクする
+  out = out.replace(/\[([^\]]+)\]\((?:\.\/)?(architecture|branding)\/([^)]+)\)/g,
+    (m, label, dir, rest) => `[${label}](${REPO}/blob/main/docs/${dir}/${rest})`);
   out = out.replace(/\]\(\.\.\/README\.md\)/g, `](${REPO}#readme)`);
   // 本文中の AGENTS.md (リンクでないもの) は公開リポジトリのファイルへリンクする
   out = out.replace(/(?<![\[/])AGENTS\.md(?!\])/g, `[AGENTS.md](${REPO}/blob/main/AGENTS.md)`);
