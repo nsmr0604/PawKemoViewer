@@ -217,7 +217,7 @@ test("creator DTO normalization preserves missing fields and supported date repr
   ])
 })
 
-test("native locale import handles cancellation, rejects conflicts, and writes a new private copy", async (t) => {
+test("native locale import stages conflicts with the existing code and writes only new files", async (t) => {
   const writePrivate = t.mock.fn(async () => {})
   const picker = { open: async () => ({ kind: "cancelled" }) }
   const repository = {
@@ -228,7 +228,7 @@ test("native locale import handles cancellation, rejects conflicts, and writes a
   assert.deepEqual(await locales.pickLocale(), { kind: "cancelled" })
   for (const code of ["EN", "de"]) {
     picker.open = async () => ({ kind: "selected", name: code + ".json", json: "{}" })
-    assert.deepEqual(await locales.pickLocale(), { kind: "conflict", code })
+    assert.deepEqual(await locales.pickLocale(), { kind: "conflict", code: code.toLowerCase(), json: "{}" })
   }
   picker.open = async () => ({ kind: "selected", name: "es.json", json: "bad" })
   assert.deepEqual(await locales.pickLocale(), { kind: "invalid-json", issues: [{ kind: "json" }] })

@@ -66,9 +66,9 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, v
       const catalogue = await repository.listPrivate()
       if (!catalogue) throw new Error("Could not check existing locale files")
       const filename = `${code.toLowerCase()}.json`
-      const exists = catalogue.files.some((file) => file.code.toLowerCase() === code.toLowerCase())
-        || catalogue.invalid.some((name) => name.toLowerCase() === filename)
-      if (exists) return { kind: "conflict", code } as const
+      const existingCode = catalogue.files.find((file) => file.code.toLowerCase() === code.toLowerCase())?.code
+        ?? catalogue.invalid.find((name) => name.toLowerCase() === filename)?.slice(0, -5)
+      if (existingCode) return { kind: "conflict", code: existingCode, json: result.json } as const
       await repository.writePrivate(code, result.json, false)
       return { kind: "saved", code } as const
     },

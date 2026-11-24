@@ -87,6 +87,9 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
   const canExportLocale = localeList.some((entry) => entry.code === locale && entry.external)
   const [filePickerBusy, setFilePickerBusy] = useState(false)
   const [localeMsg, setLocaleMsg] = useState<string | null>(null)
+  const [localeChange, setLocaleChange] = useState<
+    { kind: "replace"; code: string; json: string } | { kind: "delete"; code: string } | null
+  >(null)
   const [localeAddCode, setLocaleAddCode] = useState("")
   const [localeAddJson, setLocaleAddJson] = useState("")
 
@@ -231,7 +234,7 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
           case "cancelled": break
           case "invalid-code": setLocaleMsg(t("settings.localeBadCode")); break
           case "invalid-json": setLocaleMsg(formatLocaleIssues(result.issues)); break
-          case "conflict": setLocaleMsg(t("settings.localePickerConflict", { code: result.code })); break
+          case "conflict": setLocaleChange({ kind: "replace", code: result.code, json: result.json }); break
           case "saved":
             await reloadLocales()
             setLocaleMsg(t("settings.localeAdded", { code: result.code }))
@@ -257,20 +260,39 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
     }
   }
 
-  const deleteLocale = async (code: string) => {
-    if (!window.confirm(t("settings.localeDeleteConfirm", { code }))) return
+  const confirmLocaleChange = async () => {
+    if (!localeChange || filePickerBusy) return
+    const { code } = localeChange
+    setFilePickerBusy(true)
+    setLocaleChange(null)
     try {
-      await getApplication().locales.deleteLocale(code)
+      if (localeChange.kind === "replace") {
+        const result = await localeUseCases.addLocale(code, localeChange.json)
+        if (result.kind !== "saved") {
+          setLocaleMsg(result.kind === "invalid-code" ? t("settings.localeBadCode") : formatLocaleIssues(result.issues))
+          return
+        }
+        await reloadLocales()
+        setLocaleMsg(t("settings.localeReplaced", { code }))
+      } else {
+        const deleted = await localeUseCases.deleteLocale(code)
+        await reloadLocales()
+        setLocaleMsg(t(deleted ? "settings.localeDeleted" : "settings.localeDeleteMissing", { code }))
+      }
     } catch (e) {
       setLocaleMsg(t("settings.failedMsg", { msg: e instanceof Error ? e.message : String(e) }))
-      return
+    } finally {
+      setFilePickerBusy(false)
     }
-    await getApplication().refreshLocales()
-    setLocaleList(availableLocales())
-    setLocaleMsg(t("settings.localeDeleted", { code }))
-    // 削除した言語を選択中なら日本語へ戻す
-    if (locale === code) await applyLocale("ja")
   }
+
+  const localeChangeControls = localeChange && (
+    <div className="settings-actions" role="group" aria-label={t(localeChange.kind === "replace" ? "settings.localeReplaceConfirm" : "settings.localeDeleteConfirm", { code: localeChange.code })}>
+      <span>{t(localeChange.kind === "replace" ? "settings.localeReplaceConfirm" : "settings.localeDeleteConfirm", { code: localeChange.code })}</span>
+      <button className="btn btn-ghost" onClick={() => setLocaleChange(null)}>{t("settings.localeCancel")}</button>
+      <button className="btn" onClick={() => void confirmLocaleChange()}>{t(localeChange.kind === "replace" ? "settings.localeReplace" : "settings.localeDelete")}</button>
+    </div>
+  )
 
   const doClearIconCache = async () => {
     await clearIconCache()
@@ -614,7 +636,7 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
             <small>{localeUseCases.canPickLocale ? t("settings.localePickerImportDesc") : t("settings.localeImportFilesDesc")}</small>
           </div>
           {localeUseCases.canPickLocale ? (
-            <button className="btn" disabled={filePickerBusy} onClick={() => void useLocalePicker("import")}>
+            <button className="btn" disabled={filePickerBusy || !!localeChange} onClick={() => void useLocalePicker("import")}>
               {t("settings.localePickerOpen")}
             </button>
           ) : (
@@ -625,6 +647,7 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
           )}
         </div>
 
+        {localeChange?.kind === "replace" && localeChangeControls}
         {localeUseCases.canSaveLocaleToAppDirectory && (
           <div className="setting-item">
             <div className="setting-text">
@@ -698,9 +721,10 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
                 .map((l) => (
                   <div key={l.code} className="settings-actions">
                     <span>{l.name} ({l.code})</span>
-                    <button className="btn btn-ghost" onClick={() => void deleteLocale(l.code)}>
+                    <button className="btn btn-ghost" disabled={filePickerBusy || !!localeChange} onClick={() => setLocaleChange({ kind: "delete", code: l.code })}>
                       {t("settings.localeDelete")}
                     </button>
+                    {localeChange?.kind === "delete" && localeChange.code === l.code && localeChangeControls}
                   </div>
                 ))}
             </div>
