@@ -32,6 +32,9 @@
   (HTTP 403 / too large / 画像でない など) をホスト名付きで最大 5 件表示する。
   Windows 開発ビルドで、添付 5 件 + 外部 2 件の計 7 件保存、対象を外したとき 0 件、
   失敗理由の表示 (404 の壊れた投稿) を実測
+- **ヘッダー・アバター除外** (2026-11-25): 外部ページの `<header>` / `<nav>` / `<footer>` を
+  除外し、SNS のアバター・バナー・UI 素材 (Twitter / Gravatar / Facebook / YouTube) と
+  512 バイト未満の画像を対象外にした。Rust 単体テスト 11 件が通過
 - **Android 確認 (2026-11-25 / Redmi K20 Pro・debug APK)**: 投稿詳細の
   「画像を一括保存」と 0 件メッセージを実機で確認。`Documents` は既存で、
   `Downloads` は未作成のまま (0 件時に空フォルダーを作らない)。
@@ -106,6 +109,11 @@
 - リンク先が HTML の場合: 取得して画像 URL を抽出し、相対 URL を解決して保存
   - `<img>` の `src` / `data-src` / `data-original` / `data-lazy-src` / `srcset`
   - `<meta property="og:image">` / `twitter:image` (画像が 1 枚も無いページの保険)
+  - `<header>` / `<nav>` / `<footer>` の中は対象外 (ロゴ・バナー・ナビ画像を避ける)
+  - SNS のアバター・バナー・UI 素材は対象外
+    (`pbs.twimg.com/profile_images|profile_banners`、`abs.twimg.com`、
+    `*.gravatar.com/avatar`、`graph.facebook.com`、`yt3.ggpht.com`)
+  - 512 バイト未満の画像はトラッキングピクセルとみなして保存しない
 - リンク先が画像 (拡張子または Content-Type が image/*) の場合: そのまま保存
 - 外部ページは最大 3 ページまで。1 ページあたりの画像は最大 100 件
 - JavaScript で画像を描画するページは対象外 (HTML に URL が無いため)
@@ -237,7 +245,6 @@ src-tauri/src/downloads.rs
 
 今後の課題:
 
-- 外部ページのヘッダー画像・ロゴ・トラッキング画像、SNS のアバターを除外する
 - 同一画像のサイズ違い (`_normal` / `_400x400` など) を 1 つにまとめる
 - JavaScript で画像を描画する外部ページへの対応 (現状は HTML の `<img>` のみ)
 - 実行をまたいだ重複スキップ (現在は `-2` を付けて再保存する)

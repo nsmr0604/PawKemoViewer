@@ -26,6 +26,8 @@ const MAX_PAGE_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_PAGE_IMAGES: usize = 100;
 /// 1 回の実行で開く外部ページ数
 const MAX_PAGES: usize = 3;
+/// これ未満の画像はトラッキングピクセル等とみなして保存しない
+const MIN_IMAGE_BYTES: usize = 512;
 /// ファイル取得の間隔
 const FETCH_INTERVAL: Duration = Duration::from_millis(200);
 
@@ -417,6 +419,9 @@ pub(crate) fn extract_page_images(html: &str, base: &reqwest::Url) -> Vec<String
             .expect("valid attribute regex")
     });
 
+    // ヘッダー・ナビ・フッターのロゴやバナーを対象から外す
+    let body = strip_chrome(html);
+
     let mut seen = HashSet::new();
     let mut images = Vec::new();
     let mut push = |raw: &str, images: &mut Vec<String>, seen: &mut HashSet<String>| {
@@ -430,7 +435,7 @@ pub(crate) fn extract_page_images(html: &str, base: &reqwest::Url) -> Vec<String
         }
     };
 
-    for caps in IMG_TAG.captures_iter(html) {
+    for caps in IMG_TAG.captures_iter(&body) {
         if images.len() >= MAX_PAGE_IMAGES {
             break;
         }
@@ -462,7 +467,7 @@ pub(crate) fn extract_page_images(html: &str, base: &reqwest::Url) -> Vec<String
         }
     }
 
-    for caps in META_TAG.captures_iter(html) {
+    for caps in META_TAG.captures_iter(&body) {
         if images.len() >= MAX_PAGE_IMAGES {
             break;
         }
@@ -511,6 +516,9 @@ fn image_candidate(raw: &str, base: &reqwest::Url) -> Option<String> {
     if url.host_str() == Some("img.pawchive.pw") && url.path().starts_with("/thumbnail/") {
         return None;
     }
+    if is_avatar_or_ui(&url) {
+        return None;
+    }
     if let Some(extension) = url.path().rsplit('.').next() {
         if matches!(
             extension.to_ascii_lowercase().as_str(),
@@ -520,6 +528,41 @@ fn image_candidate(raw: &str, base: &reqwest::Url) -> Option<String> {
         }
     }
     Some(url.to_string())
+}
+
+/// 1x1 のトラッキングピクセルなど、極端に小さい画像か。
+fn is_tracking_pixel(bytes: &[u8]) -> bool {
+    bytes.len() < MIN_IMAGE_BYTES
+}
+
+/// SNS のアバター・バナー・UI 素材は「投稿の画像」ではないので対象外にする。
+fn is_avatar_or_ui(url: &reqwest::Url) -> bool {
+    let host = url.host_str().unwrap_or("").to_ascii_lowercase();
+    let path = url.path();
+    match host.as_str() {
+        "pbs.twimg.com" => {
+            path.starts_with("/profile_images/") || path.starts_with("/profile_banners/")
+        }
+        "abs.twimg.com" | "graph.facebook.com" | "platform-lookaside.fbsbx.com" => true,
+        "yt3.ggpht.com" => true,
+        _ => host.ends_with("gravatar.com") && path.starts_with("/avatar/"),
+    }
+}
+
+/// `<header>` / `<nav>` / `<footer>` の中身を落として、本文だけにする。
+fn strip_chrome(html: &str) -> std::borrow::Cow<'_, str> {
+    static TAGS: [&str; 3] = ["header", "nav", "footer"];
+    let mut current = std::borrow::Cow::Borrowed(html);
+    for tag in TAGS {
+        let pattern = format!(r"(?is)<{tag}\b[^>]*>.*?</{tag}\s*>");
+        let Ok(re) = regex::Regex::new(&pattern) else {
+            continue;
+        };
+        if re.is_match(&current) {
+            current = std::borrow::Cow::Owned(re.replace_all(&current, " ").into_owned());
+        }
+    }
+    current
 }
 
 /// HTML 属性でよく使われる実体参照だけを戻す。
@@ -660,6 +703,11 @@ impl<'a> Downloader<'a> {
 
     /// 取得済みのバイト列を連番付きで保存する。
     fn store(&mut self, url: &str, name: &str, bytes: &[u8]) {
+        // 1x1 のトラッキングピクセルなどは保存しない
+        if is_tracking_pixel(bytes) {
+            self.skipped += 1;
+            return;
+        }
         if self.total_bytes + bytes.len() as u64 > MAX_TOTAL_BYTES {
             self.failed.push(DownloadFailure {
                 url: url.to_string(),
@@ -879,6 +927,38 @@ mod tests {
                 "https://cdn.example.com/tw.jpg".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn header_nav_footer_and_avatars_are_excluded() {
+        let base = reqwest::Url::parse("https://example.com/post/1").unwrap();
+        let html = r#"
+            <header><a href="/"><img src="/logo.png"></a></header>
+            <nav><img src="/nav.png"></nav>
+            <main>
+              <img src="/content-1.jpg">
+              <img src="https://pbs.twimg.com/media/abc.jpg">
+              <img src="https://pbs.twimg.com/profile_images/1/avatar.jpg">
+              <img src="https://abs.twimg.com/emoji/v2/x.png">
+            </main>
+            <footer><img src="/footer-logo.png"></footer>
+        "#;
+        let images = extract_page_images(html, &base);
+        assert_eq!(
+            images,
+            vec![
+                "https://example.com/content-1.jpg".to_string(),
+                "https://pbs.twimg.com/media/abc.jpg".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn tracking_pixels_are_detected_by_size() {
+        assert!(is_tracking_pixel(&[0u8; 43]));
+        assert!(is_tracking_pixel(&[0u8; MIN_IMAGE_BYTES - 1]));
+        assert!(!is_tracking_pixel(&[0u8; MIN_IMAGE_BYTES]));
+        assert!(!is_tracking_pixel(&[0u8; 4096]));
     }
 
     #[test]
