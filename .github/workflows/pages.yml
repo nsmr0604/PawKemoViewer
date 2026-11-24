@@ -1,5 +1,8 @@
 name: 紹介サイトを公開
 
+# 正式リリースが完成したら、紹介サイト (gh-pages) の release.json を更新する。
+# Pages の公開元は gh-pages ブランチ (legacy) のため、Actions からのデプロイではなく
+# ブランチへコミットする。5 プラットフォームの成果物が揃ったリリースだけを対象にする。
 on:
   workflow_dispatch:
   workflow_run:
@@ -13,23 +16,20 @@ concurrency:
 permissions: {}
 
 jobs:
-  prepare:
+  publish:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
-      contents: read
-    outputs:
-      publish: ${{ steps.release.outputs.publish }}
+      contents: write
     steps:
       - uses: actions/checkout@v6
         with:
           ref: gh-pages
           path: site
-          persist-credentials: false
 
       - name: 完成した正式リリースを選択
         id: release
@@ -82,34 +82,25 @@ jobs:
           selected = None
           for release in sorted(releases, key=lambda item: item["published_at"] or "", reverse=True):
               data = collect(release)
-              if data:
+              if not data:
+                  continue
+              if run is None:
+                  # 手動実行では最新の完成リリースを公開する。
+                  selected = release, *data
+                  break
+              # ビルドを起動したコミットと、リリースタグのコミットが一致するものだけを公開する。
+              tag = quote(release["tag_name"], safe="")
+              sha = api(f"commits/{tag}")["sha"]
+              if sha == run["head_sha"]:
                   selected = release, *data
                   break
 
           publish = selected is not None
-          if selected and run:
-              release, version, assets = selected
-              tag = quote(release["tag_name"], safe="")
-              sha = api(f"commits/{tag}")["sha"]
-              platforms = {
-                  "tauri.yml": ("windows", "linux"),
-                  "macos.yml": ("macos",),
-                  "android.yml": ("android",),
-                  "ios.yml": ("ios",),
-              }.get(Path(run["path"].split("@", 1)[0]).name, ())
-              # 同じコミットのデバッグビルドや古いリリースの再実行を除外する。
-              publish = sha == run["head_sha"] and any(
-                  run["run_started_at"] <= assets[platform]["updated_at"] <= run["updated_at"]
-                  for platform in platforms
-              )
-
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               print(f"publish={str(publish).lower()}", file=output)
 
           if not publish:
-              print("公開対象の正式リリースはありません。")
-              if not run:
-                  raise SystemExit("公開には5プラットフォームの成果物が必要です。")
+              print("公開対象の正式リリースはありません。5 プラットフォームの成果物が揃うまで待機します。")
               raise SystemExit(0)
 
           release, version, assets = selected
@@ -120,26 +111,22 @@ jobs:
               "assets": {platform: asset["browser_download_url"] for platform, asset in assets.items()},
           }
           Path("site/release.json").write_text(json.dumps(metadata) + "\n", encoding="utf-8")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              print(f"tag={release['tag_name']}", file=output)
           print(f"公開対象: {release['tag_name']}")
           PY
 
-      - uses: actions/upload-pages-artifact@v5
+      - name: サイトのリリース情報を更新
         if: steps.release.outputs.publish == 'true'
-        with:
-          path: site
-
-  deploy:
-    needs: prepare
-    if: needs.prepare.outputs.publish == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: GitHub Pages にデプロイ
-        id: deployment
-        uses: actions/deploy-pages@v5
+        working-directory: site
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add release.json
+          if git diff --cached --quiet; then
+            echo "release.json に変更はありません"
+            exit 0
+          fi
+          git commit -m "リリース情報を ${{ steps.release.outputs.tag }} に更新"
+          git push origin HEAD:gh-pages
