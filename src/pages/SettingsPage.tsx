@@ -23,6 +23,7 @@ import {
   availableLocales,
   secondaryLocaleFolder,
   invalidLocaleFiles,
+  formatLocaleIssues,
   type Locale,
   type LocaleInfo,
 } from "../i18n"
@@ -179,7 +180,9 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
     try {
       const result = await getApplication().locales.addLocale(localeAddCode, localeAddJson)
       if (result.kind !== "saved") {
-        setLocaleMsg(t(result.kind === "invalid-code" ? "settings.localeBadCode" : "settings.localeBadJson"))
+        setLocaleMsg(result.kind === "invalid-code"
+          ? t("settings.localeBadCode")
+          : formatLocaleIssues(result.issues))
         return
       }
       code = result.code
@@ -203,7 +206,12 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
       return
     }
     const { imported, failures } = result
-    const skipped = failures.map(({ name, reason }) => `${name} (${t(`settings.localeFailure.${reason}`)})`).join(", ")
+    const skipped = failures.map((failure) => {
+      const detail = failure.reason === "json"
+        ? formatLocaleIssues(failure.issues)
+        : t(`settings.localeFailure.${failure.reason}`)
+      return `${failure.name} (${detail})`
+    }).join(", ")
     if (imported) await reloadLocales()
     setLocaleMsg(t(skipped ? "settings.localeImportPartial" : "settings.localeImportComplete", { imported, skipped }))
   }
@@ -218,7 +226,7 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
         switch (result.kind) {
           case "cancelled": break
           case "invalid-code": setLocaleMsg(t("settings.localeBadCode")); break
-          case "invalid-json": setLocaleMsg(t("settings.localeBadJson")); break
+          case "invalid-json": setLocaleMsg(formatLocaleIssues(result.issues)); break
           case "conflict": setLocaleMsg(t("settings.localePickerConflict", { code: result.code })); break
           case "saved":
             await reloadLocales()
@@ -228,7 +236,7 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
       } else {
         const result = await localeUseCases.exportPrivateLocale(locale, operation === "export-to-app" ? "app" : "picker")
         if (result.kind === "missing") setLocaleMsg(t("settings.localePickerMissing"))
-        if (result.kind === "invalid-json") setLocaleMsg(t("settings.localeBadJson"))
+        if (result.kind === "invalid-json") setLocaleMsg(formatLocaleIssues(result.issues))
         if (result.kind === "saved") {
           if (operation === "export-to-app") await reloadLocales()
           const path = result.path && operation === "export-to-app" && platform.os === "ios"

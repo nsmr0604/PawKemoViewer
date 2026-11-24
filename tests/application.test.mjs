@@ -16,14 +16,15 @@ const { createPostDetailUseCases } = await server.ssrLoadModule("/src/applicatio
 const { createHomePostUseCase, createCreatorPostUseCase } = await server.ssrLoadModule("/src/application/post-pages.ts")
 const { toCreatorIndexRows } = await server.ssrLoadModule("/src/infrastructure/creator-index-dto.ts")
 const { createCreatorUseCases } = await server.ssrLoadModule("/src/application/creators.ts")
+const validateFixture = (text) => text === "{}" ? [] : [{ kind: "json" }]
 
 test("locale CRUD validates input and sends private and shared writes to their own targets", async (t) => {
   const write = t.mock.fn(async () => {})
   const writeSecondary = t.mock.fn(async () => {})
   const remove = t.mock.fn(async () => true)
-  const locales = createLocaleUseCases({ writePrivate: write, writeSecondary, deletePrivate: remove }, (value) => value === "{}")
+  const locales = createLocaleUseCases({ writePrivate: write, writeSecondary, deletePrivate: remove }, validateFixture)
   assert.deepEqual(await locales.addLocale("bad/code", "{}"), { kind: "invalid-code" })
-  assert.deepEqual(await locales.addLocale("en", "invalid"), { kind: "invalid-json" })
+  assert.deepEqual(await locales.addLocale("en", "invalid"), { kind: "invalid-json", issues: [{ kind: "json" }] })
   assert.deepEqual(await locales.addLocale(" en ", "{}"), { kind: "saved", code: "en" })
   const files = [
     { name: "en.json", size: 2, text: async () => "{}" },
@@ -34,7 +35,8 @@ test("locale CRUD validates input and sends private and shared writes to their o
   assert.deepEqual(await locales.importLocaleFiles(files, "secondary"), {
     kind: "completed",
     imported: 1,
-    failures: [{ name: "ja.json", reason: "size" }, { name: "fr.json", reason: "json" }, { name: "../de.json", reason: "code" }],
+    failures: [{ name: "ja.json", reason: "size" }, { name: "fr.json", reason: "json", issues: [{ kind: "json" }] },
+      { name: "../de.json", reason: "code" }],
   })
   assert.equal(await locales.deleteLocale("en"), true)
   assert.deepEqual(write.mock.calls.map(({ arguments: args }) => args), [["en", "{}"]])
@@ -46,7 +48,7 @@ test("locale import snapshots input and reports write failure without stopping t
   const pending = Promise.withResolvers()
   const locales = createLocaleUseCases({
     async writePrivate(code) { if (code === "en") throw new Error("write failed") },
-  }, () => true)
+  }, validateFixture)
   const files = [
     { name: "en.json", size: 2, text: () => pending.promise },
     { name: "ja.json", size: 2, text: async () => "{}" },
@@ -209,14 +211,14 @@ test("native locale import handles cancellation, rejects conflicts, and writes a
     listPrivate: async () => ({ files: [{ code: "en", json: "{}" }], invalid: ["de.json"] }),
     writePrivate,
   }
-  const locales = createLocaleUseCases(repository, (text) => text === "{}", picker)
+  const locales = createLocaleUseCases(repository, validateFixture, picker)
   assert.deepEqual(await locales.pickLocale(), { kind: "cancelled" })
   for (const code of ["EN", "de"]) {
     picker.open = async () => ({ kind: "selected", name: code + ".json", json: "{}" })
     assert.deepEqual(await locales.pickLocale(), { kind: "conflict", code })
   }
   picker.open = async () => ({ kind: "selected", name: "es.json", json: "bad" })
-  assert.deepEqual(await locales.pickLocale(), { kind: "invalid-json" })
+  assert.deepEqual(await locales.pickLocale(), { kind: "invalid-json", issues: [{ kind: "json" }] })
   assert.equal(writePrivate.mock.callCount(), 0)
   picker.open = async () => ({ kind: "selected", name: "es.json", json: "{}" })
   assert.deepEqual(await locales.pickLocale(), { kind: "saved", code: "es" })
@@ -226,7 +228,7 @@ test("native locale import handles cancellation, rejects conflicts, and writes a
 test("native locale export sends the selected private file and propagates cancel", async (t) => {
   const save = t.mock.fn(async () => ({ kind: "cancelled" }))
   const repository = { listPrivate: async () => ({ files: [{ code: "es", json: "{}" }], invalid: [] }) }
-  const locales = createLocaleUseCases(repository, () => true, { save })
+  const locales = createLocaleUseCases(repository, validateFixture, { save })
   assert.deepEqual(await locales.exportPrivateLocale("ja"), { kind: "missing" })
   assert.deepEqual(await locales.exportPrivateLocale("es"), { kind: "cancelled" })
   assert.deepEqual(save.mock.calls[0].arguments, ["es", "{}"])
@@ -236,18 +238,18 @@ test("app-folder locale export uses its own destination and returns the saved pa
   const save = t.mock.fn(async () => ({ kind: "cancelled" }))
   const saveToAppDirectory = t.mock.fn(async () => ({ kind: "saved", path: "/app/Documents/Languages/es.json" }))
   const repository = { listPrivate: async () => ({ files: [{ code: "es", json: "{}" }] }) }
-  const locales = createLocaleUseCases(repository, () => true, { save, saveToAppDirectory })
+  const locales = createLocaleUseCases(repository, validateFixture, { save, saveToAppDirectory })
   assert.equal(locales.canSaveLocaleToAppDirectory, true)
   assert.deepEqual(await locales.exportPrivateLocale("es", "app"), {
     kind: "saved", path: "/app/Documents/Languages/es.json",
   })
   assert.deepEqual(saveToAppDirectory.mock.calls[0].arguments, ["es", "{}"])
   assert.equal(save.mock.callCount(), 0)
-  assert.equal(createLocaleUseCases(repository, () => true, { save }).canSaveLocaleToAppDirectory, false)
+  assert.equal(createLocaleUseCases(repository, validateFixture, { save }).canSaveLocaleToAppDirectory, false)
 })
 
 test("only the secondary locale path is exposed while both dictionaries are loaded", async () => {
-  const { refreshLocales, secondaryLocaleFolder, loadLocale, t } =
+  const { refreshLocales, secondaryLocaleFolder, invalidLocaleFiles, loadLocale, t } =
     await server.ssrLoadModule("/src/i18n.ts")
   const file = (label) => ({ code: "es", json: JSON.stringify({ "locale.name": "Español", "nav.home": label }) })
   const privateCatalogue = { dir: "/data/data/example/locales", invalid: [], files: [file("Private")] }
@@ -257,6 +259,14 @@ test("only the secondary locale path is exposed while both dictionaries are load
     assert.equal(secondaryLocaleFolder(), publicCatalogue.dir)
     assert.equal(await loadLocale("es"), "es")
     assert.equal(t("nav.home"), "Secondary")
+    const invalidCatalogue = { ...publicCatalogue, files: [{
+      code: "es", json: JSON.stringify({ "locale.name": "Español", "nav.home": "Bad {{extra}}" }),
+    }] }
+    await refreshLocales({ listPrivate: async () => privateCatalogue, listSecondary: async () => invalidCatalogue })
+    assert.match(invalidLocaleFiles()[0], /secondary:es\.json.*nav\.home/)
+    assert.equal(await loadLocale("es"), "es")
+    assert.equal(t("nav.home"), "Private")
+    assert.equal(t("nav.settings"), "設定")
     await refreshLocales({ listPrivate: async () => privateCatalogue })
     assert.equal(secondaryLocaleFolder(), "")
     assert.equal(await loadLocale("es"), "es")
@@ -265,4 +275,27 @@ test("only the secondary locale path is exposed while both dictionaries are load
     await refreshLocales(undefined)
     await loadLocale("ja")
   }
+})
+
+test("locale validation allows partial imports and checks the same keys and variables in complete dictionaries", async () => {
+  const { validateLocale, MAX_LOCALE_BYTES } = await server.ssrLoadModule("/src/domain/locale-validation.ts")
+  const reference = { "locale.name": "日本語", "nav.home": "ホーム", "items.summary": "{{count}} 件・{{name}}" }
+  const partial = JSON.stringify({ "locale.name": "English", "items.summary": "{{name}}: {{ count }} items" })
+  assert.deepEqual(validateLocale(partial, reference).issues, [])
+  assert.deepEqual(validateLocale(partial, reference, true).issues, [{ kind: "missing", key: "nav.home" }])
+  const invalid = JSON.stringify({
+    "locale.name": "English", "nav.home": " ", "nav.setings": "Settings",
+    "items.summary": "{{count}} items for {{typo}}",
+  })
+  const issues = [
+    { kind: "value", key: "nav.home" }, { kind: "unknown", key: "nav.setings" },
+    { kind: "variables", key: "items.summary" },
+  ]
+  assert.deepEqual(validateLocale(invalid, reference).issues, issues)
+  assert.deepEqual(validateLocale(invalid, reference, true).issues, issues)
+  assert.deepEqual(validateLocale("日本語".repeat(Math.ceil(MAX_LOCALE_BYTES / 9))).issues, [{ kind: "size" }])
+  const locales = createLocaleUseCases({
+    writePrivate: async () => assert.fail("invalid locale was saved"),
+  }, (text) => validateLocale(text, reference).issues)
+  assert.deepEqual(await locales.addLocale("en", invalid), { kind: "invalid-json", issues })
 })

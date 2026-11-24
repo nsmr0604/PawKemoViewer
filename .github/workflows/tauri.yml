@@ -17,6 +17,7 @@ on:
       - "package-lock.json"
       - "scripts/app-icon/**"
       - "scripts/generate-icons.mjs"
+      - "scripts/check-locales.mjs"
       - "scripts/ci/publish-build.sh"
       - ".github/workflows/tauri.yml"
   workflow_dispatch:

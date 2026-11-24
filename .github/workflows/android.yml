@@ -17,6 +17,7 @@ on:
       - "package-lock.json"
       - "scripts/app-icon/**"
       - "scripts/generate-icons.mjs"
+      - "scripts/check-locales.mjs"
       - "src-tauri/app-icons.json"
       - "src-tauri/app-icons/**"
       - ".github/workflows/android.yml"
