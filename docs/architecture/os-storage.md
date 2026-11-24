@@ -87,6 +87,22 @@ Android は `getExternalFilesDir(DIRECTORY_DOCUMENTS)/Languages` を使う。iOS
 
 任意の場所からの取り込み・書き出し、JSON の手入力、アプリ内ファイルの削除は診断ビルドの **設定 → 開発・診断 → 言語ファイルの診断** にある。
 
+### 一括画像ダウンロードの保存先
+
+投稿詳細の「画像を一括保存」は、Logs / Languages と同じ基準ディレクトリの下へ保存する。
+保存先はクリエイター名のサブディレクトリで、ファイル名は `001_<元の名前>` の連番になる。
+
+| 環境 | 保存先 |
+|---|---|
+| Android | `getExternalFilesDir(DIRECTORY_DOCUMENTS)/Downloads/<クリエイター名>` |
+| iOS / iPadOS | Files の `PawKemoViewer/Documents/Downloads/<クリエイター名>` |
+| Windows / macOS | ユーザーの `Downloads/PawKemoView/<クリエイター名>` |
+| Linux | `~/Downloads/PawKemoView/<クリエイター名>` |
+
+デスクトップで `Downloads/PawKemoView` を作成できない場合は
+`Documents/Pawchive/Downloads`、それも使えなければアプリデータ領域の `Downloads` に
+フォールバックする。詳細と上限は [計画](../plan/bulk-image-download.md) を参照。
+
 ### モバイル統合版の実機確認
 
 確認対象の APK と署名済み IPA、または検証用パッケージを使用する。
