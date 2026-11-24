@@ -8,10 +8,15 @@ private struct OpenArguments: Decodable {
     let referer: String
 }
 
+private struct BrowserArguments: Decodable {
+    let url: String
+}
+
 private final class ExternalPageController: UIViewController {
     private let pageURL: URL
     private let referer: String
     private var webView: WKWebView!
+    private var urlObservation: NSKeyValueObservation?
 
     init(url: URL, referer: String) {
         self.pageURL = url
@@ -25,12 +30,17 @@ private final class ExternalPageController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "外部ページ"
+        title = pageURL.absoluteString
         view.backgroundColor = .systemBackground
 
         let configuration = WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        urlObservation = webView.observe(\.url, options: [.new]) { [weak self] view, _ in
+            if let url = view.url {
+                self?.title = url.absoluteString
+            }
+        }
 #if PKV_EXTERNAL_DIAG
         webView.navigationDelegate = self
         ExternalViewTrace.add("load_requested")
@@ -122,6 +132,23 @@ extension ExternalPageController: WKNavigationDelegate {
 #endif
 
 private final class ExternalViewPlugin: Plugin {
+    @objc public func openBrowser(_ invoke: Invoke) throws {
+        let args = try invoke.parseArgs(BrowserArguments.self)
+        guard let url = URL(string: args.url) else {
+            invoke.reject("Invalid browser URL")
+            return
+        }
+        DispatchQueue.main.async {
+            UIApplication.shared.open(url, options: [:]) { opened in
+                if opened {
+                    invoke.resolve()
+                } else {
+                    invoke.reject("Could not open the browser")
+                }
+            }
+        }
+    }
+
 #if PKV_EXTERNAL_DIAG
     @objc public func diagnosticEvents(_ invoke: Invoke) {
         DispatchQueue.main.async {

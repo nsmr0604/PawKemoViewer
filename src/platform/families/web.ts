@@ -1,4 +1,5 @@
 import { browserStorage, clipboard, indexedDatabase } from "./browser"
+import { DEBUG_DIAG } from "../../build-flags"
 import type { FileExportService, LocaleService, PlatformServices, LifecycleService } from "../contracts"
 
 const files: FileExportService = {
@@ -21,8 +22,10 @@ const files: FileExportService = {
 
 const locale: LocaleService = {
   listExternal: async () => null,
-  write: async () => { throw new Error("External locale storage unavailable in browser runtime") },
-  delete: async () => false,
+  ...(DEBUG_DIAG ? {
+    write: async () => { throw new Error("External locale storage unavailable in browser runtime") },
+    delete: async () => false,
+  } : {}),
 }
 
 const lifecycle: LifecycleService = {

@@ -132,9 +132,17 @@ try {
   tap(findBelow('settings.languageTitle', button));
   await test('settings language controls render', () => {
     findBelow('settings.language');
+    findBelow('settings.localeFolderSync', button);
     screenshot('settings-language');
   });
-  await test('language import picker opens and cancels', () => picker('settings.localePickerOpen'));
+  tap(await waitFor('Settings navigation is missing', nodes => match(nodes, 'nav.settings', button)));
+  const diagnostics = match(screen(), 'settings.diagnostics', button);
+  if (diagnostics) {
+    tap(diagnostics);
+    if (match(screen(), 'settings.fullDiagnosticsTitle')) {
+      await test('diagnostic language import picker opens and cancels', () => picker('settings.localePickerOpen'));
+    }
+  }
   tap(await waitFor('Settings navigation is missing', nodes => match(nodes, 'nav.settings', button)));
   tap(findBelow('settings.navBackup', button));
   await test('default backup save is available', () => {

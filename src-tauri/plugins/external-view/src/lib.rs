@@ -43,3 +43,13 @@ pub async fn open<R: Runtime>(
         .map_err(|error| error.to_string())?;
     Ok(())
 }
+
+pub async fn open_browser<R: Runtime>(app: &AppHandle<R>, url: String) -> Result<(), String> {
+    let _: serde_json::Value = app
+        .state::<ExternalView<R>>()
+        .0
+        .run_mobile_plugin_async("openBrowser", serde_json::json!({ "url": url }))
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}

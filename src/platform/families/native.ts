@@ -14,10 +14,13 @@ async function listLocaleFiles(command: string): Promise<LocaleFileSet | null> {
 const locale: LocaleService = {
   listExternal: () => listLocaleFiles("list_locale_files"),
   listSecondary: () => listLocaleFiles("list_secondary_locale_files"),
-  write: async (code, json, replaceExisting) => {
-    await invoke("write_locale_file", { code, json, replaceExisting })
-  },
-  delete: (code) => invoke<boolean>("delete_locale_file", { code }),
+  exportToFolder: (code, json) => invoke<boolean>("export_locale_to_folder", { code, json }),
+  ...(DEBUG_DIAG ? {
+    write: async (code: string, json: string, replaceExisting?: boolean) => {
+      await invoke("write_locale_file", { code, json, replaceExisting })
+    },
+    delete: (code: string) => invoke<boolean>("delete_locale_file", { code }),
+  } : {}),
 }
 
 export const resolveNativeStorageLocation: StorageLocationService["resolve"] = async (area, purpose) => {
@@ -55,7 +58,7 @@ export function createNativeServices() {
     } : undefined,
     locale,
     userFiles,
-    localePicker,
+    localePicker: DEBUG_DIAG ? localePicker : undefined,
     clipboard,
   } satisfies PlatformServices
 }

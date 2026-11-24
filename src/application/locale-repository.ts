@@ -7,9 +7,10 @@ export interface LocaleCatalogue {
 export interface LocaleRepository {
   listPrivate(): Promise<LocaleCatalogue | null>
   listSecondary?(): Promise<LocaleCatalogue | null>
-  writePrivate(code: string, json: string, replaceExisting?: boolean): Promise<void>
+  exportToFolder?(code: string, json: string): Promise<boolean>
+  writePrivate?(code: string, json: string, replaceExisting?: boolean): Promise<void>
   writeSecondary?(code: string, json: string): Promise<void>
-  deletePrivate(code: string): Promise<boolean>
+  deletePrivate?(code: string): Promise<boolean>
 }
 
 export interface LocaleFileSelection {

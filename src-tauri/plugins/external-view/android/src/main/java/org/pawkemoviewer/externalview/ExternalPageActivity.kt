@@ -1,7 +1,9 @@
 package org.pawkemoviewer.externalview
 
 import android.app.Activity
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -37,10 +39,11 @@ class ExternalPageActivity : Activity() {
             setBackgroundColor(0xFF1A1B1E.toInt())
         }
         val title = TextView(this).apply {
-            text = "外部ページ"
+            text = url
             setTextColor(0xFFE8E9EB.toInt())
             textSize = 16f
             isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.END
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val close = Button(this).apply {
@@ -58,7 +61,15 @@ class ExternalPageActivity : Activity() {
             loadsImagesAutomatically = true
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         }
-        view.webViewClient = WebViewClient()
+        view.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+                title.text = url
+            }
+
+            override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
+                title.text = url
+            }
+        }
         view.webChromeClient = WebChromeClient()
 
         root.addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))

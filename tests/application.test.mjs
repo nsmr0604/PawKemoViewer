@@ -10,7 +10,7 @@ const server = await createServer({
 })
 after(() => server.close())
 
-const { createLocaleUseCases } = await server.ssrLoadModule("/src/application/locales.ts")
+const { createLocaleUseCases, exportPrivateLocaleToFolder } = await server.ssrLoadModule("/src/application/locales.ts")
 const { createLocaleRepository } = await server.ssrLoadModule("/src/infrastructure/locale-repository.ts")
 const { createPostDetailUseCases } = await server.ssrLoadModule("/src/application/post-detail.ts")
 const { createHomePostUseCase, createCreatorPostUseCase } = await server.ssrLoadModule("/src/application/post-pages.ts")
@@ -217,7 +217,7 @@ test("creator DTO normalization preserves missing fields and supported date repr
   ])
 })
 
-test("native locale import handles cancellation, rejects conflicts, and writes a new private copy", async (t) => {
+test("native locale import stages conflicts with the existing code and writes only new files", async (t) => {
   const writePrivate = t.mock.fn(async () => {})
   const picker = { open: async () => ({ kind: "cancelled" }) }
   const repository = {
@@ -228,7 +228,7 @@ test("native locale import handles cancellation, rejects conflicts, and writes a
   assert.deepEqual(await locales.pickLocale(), { kind: "cancelled" })
   for (const code of ["EN", "de"]) {
     picker.open = async () => ({ kind: "selected", name: code + ".json", json: "{}" })
-    assert.deepEqual(await locales.pickLocale(), { kind: "conflict", code })
+    assert.deepEqual(await locales.pickLocale(), { kind: "conflict", code: code.toLowerCase(), json: "{}" })
   }
   picker.open = async () => ({ kind: "selected", name: "es.json", json: "bad" })
   assert.deepEqual(await locales.pickLocale(), { kind: "invalid-json", issues: [{ kind: "json" }] })
@@ -236,6 +236,19 @@ test("native locale import handles cancellation, rejects conflicts, and writes a
   picker.open = async () => ({ kind: "selected", name: "es.json", json: "{}" })
   assert.deepEqual(await locales.pickLocale(), { kind: "saved", code: "es" })
   assert.deepEqual(writePrivate.mock.calls[0].arguments, ["es", "{}", false])
+})
+
+test("folder sync exports only the selected valid private dictionary", async (t) => {
+  const exportToFolder = t.mock.fn(async () => false)
+  const repository = {
+    listPrivate: async () => ({ files: [{ code: "qaa", json: "{}" }, { code: "qac", json: "bad" }], invalid: [] }),
+    exportToFolder,
+  }
+  assert.equal(await exportPrivateLocaleToFolder(repository, "ja", validateFixture), false)
+  assert.equal(await exportPrivateLocaleToFolder(repository, "qac", validateFixture), false)
+  assert.equal(exportToFolder.mock.callCount(), 0)
+  assert.equal(await exportPrivateLocaleToFolder(repository, "qaa", validateFixture), false)
+  assert.deepEqual(exportToFolder.mock.calls[0].arguments, ["qaa", "{}"])
 })
 
 test("native locale export sends the selected private file and propagates cancel", async (t) => {

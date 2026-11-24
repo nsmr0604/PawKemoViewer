@@ -81,9 +81,11 @@ Validation in Cloud covered the application and mock IPC tests, normal/debug fro
 
 ### App-owned export folders
 
-On Android the native plugin prepares `getExternalFilesDir(DIRECTORY_DOCUMENTS)/Languages` at startup. Settings can export the selected private locale there directly, without an additional runtime permission. The save result reports the actual path. If external storage was unavailable at startup, export retries folder creation and reports failure if it still cannot write. Android may hide `Android/data` from the system picker and file managers. Use the separate system-picker export when the destination should be visible there.
+Android uses `getExternalFilesDir(DIRECTORY_DOCUMENTS)/Languages`. iOS and iPadOS expose `Documents/Languages` in Files. The desktop path is displayed in Settings.
 
-On iOS and iPadOS the app creates `Documents/Languages` at startup and exposes Documents in Files. Settings can export directly there or use the system picker with Languages as its initial location. Settings displays the secondary folder, and Reload Languages rescans it. Both exports require a selected language with a private copy created by import or manual addition. The private catalogue remains in app data.
+**言語フォルダーを同期** は、選択中の有効なアプリ内言語ファイルを、同じ名前のファイルが追加フォルダーにない場合に書き出す。その後フォルダーを再走査し、検証を通った JSON を言語一覧に反映する。追加フォルダーの辞書はその場所から読み込み、アプリ内への複製は行わない。
+
+任意の場所からの取り込み・書き出し、JSON の手入力、アプリ内ファイルの削除は診断ビルドの **設定 → 開発・診断 → 言語ファイルの診断** にある。
 
 ### モバイル統合版の実機確認
 
@@ -93,9 +95,13 @@ iPhone・iPad は一度起動し、「ファイル」→「このiPhone内」ま
 →「PawKemoViewer」→「Languages」を開く。Android は設定に表示される
 アプリ専用の `Documents/Languages` を確認する。
 
+製品版では追加フォルダーに `qab.json` と `qac.json` を置き、**言語フォルダーを同期** を押す。`QA Folder` が選択でき、`qac.json` が拒否されることを確認する。選択中のアプリ内ファイルがある場合は、同名ファイルのない状態で書き出され、次の同期で既存ファイルが維持されることを確認する。
+
+診断ビルドでは **開発・診断 → 言語ファイルの診断** で次も確認する。
+
 1. ファイル選択をキャンセルし、言語一覧に変化がないことを確認する。
 2. 未使用の言語コードで有効な JSON を取り込み、選択後に翻訳が反映されることを確認する。
-   同じファイルを再度取り込んで重複が拒否されることと、不正 JSON・1 MiB 超のファイルで
+   同じファイルを再度取り込んで上書き確認が表示されることと、不正 JSON・1 MiB 超のファイルで
    言語一覧が変化しないことも確認する。
 3. 取り込んだ言語を選び、アプリ用フォルダーに書き出して JSON の内容を確認する。
    別の言語コードの JSON を追加フォルダーに置き、再読み込み後と再起動後に選択できることを確認する。

@@ -6,8 +6,9 @@ export function createLocaleRepository(service: LocaleService | undefined): Loca
   return {
     listPrivate: service.listExternal.bind(service),
     listSecondary: service.listSecondary?.bind(service),
-    writePrivate: service.write.bind(service),
+    exportToFolder: service.exportToFolder?.bind(service),
+    writePrivate: service.write?.bind(service),
     writeSecondary: service.writeSecondary?.bind(service),
-    deletePrivate: service.delete.bind(service),
+    deletePrivate: service.delete?.bind(service),
   }
 }

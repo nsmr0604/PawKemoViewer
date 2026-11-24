@@ -8,6 +8,14 @@ type ImportFailure =
   | { name: string; reason: "code" | "size" | "write" }
   | { name: string; reason: "json"; issues: LocaleIssue[] }
 
+export async function exportPrivateLocaleToFolder(repository: LocaleRepository | undefined, code: string, validate: (json: string) => LocaleIssue[]) {
+  if (!repository?.exportToFolder) return false
+  const catalogue = await repository.listPrivate()
+  const file = catalogue?.files.find((entry) => entry.code === code)
+  if (!file || validate(file.json).length) return false
+  return repository.exportToFolder(file.code, file.json)
+}
+
 export function createLocaleUseCases(repository: LocaleRepository | undefined, validate: (json: string) => LocaleIssue[], picker?: LocaleFileSelection) {
   return {
     async addLocale(rawCode: string, json: string) {
@@ -15,7 +23,7 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, v
       if (!LOCALE_CODE.test(code)) return { kind: "invalid-code" } as const
       const issues = validate(json)
       if (issues.length) return { kind: "invalid-json", issues } as const
-      if (!repository) throw new Error("Locale service unavailable")
+      if (!repository?.writePrivate) throw new Error("Locale service unavailable")
       await repository.writePrivate(code, json)
       return { kind: "saved", code } as const
     },
@@ -56,7 +64,7 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, v
     canSaveLocaleToAppDirectory: picker?.saveToAppDirectory !== undefined,
 
     async pickLocale() {
-      if (!picker || !repository) throw new Error("Locale picker unavailable")
+      if (!picker || !repository?.writePrivate) throw new Error("Locale picker unavailable")
       const result = await picker.open()
       if (result.kind === "cancelled") return result
       const code = result.name.replace(/\.json$/i, "")
@@ -66,9 +74,9 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, v
       const catalogue = await repository.listPrivate()
       if (!catalogue) throw new Error("Could not check existing locale files")
       const filename = `${code.toLowerCase()}.json`
-      const exists = catalogue.files.some((file) => file.code.toLowerCase() === code.toLowerCase())
-        || catalogue.invalid.some((name) => name.toLowerCase() === filename)
-      if (exists) return { kind: "conflict", code } as const
+      const existingCode = catalogue.files.find((file) => file.code.toLowerCase() === code.toLowerCase())?.code
+        ?? catalogue.invalid.find((name) => name.toLowerCase() === filename)?.slice(0, -5)
+      if (existingCode) return { kind: "conflict", code: existingCode, json: result.json } as const
       await repository.writePrivate(code, result.json, false)
       return { kind: "saved", code } as const
     },
@@ -88,7 +96,7 @@ export function createLocaleUseCases(repository: LocaleRepository | undefined, v
     },
 
     async deleteLocale(code: string) {
-      if (!repository) throw new Error("Locale service unavailable")
+      if (!repository?.deletePrivate) throw new Error("Locale service unavailable")
       return repository.deletePrivate(code)
     },
   }

@@ -30,5 +30,5 @@ export function CreatorAvatar({
   if (icon) {
     return <img className={`creator-avatar ${className}`} src={icon} alt={name || id} loading="lazy" decoding="async" />
   }
-  return <div className={`creator-avatar ${className}`}>{letter}</div>
+  return <span className={`creator-avatar ${className}`}>{letter}</span>
 }
