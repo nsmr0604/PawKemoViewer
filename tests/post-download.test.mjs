@@ -3,6 +3,7 @@ import { test } from "node:test"
 import {
   collectExternalLinks,
   collectImageUrls,
+  isImageFileUrl,
   isInternalHost,
   isThumbnailUrl,
   resolveImageUrl,
@@ -86,4 +87,15 @@ test("external link collection respects the limit", () => {
   const hrefs = Array.from({ length: 30 }, (_, index) => `https://example.com/${index}`)
   assert.equal(collectExternalLinks(hrefs).length, 10)
   assert.equal(collectExternalLinks(hrefs, undefined, 3).length, 3)
+})
+
+test("direct image links are detected including mirror query names", () => {
+  assert.equal(isImageFileUrl("https://example.com/a.JPG"), true)
+  assert.equal(isImageFileUrl("https://example.com/a.webp?x=1"), true)
+  assert.equal(isImageFileUrl("https://n1.pawchive.pw/data/ab/cd/hash?f=cover.png"), true)
+  assert.equal(isImageFileUrl("https://n1.pawchive.pw/data/ab/cd/hash?f=clip.mp4"), false)
+  assert.equal(isImageFileUrl("https://example.com/gallery"), false)
+  assert.equal(isImageFileUrl("https://example.com/"), false)
+  assert.equal(isImageFileUrl("mailto:a@example.com"), false)
+  assert.equal(isImageFileUrl("not a url"), false)
 })

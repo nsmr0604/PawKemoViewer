@@ -42,6 +42,22 @@ export function collectImageUrls(sources: Iterable<string>, baseUrl?: string): {
 /** 記事のリンク先として扱わないホスト (サービス本体とミラー) */
 const INTERNAL_HOSTS = ["pawchive.pw", "fanbox.cc", "patreon.com"]
 
+const IMAGE_EXTENSION = /\.(jpe?g|png|webp|gif|avif|bmp|heic)$/i
+
+/** 画像ファイルへの直リンクか (`?f=name.jpg` 形式も含む) */
+export function isImageFileUrl(href: string): boolean {
+  let url: URL
+  try {
+    url = new URL(href)
+  } catch {
+    return false
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false
+  if (IMAGE_EXTENSION.test(url.pathname)) return true
+  const name = url.searchParams.get("f")
+  return !!name && IMAGE_EXTENSION.test(name)
+}
+
 export function isInternalHost(host: string): boolean {
   const lower = host.toLowerCase()
   return INTERNAL_HOSTS.some((internal) => lower === internal || lower.endsWith(`.${internal}`))

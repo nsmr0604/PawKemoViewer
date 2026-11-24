@@ -23,6 +23,13 @@
   - 外部ページの `<img>` (`iana.org`) → `002_iana-logo-header….svg`
   - 画像への直リンク (`httpbin.org/image/jpeg`) → `003_jpeg.jpg`
   - Android / iOS の実機確認は未実施
+- **取りこぼし対策** (2026-11-25): 記事内の画像ファイル直リンク (`<a href="….jpg">`) を対象に追加。
+  外部ページは `src` に加えて `data-src` / `data-original` / `data-lazy-src` / `srcset` /
+  `og:image` / `twitter:image` も拾う。Rust 単体テスト 9 件・フロント 6 件が通過
+- **Android 確認 (2026-11-25 / Redmi K20 Pro・debug APK)**: 投稿詳細の
+  「画像を一括保存」と 0 件メッセージを実機で確認。`Documents` は既存で、
+  `Downloads` は未作成のまま (0 件時に空フォルダーを作らない)。
+  実ファイル書き込みは、本文に画像がある投稿が見つからず未実施
 
 ### 実測で分かったこと (2026-11-25)
 
@@ -76,6 +83,7 @@
 ### 4.1 記事内の画像
 
 - 投稿本文の `<img src>` (pawchive ミラーと外部ホストの両方) の**本体画像**
+- 本文内の画像ファイルへの直リンク `<a href="….jpg">` (`?f=name.jpg` 形式も含む)
 - 投稿の `file` / `attachments` は対象外
 - サムネイル (`img.pawchive.pw/thumbnail/...` など) は対象外
 - 動画・PDF・ZIP などは対象外
@@ -84,10 +92,12 @@
 ### 4.2 外部 URL 先の画像
 
 - 投稿本文の `<a href>` のうち、pawchive / fanbox / patreon 以外の http(s) リンク
-- リンク先が HTML の場合: 取得して `<img src>` を抽出し、相対 URL を解決して保存
-  - `<img>` の `srcset` / `data-src` は対象にしない (誤検出を避けるため。必要になったら追加)
+- リンク先が HTML の場合: 取得して画像 URL を抽出し、相対 URL を解決して保存
+  - `<img>` の `src` / `data-src` / `data-original` / `data-lazy-src` / `srcset`
+  - `<meta property="og:image">` / `twitter:image` (画像が 1 枚も無いページの保険)
 - リンク先が画像 (拡張子または Content-Type が image/*) の場合: そのまま保存
 - 外部ページは最大 3 ページまで。1 ページあたりの画像は最大 100 件
+- JavaScript で画像を描画するページは対象外 (HTML に URL が無いため)
 - YouTube など動画・SNS の埋め込みページは、画像が取れなければスキップする
 
 ## 5. 取得と保存の仕様

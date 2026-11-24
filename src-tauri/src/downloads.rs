@@ -401,52 +401,125 @@ fn fetch(
     })
 }
 
-/// HTML から `<img src>` を抽出し、相対 URL を解決する。
+/// HTML から保存対象の画像 URL を抽出し、相対 URL を解決する。
+///
+/// `src` だけでなく、遅延読み込みの `data-src` / `srcset` と
+/// `<meta property="og:image">` も見る (静的ギャラリーの取りこぼしを減らす)。
 pub(crate) fn extract_page_images(html: &str, base: &reqwest::Url) -> Vec<String> {
-    static IMG_SRC: LazyLock<regex::Regex> = LazyLock::new(|| {
-        regex::Regex::new(r#"(?is)<img\b[^>]*?\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)')"#)
-            .expect("valid img regex")
+    static IMG_TAG: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(r"(?is)<img\b([^>]*)>").expect("valid img tag regex")
+    });
+    static META_TAG: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(r"(?is)<meta\b([^>]*)>").expect("valid meta tag regex")
+    });
+    static ATTR: LazyLock<regex::Regex> = LazyLock::new(|| {
+        regex::Regex::new(r#"(?is)([a-z_:][-a-z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')"#)
+            .expect("valid attribute regex")
     });
 
     let mut seen = HashSet::new();
     let mut images = Vec::new();
-    for caps in IMG_SRC.captures_iter(html) {
+    let mut push = |raw: &str, images: &mut Vec<String>, seen: &mut HashSet<String>| {
+        if images.len() >= MAX_PAGE_IMAGES {
+            return;
+        }
+        if let Some(absolute) = image_candidate(raw, base) {
+            if seen.insert(absolute.clone()) {
+                images.push(absolute);
+            }
+        }
+    };
+
+    for caps in IMG_TAG.captures_iter(html) {
         if images.len() >= MAX_PAGE_IMAGES {
             break;
         }
-        let raw = caps
-            .get(1)
-            .or_else(|| caps.get(2))
-            .map(|value| value.as_str())
-            .unwrap_or("")
-            .trim();
-        if raw.is_empty() {
-            continue;
-        }
-        let decoded = decode_entities(raw);
-        let Ok(url) = base.join(decoded.trim()) else {
-            continue;
-        };
-        if !matches!(url.scheme(), "http" | "https") {
-            continue;
-        }
-        if url.host_str() == Some("img.pawchive.pw") && url.path().starts_with("/thumbnail/") {
-            continue;
-        }
-        if let Some(path) = url.path().rsplit('.').next() {
-            if matches!(
-                path.to_ascii_lowercase().as_str(),
-                "mp4" | "webm" | "mov" | "m4v" | "m3u8" | "gifv"
-            ) {
-                continue;
+        let tag = caps.get(1).map(|value| value.as_str()).unwrap_or("");
+        let mut srcset: Vec<String> = Vec::new();
+        for attr in ATTR.captures_iter(tag) {
+            let name = attr
+                .get(1)
+                .map(|value| value.as_str().to_ascii_lowercase())
+                .unwrap_or_default();
+            let value = attr
+                .get(2)
+                .or_else(|| attr.get(3))
+                .map(|value| value.as_str())
+                .unwrap_or("");
+            match name.as_str() {
+                "src" | "data-src" | "data-original" | "data-lazy-src" => push(value, &mut images, &mut seen),
+                "srcset" | "data-srcset" => srcset.push(value.to_string()),
+                _ => {}
             }
         }
-        let absolute = url.to_string();
-        if seen.insert(absolute.clone()) {
-            images.push(absolute);
+        // srcset は最後 (最大サイズ) の候補を優先する
+        for set in srcset {
+            if let Some(last) = set.rsplit(',').next() {
+                if let Some(url) = last.split_whitespace().next() {
+                    push(url, &mut images, &mut seen);
+                }
+            }
         }
     }
+
+    for caps in META_TAG.captures_iter(html) {
+        if images.len() >= MAX_PAGE_IMAGES {
+            break;
+        }
+        let tag = caps.get(1).map(|value| value.as_str()).unwrap_or("");
+        let mut is_image = false;
+        let mut content = "";
+        for attr in ATTR.captures_iter(tag) {
+            let name = attr
+                .get(1)
+                .map(|value| value.as_str().to_ascii_lowercase())
+                .unwrap_or_default();
+            let value = attr
+                .get(2)
+                .or_else(|| attr.get(3))
+                .map(|value| value.as_str())
+                .unwrap_or("");
+            match name.as_str() {
+                "property" | "name" => {
+                    let key = value.trim().to_ascii_lowercase();
+                    if matches!(key.as_str(), "og:image" | "og:image:url" | "twitter:image") {
+                        is_image = true;
+                    }
+                }
+                "content" => content = value,
+                _ => {}
+            }
+        }
+        if is_image && !content.is_empty() {
+            push(content, &mut images, &mut seen);
+        }
+    }
+
     images
+}
+
+/// 1 つの属性値を保存対象の絶対 URL に変換する。対象外なら None。
+fn image_candidate(raw: &str, base: &reqwest::Url) -> Option<String> {
+    let decoded = decode_entities(raw.trim());
+    if decoded.is_empty() {
+        return None;
+    }
+    let url = base.join(decoded.trim()).ok()?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return None;
+    }
+    if url.host_str() == Some("img.pawchive.pw") && url.path().starts_with("/thumbnail/") {
+        return None;
+    }
+    if let Some(extension) = url.path().rsplit('.').next() {
+        if matches!(
+            extension.to_ascii_lowercase().as_str(),
+            "mp4" | "webm" | "mov" | "m4v" | "m3u8" | "gifv"
+        ) {
+            return None;
+        }
+    }
+    Some(url.to_string())
 }
 
 /// HTML 属性でよく使われる実体参照だけを戻す。
@@ -775,7 +848,35 @@ mod tests {
             vec![
                 "https://example.com/gallery/a.png".to_string(),
                 "https://cdn.example.com/b.jpg?x=1&y=2".to_string(),
+                "https://example.com/gallery/lazy.png".to_string(),
                 "https://example.com/gallery/b.jpg".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn page_images_include_lazy_attributes_and_og_image() {
+        let base = reqwest::Url::parse("https://gallery.example.com/show").unwrap();
+        let html = r#"
+            <img data-src="/lazy.jpg" src="data:image/gif;base64,R0lGOD">
+            <img data-original="orig.png">
+            <picture>
+              <source srcset="/s1.webp 480w, /s2.webp 960w">
+              <img srcset="/s1.webp 480w, /s2.webp 960w" alt="">
+            </picture>
+            <meta property="og:image" content="/og.jpg">
+            <meta name="twitter:image" content="https://cdn.example.com/tw.jpg">
+            <meta name="description" content="/not-an-image.jpg">
+        "#;
+        let images = extract_page_images(html, &base);
+        assert_eq!(
+            images,
+            vec![
+                "https://gallery.example.com/lazy.jpg".to_string(),
+                "https://gallery.example.com/orig.png".to_string(),
+                "https://gallery.example.com/s2.webp".to_string(),
+                "https://gallery.example.com/og.jpg".to_string(),
+                "https://cdn.example.com/tw.jpg".to_string(),
             ]
         );
     }

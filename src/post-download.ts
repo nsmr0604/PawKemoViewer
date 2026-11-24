@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core"
-import { collectExternalLinks, collectImageUrls } from "./post-image-urls"
+import { collectExternalLinks, collectImageUrls, isImageFileUrl } from "./post-image-urls"
 
 /** 保存対象の画像 URL */
 export interface DownloadImage {
@@ -24,7 +24,7 @@ export { isThumbnailUrl, resolveImageUrl } from "./post-image-urls"
 
 /**
  * 投稿本文 HTML から保存対象の画像 URL を集める。
- * 本文の `<img src>` のみを対象にし、サムネイルと動画は除外する。
+ * 本文の `<img src>` と、画像ファイルへの直リンク `<a href>` を対象にする。
  */
 export function collectArticleImages(html: string, baseUrl?: string): DownloadImage[] {
   if (!html) return []
@@ -33,6 +33,10 @@ export function collectArticleImages(html: string, baseUrl?: string): DownloadIm
   const sources = Array.from(document.querySelectorAll("img[src]")).map(
     (img) => img.getAttribute("src") || "",
   )
+  for (const anchor of Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
+    const href = anchor.href
+    if (isImageFileUrl(href)) sources.push(href)
+  }
   return collectImageUrls(sources, baseUrl)
 }
 
@@ -47,7 +51,7 @@ export function collectExternalPages(html: string, baseUrl?: string): string[] {
   const hrefs = Array.from(document.querySelectorAll("a[href]")).map(
     (anchor) => anchor.getAttribute("href") || "",
   )
-  return collectExternalLinks(hrefs, baseUrl)
+  return collectExternalLinks(hrefs, baseUrl).filter((href) => !isImageFileUrl(href))
 }
 
 /** 画像をまとめて保存する。保存先は Rust 側で解決する。 */
