@@ -309,6 +309,20 @@ export function PostPage({
     return () => window.removeEventListener("keydown", onKey)
   }, [lightboxIndex, post?.prev, post?.next])
 
+  // 一括保存の進捗イベント。フック順を変えないよう早期 return より前に置く。
+  useEffect(() => {
+    if (downloadState !== "running") return
+    let unlisten: (() => void) | undefined
+    void listen<{ done: number; total: number }>("download-progress", (event) => {
+      setDownloadProgress({ done: event.payload.done, total: event.payload.total })
+    }).then((fn) => {
+      unlisten = fn
+    })
+    return () => {
+      unlisten?.()
+    }
+  }, [downloadState])
+
   if (error) {
     return (
       <div className="page">
@@ -330,19 +344,6 @@ export function PostPage({
       : null
   const displayPost: PawPost = activeRevision || post
 
-  useEffect(() => {
-    if (downloadState !== "running") return
-    let unlisten: (() => void) | undefined
-    void listen<{ done: number; total: number }>("download-progress", (event) => {
-      setDownloadProgress({ done: event.payload.done, total: event.payload.total })
-    }).then((fn) => {
-      unlisten = fn
-    })
-    return () => {
-      unlisten?.()
-    }
-  }, [downloadState])
-
   const startImageDownload = async () => {
     const base = originalUrl || undefined
     const images = collectArticleImages(displayPost?.content || "", base)
@@ -359,14 +360,17 @@ export function PostPage({
     setDownloadState("running")
     setDownloadProgress({ done: 0, total: images.length })
     setDownloadMessage(null)
+    // クリエイター名が未取得のときは Rust 側で service_creatorId を使う
+    const downloadCreatorName = creator?.key === creatorKey ? creator.name : ""
     try {
       const result = await downloadArticleImages(
-        creatorName,
+        downloadCreatorName,
         postContext.service,
         postContext.creatorId,
         referer,
         images,
         pages,
+        getSettings().sessionKey,
       )
       const text = result.cancelled
         ? tr("post.downloadCancelled", { saved: result.saved })
@@ -558,10 +562,12 @@ export function PostPage({
           {downloadState === "running" && (
             <div className="hint-row" role="status">
               <span>
-                {tr("post.downloadProgress", {
-                  done: downloadProgress.done,
-                  total: downloadProgress.total,
-                })}
+                {downloadProgress.total > 0
+                  ? tr("post.downloadProgress", {
+                      done: downloadProgress.done,
+                      total: downloadProgress.total,
+                    })
+                  : tr("common.loading")}
               </span>
               <button className="btn btn-sm" onClick={cancelDownload}>
                 {tr("post.downloadCancel")}

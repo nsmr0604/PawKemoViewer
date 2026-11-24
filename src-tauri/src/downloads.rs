@@ -112,7 +112,8 @@ pub(crate) fn download_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 /// クリエイター名のディレクトリ。名前が空になる場合は `service_creatorId` を使う。
-pub(crate) fn creator_directory(
+/// ディレクトリは作成しない (最初の 1 枚を保存するときに作る)。
+pub(crate) fn creator_directory_path(
     app: &tauri::AppHandle,
     creator_name: &str,
     service: &str,
@@ -120,7 +121,17 @@ pub(crate) fn creator_directory(
 ) -> Result<PathBuf, String> {
     let fallback = format!("{}_{}", service, creator_id);
     let name = sanitize_segment(creator_name, &fallback);
-    let directory = download_root(app)?.join(name);
+    Ok(download_root(app)?.join(name))
+}
+
+/// クリエイター名のディレクトリ。存在しなければ作成する。
+pub(crate) fn creator_directory(
+    app: &tauri::AppHandle,
+    creator_name: &str,
+    service: &str,
+    creator_id: &str,
+) -> Result<PathBuf, String> {
+    let directory = creator_directory_path(app, creator_name, service, creator_id)?;
     std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
     Ok(directory)
 }
@@ -220,6 +231,18 @@ fn referer_origin(referer: &str) -> Option<String> {
     }
 }
 
+/// セッション Cookie を付けてよいのは pawchive のホストだけ。
+/// 外部ホストへは絶対に送らない。
+fn session_cookie(url: &reqwest::Url, session: Option<&str>) -> Option<String> {
+    let session = session?.trim();
+    if session.is_empty() {
+        return None;
+    }
+    let host = url.host_str()?.to_ascii_lowercase();
+    let pawchive = host == "pawchive.pw" || host.ends_with(".pawchive.pw");
+    pawchive.then(|| format!("session={session}"))
+}
+
 fn extension_for(content_type: &str) -> Option<&'static str> {
     match content_type.split(';').next().unwrap_or("").trim() {
         "image/jpeg" => Some("jpg"),
@@ -260,8 +283,18 @@ fn file_name_for(url: &reqwest::Url, content_type: &str) -> String {
     name
 }
 
-fn fetch_image(url: &str, referer: &str) -> Result<(Vec<u8>, String), String> {
-    let fetched = fetch(url, referer)?;
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FetchKind {
+    Image,
+    Page,
+}
+
+fn fetch_image(
+    url: &str,
+    referer: &str,
+    session: Option<&str>,
+) -> Result<(Vec<u8>, String), String> {
+    let fetched = fetch(url, referer, session, FetchKind::Image)?;
     if !fetched.content_type.starts_with("image/") {
         return Err("not an image".to_string());
     }
@@ -276,7 +309,16 @@ struct Fetched {
 }
 
 /// Referer と ORIGIN を付けて取得する。種別ごとにサイズ上限を変える。
-fn fetch(url: &str, referer: &str) -> Result<Fetched, String> {
+/// pawchive のホストにだけセッション Cookie を付ける。
+///
+/// ヘッダーはブラウザの画像/文書取得に寄せる。ミラー (n1〜n4.pawchive.pw) は
+/// Cloudflare が `Accept` / `Accept-Language` / `Sec-Fetch-*` を見て 403 を返す。
+fn fetch(
+    url: &str,
+    referer: &str,
+    session: Option<&str>,
+    kind: FetchKind,
+) -> Result<Fetched, String> {
     let target = reqwest::Url::parse(url).map_err(|_| "invalid url".to_string())?;
     if !matches!(target.scheme(), "http" | "https") {
         return Err("unsupported scheme".to_string());
@@ -287,9 +329,39 @@ fn fetch(url: &str, referer: &str) -> Result<Fetched, String> {
 
     let mut request = DOWNLOAD_CLIENT
         .get(target.clone())
-        .header(reqwest::header::REFERER, referer);
+        .header(reqwest::header::REFERER, referer)
+        .header(
+            reqwest::header::ACCEPT_LANGUAGE,
+            "ja,en-US;q=0.9,en;q=0.8",
+        );
+    match kind {
+        FetchKind::Image => {
+            request = request
+                .header(
+                    reqwest::header::ACCEPT,
+                    "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+                )
+                .header("sec-fetch-dest", "image")
+                .header("sec-fetch-mode", "no-cors")
+                .header("sec-fetch-site", "cross-site");
+        }
+        FetchKind::Page => {
+            request = request
+                .header(
+                    reqwest::header::ACCEPT,
+                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                )
+                .header("sec-fetch-dest", "document")
+                .header("sec-fetch-mode", "navigate")
+                .header("sec-fetch-site", "cross-site")
+                .header("upgrade-insecure-requests", "1");
+        }
+    }
     if let Some(origin) = referer_origin(referer) {
         request = request.header(reqwest::header::ORIGIN, origin);
+    }
+    if let Some(cookie) = session_cookie(&target, session) {
+        request = request.header(reqwest::header::COOKIE, cookie);
     }
     let response = request.send().map_err(|error| error.without_url().to_string())?;
     if !response.status().is_success() {
@@ -402,6 +474,7 @@ pub(crate) async fn download_post_images(
     referer: String,
     images: Vec<DownloadImage>,
     pages: Vec<String>,
+    session_key: Option<String>,
 ) -> Result<DownloadSummary, String> {
     if !is_allowed_referer(&referer) {
         return Err("referer must be a FANBOX or Patreon page".to_string());
@@ -411,10 +484,10 @@ pub(crate) async fn download_post_images(
     }
     DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
 
-    let directory = creator_directory(&app, &creator_name, &service, &creator_id)?;
+    let directory = creator_directory_path(&app, &creator_name, &service, &creator_id)?;
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
-        run_download(&app_for_worker, &directory, &referer, images, pages)
+        run_download(&app_for_worker, &directory, &referer, images, pages, session_key)
     })
     .await;
 
@@ -428,6 +501,7 @@ pub(crate) async fn download_post_images(
 struct Downloader<'a> {
     app: &'a tauri::AppHandle,
     directory: &'a Path,
+    session: Option<String>,
     seen: HashSet<String>,
     width: usize,
     saved: usize,
@@ -440,11 +514,17 @@ struct Downloader<'a> {
 }
 
 impl<'a> Downloader<'a> {
-    fn new(app: &'a tauri::AppHandle, directory: &'a Path, total: usize) -> Self {
+    fn new(
+        app: &'a tauri::AppHandle,
+        directory: &'a Path,
+        total: usize,
+        session: Option<String>,
+    ) -> Self {
         let width = total.max(1).to_string().len().max(3);
         Self {
             app,
             directory,
+            session,
             seen: HashSet::new(),
             width,
             saved: 0,
@@ -487,7 +567,7 @@ impl<'a> Downloader<'a> {
             return;
         }
         self.pause();
-        match fetch_image(url, referer) {
+        match fetch_image(url, referer, self.session.as_deref()) {
             Ok((bytes, derived_name)) => {
                 let chosen = name
                     .map(str::trim)
@@ -513,6 +593,16 @@ impl<'a> Downloader<'a> {
                 reason: "total size limit".to_string(),
             });
             return;
+        }
+        // 保存する 1 枚目でディレクトリを作る (0 件のときに空フォルダーを残さない)
+        if self.saved == 0 {
+            if let Err(reason) = std::fs::create_dir_all(self.directory) {
+                self.failed.push(DownloadFailure {
+                    url: url.to_string(),
+                    reason: reason.to_string(),
+                });
+                return;
+            }
         }
         let prefixed = format!(
             "{:0width$}_{}",
@@ -550,8 +640,9 @@ fn run_download(
     referer: &str,
     images: Vec<DownloadImage>,
     pages: Vec<String>,
+    session: Option<String>,
 ) -> Result<DownloadSummary, String> {
-    let mut downloader = Downloader::new(app, directory, images.len().min(MAX_FILES));
+    let mut downloader = Downloader::new(app, directory, images.len().min(MAX_FILES), session);
 
     for image in images.into_iter().take(MAX_FILES) {
         if downloader.stop_requested() {
@@ -565,7 +656,7 @@ fn run_download(
             break;
         }
         downloader.pause();
-        match fetch(page, referer) {
+        match fetch(page, referer, downloader.session.as_deref(), FetchKind::Page) {
             Ok(fetched) if fetched.content_type.starts_with("image/") => {
                 // 画像への直リンクは、そのまま 1 枚保存する
                 downloader.total += 1;
@@ -652,6 +743,18 @@ mod tests {
         assert!(is_allowed_referer("https://a.fanbox.cc/posts/1"));
         assert!(is_allowed_referer("https://www.patreon.com/posts/1"));
         assert!(!is_allowed_referer("https://example.com/"));
+    }
+
+    #[test]
+    fn session_cookie_is_only_sent_to_pawchive_hosts() {
+        let paw = reqwest::Url::parse("https://n1.pawchive.pw/data/a.jpg").unwrap();
+        assert_eq!(session_cookie(&paw, Some("abc")).as_deref(), Some("session=abc"));
+        let site = reqwest::Url::parse("https://pawchive.pw/api/v1/posts").unwrap();
+        assert_eq!(session_cookie(&site, Some("abc")).as_deref(), Some("session=abc"));
+        let external = reqwest::Url::parse("https://example.com/a.jpg").unwrap();
+        assert_eq!(session_cookie(&external, Some("abc")), None);
+        assert_eq!(session_cookie(&paw, None), None);
+        assert_eq!(session_cookie(&paw, Some("  ")), None);
     }
 
     #[test]
