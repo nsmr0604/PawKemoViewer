@@ -112,6 +112,22 @@ test("runtime requires initialization, preserves identity, and selects the right
   assert.equal(typeof desktop.services.locale.listSecondary, "function")
 })
 
+test("native iPad with a desktop user agent enables the mobile external page", async (t) => {
+  t.after(resetPlatformRuntimeForTests)
+  const { canOpenExternalPage } = await server.ssrLoadModule("/src/external-page.ts")
+  mockGlobal(t, "window", { __TAURI_INTERNALS__: {} })
+  const userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15"
+  mockGlobal(t, "navigator", { userAgent, maxTouchPoints: 5 })
+  assert.equal(initializePlatformRuntime().descriptor.os, "ios")
+  assert.equal(initializePlatformRuntime().descriptor.family, "mobile")
+  assert.equal(canOpenExternalPage(), true)
+
+  resetPlatformRuntimeForTests()
+  globalThis.navigator = { userAgent, maxTouchPoints: 0 }
+  assert.equal(initializePlatformRuntime().descriptor.os, "macos")
+  assert.equal(canOpenExternalPage(), false)
+})
+
 test("native transport preserves command, camelCase arguments, response and error", async (t) => {
   const invoke = t.mock.fn(async () => '{"data":[]}')
   mockGlobal(t, "window", { __TAURI_INTERNALS__: { invoke } })

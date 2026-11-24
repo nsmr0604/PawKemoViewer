@@ -4,10 +4,36 @@ import { debugOpenLogFolder } from "../native-debug-log"
 import { probePkvImage } from "../pkv-probe"
 import { t } from "../i18n"
 import { logInfo } from "../log"
+import { getPlatformRuntime } from "../platform/runtime"
+import { probeIOSExternalPage, saveIOSExternalPageReport } from "../external-page-diagnostics"
+import { openExternalPage } from "../external-page"
 
 export function DeveloperFullDiagnostics() {
   const [logResult, setLogResult] = useState<string | null>(null)
   const [probeResult, setProbeResult] = useState<string | null>(null)
+  const [externalResult, setExternalResult] = useState<string | null>(null)
+  const { descriptor } = getPlatformRuntime()
+  const showIOSProbe = descriptor.isNative && (descriptor.os === "ios" ||
+    (descriptor.os === "macos" && navigator.maxTouchPoints > 1))
+
+  const runIOSProbe = async () => {
+    setExternalResult("外部ページを起動しています…")
+    try {
+      await probeIOSExternalPage(openExternalPage)
+      setExternalResult("外部ページの起動応答を受信しました。読み込み結果は診断ログで確認できます。")
+    } catch {
+      setExternalResult("外部ページの起動応答を確認できませんでした。診断ログを保存してください。")
+    }
+  }
+
+  const saveIOSReport = async () => {
+    try {
+      const result = await saveIOSExternalPageReport()
+      if (result.kind === "saved") setExternalResult(`「ファイル」アプリに保存しました。PawKemoViewer / ${result.path ?? "Logs/external-page-diagnostic.txt"}`)
+    } catch {
+      setExternalResult("診断ログを保存できませんでした。")
+    }
+  }
 
   const dumpBackup = async () => {
     const { splitDebugLog } = await import("../debug-log")
@@ -63,6 +89,19 @@ export function DeveloperFullDiagnostics() {
           <button className="btn" onClick={() => void probeBlocked()}>{t("settings.pkvProbeBlocked")}</button>
         </div>
       </div>
+      {showIOSProbe && (
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>iOS・iPadOS 外部URL診断</span>
+            <small>テストページを開き、投稿リンクで起きた問題と合わせてログを保存します。</small>
+          </div>
+          <div className="settings-actions">
+            <button className="btn" onClick={() => void runIOSProbe()}>テストページを開く</button>
+            <button className="btn" onClick={() => void saveIOSReport()}>診断ログを保存</button>
+          </div>
+        </div>
+      )}
+      {externalResult && <span className="small" role="status">{externalResult}</span>}
       {probeResult && <span className="small" role="status">{probeResult}</span>}
       {logResult && <span className="small" role="status">{logResult}</span>}
     </>

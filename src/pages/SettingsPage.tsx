@@ -224,7 +224,9 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
     setLocaleMsg(null)
     try {
       if (operation === "import") {
+        if (DEBUG_DIAG) logInfo("Locale import: picker requested")
         const result = await localeUseCases.pickLocale()
+        if (DEBUG_DIAG) logInfo(`Locale import: ${result.kind}`)
         switch (result.kind) {
           case "cancelled": break
           case "invalid-code": setLocaleMsg(t("settings.localeBadCode")); break
@@ -248,6 +250,7 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
         }
       }
     } catch (error) {
+      if (DEBUG_DIAG && operation === "import") logInfo("Locale import: failed")
       setLocaleMsg(t("settings.failedMsg", { msg: error instanceof Error ? error.message : String(error) }))
     } finally {
       setFilePickerBusy(false)
@@ -704,7 +707,7 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
           </div>
         )}
 
-        {localeMsg && <span className="small">{localeMsg}</span>}
+        {localeMsg && <span className="small" role="status">{localeMsg}</span>}
       </div>
 
       {/* ------------------------------------------------ 投稿表示 (省データ) */}

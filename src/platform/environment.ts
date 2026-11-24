@@ -19,6 +19,8 @@ export function getPlatform(): PlatformType {
   if (ua.includes("android")) return "android"
   if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod")) return "ios"
   if (ua.includes("windows") || ua.includes("win32")) return "windows"
+  // iPadOS can report a desktop Macintosh user agent.
+  if (ua.includes("macintosh") && navigator.maxTouchPoints > 1) return "ios"
   if (ua.includes("macintosh") || ua.includes("mac os x")) return "macos"
   if (ua.includes("linux")) return "linux"
   return "unknown"
