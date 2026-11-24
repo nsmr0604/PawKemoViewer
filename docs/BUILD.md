@@ -137,6 +137,7 @@ npm run icons:generate                          # pc.png / dark.png から src-t
 - デバッグビルドは `--features debug-diag` を付けるため、API request / response が logcat に出る
 - 正式リリースは feature を付けず、API 本文ログを含めない
 - 実機確認: `adb logcat | grep 'Pawchive::'` で対象ログを絞り込める
+- 本文には投稿・アカウント等のデータが含まれる可能性がある。共有前に内容を確認する
 
 ### iOS・iPadOS の外部 URL を実機で診断する
 
@@ -156,4 +157,3 @@ npm run icons:generate                          # pc.png / dark.png から src-t
 | `navigation_finished` | WebKit の読み込み完了。画面内容と戻る操作は実機で確認する |
 
 端末名、OS、コミット、テストページと投稿リンクの表示結果をログと一緒に記録する。外部 URL の調査には専用の `external-page-diagnostic.txt` を使用する。言語と認証の実機判定は [プラットフォーム別の確認表](architecture/stabilization.md#056-実機の完了条件) に記録する。
-- 本文には投稿・アカウント等のデータが含まれる可能性がある。共有前に内容を確認する
