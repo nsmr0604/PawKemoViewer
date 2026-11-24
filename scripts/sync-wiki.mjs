@@ -11,7 +11,7 @@ if (!outDir) {
   process.exit(2);
 }
 
-const REPO = "https://github.com/nsmr0604/pawchive";
+const REPO = "https://github.com/nsmr0604/PawKemoViewer";
 const PAGES = [
   { src: "docs/BUILD.md", dst: "Build.md" },
   { src: "docs/DEVELOPMENT.md", dst: "Development.md" },
@@ -32,9 +32,9 @@ const PAGE_NAME = {
 
 /** docs 内の相対リンクを Wiki 用に書き換える */
 function toWiki(md) {
-  let out = md.replace(/\[([^\]]+)\]\(([A-Za-z_-]+\.md)\)/g, (m, label, file) => {
-    if (PAGE_NAME[file]) return `[${PAGE_NAME[file]}](${PAGE_NAME[file]})`;
-    if (file === "LICENSES.md") return `[${label}](${REPO}/blob/main/docs/LICENSES.md)`;
+  let out = md.replace(/\[([^\]]+)\]\(([A-Za-z_-]+\.md)(#[^)]*)?\)/g, (m, label, file, anchor = "") => {
+    if (PAGE_NAME[file]) return `[${label}](${PAGE_NAME[file]}${anchor})`;
+    if (file === "LICENSES.md") return `[${label}](${REPO}/blob/main/docs/LICENSES.md${anchor})`;
     return m;
   });
   // docs 配下のサブディレクトリへの参照はリポジトリのファイルへリンクする

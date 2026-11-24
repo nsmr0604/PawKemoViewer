@@ -4,6 +4,7 @@
 
 - ユーザー向けの概要と使い方は [README](https://github.com/nsmr0604/pawchive#readme)
 - 表示言語の切替と言語の追加: [Languages](Languages)
+- バックアップの保存・復元とログの書き出し: [Files](Files)
 - ビルド (ローカル・CI・リリース): [Build](Build)
 - 開発ガイド (構成・規約・テスト): [Development](Development)
 - pawchive API と Tauri コマンド: [API](API)
