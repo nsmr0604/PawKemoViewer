@@ -30,15 +30,32 @@ pub async fn diagnostic_events<R: Runtime>(app: &AppHandle<R>) -> Result<serde_j
 }
 
 /// 実オリジンの外部ページを Referer 付きで開く (Android / iOS)
+///
+/// `creator_name` などは、外部ページ上で「画像を保存」したときに
+/// 保存先のクリエイター名を決めるために引き回す。
 pub async fn open<R: Runtime>(
     app: &AppHandle<R>,
     url: String,
     referer: String,
+    creator_name: String,
+    service: String,
+    creator_id: String,
+    post_id: String,
 ) -> Result<(), String> {
     let _: serde_json::Value = app
         .state::<ExternalView<R>>()
         .0
-        .run_mobile_plugin_async("open", serde_json::json!({ "url": url, "referer": referer }))
+        .run_mobile_plugin_async(
+            "open",
+            serde_json::json!({
+                "url": url,
+                "referer": referer,
+                "creatorName": creator_name,
+                "service": service,
+                "creatorId": creator_id,
+                "postId": post_id,
+            }),
+        )
         .await
         .map_err(|error| error.to_string())?;
     Ok(())

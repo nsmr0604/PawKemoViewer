@@ -6,6 +6,10 @@ import WebKit
 private struct OpenArguments: Decodable {
     let url: String
     let referer: String
+    let creatorName: String?
+    let service: String?
+    let creatorId: String?
+    let postId: String?
 }
 
 private struct BrowserArguments: Decodable {
@@ -15,12 +19,20 @@ private struct BrowserArguments: Decodable {
 private final class ExternalPageController: UIViewController {
     private let pageURL: URL
     private let referer: String
+    private let creatorName: String
+    private let service: String
+    private let creatorId: String
+    private let postId: String
     private var webView: WKWebView!
     private var urlObservation: NSKeyValueObservation?
 
-    init(url: URL, referer: String) {
+    init(url: URL, referer: String, creatorName: String, service: String, creatorId: String, postId: String) {
         self.pageURL = url
         self.referer = referer
+        self.creatorName = creatorName
+        self.service = service
+        self.creatorId = creatorId
+        self.postId = postId
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -55,11 +67,19 @@ private final class ExternalPageController: UIViewController {
         ])
         self.webView = webView
 
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .close,
-            target: self,
-            action: #selector(close)
-        )
+        navigationItem.rightBarButtonItems = [
+            UIBarButtonItem(
+                barButtonSystemItem: .close,
+                target: self,
+                action: #selector(close)
+            ),
+            UIBarButtonItem(
+                title: "画像を保存",
+                style: .plain,
+                target: self,
+                action: #selector(saveImages)
+            ),
+        ]
 
         var request = URLRequest(url: pageURL)
         if !referer.isEmpty {
@@ -71,6 +91,99 @@ private final class ExternalPageController: UIViewController {
     @objc private func close() {
         dismiss(animated: true)
     }
+
+    /// 表示中ページの画像 URL を集めて、アプリ側へ引き渡す。
+    @objc private func saveImages() {
+        webView.evaluateJavaScript(Self.collectScript) { [weak self] result, _ in
+            guard let self else { return }
+            guard let json = result as? String,
+                  let data = json.data(using: .utf8),
+                  let urls = try? JSONSerialization.jsonObject(with: data) as? [String],
+                  !urls.isEmpty else {
+                self.showMessage("保存できる画像が見つかりませんでした")
+                return
+            }
+            let payload: [String: Any] = [
+                "creatorName": self.creatorName,
+                "service": self.service,
+                "creatorId": self.creatorId,
+                "postId": self.postId,
+                "referer": self.referer,
+                "pageUrl": self.webView.url?.absoluteString ?? "",
+                "images": urls,
+            ]
+            guard let directory = FileManager.default.urls(
+                for: .documentDirectory, in: .userDomainMask
+            ).first else {
+                self.showMessage("保存を開始できませんでした")
+                return
+            }
+            let file = directory.appendingPathComponent(".external-download.json")
+            do {
+                let encoded = try JSONSerialization.data(withJSONObject: payload, options: [])
+                try encoded.write(to: file, options: .atomic)
+                self.dismiss(animated: true)
+            } catch {
+                self.showMessage("保存を開始できませんでした")
+            }
+        }
+    }
+
+    private func showMessage(_ text: String) {
+        let alert = UIAlertController(title: nil, message: text, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+
+    /// 表示中ページから保存対象の画像 URL を集める (アプリ側と同じ除外規則)
+    private static let collectScript = """
+    (function () {
+      var out = [];
+      var seen = {};
+      function isAvatar(u) {
+        var host = u.hostname;
+        var path = u.pathname;
+        if (host === 'pbs.twimg.com') {
+          return path.indexOf('/profile_images/') === 0 || path.indexOf('/profile_banners/') === 0;
+        }
+        if (host === 'abs.twimg.com' || host === 'graph.facebook.com' ||
+            host === 'platform-lookaside.fbsbx.com' || host === 'yt3.ggpht.com') {
+          return true;
+        }
+        if (/(^|\\.)gravatar\\.com$/.test(host)) return path.indexOf('/avatar/') === 0;
+        return false;
+      }
+      function push(raw) {
+        if (!raw) return;
+        var u;
+        try { u = new URL(raw, location.href); } catch (e) { return; }
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return;
+        if (isAvatar(u)) return;
+        if (/\\.(mp4|webm|mov|m4v|m3u8|gifv)$/i.test(u.pathname)) return;
+        if (seen[u.href]) return;
+        seen[u.href] = 1;
+        out.push(u.href);
+      }
+      var imgs = document.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        if (img.closest && img.closest('header,nav,footer')) continue;
+        push(img.currentSrc || img.src);
+        push(img.getAttribute('data-src'));
+        push(img.getAttribute('data-original'));
+        push(img.getAttribute('data-lazy-src'));
+        var set = img.getAttribute('srcset') || img.getAttribute('data-srcset');
+        if (set) {
+          var parts = set.split(',');
+          var last = parts[parts.length - 1].trim().split(/\\s+/)[0];
+          push(last);
+        }
+      }
+      var meta = document.querySelector('meta[property="og:image"], meta[name="twitter:image"]');
+      if (meta) push(meta.getAttribute('content'));
+      return JSON.stringify(out.slice(0, 300));
+    })()
+    """
 }
 
 #if PKV_EXTERNAL_DIAG
@@ -180,7 +293,14 @@ private final class ExternalViewPlugin: Plugin {
                 invoke.reject("Invalid URL")
                 return
             }
-            let controller = ExternalPageController(url: url, referer: args.referer)
+            let controller = ExternalPageController(
+                url: url,
+                referer: args.referer,
+                creatorName: args.creatorName ?? "",
+                service: args.service ?? "",
+                creatorId: args.creatorId ?? "",
+                postId: args.postId ?? ""
+            )
             let navigation = UINavigationController(rootViewController: controller)
             navigation.modalPresentationStyle = .fullScreen
 #if PKV_EXTERNAL_DIAG

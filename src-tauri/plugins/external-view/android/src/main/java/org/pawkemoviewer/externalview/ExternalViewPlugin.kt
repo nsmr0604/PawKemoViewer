@@ -14,6 +14,10 @@ import app.tauri.plugin.Plugin
 class OpenArgs {
     lateinit var url: String
     lateinit var referer: String
+    var creatorName: String? = null
+    var service: String? = null
+    var creatorId: String? = null
+    var postId: String? = null
 }
 
 @InvokeArg
@@ -45,6 +49,10 @@ class ExternalViewPlugin(private val activity: Activity) : Plugin(activity) {
             val intent = Intent(activity, ExternalPageActivity::class.java)
                 .putExtra(ExternalPageActivity.EXTRA_URL, args.url)
                 .putExtra(ExternalPageActivity.EXTRA_REFERER, args.referer)
+                .putExtra(ExternalPageActivity.EXTRA_CREATOR_NAME, args.creatorName)
+                .putExtra(ExternalPageActivity.EXTRA_SERVICE, args.service)
+                .putExtra(ExternalPageActivity.EXTRA_CREATOR_ID, args.creatorId)
+                .putExtra(ExternalPageActivity.EXTRA_POST_ID, args.postId)
             activity.startActivity(intent)
             invoke.resolve()
         } catch (error: Exception) {

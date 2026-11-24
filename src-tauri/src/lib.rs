@@ -1428,7 +1428,15 @@ fn is_service_page(u: &reqwest::Url) -> bool {
 /// pkv プロキシでは reCAPTCHA 付きページを表示できないため、ネイティブビューへ委譲する。
 #[cfg(any(target_os = "android", target_os = "ios"))]
 #[tauri::command]
-async fn open_external_page(app: tauri::AppHandle, url: String, referer: String) -> Result<(), String> {
+async fn open_external_page(
+    app: tauri::AppHandle,
+    url: String,
+    referer: String,
+    creator_name: String,
+    service: String,
+    creator_id: String,
+    post_id: String,
+) -> Result<(), String> {
     let target = reqwest::Url::parse(&url).map_err(|_| "invalid url".to_string())?;
     if !matches!(target.scheme(), "http" | "https") {
         return Err("unsupported scheme".to_string());
@@ -1437,7 +1445,37 @@ async fn open_external_page(app: tauri::AppHandle, url: String, referer: String)
     if !is_service_page(&referer_url) {
         return Err("referer must be a FANBOX or Patreon page".to_string());
     }
-    tauri_plugin_external_view::open(&app, url, referer).await
+    tauri_plugin_external_view::open(&app, url, referer, creator_name, service, creator_id, post_id)
+        .await
+}
+
+/// 外部ページの「画像を保存」で書き出された一覧を取り出す (取り出したら消す)。
+/// 返り値は { creatorName, service, creatorId, postId, referer, pageUrl, images }。
+#[tauri::command]
+async fn take_external_page_images(
+    app: tauri::AppHandle,
+) -> Result<Option<serde_json::Value>, String> {
+    let directory = match app.path().document_dir() {
+        Ok(path) => path,
+        Err(_) => return Ok(None),
+    };
+    let path = directory.join(".external-download.json");
+    if !path.exists() {
+        return Ok(None);
+    }
+    let text = match std::fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(_) => {
+            let _ = std::fs::remove_file(&path);
+            return Ok(None);
+        }
+    };
+    let _ = std::fs::remove_file(&path);
+    let value: serde_json::Value = match serde_json::from_str(&text) {
+        Ok(value) => value,
+        Err(_) => return Ok(None),
+    };
+    Ok(Some(value))
 }
 
 #[cfg(all(target_os = "ios", feature = "debug-diag"))]
@@ -1563,6 +1601,7 @@ pub fn run() {
                 set_android_launcher_icon,
                 #[cfg(any(target_os = "android", target_os = "ios"))]
                 open_external_page,
+                take_external_page_images,
                 #[cfg(all(target_os = "ios", feature = "debug-diag"))]
                 external_page_diagnostic_events,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる

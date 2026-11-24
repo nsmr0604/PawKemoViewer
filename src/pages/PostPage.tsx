@@ -17,7 +17,7 @@ import { FollowButton } from "../components/FollowButton"
 import { logError, logInfo, logWarn } from "../log"
 import { t as tr } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
-import { canOpenExternalPage, openExternalPage } from "../external-page"
+import { canOpenExternalPage, openExternalPage, takeExternalPageImages } from "../external-page"
 import { listen } from "@tauri-apps/api/event"
 import { cancelImageDownload, collectArticleImages, collectAttachmentImages, collectExternalPages, downloadArticleImages, isImageFileName, type DownloadImage } from "../post-download"
 import { parseOriginalPostLink } from "../original-post-link"
@@ -141,7 +141,12 @@ export function PostPage({
     if (DEBUG_DIAG) traceExternalPage("post_link_native")
     event.preventDefault()
     event.stopPropagation()
-    void openExternalPage(url, proxyReferer).catch(() => {
+    void openExternalPage(url, proxyReferer, {
+      creatorName: creator?.key === creatorKey ? creator.name : "",
+      service: postContext.service,
+      creatorId: postContext.creatorId,
+      postId: postContext.postId,
+    }).catch(() => {
       if (DEBUG_DIAG) traceExternalPage("post_link_fallback")
       const fallback = anchor.getAttribute("href")
       if (fallback) window.open(fallback, "_blank", "noopener")
@@ -335,6 +340,104 @@ export function PostPage({
     }
   }, [downloadState])
 
+  /** 画像 (と外部ページ) を保存し、結果を画面に出す */
+  const runDownload = useCallback(
+    async (
+      images: DownloadImage[],
+      pages: string[],
+      target: { creatorName: string; service: string; creatorId: string },
+      referer: string,
+    ) => {
+      if (images.length === 0 && pages.length === 0) {
+        setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
+        return
+      }
+      setDownloadPicker(null)
+      setDownloadState("running")
+      setDownloadProgress({ done: 0, total: images.length })
+      setDownloadMessage(null)
+      setDownloadFailures([])
+      try {
+        const result = await downloadArticleImages(
+          target.creatorName,
+          target.service,
+          target.creatorId,
+          referer,
+          images,
+          pages,
+          getSettings().sessionKey,
+        )
+        const text = result.cancelled
+          ? tr("post.downloadCancelled", { saved: result.saved })
+          : tr("post.downloadDone", {
+              saved: result.saved,
+              failed: result.failed.length,
+              dir: result.directory,
+            })
+        setDownloadMessage({ text, ok: !result.cancelled && result.failed.length === 0 })
+        setDownloadFailures(
+          result.failed.slice(0, 5).map((failure) => {
+            let host = failure.url
+            try {
+              host = new URL(failure.url).host
+            } catch {
+              // URL でない場合はそのまま表示する
+            }
+            return { host, reason: failure.reason }
+          }),
+        )
+        logInfo(
+          `画像ダウンロード saved=${result.saved} failed=${result.failed.length} skipped=${result.skipped} cancelled=${result.cancelled}`,
+        )
+      } catch (error) {
+        setDownloadMessage({
+          text: tr("post.downloadError", {
+            msg: error instanceof Error ? error.message : String(error),
+          }),
+          ok: false,
+        })
+      } finally {
+        setDownloadState("idle")
+      }
+    },
+    [],
+  )
+
+  // 外部ページの「画像を保存」から戻ってきたら、その一覧を保存する。
+  useEffect(() => {
+    if (!canOpenExternalPage()) return
+    let active = true
+    const consume = async () => {
+      if (!active || document.visibilityState !== "visible") return
+      if (downloadState === "running") return
+      const payload = await takeExternalPageImages()
+      if (!active || !payload) return
+      const referer = payload.referer || proxyReferer || originalUrl
+      if (!referer) return
+      await runDownload(
+        payload.images.map((url) => ({ url })),
+        [],
+        {
+          creatorName: payload.creatorName || (creator?.key === creatorKey ? creator.name : ""),
+          service: payload.service || postContext.service,
+          creatorId: payload.creatorId || postContext.creatorId,
+        },
+        referer,
+      )
+    }
+    const onChange = () => {
+      void consume()
+    }
+    document.addEventListener("visibilitychange", onChange)
+    window.addEventListener("focus", onChange)
+    void consume()
+    return () => {
+      active = false
+      document.removeEventListener("visibilitychange", onChange)
+      window.removeEventListener("focus", onChange)
+    }
+  }, [runDownload, downloadState, proxyReferer, originalUrl, creator, creatorKey, postContext.service, postContext.creatorId])
+
   if (error) {
     return (
       <div className="page">
@@ -393,64 +496,22 @@ export function PostPage({
       ...(downloadSources.attachments ? selection.attachments : []),
     ]
     const pages = downloadSources.external ? selection.pages : []
-    if (images.length === 0 && pages.length === 0) {
-      setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
-      return
-    }
     const referer = proxyReferer || originalUrl
     if (!referer) {
       setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
       return
     }
-    setDownloadPicker(null)
-    setDownloadState("running")
-    setDownloadProgress({ done: 0, total: images.length })
-    setDownloadMessage(null)
-    setDownloadFailures([])
     // クリエイター名が未取得のときは Rust 側で service_creatorId を使う
-    const downloadCreatorName = creator?.key === creatorKey ? creator.name : ""
-    try {
-      const result = await downloadArticleImages(
-        downloadCreatorName,
-        postContext.service,
-        postContext.creatorId,
-        referer,
-        images,
-        pages,
-        getSettings().sessionKey,
-      )
-      const text = result.cancelled
-        ? tr("post.downloadCancelled", { saved: result.saved })
-        : tr("post.downloadDone", {
-            saved: result.saved,
-            failed: result.failed.length,
-            dir: result.directory,
-          })
-      setDownloadMessage({ text, ok: !result.cancelled && result.failed.length === 0 })
-      setDownloadFailures(
-        result.failed.slice(0, 5).map((failure) => {
-          let host = failure.url
-          try {
-            host = new URL(failure.url).host
-          } catch {
-            // URL でない場合はそのまま表示する
-          }
-          return { host, reason: failure.reason }
-        }),
-      )
-      logInfo(
-        `画像ダウンロード saved=${result.saved} failed=${result.failed.length} skipped=${result.skipped} cancelled=${result.cancelled}`,
-      )
-    } catch (error) {
-      setDownloadMessage({
-        text: tr("post.downloadError", {
-          msg: error instanceof Error ? error.message : String(error),
-        }),
-        ok: false,
-      })
-    } finally {
-      setDownloadState("idle")
-    }
+    await runDownload(
+      images,
+      pages,
+      {
+        creatorName: creator?.key === creatorKey ? creator.name : "",
+        service: postContext.service,
+        creatorId: postContext.creatorId,
+      },
+      referer,
+    )
   }
 
   const cancelDownload = () => {
