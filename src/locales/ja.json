@@ -156,6 +156,7 @@
   "error.detail": "詳細 ({{info}})",
   "error.reasonUnknown": "理由不明",
   "common.openSite": "サイトで開く ↗",
+  "common.browserOpenFailed": "ブラウザを開けませんでした。",
   "common.openOn": "{{service}} で開く ↗",
   "creator.originalTitle": "元の fanbox / patreon のクリエイターページを開きます (リファラーは送信しません)",
   "creator.tags": "タグ…",

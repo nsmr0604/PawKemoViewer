@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavoritePost } from "../post-favorites"
 import { CreatorAvatar } from "../components/CreatorAvatar"
+import { BrowserLink } from "../components/BrowserLink"
+import { getCreatorRow } from "../db"
 import { isFanboxCoverFile } from "../post-files"
 import type { PawComment, PawPost, PawRevision, PawFile } from "../types"
 import { Spinner, ErrorBox, Empty } from "../components/Feedback"
@@ -50,6 +52,9 @@ export function PostPage({
   const [faved, setFaved] = useState<"none" | "checking" | "yes" | "no" | "busy" | "err">("none")
   // 元サービス (fanbox / patreon) の投稿 URL。構成できない場合は表示しない
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
+  const creatorKey = `${service}:${creatorId}`
+  const [creator, setCreator] = useState<{ key: string; name: string } | null>(null)
+  const creatorName = creator?.key === creatorKey ? creator.name : `${service} / ${creatorId}`
   const [loadedFiles, setLoadedFiles] = useState<Set<number>>(() => new Set())
   // 投稿内の画像はサムネイルを初期表示し、操作時に元画像へ一括切替する。
   const [loadOriginalImages, setLoadOriginalImages] = useState(false)
@@ -195,6 +200,21 @@ export function PostPage({
       alive = false
     }
   }, [postId, sessionKey])
+
+  // クリエイター名はローカル索引を優先し、未取得時はプロフィールから補う。
+  useEffect(() => {
+    if (!validContext) return
+    let active = true
+    void getCreatorRow(creatorKey)
+      .catch(() => undefined)
+      .then(async (row) => {
+        if (!active) return
+        const name = row?.name?.trim() || (await getApplication().loadCreatorProfile(service, creatorId)).name?.trim()
+        if (active && name) setCreator({ key: creatorKey, name })
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [creatorKey, creatorId, service, validContext])
 
   // 元サービス投稿 URL の構成 (fanbox は索引の slug が必要)
   useEffect(() => {
@@ -363,14 +383,12 @@ export function PostPage({
       <div className="post-title-wrap">
         <h1 className="post-title">{displayPost.title || tr("common.untitled")}</h1>
         <div className="post-meta">
-          <div className="post-creator">
-            <div aria-hidden="true">
-              <CreatorAvatar service={postContext.service} id={postContext.creatorId} name={postContext.creatorId} className="small" />
-            </div>
-            <button type="button" className="link post-creator-link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
-              {postContext.service} / {postContext.creatorId}
-            </button>
-          </div>
+          <button type="button" className="post-creator-link" onClick={() => navigate(`/creator/${postContext.service}/${encodeURIComponent(postContext.creatorId)}`)}>
+            <span aria-hidden="true">
+              <CreatorAvatar service={postContext.service} id={postContext.creatorId} name={creatorName} />
+            </span>
+            <span>{creatorName}</span>
+          </button>
           <span>
             {tr("post.published", { date: formatDate(displayPost.published) })}
             {displayPost.edited && displayPost.edited !== displayPost.published && ` · ${tr("post.edited", { date: formatDate(displayPost.edited) })}`}
@@ -428,26 +446,20 @@ export function PostPage({
               {tr("post.next")}
             </button>
           </div>}
-          <a
+          <BrowserLink
             className="btn btn-ghost"
             href={postUrl(postContext.service, postContext.creatorId, postContext.postId)}
-            target="_blank"
-            rel="noreferrer"
-            referrerPolicy="no-referrer"
           >
             {tr("common.openSite")}
-          </a>
+          </BrowserLink>
           {originalUrl && (
-            <a
+            <BrowserLink
               className="btn"
               href={originalUrl}
-              target="_blank"
-              rel="noreferrer"
-              referrerPolicy="no-referrer"
               title={tr("post.originalTitle")}
             >
               {tr("common.openOn", { service: postContext.service })}
-            </a>
+            </BrowserLink>
           )}
         </div>
       </div>

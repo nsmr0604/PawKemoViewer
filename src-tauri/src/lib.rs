@@ -1445,6 +1445,31 @@ async fn external_page_diagnostic_events(app: tauri::AppHandle) -> Result<serde_
     tauri_plugin_external_view::diagnostic_events(&app).await
 }
 
+#[tauri::command]
+async fn open_in_browser(_app: tauri::AppHandle, url: String) -> Result<(), String> {
+    let url = reqwest::Url::parse(&url).map_err(|_| "Invalid browser URL")?;
+    if !matches!(url.scheme(), "https" | "http") || url.host_str().is_none() {
+        return Err("Unsupported browser URL".into());
+    }
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    return tauri_plugin_external_view::open_browser(&_app, url.to_string()).await;
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        #[cfg(target_os = "windows")]
+        let program = "explorer.exe";
+        #[cfg(target_os = "macos")]
+        let program = "open";
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        let program = "xdg-open";
+        std::process::Command::new(program)
+            .arg(url.as_str())
+            .spawn()
+            .map(|_| ())
+            .map_err(|_| "Could not open the browser".into())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -1514,6 +1539,7 @@ pub fn run() {
                 locale_storage::resolve_storage_location,
                 json_files::pick_json_file,
                 json_files::save_user_file,
+                open_in_browser,
                 #[cfg(all(feature = "debug-diag", any(target_os = "android", target_os = "ios")))]
                 locale_storage::save_locale_file_to_app_directory,
                 #[cfg(target_os = "android")]

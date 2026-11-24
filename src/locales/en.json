@@ -156,6 +156,7 @@
   "error.detail": "Details ({{info}})",
   "error.reasonUnknown": "Unknown reason",
   "common.openSite": "Open site ↗",
+  "common.browserOpenFailed": "Could not open the browser.",
   "common.openOn": "Open on {{service}} ↗",
   "creator.originalTitle": "Open the original fanbox / patreon creator page (no referrer sent)",
   "creator.tags": "Tags…",
