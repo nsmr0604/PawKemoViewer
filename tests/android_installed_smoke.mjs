@@ -1,4 +1,4 @@
-// Usage: node tests/android_installed_smoke.mjs <serial> [adb path] [screenshot directory]
+// Usage: node tests/android_installed_smoke.mjs <serial> [adb path] [screenshot directory] [app ID]
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -6,9 +6,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const [serial, adbPath = 'adb', screenshotDir] = process.argv.slice(2);
+const [serial, adbPath = 'adb', screenshotDir, app = 'com.nsmr0604.pawkemoviewer'] = process.argv.slice(2);
 assert.match(serial ?? '', /^[\w.:-]+$/, 'Specify the Android device serial');
-const app = 'com.nsmr0604.pawkemoviewer';
+assert.match(app, /^com\.nsmr0604\.pawkemoviewer(?:\.localetest)?$/, 'Unsupported PawKemoViewer app ID');
 const dumpPath = `/data/local/tmp/pawkemoviewer-${randomUUID()}.xml`;
 const locales = ['ja', 'en'].map(language =>
   JSON.parse(readFileSync(new URL(`../src/locales/${language}.json`, import.meta.url), 'utf8')));
