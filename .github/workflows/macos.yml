@@ -66,6 +66,8 @@ jobs:
           fi
 
       - name: macOS のアプリをアーカイブ
+        env:
+          BUILD_MODE: ${{ inputs.release == true && 'release' || 'debug' }}
         run: |
           shopt -s nullglob
           packages=(src-tauri/target/release/bundle/dmg/*.dmg)
@@ -77,15 +79,16 @@ jobs:
           test -x "$app/Contents/MacOS/$exe"
           test -s "$app/Contents/Resources/$icon"
           mkdir -p artifacts
-          tar -czf artifacts/PawKemoViewer_aarch64.app.tar.gz \
+          node scripts/ci/stage-desktop-assets.mjs macos "$BUILD_MODE" src-tauri/target/release/bundle/dmg artifacts
+          archive=PawKemoViewer_aarch64.app.tar.gz
+          if [[ "$BUILD_MODE" == release ]]; then archive=PawKemoViewer.app.tar.gz; fi
+          tar -czf "artifacts/$archive" \
             -C src-tauri/target/release/bundle/macos PawKemoViewer.app
 
       - uses: actions/upload-artifact@v6
         with:
           name: PawKemoViewer-macos
-          path: |
-            src-tauri/target/release/bundle/dmg/*.dmg
-            artifacts/*.app.tar.gz
+          path: artifacts/*
           if-no-files-found: error
 
       - uses: actions/setup-python@v6

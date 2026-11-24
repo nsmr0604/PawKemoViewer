@@ -50,14 +50,18 @@ jobs:
               return json.loads(output)
 
           patterns = {
-              "windows": r"x64-setup\.exe",
-              "macos": r"aarch64\.dmg",
-              "linux": r"amd64\.deb",
-              "android": r"universal\.apk",
-              "ios": r"ios-unsigned\.ipa",
+              "windows": ("exe", r"x64-setup\.exe"),
+              "macos": ("dmg", r"aarch64\.dmg"),
+              "linux": ("deb", r"amd64\.deb"),
+              "android": ("apk", r"universal\.apk"),
+              "ios": ("ipa", r"ios-unsigned\.ipa"),
           }
 
           releases = api("releases?per_page=100")
+          try:
+              latest_tag = api("releases/latest")["tag_name"]
+          except subprocess.CalledProcessError:
+              latest_tag = None
           releases = sorted(
               [r for r in releases if not r["draft"] and not r["prerelease"] and r["published_at"]],
               key=lambda item: item["published_at"],
@@ -67,17 +71,26 @@ jobs:
           # 最新のリリースから順に、まだ見つかっていないプラットフォームのアセットを拾う。
           found = {}
           for release in releases:
-              for platform, suffix in patterns.items():
+              for platform, (extension, suffix) in patterns.items():
                   if platform in found:
                       continue
                   for asset in release["assets"]:
-                      match = re.fullmatch(rf"PawKemoViewer_(\d+\.\d+\.\d+)_{suffix}", asset["name"])
+                      filename = f"PawKemoViewer.{extension}"
+                      stable = asset["name"] == filename
+                      match = (
+                          re.fullmatch(r"pawkemoviewer-v(\d+\.\d+\.\d+)", release["tag_name"])
+                          if stable else re.fullmatch(rf"PawKemoViewer_(\d+\.\d+\.\d+)_{suffix}", asset["name"])
+                      )
                       if not match or asset["state"] != "uploaded" or asset["size"] <= 0:
                           continue
                       found[platform] = {
                           "version": f"v{match.group(1)}",
                           "name": asset["name"],
-                          "url": asset["browser_download_url"],
+                          "url": (
+                              f"{repository_url}/releases/latest/download/{filename}"
+                              if stable and release["tag_name"] == latest_tag
+                              else asset["browser_download_url"]
+                          ),
                           "published": release["published_at"],
                           "release_url": release["html_url"],
                           "_parts": [int(part) for part in match.group(1).split(".")],

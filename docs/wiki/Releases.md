@@ -2,8 +2,9 @@
 
 ## 最新版
 
-最新の配布版は [GitHub Releases]({{REPOSITORY_URL}}/releases) の
-`pawkemoviewer-v0.5.7` です。
+最新の配布版は [GitHub Releases]({{REPOSITORY_URL}}/releases/latest) で確認できます。
+固定ファイル名で公開された製品版は、リポジトリURLの末尾に
+`/releases/latest/download/PawKemoViewer.exe` などを付けると直接取得できます。
 
 | バージョン | 主な変更 |
 |---|---|

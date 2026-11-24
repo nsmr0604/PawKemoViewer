@@ -19,6 +19,7 @@ on:
       - "scripts/generate-icons.mjs"
       - "scripts/check-locales.mjs"
       - "scripts/ci/publish-build.sh"
+      - "scripts/ci/stage-desktop-assets.mjs"
       - ".github/workflows/tauri.yml"
   workflow_dispatch:
     inputs:
@@ -119,15 +120,16 @@ jobs:
           test -x "$unpacked/usr/bin/pawkemoviewer"
           test -n "$(find "$unpacked/usr/share/icons" -type f -name '*.png' -print -quit)"
 
+      - name: 配布用ファイル名を設定
+        env:
+          BUILD_MODE: ${{ inputs.release == true && 'release' || 'debug' }}
+        run: node scripts/ci/stage-desktop-assets.mjs desktop "$BUILD_MODE" src-tauri/target/release/bundle dist-packages
+        shell: bash
+
       - uses: actions/upload-artifact@v6
         with:
           name: PawKemoViewer-${{ matrix.runner }}
-          path: |
-            src-tauri/target/release/bundle/**/*.exe
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.AppImage
-            src-tauri/target/release/bundle/**/*.deb
-            src-tauri/target/release/bundle/**/*.rpm
+          path: dist-packages/*
           if-no-files-found: error
 
       - name: Linux のインストールと起動を検証

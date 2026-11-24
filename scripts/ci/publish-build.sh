@@ -19,7 +19,7 @@ case "$mode" in
     tag="pawkemoviewer-v${version}"
     title="PawKemoViewer v${version}"
     notes="製品版 v${version}。"
-    flags=()
+    flags=(--latest=false)
     ;;
   debug)
     tag=debug-latest
@@ -53,7 +53,25 @@ elif ! gh release create "$tag" "${assets[@]}" --target "$GITHUB_SHA" \
   gh release upload "$tag" "${assets[@]}" --clobber
 fi
 
-if [[ "$mode" == debug ]]; then
+if [[ "$mode" == release ]]; then
+  # 固定URLが全対象で使えるよう、必要なファイルが揃ってから最新版にする。
+  required=(exe msi deb rpm AppImage dmg app.tar.gz apk ipa)
+  published=$(gh release view "$tag" --json assets --jq '.assets[].name')
+  complete=true
+  for extension in "${required[@]}"; do
+    if ! grep -Fxq "PawKemoViewer.$extension" <<< "$published"; then
+      complete=false
+      break
+    fi
+  done
+  if [[ "$complete" == true ]]; then
+    latest=$(gh release view --json tagName --jq .tagName 2>/dev/null || true)
+    if [[ "$latest" != pawkemoviewer-v* ]] ||
+       [[ "$(printf '%s\n' "$latest" "$tag" | sort -V | tail -1)" == "$tag" ]]; then
+      gh release edit "$tag" --latest
+    fi
+  fi
+else
   gh release edit "$tag" --prerelease --latest=false
   # 更新の成功後、そのプラットフォームの古いデバッグ成果物だけを取り除く。
   declare -A current

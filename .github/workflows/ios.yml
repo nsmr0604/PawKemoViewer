@@ -173,6 +173,7 @@ jobs:
           fi
           ipa=${packages[0]}
           out="dist-ios/PawKemoViewer_${VER}_ios-unsigned.ipa"
+          if [[ "${{ inputs.release }}" == true ]]; then out="dist-ios/PawKemoViewer.ipa"; fi
           cp "$ipa" "$out"
           echo "packaged: $out"
           ls -la dist-ios
