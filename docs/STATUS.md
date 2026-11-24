@@ -23,7 +23,7 @@
 | Linux | DEB インストール・起動・公開 API を確認済み |
 | macOS | Apple Silicon の DMG 起動・公開 API を確認済み |
 | Android | 実機 (Redmi K20 Pro) で起動・設定・投稿閲覧・外部ページを確認済み |
-| iOS / iPadOS | 無署名 IPA をビルド済み。iPadOS 16.5 + TrollStore で起動、テストページの表示と診断ログ書き出しを確認。修正後の投稿リンクと iPhone は確認待ち |
+| iOS / iPadOS | iPadOS 16.5 + TrollStore で修正版の iOS 判定、テストページ表示、診断ログ書き出し、投稿リンクの表示と復帰を確認。iPhone は確認待ち |
 
 ## 3. 実装済みの基盤
 

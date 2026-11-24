@@ -94,8 +94,8 @@ M7.3 の確定には M7.2 の残項目の結果を反映する。
 | 範囲 | 完了とする実測 | 現時点の根拠 |
 |---|---|---|
 | iOS/iPadOS 診断 | 診断用 IPA を起動し、テストページと投稿リンクを試して Files に専用ログを書き出せる | iPadOS 16.5 + TrollStore で取得済み。テストページは HTTP 200。投稿リンクは OS 判定で停止した |
-| iOS/iPadOS 修正確認 | 修正版で同じリンクを開き、ページの表示と元の記事への復帰を確認する | 診断ブランチの `25d3b721` で判定を修正。通常の Mac と iPad の回帰テストが通過。[修正版 IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/45369152333) |
-| M5.4・M5.5 | Android・iPhone・iPad で、[Files/SAF の確認手順](os-storage.md#モバイル統合版の実機確認)を実行する | iPad の標準フォルダーへの診断ログ保存を確認。言語ファイルの一連の実機操作は別途記録する |
+| iOS/iPadOS 修正確認 | 修正版で同じリンクを開き、ページの表示と元の記事への復帰を確認する | `25d3b721` の iPadOS 16.5 のログで `platform=ios` とテストページの HTTP 200 を確認。利用者が元の投稿リンクの表示と記事への復帰を実機確認。iPhone は未実施。[修正版 IPA](https://github.com/nsmr0604/PawKemoViewer/actions/runs/45369152333/artifacts/14909410581) |
+| M5.4・M5.5 | Android・iPhone・iPad で、[Files/SAF の確認手順](os-storage.md#モバイル統合版の実機確認)を実行する | iPad の標準フォルダーへの診断ログ保存、Redmi K20 Pro の 0.5.6 検証版で言語設定の表示と SAF 選択・キャンセルを確認。取り込みの確定、書き出し、再読み込みは端末別に確認する。[Android 検証 APK](https://github.com/nsmr0604/PawKemoViewer/actions/runs/45370707339/artifacts/14909207760) |
 | M7.2 | 各対象でログイン状態のID表示、認証付きのお気に入り・フォロー参照、ログアウト確認のキャンセルと確定を確認する | 2026-11-24 に Windows からテストアカウントでログイン HTTP 302、投稿のお気に入りとフォロー一覧の参照 HTTP 200 を確認。アプリ UI の結果は端末ごとに記録する |
 | M7.3 | 各対象のパッケージ生成、起動、M5・M7.2 の結果を照合し、公開判定を記録する | 0.5.6 の5対象のパッケージ生成済み。実機確認結果の反映待ち |
 
