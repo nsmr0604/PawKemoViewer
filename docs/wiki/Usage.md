@@ -2,7 +2,7 @@
 
 ## 画面の構成
 
-以下の画面例は 0.5.7 の製品版UIをサンプルデータで撮影したものです。[紹介サイトの画面ギャラリー](https://www.nsmr0604.geek.jp/PawKemoViewer/ja/#screens) では PC・モバイルとライト・ダークを切り替えられます。
+以下の画面例は 0.5.7 の製品版UIをサンプルデータで撮影したものです。[紹介サイトの画面ギャラリー]({{PAGES_URL}}/ja/#screens) では PC・モバイルとライト・ダークを切り替えられます。
 
 - **PC**: 左のナビゲーションから ホーム / クリエイター / フォロー / 設定 を切り替えます。
 - **モバイル**: 画面下のナビゲーションで切り替えます。
@@ -17,7 +17,7 @@
 
 ## ホーム (投稿を探す)
 
-![PC版のホーム。左のナビゲーションと投稿グリッド](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-home-desktop.png)
+![PC版のホーム。左のナビゲーションと投稿グリッド]({{PAGES_URL}}/assets/screens/ja-light-home-desktop.png)
 
 - 検索欄に 3 文字以上を入力して検索します。検索履歴はチップから再利用できます。
 - サービス (すべて / FANBOX / Patreon) で絞り込めます。
@@ -27,7 +27,7 @@
 
 ## クリエイター
 
-![クリエイター名を入力して絞り込んだ検索画面](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-creators-desktop.png)
+![クリエイター名を入力して絞り込んだ検索画面]({{PAGES_URL}}/assets/screens/ja-light-creators-desktop.png)
 
 - 名前 / ID / URL で検索します。更新日・人気・名前で並べ替えられます。
 - クリエイターを開くと、プロフィール・タグ・告知・投稿一覧を表示します。
@@ -36,7 +36,7 @@
 
 ## 投稿詳細
 
-![モバイル版の投稿詳細。タイトル下のクリエイターボタンとサイトを開く操作](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-detail-mobile.png)
+![モバイル版の投稿詳細。タイトル下のクリエイターボタンとサイトを開く操作]({{PAGES_URL}}/assets/screens/ja-light-detail-mobile.png)
 
 - タイトルの下にあるクリエイターのアイコンまたは名前を押すと、そのクリエイターのページへ移動します。
 
@@ -58,7 +58,7 @@
 
 ## フォロー (お気に入り)
 
-![フォロー中のクリエイターと最新投稿の一覧](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-following-desktop.png)
+![フォロー中のクリエイターと最新投稿の一覧]({{PAGES_URL}}/assets/screens/ja-light-following-desktop.png)
 
 - 「フォロー」タブでフォロー中のクリエイターと新着を確認します。
 - 投稿のお気に入りは「お気に入り」タブで一覧・並べ替えができます。

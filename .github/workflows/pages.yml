@@ -32,7 +32,6 @@ jobs:
           path: site
 
       - name: プラットフォームごとの最新アセットを選択
-        id: release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -44,6 +43,7 @@ jobs:
           from pathlib import Path
 
           repo = os.environ["GITHUB_REPOSITORY"]
+          repository_url = f'{os.environ["GITHUB_SERVER_URL"].rstrip("/")}/{repo}'
 
           def api(path):
               output = subprocess.check_output(["gh", "api", f"repos/{repo}/{path}"])
@@ -86,36 +86,26 @@ jobs:
               if len(found) == len(patterns):
                   break
 
-          publish = len(found) > 0
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              print(f"publish={str(publish).lower()}", file=output)
-
-          if not publish:
-              print("公開できる正式リリースのアセットがありません。")
-              raise SystemExit(0)
-
-          latest = max(found.values(), key=lambda item: item["_parts"])
+          latest = max(found.values(), key=lambda item: item["_parts"], default={})
           assets = {
               platform: {key: value for key, value in asset.items() if not key.startswith("_")}
               for platform, asset in found.items()
           }
           metadata = {
-              "version": latest["version"],
-              "published": latest["published"],
-              "url": latest["release_url"],
+              "repository_url": repository_url,
+              "version": latest.get("version"),
+              "published": latest.get("published"),
+              "url": latest.get("release_url", f"{repository_url}/releases/latest"),
               "assets": assets,
           }
           Path("site/release.json").write_text(
               json.dumps(metadata, ensure_ascii=False) + "\n", encoding="utf-8"
           )
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              print(f"latest={latest['version']}", file=output)
           summary = ", ".join(f"{platform}={asset['version']}" for platform, asset in assets.items())
           print("公開対象: " + summary)
           PY
 
       - name: サイトのリリース情報を更新
-        if: steps.release.outputs.publish == 'true'
         working-directory: site
         run: |
           set -e
@@ -126,5 +116,5 @@ jobs:
             echo "release.json に変更はありません"
             exit 0
           fi
-          git commit -m "リリース情報を ${{ steps.release.outputs.latest }} に更新"
+          git commit -m "紹介サイトのリポジトリとリリース情報を更新"
           git push origin HEAD:gh-pages

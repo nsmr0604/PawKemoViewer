@@ -4,7 +4,6 @@ name: Wiki Sync
 # 正本は docs/ と docs/wiki/。Wiki は生成物なので直接編集しない。
 on:
   push:
-    branches: [main]
     paths:
       - "docs/**"
       - "README.md"
@@ -18,10 +17,11 @@ concurrency:
 
 permissions:
   contents: write
+  pages: read
 
 jobs:
   sync:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -43,7 +43,25 @@ jobs:
           node-version: 24
 
       - name: Generate wiki pages
-        run: node scripts/sync-wiki.mjs wiki
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_BASE_URL: ${{ vars.PAGES_BASE_URL }}
+          REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ -z "$PAGES_BASE_URL" ]; then
+            PAGES_BASE_URL=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq '.html_url') || {
+              echo 'GitHub Pages の URL を取得できません。Pages を有効にするか、PAGES_BASE_URL を設定してください。' >&2
+              exit 1
+            }
+            if [[ "$PAGES_BASE_URL" == http://* ]]; then
+              secure_url="https://${PAGES_BASE_URL#http://}"
+              if curl --fail --silent --location --head --proto '=https' --proto-redir '=https' --max-time 10 "$secure_url" >/dev/null; then
+                PAGES_BASE_URL="$secure_url"
+              fi
+            fi
+          fi
+          export PAGES_BASE_URL
+          node scripts/sync-wiki.mjs wiki
 
       - name: Push wiki
         working-directory: wiki

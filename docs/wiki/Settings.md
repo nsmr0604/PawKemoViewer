@@ -16,7 +16,7 @@
 
 ## アカウント
 
-![未ログイン時のアカウント設定。ログインボタンと現在の状態](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-account-desktop.png)
+![未ログイン時のアカウント設定。ログインボタンと現在の状態]({{PAGES_URL}}/assets/screens/ja-light-settings-account-desktop.png)
 
 - **ID / パスワードでログイン**: ログインするとセッションキーが自動設定されます。
 - ログイン中はボタンにアカウントIDが表示されます。ボタンを押し、確認してログアウトできます。
@@ -25,7 +25,7 @@
 
 ## 表示
 
-![表示設定。テーマ、レイアウトモード、投稿一覧の形式](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-display-desktop.png)
+![表示設定。テーマ、レイアウトモード、投稿一覧の形式]({{PAGES_URL}}/assets/screens/ja-light-settings-display-desktop.png)
 
 - **テーマ**: ダーク / ライト。モバイルのアイコンもテーマに合わせて切り替わります。
 - **レイアウトモード**: 自動 / デスクトップ / モバイル。
@@ -34,14 +34,14 @@
 
 ## 言語・翻訳ファイル
 
-![モバイル版の言語設定。表示言語の選択と追加フォルダーの同期](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-mobile.png)
+![モバイル版の言語設定。表示言語の選択と追加フォルダーの同期]({{PAGES_URL}}/assets/screens/ja-light-settings-mobile.png)
 
 - **言語 / Language** で日本語、English、追加した言語を選べます。
 - **言語フォルダーを同期** で追加フォルダーの変更を反映します。保存場所と JSON の作り方は [表示言語と翻訳ファイル](Languages) を参照してください。
 
 ## 投稿表示
 
-![投稿表示。ファイルのリスト表示とAI投稿、FANBOXのカバーの除外設定](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-post-desktop.png)
+![投稿表示。ファイルのリスト表示とAI投稿、FANBOXのカバーの除外設定]({{PAGES_URL}}/assets/screens/ja-light-settings-post-desktop.png)
 
 - **省データのリスト表示**: 投稿内の画像を自動で読み込まず、ファイル名の一覧にします。
 - **AI投稿を除外**: AI と分類された投稿をホームの一覧と検索結果から除外します。
@@ -49,7 +49,7 @@
 
 ## 通信
 
-![通信設定。低通信モード、外部メディアのプロキシ、タイムアウト](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-connection-desktop.png)
+![通信設定。低通信モード、外部メディアのプロキシ、タイムアウト]({{PAGES_URL}}/assets/screens/ja-light-settings-connection-desktop.png)
 
 - **低通信モード**: 新たな画像の取得を抑えます。保存済みの投稿サムネイルは表示できます。
 - **投稿の外部メディアを pkv プロキシ経由で読み込む**:
@@ -61,7 +61,7 @@
 
 ## バックアップ
 
-![モバイルのバックアップ設定。標準フォルダーや別の保存先を選ぶ操作](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-backup-mobile.png)
+![モバイルのバックアップ設定。標準フォルダーや別の保存先を選ぶ操作]({{PAGES_URL}}/assets/screens/ja-light-settings-backup-mobile.png)
 
 設定・フォロー・既読を JSON に保存し、復元できます。
 詳しくは [バックアップとログ](Files) を参照してください。
@@ -73,7 +73,7 @@
 
 ## キャッシュ
 
-![キャッシュ設定。サムネイルの保存上限、クリエイター索引、アイコンの保存状況](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-cache-desktop.png)
+![キャッシュ設定。サムネイルの保存上限、クリエイター索引、アイコンの保存状況]({{PAGES_URL}}/assets/screens/ja-light-settings-cache-desktop.png)
 
 - **投稿サムネイルの保存上限**: 100 / 250 / 500 / 1,000 / 2,000 件から選べます。既定は500件で、上限を超えた分は保存日時が古い順に削除します。
 - **クリエイター索引**: 件数・サイズ・最終取得を表示し、消去できます。
@@ -81,7 +81,7 @@
 
 ## 情報
 
-![情報画面。サーバーバージョンの確認、実行環境、アプリの版](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-info-desktop.png)
+![情報画面。サーバーバージョンの確認、実行環境、アプリの版]({{PAGES_URL}}/assets/screens/ja-light-settings-info-desktop.png)
 
 - アプリバージョン
 - サーバーバージョン (確認ボタンで取得)

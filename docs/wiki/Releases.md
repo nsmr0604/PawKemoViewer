@@ -2,7 +2,7 @@
 
 ## 最新版
 
-最新の配布版は [GitHub Releases](https://github.com/nsmr0604/pawchive/releases) の
+最新の配布版は [GitHub Releases]({{REPOSITORY_URL}}/releases) の
 `pawkemoviewer-v0.5.7` です。
 
 | バージョン | 主な変更 |

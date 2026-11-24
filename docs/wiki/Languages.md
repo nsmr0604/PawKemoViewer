@@ -2,7 +2,7 @@
 
 設定 → 言語・翻訳ファイル → **言語 / Language** で日本語、英語、追加した言語を選べます。切り替えはすぐに反映されます。
 
-![PC版の言語設定。追加フォルダーの場所と同期ボタン](https://www.nsmr0604.geek.jp/PawKemoViewer/assets/screens/ja-light-settings-desktop.png)
+![PC版の言語設定。追加フォルダーの場所と同期ボタン]({{PAGES_URL}}/assets/screens/ja-light-settings-desktop.png)
 
 ## 言語ファイルを追加する
 
@@ -26,7 +26,7 @@ Android では端末のファイル管理アプリから `Android/data` にア�
 
 ## JSON の書き方
 
-`locale.name` に一覧の表示名を指定し、翻訳を 1 件以上追加します。キーは [日本語辞書](https://github.com/nsmr0604/PawKemoViewer/blob/main/src/locales/ja.json) と同じフラットなドット区切りで、値は空でない文字列にします。ファイルの上限は 1 MiB です。
+`locale.name` に一覧の表示名を指定し、翻訳を 1 件以上追加します。キーは [日本語辞書]({{REPOSITORY_URL}}/blob/{{DEFAULT_BRANCH}}/src/locales/ja.json) と同じフラットなドット区切りで、値は空でない文字列にします。ファイルの上限は 1 MiB です。
 
 ```json
 {

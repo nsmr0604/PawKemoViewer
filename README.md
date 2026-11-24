@@ -53,7 +53,7 @@ DNS フィルタ (AdGuard など) で pawchive.pw が遮断される環境では
 
 ## ダウンロード
 
-[GitHub Releases](https://github.com/nsmr0604/pawchive/releases) から入手できます。
+[GitHub Releases](../../releases) から入手できます。
 
 | プラットフォーム | ファイル |
 |---|---|
@@ -66,11 +66,11 @@ DNS フィルタ (AdGuard など) で pawchive.pw が遮断される環境では
 - Windows / macOS の実行ファイルは現在未署名です。Windows では初回起動時にファイアウォールの許可が必要になる場合があります。macOS では右クリックから開いてください。
 - Android の APK は開発用キーで署名しています。Play ストアでは配布していません。端末の「提供元不明のアプリ」を許可してインストールしてください。
 - iOS の IPA は未署名のため、そのままでは実機にインストールできません (再署名が必要)。
-- 開発中のビルドは [debug-latest](https://github.com/nsmr0604/pawchive/releases/tag/debug-latest) (プレリリース) に置かれます。
+- 開発中のビルドは [debug-latest](../../releases/tag/debug-latest) (プレリリース) に置かれます。
 
 ## ドキュメント
 
-- [Wiki](https://github.com/nsmr0604/pawchive/wiki): インストール、使い方、設定、言語、バックアップ、困ったとき (利用者向け)
+- [Wiki](../../wiki): インストール、使い方、設定、言語、バックアップ、困ったとき (利用者向け)
 - [開発状況・残課題](docs/STATUS.md): 現在のリリース状態、既知の制約、次の作業
 - [開発ガイド](docs/DEVELOPMENT.md): アーキテクチャ、ディレクトリ構成、実装規約、テスト
 - [ビルドガイド](docs/BUILD.md): ローカルビルド、CI、リリース手順

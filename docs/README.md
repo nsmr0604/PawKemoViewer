@@ -1,7 +1,7 @@
 # 開発者向けドキュメント
 
 PawKemoViewer の開発・設計・ビルド・API の資料です。利用者向けの使い方と設定は
-[Wiki](https://github.com/nsmr0604/pawchive/wiki) にまとめています。
+[Wiki](../../../wiki) にまとめています。
 
 ## まず読む
 

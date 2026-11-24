@@ -2,7 +2,7 @@
 
 ## ダウンロード
 
-[GitHub Releases](https://github.com/nsmr0604/pawchive/releases) から、お使いの環境のファイルを取得します。
+[GitHub Releases]({{REPOSITORY_URL}}/releases) から、お使いの環境のファイルを取得します。
 
 | 環境 | ファイル |
 |---|---|

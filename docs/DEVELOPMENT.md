@@ -188,7 +188,14 @@ reCAPTCHA を含む外部ページは pkv では動作しない (実オリジン
 
 - 同梱は日本語 (既定) と英語。`src/locales/ja.json` をキーと差し込み変数の基準にする
 - 外部の言語ファイル (JSON) を追加・上書きできる。キーが無い場合は日本語で表示する
-- 詳細は [Wiki の Languages](https://github.com/nsmr0604/pawchive/wiki/Languages) と [API 仕様](API.md) を参照
+- 詳細は [表示言語と翻訳ファイル](wiki/Languages.md) と [API 仕様](API.md) を参照
+
+### 別のリポジトリで紹介サイトと Wiki を公開
+
+- GitHub Pages の公開元を `gh-pages` ブランチに設定し、Wiki を有効にする。
+- GitHub Actions の **紹介サイトを公開** を実行すると、実行元のリポジトリ名とリリースから紹介サイトのリンクを更新する。
+- **Wiki Sync** は実行元の Pages 設定から公開URLを取得する。別のURLを指定する場合は、リポジトリ変数 `PAGES_BASE_URL` にサブパスも含めて設定する。
+- Wiki をローカルで生成する場合は、`GITHUB_SERVER_URL`、`GITHUB_REPOSITORY`、`REPOSITORY_DEFAULT_BRANCH`、`PAGES_BASE_URL` を設定して `node scripts/sync-wiki.mjs <出力先>` を実行する。
 
 ## テスト
 
