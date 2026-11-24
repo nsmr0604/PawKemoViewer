@@ -27,7 +27,8 @@ private final class LocalePickerPlugin: Plugin, UIDocumentPickerDelegate {
                 invoke.reject("The JSON picker requires iOS 14 or later")
                 return
             }
-            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: false)
+            // Import a snapshot that can be read after Files hands it back to the app.
+            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json], asCopy: true)
             picker.directoryURL = try? self.filesDirectory(args.folder)
             self.present(picker, invoke, importLimit: args.maxBytes)
         }
