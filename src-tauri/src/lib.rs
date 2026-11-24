@@ -1,5 +1,6 @@
 mod json_files;
 mod locale_storage;
+mod downloads;
 
 use regex::Regex;
 use tauri::Manager;
@@ -1470,6 +1471,19 @@ async fn open_in_browser(_app: tauri::AppHandle, url: String) -> Result<(), Stri
     }
 }
 
+/// 一括画像ダウンロードの保存先 (クリエイター名ディレクトリ) を返す。
+/// ディレクトリが無ければ作成する。
+#[tauri::command]
+fn resolve_download_directory(
+    app: tauri::AppHandle,
+    creator_name: String,
+    service: String,
+    creator_id: String,
+) -> Result<String, String> {
+    downloads::creator_directory(&app, &creator_name, &service, &creator_id)
+        .map(|path| path.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -1539,6 +1553,7 @@ pub fn run() {
                 locale_storage::resolve_storage_location,
                 json_files::pick_json_file,
                 json_files::save_user_file,
+                resolve_download_directory,
                 open_in_browser,
                 #[cfg(all(feature = "debug-diag", any(target_os = "android", target_os = "ios")))]
                 locale_storage::save_locale_file_to_app_directory,
