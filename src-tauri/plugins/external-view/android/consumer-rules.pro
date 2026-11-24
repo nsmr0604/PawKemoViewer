@@ -1,0 +1,2 @@
+-keep class org.pawkemoviewer.externalview.ExternalViewPlugin { *; }
+-keep class org.pawkemoviewer.externalview.OpenArgs { *; }

@@ -1,6 +1,6 @@
 # API ドキュメント
 
-PawKemoViewer (v0.4.1) の API レイヤ仕様。実装は `src/api.ts`。
+PawKemoViewer 0.5.3 の API レイヤ仕様です。クライアント実装は `src/api.ts` にあります。
 
 ## アーキテクチャ
 
@@ -24,11 +24,12 @@ interface Settings {
   noImageMode: boolean     // 低通信モード
   postViewMode: "grid" | "list"
   timeoutSecs: number      // 既定 30 (1〜300 にクランプ)
-  proxyImages: boolean     // FANBOX / Patreon 由来の画像・ファイルを pkv:// 経由で読み込む (pawchive 本体は常に直接)
+  proxyImages: boolean     // 対象となる投稿の外部メディアを pkv 経由で取得 (既定 false)
   postFileListMode: boolean     // 投稿内の画像を一覧表示 (省データ・自動読み込みしない)
   excludeAiPosts: boolean       // グローバル投稿一覧・検索で AI 分類を除外 (hide=(ai))
   excludeFanboxCover: boolean   // FANBOX の cover.jpeg を投稿ファイルから除外 (グローバル設定)
-  locale: "ja" | "en"           // 表示言語 (既定 ja)
+  developerToolsEnabled: boolean // 製品版の開発項目を表示 (既定 false)
+  locale: string               // 同梱または外部の言語コード (既定 ja)
 }
 ```
 
@@ -76,10 +77,10 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 
 ### URL 生成
 
-- `fileUrl(f, service?, postId?, refererUrl?)` — 本体ファイル URL。FANBOX / Patreon 由来は `proxyImages` 有効時に pkv 経由 (記事 URL を Referer に使用)。pawchive 配信 (n1 / img) は直接
+- `fileUrl(f, service?, postId?, refererUrl?)` — 本体ファイル URL。外部 URL の判定は `proxyFileUrl` を使い、pawchive 配信は直接取得する
 - `thumbUrl(f)` — サムネイル (`img.pawchive.pw/thumbnail/data{path}`)。直接取得のみ
-- `proxyFileUrl(url, service?, postId?, refererUrl?)` — ホットリンク対策 (fanbox/patreon/pximg) と、**投稿コンテキストのある外部ホスト**を pkv 経由に変換 (`proxyImages` 無効時は原 URL のまま)
-- `proxyLinkUrl(url, service?, postId?, refererUrl?)` — 本文中の外部リンクを pkv 経由に変換
+- `proxyFileUrl(url, service?, postId?, refererUrl?)` — `proxyImages` 有効時に、ホットリンク対策ホストか、元記事 URL (`refererUrl`) が渡された外部メディアを pkv 経由に変換する
+- `proxyLinkUrl(url, service?, postId?, refererUrl?)` — 本文中の対象となる外部リンクを pkv 経由に変換する。同じオリジン、pawchive、ローカル、ホットリンク対策ホストへのリンクは元の URL を返す
 - Referer の決定順: `refererUrl` (正規の記事 URL) → service / postId から導出した元記事 URL → サービストップ。fanbox は creator slug が分かる場合 `https://www.fanbox.cc/@slug/posts/{postId}`、不明なら `https://www.fanbox.cc/posts/{postId}`
 - `creatorIconUrl(service, id)` — `https://pawchive.pw/icons/{service}/{userId}`
 - `creatorBannerUrl(service, id)` — `https://pawchive.pw/banners/{service}/{userId}`
@@ -100,9 +101,13 @@ Rust は失敗時に `Err("STATUS=401 BODY=...")` 文字列を返す。JS 側は
 | `login_request(username, password, timeoutSecs)` | ログイン + session cookie 抽出 + 有効性検証 |
 | `export_log(text)` | ログを `%APPDATA%/logs/YYYY-MM-DD_HH-MM-SS_viewer.log` に書き出し |
 | `export_file(fileName, text)` | 任意テキストを `%APPDATA%/backup/` に書き出し |
+| `pick_json_file(purpose, appDirectory?)` | 言語またはバックアップの JSON を選択。モバイルでは標準フォルダーからの読み込みも可 |
+| `save_user_file(purpose, filename, text, appDirectory?)` | 言語・バックアップ・ログを選択した保存先またはモバイルの標準フォルダーへ書き出し |
+| `list_locale_files()` / `list_secondary_locale_files()` | アプリ専用領域と追加フォルダーの翻訳ファイルを取得 |
 | `fetch_creator_icon(service, id)` | クリエイターアイコンを取得 + `app_data/icons/{service}_{id}.webp` にキャッシュ → data URL |
 | `creator_icon_cache_info()` | クリエイターアイコンのキャッシュ件数・合計バイト数 |
 | `clear_creator_icon_cache()` | アイコンのディスクキャッシュを消去 |
+| `open_external_page(url, referer)` | (Android / iOS) 外部ページを実オリジンのまま Referer 付きのネイティブビューで開く。`referer` は fanbox.cc / patreon.com のみ許可 |
 | `debug_append_log(text)` | (Full / debug-diag feature のみ) ログ行を `app_data/logs/debug-app.log` に追記 |
 | `debug_open_log_folder()` | (Full / debug-diag feature のみ) ログフォルダをファイラで開く |
 
@@ -114,8 +119,14 @@ WebView から Referer を設定できないため、リファラーチェック
   **pawchive 本体ホスト (`pawchive.pw` / `*.pawchive.pw`) は常に対象外** (`f=1` 強制中継は 0.3.1 で廃止)
 - `r` に指定できるのは fanbox.cc / patreon.com のページのみ (任意サイトへの Referer 偽装を防ぐ)
 - SSRF 対策 (内部アドレス拒否) あり。転送先の名前解決 IP も検査する
-- 応答は 64 MiB (HTML は 8 MiB) を上限とし、超過は 413。転送は 4 ワーカー、リダイレクトは最大 5 回
+- 応答は 64 MiB (HTML は 8 MiB) を上限とし、超過は 413。接続は 10 秒、リクエスト全体は 180 秒でタイムアウトする
+- 転送は 4 ワーカーで処理する。リダイレクトは最大 5 回で、各転送先を検査する
 - HTML ページは base 注入 + リンク/リソースのプロキシ化を行う
+
+### 外部ページのネイティブ表示 (Android / iOS)
+reCAPTCHA を含む外部ページは `pkv` (pkv.localhost オリジン、Android は POST 本文なし) では動作しない。
+投稿本文の外部リンクは `data-external-url` を持ち、モバイルでは `open_external_page(url, referer)` で
+**実オリジンの WebView** に Referer 付きで読み込む。デスクトップは従来どおり `pkv` を使う。
 
 ## データ型 (src/types.ts)
 

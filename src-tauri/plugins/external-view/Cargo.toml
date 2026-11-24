@@ -1,0 +1,12 @@
+[package]
+name = "tauri-plugin-external-view"
+version = "0.1.0"
+edition = "2024"
+links = "tauri-plugin-external-view"
+
+[dependencies]
+tauri = "2"
+serde_json = "1"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

@@ -1,6 +1,6 @@
 # PawKemoViewer 開発ガイド
 
-PawKemoViewer (v0.4.1) の開発者向けドキュメント。
+PawKemoViewer 0.5.3 の開発ガイドです。
 
 - 対象読者: 開発参加者・ビルド担当者・コントリビューター
 - ユーザー向け情報は [README.md](../README.md) を参照
@@ -19,13 +19,13 @@ pawchive.pw / *.pawchive.pw
 - **WebView は直接 fetch しない**。API・ログイン・アイコンはすべて Rust コマンド経由
   (端末 DNS ブロック・UA 偽装・Cloudflare 中継検出回避のためクライアント直叩き)
 - 画像・動画は WebView が直接 CDN (`img/n1..n3/t1..t4.pawchive.pw`) を参照する。
-  pkv:// プロキシの対象は FANBOX / Patreon 由来の画像のみ (pawchive 本体は迂回対象外・後述)
+  pkv プロキシはホットリンク対策ホストや、元記事の Referer を付ける外部メディアを扱います。
 - **Cloudflare 系の中継 (Pages / Workers / Functions / Wrangler / Reverse Proxy) は禁止**。
   pawchive が中継を検出し Fake site を返すため (実測済み)
 
 ## 技術スタック
 
-| 層 | 技术 | 備考 |
+| 層 | 技術 | 備考 |
 |---|---|---|
 | UI | React 18.3.1 + TypeScript (strict) | 関数コンポーネント・hooks のみ |
 | バンドラ | Vite 6 | PWA プラグイン不使用 |
@@ -45,6 +45,10 @@ src/                    フロントエンド
   backup.ts             バックアップ書き出し/読み込み
   log.ts                アプリ内ログ (リングバッファ)
   build-flags.ts         ビルド時機能フラグ (VITE_DEBUG_DIAG)
+  i18n.ts               日本語フォールバック・外部辞書の読み込み
+  domain/               投稿 ID・元記事 URL・言語ファイル検査などの純粋ロジック
+  application/          投稿・クリエイター・言語ファイルのユースケースとリポジトリ契約
+  infrastructure/       API・ストレージとユースケースの接続
   native-debug-log.ts   デバッグビルド用の Tauri ファイルログ操作
   debug-log.ts          詳細ログ分割 (デバッグビルドのみ動的ロード)
   platform/             実行環境判定・サービス契約・デスクトップ／モバイル／Web アダプター
@@ -55,11 +59,12 @@ src/                    フロントエンド
 src-tauri/
   src/lib.rs            Tauri コマンド登録・API・pkv:// プロキシ
   src/locale_storage.rs 言語ファイルの読み書きと保存場所の解決
+  src/json_files.rs     設定画面のファイル選択と書き出し
   src/main.rs           エントリポイント
   examples/probe_api.rs API 実測プローブ
   Cargo.toml            features: debug-diag
 docs/                   本ドキュメント群
-.github/workflows/      tauri.yml (PC) / android.yml (APK)
+.github/workflows/      プラットフォーム別ビルド・紹介サイト・Wiki 同期
 ```
 
 ## 命名規則
@@ -76,11 +81,11 @@ docs/                   本ドキュメント群
   - **注意: SDK の `um/x64` に dbghelp.lib が無い環境あり** → Windows SDK の該当ライブラリを補って対処する
 
 ```bash
-npm install          # 依存
+npm ci               # ロックファイルに従って依存をインストール
 npm run dev          # Vite 開発サーバ (localhost:5173)
 npm run tauri:dev    # Tauri 開発実行 (Cargo feature debug-diag)
 npm run tauri:android:dev # Android 開発実行 (Cargo feature debug-diag)
-npm run build        # 型検査 + 本番ビルド
+npm run build        # 境界・翻訳・型の検査と本番ビルド
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo build --manifest-path src-tauri/Cargo.toml --features debug-diag   # 診断ビルド
 ```
@@ -112,12 +117,15 @@ SSRF 対策 (内部アドレス拒否) あり。名前解決後の IP も検査�
 CGNAT を拒否する。
 資源制御として、connect 10 秒 / 全体 180 秒のタイムアウト、本文 64 MiB (HTML は 8 MiB) の上限
 (超過は 413)、4 ワーカーでの処理、リダイレクトは最大 5 回で各ホップを同じ検査に通す。
+reCAPTCHA を含む外部ページは pkv では動作しない (実オリジンと POST 本文が必要) ため、
+投稿本文の外部リンクは Android / iOS では `open_external_page` で実オリジンのネイティブ WebView に
+Referer 付きで読み込む (`src-tauri/plugins/external-view`)。デスクトップは pkv を使う。
 
 ### デバッグ診断コードはビルド時フラグ注入
 `VITE_DEBUG_DIAG=1` (フロント) / Cargo feature `debug-diag` (Rust) をデバッグビルドで常に指定する。
 通常の `tauri:dev` / `tauri:android:dev` と CI の debug ビルドで有効。正式リリースではフロントフラグを `0`、Cargo feature を指定しない。
 Lite はセッションIDの手動入力・検証・保存で、製品版にも含めて設定トグルから利用可能。Full は詳細ログ・ログフォルダ操作・バックアップJSONダンプで、フロント DEBUG_DIAG と Rust `#[cfg(feature = "debug-diag")]` の双方により製品版からコンパイル除外する。
-製品版に残すログは基本的な uncaught error / unhandled rejection / API 失敗の method・path・HTTP status のみ。レスポンス本文や詳細トレースは保存しない。
+Full の **pkv プロキシ疎通テスト** では外部画像の読み込みと内部アドレスの拒否を確認できます。Android では `Pawchive::Proxy` の logcat も確認します。製品版のエラー記録範囲は [API 仕様](API.md) を参照してください。
 
 ## ストレージ構成 (v0.3.0 のキー体系)
 
@@ -127,6 +135,7 @@ Lite はセッションIDの手動入力・検証・保存で、製品版にも�
 | IndexedDB | `pawkemoviewer` (DB) | creators パック索引 / seen (既読) / meta |
 | IndexedDB | `pawkemo-icons` (DB) | クリエイターアイコンの data URL キャッシュ |
 | ファイル | `app_data/icons/` | Rust 側アイコンキャッシュ (`{service}_{id}.webp`) |
+| ファイル | `app_data/locales/` | アプリ専用の外部翻訳。追加フォルダーのファイルはこの辞書に重ねる |
 | バックアップ | type `pawkemoviewer-backup` | 設定+フォロー+既読 (旧 `pawchive-backup` は 0.2.x 系) |
 
 - **0.2.x (旧 Pawchive Viewer) からの引継ぎはバックアップ書き出し→読み込み**が正式手順
@@ -139,6 +148,22 @@ Lite はセッションIDの手動入力・検証・保存で、製品版にも�
 - API スケジューラ: 同時 3 / 最小間隔 250ms / GET キャッシュ TTL 60 秒 (最大 150 件)
 - Favorites の新着チェックは 5 分クールダウン
 - 画像は lazy loading + サムネ→本体の 2 段フォールバック (失敗時は非表示プレースホルダ)
+
+## 翻訳の追加と検証
+
+- `src/locales/ja.json` を翻訳キーと差し込み変数の基準とします。組み込み言語を追加する際は、同じキーを翻訳し、`src/i18n.ts` の同梱辞書一覧に登録します。
+- `npm run check:locales` は全同梱辞書を検査し、違反の種類とキーを出力します。CI が使う `npm run build` とローカルの `npm run build:debug` に組み込まれています。
+- `src/domain/locale-validation.ts` は外部ファイルの取り込みと再読み込みでも使います。未知キー、空文字・非文字列、差し込み変数の不一致を検出します。外部辞書だけは部分翻訳を許可します。
+
+## テスト
+
+```bash
+npm run test:domain
+npm run test:application
+npm run test:platform
+```
+
+アプリケーションテストでは言語ファイルの取り込み結果、上書きの優先順位、日本語へのフォールバックを確認します。インストーラーからの起動確認やモバイル向けの独立した言語検証パッケージは [ビルドガイド](BUILD.md) を参照してください。
 
 ## コーディング規約
 
@@ -154,7 +179,7 @@ Lite はセッションIDの手動入力・検証・保存で、製品版にも�
 | `cargo metadata` 失敗 | `cargo --version` / `rustup update` |
 | Windows リンクで dbghelp.lib 欠落 | 自作 lib (env.md の手順) |
 | CI の Android が gradle 429 失敗 | Maven Central 一時障害。再実行で解消 (実測) |
-| Android 実機で API・画像が出ない | 端末/ルーターの DNS フィルタ (AdGuard 等) が pawchive を sinkhole (偽 IP) に解決していないか確認 (`adb shell ping pawchive.pw`)。pawchive 本体は pkv:// 迂回の対象外のため、**DNS を通常の resolver へ変更するのが唯一の対処** |
+| Android 実機で API・画像が出ない | `adb shell ping pawchive.pw` で名前解決先を確認する。DNS フィルターが遮断している場合は、端末またはルーターの DNS フィルター設定を見直す |
 | node_modules 破損 | `rm -rf node_modules package-lock.json && npm install` |
 | Vite キャッシュ破損 | `rm -rf dist node_modules/.vite` |
 
@@ -166,25 +191,8 @@ Lite はセッションIDの手動入力・検証・保存で、製品版にも�
 - pawchive API 仕様: [API.md](API.md) および Swagger UI (https://pawchive.pw/api/schema)
 
 
-### Lite / Full 開発機能
-- Lite: セッションIDの手動入力・検証・保存。製品版にも含み、設定の開発項目トグルで表示する
-- Full: 詳細ログ、ログフォルダ操作、バックアップJSONダンプ。フロント DEBUG_DIAG と Rust `#[cfg(feature = "debug-diag")]` によるデバッグビルド専用で、正式版にはコンパイルしない
-- 詳細 API レスポンス本文のログも Full のみ。製品版では method / path / HTTP status の基本情報に限定する
+## プラットフォーム層
 
+起動時に `src/platform/runtime.ts` が実行環境を特定します。共通のサービス契約に対して、デスクトップ、モバイル、Web の実装を選びます。ユースケースはリポジトリ契約に依存し、Tauri コマンドや OS のファイル選択はプラットフォーム実装が扱います。
 
-### Android API logcat (Full only)
-Android の Full デバッグビルドでは Rust の `api_request` がリクエスト開始・HTTP status・レスポンス本文を logcat に出す。本文は約 3 KB 単位で分割する。認証Cookie / session ID / Authorization / login form credentials は出力せず、ログイン処理は対象外。Tauri log plugin の Android Stdout target を使い、製品版では Cargo feature `debug-diag` 無しのため出力コード自体をコンパイルしない。
-
-
-## Cross-platform foundation and adapter migration
-
-See [PLATFORM_ABSTRACTION.md](PLATFORM_ABSTRACTION.md) for the target architecture, common contracts, Primary/Secondary semantics and phased migration. Platform-specific filesystem, logging sinks, DB persistence, HTTP execution, permissions and export/share operations should be behind adapters; common/domain code must depend only on common contracts. The migration is not yet implemented and must preserve current data and behavior.
-
-
-## Platform-family architecture migration
-
-The desired target is common UI/domain and services -> common contracts -> Desktop (Windows/macOS/Linux) or Mobile (Android/iOS) intermediate processing layer -> OS-specific adapter. The current code only has partial responsive/UI branching and a basic platform helper; it does not yet provide consistent intermediate service layers. The entire codebase is in scope (storage, logging, database/cache, networking, permission, export/share, clipboard, lifecycle/configuration). See [PLATFORM_ABSTRACTION.md](PLATFORM_ABSTRACTION.md) for the audit and staged plan.
-
-## Platform abstraction migration
-
-Initial audit: see [PLATFORM_AUDIT.md](PLATFORM_AUDIT.md). The intended structure is common UI/domain and foundation services, a Desktop or Mobile family runtime, and OS-specific adapters. This is a staged whole-codebase migration; the inventory is not a claim that the abstraction is already implemented.
+設計は [プラットフォーム抽象化](PLATFORM_ABSTRACTION.md)、移行の経緯は [プラットフォーム監査](PLATFORM_AUDIT.md) を参照してください。

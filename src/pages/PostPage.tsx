@@ -1,7 +1,7 @@
 import { getApplication } from "../application/composition"
 import { isValidPostContext } from "../domain/post-identity"
 import { normalizeFanboxSlug, originalPostReferer } from "../domain/post-referer"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react"
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavoritePost } from "../post-favorites"
 import { CreatorAvatar } from "../components/CreatorAvatar"
@@ -15,6 +15,7 @@ import { FollowButton } from "../components/FollowButton"
 import { logError, logInfo, logWarn } from "../log"
 import { t as tr } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
+import { canOpenExternalPage, openExternalPage } from "../external-page"
 
 export function PostPage({
   service,
@@ -68,6 +69,23 @@ export function PostPage({
     }
     return originalPostReferer("fanbox", postId, slug)
   })()
+
+  // 外部リンクはモバイルのネイティブビューで実オリジンのまま開く。
+  // pkv プロキシでは reCAPTCHA 付きのページを表示できないため。
+  const openExternalLink = (event: MouseEvent<HTMLDivElement>) => {
+    if (!proxyReferer) return
+    const element = event.target as HTMLElement
+    const anchor = element.closest?.("a[data-external-url]") as HTMLAnchorElement | null
+    if (!anchor || !canOpenExternalPage()) return
+    const url = anchor.getAttribute("data-external-url")
+    if (!url) return
+    event.preventDefault()
+    event.stopPropagation()
+    void openExternalPage(url, proxyReferer).catch(() => {
+      const fallback = anchor.getAttribute("href")
+      if (fallback) window.open(fallback, "_blank", "noopener")
+    })
+  }
 
   const load = useCallback(async () => {
     currentLoad.current?.abort()
@@ -386,7 +404,7 @@ export function PostPage({
       </div>
 
       {displayPost.content && (
-        <div className="post-content" dangerouslySetInnerHTML={{ __html: sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
+        <div className="post-content" onClick={openExternalLink} dangerouslySetInnerHTML={{ __html: sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
       )}
 
       {sourceFiles.length > 0 && !listMode && (
@@ -542,7 +560,7 @@ export function PostPage({
                 <div className="comment-head">
                   <b>{c.commenter_name || c.commenter}</b> · {formatDate(c.published)}
                 </div>
-                <div className="comment-body">{sanitizePostContent(c.content, postContext.service, postContext.postId, proxyReferer)}</div>
+                <div className="comment-body" onClick={openExternalLink}>{sanitizePostContent(c.content, postContext.service, postContext.postId, proxyReferer)}</div>
               </li>
             ))}
           </ul>

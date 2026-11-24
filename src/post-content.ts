@@ -34,6 +34,9 @@ export function sanitizePostContent(html: string, service?: string, postId?: str
     const proxied = proxyLinkUrl(href, service, postId, refererUrl)
     if (proxied && proxied !== href) {
       a.setAttribute("href", proxied)
+      // ネイティブ (Android / iOS) では実オリジンのまま Referer 付きで開く。
+      // ここに元 URL を残し、クリック時にネイティブビューへ渡す。
+      a.setAttribute("data-external-url", href)
       a.setAttribute("target", "_blank")
       a.setAttribute("rel", "noopener")
     }
