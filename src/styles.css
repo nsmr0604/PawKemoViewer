@@ -2267,3 +2267,147 @@ textarea:focus {
     max-width: 100%;
   }
 }
+
+/* Navigation and reading layouts */
+.app-desktop .nav-rail { width: 204px; min-width: 204px; }
+.app-desktop .nav-rail-top { margin-bottom: 20px; }
+.app-desktop .desktop-back {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: var(--fg2);
+  font-size: 13px;
+}
+.app-desktop .content-post { max-width: 920px; }
+.app-mobile .app-reading .content { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.app-mobile .top-bar {
+  min-height: 54px;
+  padding: calc(5px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 5px max(12px, env(safe-area-inset-left));
+}
+.app-mobile .top-bar .logo { min-width: 44px; min-height: 44px; justify-content: center; }
+.app-mobile .top-bar-brand { gap: 4px; }
+.app-mobile .topbar-context {
+  display: block;
+  border: 0;
+  padding: 0;
+  color: var(--fg);
+  font-size: 16px;
+  font-weight: 700;
+}
+.app-mobile .top-bar .btn { min-height: 44px; }
+.app-mobile .detail-bar { justify-content: flex-start; gap: 12px; }
+.detail-context { min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.app-mobile :is(.settings, .creators-page, .favorites-page) > .page-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.post-page .post-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 12px; }
+.post-creator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.post-creator-link {
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--accent);
+  text-align: start;
+}
+.app-mobile .post-creator-link,
+.app-mobile .post-title-wrap :is(.btn, .chip) { min-height: 44px; }
+.bottom-nav button .bottom-nav-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  overflow: visible;
+}
+.bottom-nav-badge {
+  position: absolute;
+  top: -4px;
+  left: calc(50% + 8px);
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 0 3px;
+  font: 700 9px/13px system-ui, sans-serif;
+}
+
+/* Settings uses a category index on mobile and a category rail on desktop. */
+.settings { max-width: 1020px; }
+.settings-layout, .settings-panels { min-width: 0; }
+.settings-panels[hidden], .settings-section[hidden] { display: none; }
+.app-desktop .settings-layout {
+  display: grid;
+  grid-template-columns: minmax(132px, 176px) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(12px, 2vw, 24px);
+}
+.settings .settings-nav { grid-template-columns: minmax(0, 1fr); }
+.app-desktop .settings-nav { position: sticky; top: 20px; }
+.settings-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: start;
+}
+.settings-nav button[aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-surface);
+  border-color: var(--accent);
+}
+.app-mobile .settings-nav { gap: 6px; }
+.app-mobile .settings-nav button { min-height: 52px; padding-inline: 16px; font-size: 14px; }
+.settings-back { align-self: flex-start; min-height: 44px; }
+.settings-section > h2.section-label { font-size: 20px; margin: 0; }
+.settings .setting-item { min-width: 0; padding-block: 10px; }
+.settings .setting-item + .setting-item { border-top: 1px solid var(--surface-border); }
+.settings .setting-text { min-width: 0; overflow-wrap: anywhere; }
+.settings .setting-item > :not(.setting-text) { min-width: 0; max-width: 100%; }
+.settings .setting-text :is(small, span), .settings code { overflow-wrap: anywhere; }
+.app-desktop .settings .setting-text { flex: 1 1 155px; }
+.app-mobile .settings .setting-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.app-mobile .settings .setting-item > :is(.btn, .segmented, .toggle-wrap) { align-self: flex-start; }
+.app-mobile .settings :is(.locale-select, .seg, .btn, .toggle-wrap) { min-height: 44px; }
+.app-mobile .settings .segmented { flex-wrap: wrap; }
+
+/* Browse and list controls */
+.creator-discovery .creator-list-controls { margin: 0; }
+.list-sort { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.list-sort select { min-width: 0; max-width: 100%; }
+.app-mobile :is(.creator-discovery, .favorites-page) :is(.btn, .chip, .tab, select) { min-height: 44px; }
+.app-mobile .home-page .discovery-panel { padding: 0; border: 0; background: transparent; }
+.app-mobile .home-page .home-title { font-size: 21px; }
+.app-mobile .home-page .discovery-panel .chip { min-height: 44px; }
+.app-mobile .favorites-page .tabs > .tab { flex: 1; }
+
+@media (min-width: 1000px) {
+  .app-desktop .home-page .discovery-panel { grid-template-columns: minmax(0, 1fr) auto; }
+  .app-desktop .home-page .home-filters { grid-column: 2; grid-row: 1; align-self: center; }
+  .app-desktop .home-page :is(.history-chips, .search-error) { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  .app-desktop .nav-rail { width: 176px; min-width: 176px; }
+  .nav-rail-brand-icon { width: 32px; height: 32px; }
+}
+@media (max-width: 680px) {
+  .app-desktop .nav-rail { width: 58px; min-width: 58px; padding: 8px 4px; }
+  .app-desktop .nav-rail :is(.nav-rail-brand-copy, .nav-rail-account-copy, .nav-rail-status, .nav-rail-shortcut, .nav-rail-badge) { display: none; }
+  .app-desktop .nav-rail-btn { flex-direction: column; gap: 2px; justify-content: center; padding: 4px 1px; }
+  .app-desktop .nav-rail-label { flex: none; text-align: center; font-size: 9px; }
+  .app-desktop .nav-rail-account { justify-content: center; min-height: 44px; padding: 0; }
+  .app-desktop .settings-layout { grid-template-columns: minmax(0, 1fr); }
+  .app-desktop .settings-nav { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

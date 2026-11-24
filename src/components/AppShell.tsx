@@ -1,9 +1,10 @@
 import type { ReactNode } from "react"
 import { t } from "../i18n"
 import type { ResolvedLayout } from "../platform/environment"
-import { navigate } from "../router"
+import { goBack, navigate } from "../router"
 import { BottomNavigation } from "./BottomNavigation"
 import { NavigationRail, NavIcon } from "./NavigationRail"
+import { activateAccount } from "../account-action"
 
 interface AppShellProps {
   headerIcon: string
@@ -11,11 +12,14 @@ interface AppShellProps {
   currentPath: string
   followCount: number
   hasSession: boolean
+  accountId: string
   children: ReactNode
 }
 
-export function AppShell({ headerIcon, layout, currentPath, followCount, hasSession, children }: AppShellProps) {
-  const isDetail = currentPath === "post"
+export function AppShell({ headerIcon, layout, currentPath, followCount, hasSession, accountId, children }: AppShellProps) {
+  const accountLabel = hasSession ? accountId || t("nav.accountIdUnknown") : t("nav.login")
+  const isPost = currentPath === "post" || currentPath === "invalid-post"
+  const isDetail = isPost || currentPath === "creator"
   const isLogin = currentPath === "login"
   const isDesktopLayout = layout === "desktop"
   const pageLabel = currentPath === "home" || currentPath === "search"
@@ -26,18 +30,18 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
         ? t("nav.favorites")
         : currentPath === "settings"
           ? t("nav.settings")
-          : currentPath === "post"
+          : isPost
             ? t("nav.postDetail")
-            : ""
+            : t("nav.login")
 
   const backButton = (
     <button
       className="btn btn-ghost"
-      onClick={() => history.back()}
-      title={`${t("common.back")} (Esc)`}
+      onClick={() => goBack(currentPath === "creator" ? "/creators" : "/")}
+      title={isDesktopLayout ? `${t("common.back")} (Esc)` : t("common.back")}
     >
       <span className="detail-back-label">← {t("common.back")}</span>
-      <span className="kbd small">Esc</span>
+      {isDesktopLayout && <span className="kbd small">Esc</span>}
     </button>
   )
 
@@ -45,26 +49,27 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
     <div className={`app ${isDesktopLayout ? "app-desktop" : "app-mobile"}`}>
       {/* デスクトップ環境では左側ナビゲーションレール (JHenTai 型) */}
       {isDesktopLayout && !isLogin && (
-        <NavigationRail currentPath={currentPath} followCount={followCount} hasSession={hasSession} />
+        <NavigationRail currentPath={currentPath} followCount={followCount} hasSession={hasSession} accountLabel={accountLabel} />
       )}
 
-      <div className="app-main-wrapper">
+      <div className={`app-main-wrapper ${isDetail || isLogin ? "app-reading" : ""}`}>
         {!isDesktopLayout && !isDetail && !isLogin && (
           <header className="top-bar">
             <div className="top-bar-brand">
-              <button type="button" className="logo" onClick={() => navigate("/", true)}>
-                <img className="logo-icon" src={headerIcon} alt="" /> PawKemoViewer
+              <button type="button" className="logo" aria-label="PawKemoViewer" onClick={() => navigate("/")}>
+                <img className="logo-icon" src={headerIcon} alt="" />
               </button>
-              {pageLabel && <span className="topbar-context">{pageLabel}</span>}
+              <span className="topbar-context">{pageLabel}</span>
             </div>
             <div className="top-bar-actions">
               <button
                 type="button"
                 className="btn btn-account"
-                onClick={() => navigate(hasSession ? "/settings" : "/login")}
+                onClick={() => activateAccount()}
+                title={accountLabel}
               >
                 <NavIcon name="account" />
-                <span>{hasSession ? t("nav.account") : t("nav.login")}</span>
+                <span>{accountLabel}</span>
               </button>
             </div>
           </header>
@@ -72,18 +77,16 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
         {!isDesktopLayout && (isDetail || isLogin) && (
           <header className="top-bar detail-bar">
             {backButton}
-            <button type="button" className="logo small" onClick={() => navigate("/", true)}>
-              <img className="logo-icon" src={headerIcon} alt="" /> PawKemoViewer
-            </button>
+            <span className="detail-context">{pageLabel}</span>
           </header>
         )}
 
-        <main className={`content ${isDesktopLayout && isLogin ? "content-naked" : ""}`}>
-          {isDesktopLayout && (isDetail || isLogin) && <div className="desktop-back">{backButton}</div>}
+        <main className={`content ${isDesktopLayout && isLogin ? "content-naked" : ""} ${isPost ? "content-post" : ""}`}>
+          {isDesktopLayout && (isDetail || isLogin) && <div className="desktop-back">{backButton}{isDetail && <span>{pageLabel}</span>}</div>}
           {children}
         </main>
       </div>
-      {!isDesktopLayout && <BottomNavigation currentPath={currentPath} followCount={followCount} />}
+      {!isDesktopLayout && !isDetail && !isLogin && <BottomNavigation currentPath={currentPath} followCount={followCount} />}
     </div>
   )
 }

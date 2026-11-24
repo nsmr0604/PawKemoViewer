@@ -117,7 +117,7 @@ export function CreatorsPage() {
   const displayedRows = visibleRows.slice(0, visibleCount)
 
   return (
-    <div className="page">
+    <div className="page creators-page">
       <h1 className="page-title">{t("nav.creators")}</h1>
       {clipCreator && (
         <div className="clipboard-banner">
@@ -144,15 +144,17 @@ export function CreatorsPage() {
         </div>
       )}
 
-      <form className="search-bar" onSubmit={onSearchSubmit}>
+      <div className="discovery-panel creator-discovery">
+      <form className="search-bar" role="search" onSubmit={onSearchSubmit}>
         <input
           type="search"
+          aria-label={t("creators.searchPlaceholder")}
           placeholder={t("creators.searchPlaceholder")}
           value={q}
           onChange={(e) => onSearch(e.target.value)}
         />
         {q && (
-          <button type="button" className="btn btn-ghost" onClick={() => onSearch("")}>
+          <button type="button" className="btn btn-ghost" aria-label={t("common.clear")} onClick={() => onSearch("")}>
             ×
           </button>
         )}
@@ -178,8 +180,7 @@ export function CreatorsPage() {
       )}
       <div className="creator-list-controls">
         <div className="home-filter-group">
-          <span className="small text-muted">{t("creators.serviceFilter")}</span>
-          <div className="tag-chips">
+          <div className="tag-chips" role="group" aria-label={t("creators.serviceFilter")}>
             {(["all", "fanbox", "patreon"] as const).map((service) => (
               <button key={service} type="button"
                 className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
@@ -200,6 +201,7 @@ export function CreatorsPage() {
           </select>
         </div>
         <div className="small text-muted">{t("creators.resultCount", { shown: displayedRows.length, total: visibleRows.length })}</div>
+      </div>
       </div>
       <div className="hint-row">
         <span>

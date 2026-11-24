@@ -27,6 +27,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   const [serviceFilter, setServiceFilter] = useState<"all" | "fanbox" | "patreon">("all")
   const [excludeAiPosts, setExcludeAiPosts] = useState<boolean>(getSettings().excludeAiPosts)
   const reqSeq = useRef(0)
+  const searchInput = useRef<HTMLInputElement>(null)
   const tooShort = q.length > 0 && q.length < MIN_QUERY
   const scrollKey = `home:${q}:service=${serviceFilter}:excludeAi=${excludeAiPosts}`
   const filteredPosts = useMemo(() => posts.filter((post) =>
@@ -34,6 +35,9 @@ export function HomePage({ query }: { query: URLSearchParams }) {
   ), [posts, serviceFilter])
   const hasActiveFilters = serviceFilter !== "all"
 
+  useEffect(() => {
+    if (query.get("focus") === "search") searchInput.current?.focus()
+  }, [query])
 
   const toggleViewMode = (mode: "grid" | "list") => {
     setViewMode(mode)
@@ -116,10 +120,11 @@ export function HomePage({ query }: { query: URLSearchParams }) {
 
   return (
     <div className="page home-page">
-      <h1 className="page-title">{t("home.browseTitle")}</h1>
+      <h1 className="page-title home-title">{t("home.browseTitle")}</h1>
       <div className="discovery-panel">
         <form className="search-bar" role="search" onSubmit={submit}>
           <input
+            ref={searchInput}
             type="search"
             placeholder={t("home.searchPlaceholder")}
             value={input}
@@ -157,8 +162,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
         )}
         <section className="home-filters" aria-label={t("home.filters")}>
           <div className="home-filter-group">
-            <span className="small text-muted">{t("home.serviceFilter")}</span>
-            <div className="tag-chips">
+            <div className="tag-chips" role="group" aria-label={t("home.serviceFilter")}>
               {(["all", "fanbox", "patreon"] as const).map((service) => (
                 <button key={service} type="button"
                   className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
