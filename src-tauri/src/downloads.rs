@@ -331,6 +331,7 @@ fn fetch(
 
     let mut request = DOWNLOAD_CLIENT
         .get(target.clone())
+        .header(reqwest::header::USER_AGENT, crate::current_user_agent())
         .header(reqwest::header::REFERER, referer)
         .header(
             reqwest::header::ACCEPT_LANGUAGE,

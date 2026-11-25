@@ -12,6 +12,7 @@
 | [リポジトリとインフラ](repositories.md) | データアクセスの責務と通信方針 |
 | [ドメイン境界](domain.md) | モデルの責務と純粋ルール |
 | [OS のストレージ](os-storage.md) | Android SAF / iOS Files と実機確認手順 |
+| [HTTP の User-Agent とヘッダー](http-user-agent.md) | UA の選択 (端末 / アプリ / Chrome) と経路別ヘッダー |
 | [画面構成](adaptive-ui.md) | デスクトップ / モバイルのレイアウトと検証範囲 |
 | [安定化の検証記録](stabilization.md) | 依存境界チェック、パッケージ、起動の検証根拠 |
 

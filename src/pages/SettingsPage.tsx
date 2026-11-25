@@ -29,6 +29,7 @@ import {
 } from "../i18n"
 import { displayAppVersion } from "../version"
 import { getPlatformRuntime } from "../platform/runtime"
+import { applyHttpUserAgent, type UserAgentMode } from "../http-user-agent"
 const DeveloperLocaleDiagnostics = DEBUG_DIAG ? lazy(() => import("../components/DeveloperLocaleDiagnostics").then((module) => ({ default: module.DeveloperLocaleDiagnostics }))) : null
 const DeveloperFullDiagnostics = DEBUG_DIAG ? lazy(() => import("../components/DeveloperFullDiagnostics").then((module) => ({ default: module.DeveloperFullDiagnostics }))) : null
 
@@ -78,6 +79,7 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
   const [logText, setLogText] = useState<string | null>(null)
   const [logResult, setLogResult] = useState<string | null>(null)
   const [timeoutSecs, setTimeoutSecsState] = useState<number>(s.timeoutSecs || 30)
+  const [userAgentMode, setUserAgentModeState] = useState<UserAgentMode>(s.userAgentMode || "device")
   const [backupResult, setBackupResult] = useState<string | null>(null)
   const [backupPaste, setBackupPaste] = useState("")
   const [showBackupPaste, setShowBackupPaste] = useState(false)
@@ -207,6 +209,12 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
   const applyTimeoutSecs = (v: number) => {
     setTimeoutSecsState(v)
     updateSettings({ timeoutSecs: v })
+  }
+
+  const applyUserAgentMode = (mode: UserAgentMode) => {
+    setUserAgentModeState(mode)
+    updateSettings({ userAgentMode: mode })
+    void applyHttpUserAgent()
   }
 
   const describeExportPath = (path: string, inAppFolder: boolean) => {
@@ -610,6 +618,24 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
           />
         </div>
 
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("settings.userAgent")}</span>
+            <small>{t("settings.userAgentDesc")}</small>
+          </div>
+          <div className="segmented">
+            {(["device", "app", "desktop"] as const).map((mode) => (
+              <button
+                key={mode}
+                className={`seg ${userAgentMode === mode ? "seg-active" : ""}`}
+                onClick={() => applyUserAgentMode(mode)}
+              >
+                {t(`settings.userAgent_${mode}`)}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="setting-item">
           <div className="setting-text">
