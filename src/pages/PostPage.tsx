@@ -347,6 +347,7 @@ export function PostPage({
       pages: string[],
       target: { creatorName: string; service: string; creatorId: string },
       referer: string,
+      imageReferer?: string,
     ) => {
       if (images.length === 0 && pages.length === 0) {
         setDownloadMessage({ text: tr("post.downloadEmpty"), ok: false })
@@ -366,6 +367,7 @@ export function PostPage({
           images,
           pages,
           getSettings().sessionKey,
+          imageReferer,
         )
         const text = result.cancelled
           ? tr("post.downloadCancelled", { saved: result.saved })
@@ -423,6 +425,7 @@ export function PostPage({
           creatorId: payload.creatorId || postContext.creatorId,
         },
         referer,
+        payload.pageUrl,
       )
     }
     const onChange = () => {
