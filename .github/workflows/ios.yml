@@ -72,7 +72,7 @@ jobs:
       - name: 開発版のバージョン
         if: inputs.release != true
         shell: bash
-        run: node scripts/dev-version.mjs "${{ github.run_number }}"
+        run: node scripts/dev-version.mjs
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable

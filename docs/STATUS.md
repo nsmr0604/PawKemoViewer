@@ -1,6 +1,6 @@
 # 開発状況と残課題
 
-最終更新: 2026-11-26 / 対象バージョン: **0.5.8**
+最終更新: 2026-11-26 / 対象バージョン: **0.6.0 (開発中)**
 
 この文書は現在の状態だけをまとめたものです。リリースごとの変更は [変更履歴](HISTORY.md)、
 アーキテクチャの詳細は [開発ガイド](DEVELOPMENT.md) と [設計資料](architecture/README.md) を参照してください。
@@ -12,7 +12,7 @@
     Android universal APK、iOS 無署名 IPA の 9 アセット
   - 4 系統のリリースビルド (Android / Build Tauri / iOS / macOS) が success
 - 開発ビルド: `debug-latest` プレリリース (push 時に自動更新)
-- main のバージョン: `0.5.8` (`package.json` / `src-tauri/Cargo.toml`)
+- main のバージョン: `0.6.0` (開発中。次のリリース番号) (`package.json` / `src-tauri/Cargo.toml`)
 - ブランチ運用: 統合先は `main`。リリースは `workflow_dispatch` の `release=true` で作成する
 
 ## 2. 対象プラットフォーム

@@ -110,18 +110,24 @@ npm run icons:generate                          # pc.png / dark.png から src-t
 
 ## バージョニング
 
-- 形式: `0.x.y`。互換性を壊す変更はマイナー (0.x) を上げる
+- 形式: `X.Y.Z`。`main` のバージョンは**次にリリースする番号**を置く
+- 番号の上げ方:
+  - 不具合修正のみ → PATCH +1(例: 0.5.8 → 0.5.9)
+  - 機能追加 → MINOR +1 して PATCH を 0 に戻す(例: 0.5.8 → 0.6.0)
+  - 開発中はこの番号のまま進め、**その番号が製品版のバージョンになる**
 - 更新箇所: `package.json` / `package-lock.json` (`npm version <ver> --no-git-tag-version`) と
   `src-tauri/Cargo.toml` (`npm run sync:version` が `package.json` から同期)。
   `src-tauri/tauri.conf.json` は `../package.json` を参照する
-- **開発ビルドのパッケージバージョン**: CI が `node scripts/dev-version.mjs <run_number>` で
-  `x.y.z+<run_number>`(例 `0.5.7+33`)に書き換える。リリース (`release=true`) では実行しない
-  - Tauri は `x.y.z.<n>` (4 桁) を semver として拒否し、Linux の .deb/.rpm は `-` を
+- **開発ビルドのパッケージバージョン**: CI が `node scripts/dev-version.mjs` で
+  `X.Y.Z+<コミット数>`(例 `0.6.0+1341`)に書き換える。リリース (`release=true`) では実行しない
+  - コミット数は `git rev-list --count HEAD`。全プラットフォームで同じ値になる
+    (checkout は `fetch-depth: 0`)
+  - Tauri は `X.Y.Z.<n>` (4 桁) を semver として拒否し、Linux の .deb/.rpm は `-` を
     許可しないため、build metadata の `+<n>` を使う
-  - 表示は `x.y.z+<n> (short commit)`(設定 → 情報)。APK の versionName も同じ値になる
-- **デバッグビルドの表示**: `x.y.z (short commit)`。CI は `VITE_BUILD_COMMIT=github.sha`、
-  ローカルは `vite.config.ts` が `git rev-parse --short=7 HEAD` を埋め込む。
-  正式リリース (`VITE_BUILD_REV=release`) では commit を表示しない
+  - APK の versionName / Windows の ProductVersion も同じ値になる
+- **アプリ上の表示**: `X.Y.Z+<コミット数> (SHA)`(リリースは `X.Y.Z (SHA)`)。
+  設定 → 情報に表示する。CI は `VITE_BUILD_COMMIT=github.sha`、
+  ローカルは `vite.config.ts` が `git rev-parse --short=7 HEAD` を埋め込む
 
 ## 手動リリース手順 (正式版)
 
