@@ -115,9 +115,10 @@ npm run icons:generate                          # pc.png / dark.png から src-t
   `src-tauri/Cargo.toml` (`npm run sync:version` が `package.json` から同期)。
   `src-tauri/tauri.conf.json` は `../package.json` を参照する
 - **開発ビルドのパッケージバージョン**: CI が `node scripts/dev-version.mjs <run_number>` で
-  `x.y.z-<run_number>`(例 `0.5.7-33`)に書き換える。リリース (`release=true`) では実行しない
-  - Tauri は `x.y.z.<n>` (4 桁) を semver として拒否するため、prerelease の `-<n>` を使う
-  - 表示は `x.y.z-<n> (short commit)`(設定 → 情報)。APK の versionName も同じ値になる
+  `x.y.z+<run_number>`(例 `0.5.7+33`)に書き換える。リリース (`release=true`) では実行しない
+  - Tauri は `x.y.z.<n>` (4 桁) を semver として拒否し、Linux の .deb/.rpm は `-` を
+    許可しないため、build metadata の `+<n>` を使う
+  - 表示は `x.y.z+<n> (short commit)`(設定 → 情報)。APK の versionName も同じ値になる
 - **デバッグビルドの表示**: `x.y.z (short commit)`。CI は `VITE_BUILD_COMMIT=github.sha`、
   ローカルは `vite.config.ts` が `git rev-parse --short=7 HEAD` を埋め込む。
   正式リリース (`VITE_BUILD_REV=release`) では commit を表示しない

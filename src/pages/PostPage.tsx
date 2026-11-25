@@ -540,7 +540,8 @@ export function PostPage({
   }
 
   const navPost = (targetId: string | null | undefined) => {
-    if (targetId && validContext) navigate(`/post/${postContext.service}/${encodeURIComponent(postContext.creatorId)}/${encodeURIComponent(targetId)}`)
+    // 前後の投稿は履歴に積まず置き換える (「戻る」で一覧へ戻れるようにする)
+    if (targetId && validContext) navigate(`/post/${postContext.service}/${encodeURIComponent(postContext.creatorId)}/${encodeURIComponent(targetId)}`, true)
   }
 
   /** お気に入りの追加/解除 (web の ☆ Favorite 相当) */

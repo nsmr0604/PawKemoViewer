@@ -44,6 +44,18 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
       {isDesktopLayout && <span className="kbd small">Esc</span>}
     </button>
   )
+  // 投稿を前後にたどった後でも、すぐ一覧へ戻れる導線
+  const homeButton = (
+    <button
+      className="btn btn-ghost"
+      onClick={() => navigate("/")}
+      title={t("nav.home")}
+      aria-label={t("nav.home")}
+    >
+      <NavIcon name="home" />
+      {isDesktopLayout && <span>{t("nav.home")}</span>}
+    </button>
+  )
 
   return (
     <div className={`app ${isDesktopLayout ? "app-desktop" : "app-mobile"}`}>
@@ -77,12 +89,13 @@ export function AppShell({ headerIcon, layout, currentPath, followCount, hasSess
         {!isDesktopLayout && (isDetail || isLogin) && (
           <header className="top-bar detail-bar">
             {backButton}
+            {homeButton}
             <span className="detail-context">{pageLabel}</span>
           </header>
         )}
 
         <main className={`content ${isDesktopLayout && isLogin ? "content-naked" : ""} ${isPost ? "content-post" : ""}`}>
-          {isDesktopLayout && (isDetail || isLogin) && <div className="desktop-back">{backButton}{isDetail && <span>{pageLabel}</span>}</div>}
+          {isDesktopLayout && (isDetail || isLogin) && <div className="desktop-back">{backButton}{homeButton}{isDetail && <span>{pageLabel}</span>}</div>}
           {children}
         </main>
       </div>
