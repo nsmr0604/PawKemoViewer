@@ -27,7 +27,6 @@ private final class ExternalPageController: UIViewController {
     private var urlObservation: NSKeyValueObservation?
     /// 選択画面に出した候補。ここに無い URL は保存させない。
     fileprivate var candidates: [String] = []
-    fileprivate var pickerHandlerInstalled = false
 
     init(url: URL, referer: String, creatorName: String, service: String, creatorId: String, postId: String) {
         self.pageURL = url
@@ -107,10 +106,6 @@ private final class ExternalPageController: UIViewController {
                 return
             }
             self.candidates = urls
-            if !self.pickerHandlerInstalled {
-                self.webView.configuration.userContentController.add(self, name: "pawkemoSaver")
-                self.pickerHandlerInstalled = true
-            }
             guard let payload = try? JSONSerialization.data(withJSONObject: urls, options: []),
                   let jsonArray = String(data: payload, encoding: .utf8) else {
                 return
@@ -124,8 +119,7 @@ private final class ExternalPageController: UIViewController {
     fileprivate func saveSelected(_ urls: [String]) {
         let allowed = Set(candidates)
         let selected = urls.filter { allowed.contains($0) }
-        guard !selected.isEmpty else { return }
-        let payload: [String: Any] = [
+        guard !selected.isEmpty else { return }        let payload: [String: Any] = [
             "creatorName": creatorName,
             "service": service,
             "creatorId": creatorId,
@@ -291,9 +285,8 @@ private final class ExternalPageController: UIViewController {
         var out = [];
         for (var k = 0; k < urls.length; k++) if (selected[k]) out.push(urls[k]);
         if (out.length === 0) return;
-        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.pawkemoSaver) {
-          window.webkit.messageHandlers.pawkemoSaver.postMessage(out);
-        }
+        window.__pawkemoSelected = out;
+        location.href = 'pawkemo-save://start';
       };
 
       close.onclick = function () {
@@ -312,10 +305,69 @@ private final class ExternalPageController: UIViewController {
     """
 }
 
-extension ExternalPageController: WKScriptMessageHandler {
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard message.name == "pawkemoSaver", let urls = message.body as? [String] else { return }
-        saveSelected(urls)
+extension ExternalPageController: WKNavigationDelegate {
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        // 選択画面の「保存」はカスタムスキームで受け取る
+        if let url = navigationAction.request.url?.absoluteString, url.hasPrefix("pawkemo-save:") {
+            webView.evaluateJavaScript("JSON.stringify(window.__pawkemoSelected || [])") { [weak self] result, _ in
+                guard let self else { return }
+                if let json = result as? String,
+                   let data = json.data(using: .utf8),
+                   let urls = try? JSONSerialization.jsonObject(with: data) as? [String] {
+                    self.saveSelected(urls)
+                }
+            }
+            decisionHandler(.cancel)
+            return
+        }
+        decisionHandler(.allow)
+    }
+
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+#if PKV_EXTERNAL_DIAG
+        ExternalViewTrace.add("navigation_started")
+#endif
+    }
+
+    func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+#if PKV_EXTERNAL_DIAG
+        ExternalViewTrace.add("navigation_redirect")
+#endif
+    }
+
+    func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse,
+                 decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+#if PKV_EXTERNAL_DIAG
+        if response.isForMainFrame, let status = (response.response as? HTTPURLResponse)?.statusCode {
+            ExternalViewTrace.add("navigation_http status=\(status)")
+        }
+#endif
+        decisionHandler(.allow)
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+#if PKV_EXTERNAL_DIAG
+        ExternalViewTrace.add("navigation_finished")
+#endif
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+#if PKV_EXTERNAL_DIAG
+        ExternalViewTrace.failure("navigation_provisional_failed", error)
+#endif
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+#if PKV_EXTERNAL_DIAG
+        ExternalViewTrace.failure("navigation_failed", error)
+#endif
+    }
+
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+#if PKV_EXTERNAL_DIAG
+        ExternalViewTrace.add("web_content_terminated")
+#endif
     }
 }
 
@@ -339,40 +391,6 @@ private enum ExternalViewTrace {
         let error = error as NSError
         let domain = [NSURLErrorDomain, WKError.errorDomain].contains(error.domain) ? error.domain : "other"
         add("\(phase) domain=\(domain) code=\(error.code)")
-    }
-}
-
-extension ExternalPageController: WKNavigationDelegate {
-    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        ExternalViewTrace.add("navigation_started")
-    }
-
-    func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
-        ExternalViewTrace.add("navigation_redirect")
-    }
-
-    func webView(_ webView: WKWebView, decidePolicyFor response: WKNavigationResponse,
-                 decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
-        if response.isForMainFrame, let status = (response.response as? HTTPURLResponse)?.statusCode {
-            ExternalViewTrace.add("navigation_http status=\(status)")
-        }
-        decisionHandler(.allow)
-    }
-
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        ExternalViewTrace.add("navigation_finished")
-    }
-
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        ExternalViewTrace.failure("navigation_provisional_failed", error)
-    }
-
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        ExternalViewTrace.failure("navigation_failed", error)
-    }
-
-    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        ExternalViewTrace.add("web_content_terminated")
     }
 }
 #endif
@@ -453,4 +471,5 @@ private final class ExternalViewPlugin: Plugin {
 public func initPlugin() -> Plugin {
     ExternalViewPlugin()
 }
+
 
