@@ -25,6 +25,9 @@ private final class ExternalPageController: UIViewController {
     private let postId: String
     private var webView: WKWebView!
     private var urlObservation: NSKeyValueObservation?
+    /// 選択画面に出した候補。ここに無い URL は保存させない。
+    fileprivate var candidates: [String] = []
+    fileprivate var pickerHandlerInstalled = false
 
     init(url: URL, referer: String, creatorName: String, service: String, creatorId: String, postId: String) {
         self.pageURL = url
@@ -92,7 +95,7 @@ private final class ExternalPageController: UIViewController {
         dismiss(animated: true)
     }
 
-    /// 表示中ページの画像 URL を集めて、アプリ側へ引き渡す。
+    /// 表示中ページの画像候補を集め、チェック式の選択画面を出す。
     @objc private func saveImages() {
         webView.evaluateJavaScript(Self.collectScript) { [weak self] result, _ in
             guard let self else { return }
@@ -103,29 +106,47 @@ private final class ExternalPageController: UIViewController {
                 self.showMessage("保存できる画像が見つかりませんでした")
                 return
             }
-            let payload: [String: Any] = [
-                "creatorName": self.creatorName,
-                "service": self.service,
-                "creatorId": self.creatorId,
-                "postId": self.postId,
-                "referer": self.referer,
-                "pageUrl": self.webView.url?.absoluteString ?? "",
-                "images": urls,
-            ]
-            guard let directory = FileManager.default.urls(
-                for: .documentDirectory, in: .userDomainMask
-            ).first else {
-                self.showMessage("保存を開始できませんでした")
+            self.candidates = urls
+            if !self.pickerHandlerInstalled {
+                self.webView.configuration.userContentController.add(self, name: "pawkemoSaver")
+                self.pickerHandlerInstalled = true
+            }
+            guard let payload = try? JSONSerialization.data(withJSONObject: urls, options: []),
+                  let jsonArray = String(data: payload, encoding: .utf8) else {
                 return
             }
-            let file = directory.appendingPathComponent(".external-download.json")
-            do {
-                let encoded = try JSONSerialization.data(withJSONObject: payload, options: [])
-                try encoded.write(to: file, options: .atomic)
-                self.dismiss(animated: true)
-            } catch {
-                self.showMessage("保存を開始できませんでした")
-            }
+            let script = Self.pickerScript.replacingOccurrences(of: "__URLS__", with: jsonArray)
+            self.webView.evaluateJavaScript(script, completionHandler: nil)
+        }
+    }
+
+    /// 選択画面の「保存」から呼ばれる。候補に無い URL は無視する。
+    fileprivate func saveSelected(_ urls: [String]) {
+        let allowed = Set(candidates)
+        let selected = urls.filter { allowed.contains($0) }
+        guard !selected.isEmpty else { return }
+        let payload: [String: Any] = [
+            "creatorName": creatorName,
+            "service": service,
+            "creatorId": creatorId,
+            "postId": postId,
+            "referer": referer,
+            "pageUrl": webView.url?.absoluteString ?? "",
+            "images": selected,
+        ]
+        guard let directory = FileManager.default.urls(
+            for: .documentDirectory, in: .userDomainMask
+        ).first else {
+            showMessage("保存を開始できませんでした")
+            return
+        }
+        let file = directory.appendingPathComponent(".external-download.json")
+        do {
+            let encoded = try JSONSerialization.data(withJSONObject: payload, options: [])
+            try encoded.write(to: file, options: .atomic)
+            dismiss(animated: true)
+        } catch {
+            showMessage("保存を開始できませんでした")
         }
     }
 
@@ -184,6 +205,118 @@ private final class ExternalPageController: UIViewController {
       return JSON.stringify(out.slice(0, 300));
     })()
     """
+
+    /// チェック式の画像選択画面。__URLS__ に候補の JSON 配列を埋め込む。
+    private static let pickerScript = """
+    (function (urls) {
+      if (window.__pawkemoPickerClose) window.__pawkemoPickerClose();
+      var selected = [];
+      for (var i = 0; i < urls.length; i++) selected.push(true);
+
+      function make(tag, css, text) {
+        var el = document.createElement(tag);
+        if (css) el.style.cssText = css;
+        if (text !== undefined) el.textContent = text;
+        return el;
+      }
+      function button(label, extra) {
+        var b = make('button', 'border:0;border-radius:10px;padding:10px 14px;font-size:15px;font-weight:600;background:#2a2c30;color:#e8e9eb;' + (extra || ''), label);
+        b.type = 'button';
+        return b;
+      }
+
+      var root = make('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483647;background:#0e0f11;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;');
+      var header = make('div', 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:#1a1b1e;color:#e8e9eb;flex:0 0 auto;');
+      var close = button('✕', 'width:44px;height:44px;padding:0;font-size:20px;');
+      var titleWrap = make('div', 'flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;');
+      var title = make('div', 'font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;', '保存する画像を選択');
+      var count = make('div', 'font-size:12px;color:#9aa0a6;', '');
+      titleWrap.appendChild(title);
+      titleWrap.appendChild(count);
+      var all = button('すべて解除');
+      var save = button('保存', 'background:#1a73e8;color:#fff;');
+      header.appendChild(close);
+      header.appendChild(titleWrap);
+      header.appendChild(all);
+      header.appendChild(save);
+
+      var grid = make('div', 'flex:1 1 auto;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px;background:#0e0f11;');
+      var marks = [];
+
+      function updateCount() {
+        var n = 0;
+        for (var i = 0; i < selected.length; i++) if (selected[i]) n++;
+        count.textContent = n + ' / ' + urls.length + ' 枚';
+        save.textContent = n > 0 ? '保存 (' + n + ')' : '保存';
+        all.textContent = n === urls.length ? 'すべて解除' : 'すべて選択';
+      }
+
+      for (var i = 0; i < urls.length; i++) {
+        (function (index) {
+          var tile = make('button', 'position:relative;display:block;padding:0;border:0;background:#1a1b1e;overflow:hidden;');
+          tile.type = 'button';
+          var img = make('img', 'width:100%;display:block;aspect-ratio:3/4;object-fit:cover;background:#1a1b1e;');
+          img.src = urls[index];
+          img.loading = 'lazy';
+          img.alt = '';
+          var mark = make('span', 'position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:2px solid #1a73e8;background:#1a73e8;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;', '✓');
+          tile.appendChild(img);
+          tile.appendChild(mark);
+          tile.onclick = function () {
+            selected[index] = !selected[index];
+            mark.textContent = selected[index] ? '✓' : '';
+            mark.style.background = selected[index] ? '#1a73e8' : 'rgba(0,0,0,0.25)';
+            mark.style.borderColor = selected[index] ? '#1a73e8' : '#fff';
+            updateCount();
+          };
+          grid.appendChild(tile);
+          marks.push(mark);
+        })(i);
+      }
+
+      all.onclick = function () {
+        var n = 0;
+        for (var i = 0; i < selected.length; i++) if (selected[i]) n++;
+        var next = n !== selected.length;
+        for (var j = 0; j < selected.length; j++) {
+          selected[j] = next;
+          marks[j].textContent = next ? '✓' : '';
+          marks[j].style.background = next ? '#1a73e8' : 'rgba(0,0,0,0.25)';
+          marks[j].style.borderColor = next ? '#1a73e8' : '#fff';
+        }
+        updateCount();
+      };
+
+      save.onclick = function () {
+        var out = [];
+        for (var k = 0; k < urls.length; k++) if (selected[k]) out.push(urls[k]);
+        if (out.length === 0) return;
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.pawkemoSaver) {
+          window.webkit.messageHandlers.pawkemoSaver.postMessage(out);
+        }
+      };
+
+      close.onclick = function () {
+        if (window.__pawkemoPickerClose) window.__pawkemoPickerClose();
+      };
+
+      root.appendChild(header);
+      root.appendChild(grid);
+      document.body.appendChild(root);
+      window.__pawkemoPickerClose = function () {
+        if (root.parentNode) root.parentNode.removeChild(root);
+        window.__pawkemoPickerClose = null;
+      };
+      updateCount();
+    })(__URLS__);
+    """
+}
+
+extension ExternalPageController: WKScriptMessageHandler {
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "pawkemoSaver", let urls = message.body as? [String] else { return }
+        saveSelected(urls)
+    }
 }
 
 #if PKV_EXTERNAL_DIAG
