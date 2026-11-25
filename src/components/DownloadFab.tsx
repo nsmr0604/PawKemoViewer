@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
+import { createPortal } from "react-dom"
 import { t as tr } from "../i18n"
 import { cancelImageDownload } from "../post-download"
 import {
@@ -37,7 +38,7 @@ export function DownloadFab() {
         ? tr("download.fabDone", { saved: status.saved })
         : tr("download.fabTitle")
 
-  return (
+  return createPortal(
     <div className="download-fab-root">
       {open && (
         <div className="download-fab-panel" role="status">
@@ -93,6 +94,7 @@ export function DownloadFab() {
         {status.phase === "done" && <span className="download-fab-badge ok">✓</span>}
         {status.phase === "error" && <span className="download-fab-badge err">{status.failed}</span>}
       </button>
-    </div>
+    </div>,
+    document.body,
   )
 }
