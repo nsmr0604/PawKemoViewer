@@ -7,6 +7,7 @@ import android.os.Environment
 import android.text.TextUtils
 import android.view.ViewGroup
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -25,8 +26,9 @@ import java.io.File
  * Referer は初回リクエストにだけ必要 (以降は同一サイト内の遷移)。
  * reCAPTCHA などの JavaScript は実オリジンで動作する。
  *
- * ツールバーの「画像を保存」は、いま表示しているページの DOM から画像 URL を集め、
- * アプリ側 (Rust) が拾えるように Documents/.external-download.json へ書き出す。
+ * ツールバーの「画像を保存」は、いま表示しているページから画像候補を集めて
+ * チェック式の選択画面を重ね、選んだ画像だけを
+ * Documents/.external-download.json に書き出す。
  * アプリは復帰時に一覧を読み、通常の一括保存と同じ処理で保存する。
  */
 class ExternalPageActivity : Activity() {
@@ -37,6 +39,9 @@ class ExternalPageActivity : Activity() {
     private var creatorId: String = ""
     private var postId: String = ""
     private var referer: String = ""
+    /** 選択画面に出した候補。ここに無い URL は保存させない。 */
+    private var candidates: List<String> = emptyList()
+    private var bridgeInstalled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,7 +74,7 @@ class ExternalPageActivity : Activity() {
         }
         val save = Button(this).apply {
             text = "画像を保存"
-            setOnClickListener { collectAndSave() }
+            setOnClickListener { openPicker() }
         }
         saveButton = save
         val close = Button(this).apply {
@@ -91,6 +96,8 @@ class ExternalPageActivity : Activity() {
         view.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 title.text = url
+                // ページ遷移したら候補は作り直す
+                candidates = emptyList()
             }
 
             override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
@@ -109,37 +116,23 @@ class ExternalPageActivity : Activity() {
         view.loadUrl(url, headers)
     }
 
-    /** 表示中ページの画像 URL を集めて、アプリ側へ引き渡す。 */
-    private fun collectAndSave() {
+    /** 表示中ページの画像候補を集め、チェック式の選択画面を出す。 */
+    private fun openPicker() {
         val view = page ?: return
-        val button = saveButton ?: return
-        button.isEnabled = false
-        button.text = "収集中…"
         view.evaluateJavascript(COLLECT_SCRIPT) { result ->
-            button.isEnabled = true
-            button.text = "画像を保存"
             val urls = parseUrls(result)
             if (urls.isEmpty()) {
                 Toast.makeText(this, "保存できる画像が見つかりませんでした", Toast.LENGTH_SHORT).show()
                 return@evaluateJavascript
             }
-            try {
-                val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir
-                directory.mkdirs()
-                val payload = JSONObject()
-                    .put("creatorName", creatorName)
-                    .put("service", service)
-                    .put("creatorId", creatorId)
-                    .put("postId", postId)
-                    .put("referer", referer)
-                    .put("pageUrl", page?.url.orEmpty())
-                    .put("images", JSONArray(urls))
-                File(directory, QUEUE_FILE).writeText(payload.toString())
-                Toast.makeText(this, "${urls.size} 枚を保存します", Toast.LENGTH_SHORT).show()
-                finish()
-            } catch (error: Exception) {
-                Toast.makeText(this, "保存を開始できませんでした", Toast.LENGTH_SHORT).show()
+            candidates = urls
+            if (!bridgeInstalled) {
+                view.addJavascriptInterface(SelectionBridge(), "PawkemoSaver")
+                bridgeInstalled = true
             }
+            val payload = JSONArray(urls).toString()
+            val script = PICKER_SCRIPT.replace("__URLS__", payload)
+            view.evaluateJavascript(script, null)
         }
     }
 
@@ -159,6 +152,50 @@ class ExternalPageActivity : Activity() {
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    /** 選択画面の「保存」から呼ばれる。候補に無い URL は無視する。 */
+    private inner class SelectionBridge {
+        @JavascriptInterface
+        fun save(json: String) {
+            val allowed = candidates.toSet()
+            val array = try {
+                JSONArray(json)
+            } catch (_: Exception) {
+                JSONArray()
+            }
+            val urls = (0 until array.length()).mapNotNull { index ->
+                array.optString(index).takeIf { it.isNotEmpty() && allowed.contains(it) }
+            }
+            if (urls.isEmpty()) return
+            runOnUiThread { writeAndFinish(urls) }
+        }
+
+        @JavascriptInterface
+        fun cancel() {
+            // 選択画面側で閉じるため、ネイティブでは何もしない
+        }
+    }
+
+    private fun writeAndFinish(urls: List<String>) {
+        try {
+            val directory = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) ?: filesDir
+            directory.mkdirs()
+            val payload = JSONObject()
+                .put("creatorName", creatorName)
+                .put("service", service)
+                .put("creatorId", creatorId)
+                .put("postId", postId)
+                .put("referer", referer)
+                .put("pageUrl", page?.url.orEmpty())
+                .put("images", JSONArray(urls))
+            File(directory, QUEUE_FILE).writeText(payload.toString())
+        } catch (_: Exception) {
+            Toast.makeText(this, "保存を開始できませんでした", Toast.LENGTH_SHORT).show()
+            return
+        }
+        Toast.makeText(this, "${urls.size} 枚を保存します", Toast.LENGTH_SHORT).show()
+        finish()
     }
 
     @Deprecated("Deprecated in Java")
@@ -246,6 +283,114 @@ class ExternalPageActivity : Activity() {
   if (meta) push(meta.getAttribute('content'));
   return JSON.stringify(out.slice(0, 300));
 })()
+"""
+
+        /**
+         * チェック式の画像選択画面。__URLS__ に候補の JSON 配列を埋め込む。
+         * CSP の影響を受けないよう、スタイルは cssText で与える。
+         */
+        private const val PICKER_SCRIPT = """
+(function (urls) {
+  if (window.__pawkemoPickerClose) window.__pawkemoPickerClose();
+  var selected = [];
+  for (var i = 0; i < urls.length; i++) selected.push(true);
+
+  function make(tag, css, text) {
+    var el = document.createElement(tag);
+    if (css) el.style.cssText = css;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+  function button(label, extra) {
+    var b = make('button', 'border:0;border-radius:10px;padding:10px 14px;font-size:15px;font-weight:600;background:#2a2c30;color:#e8e9eb;' + (extra || ''), label);
+    b.type = 'button';
+    return b;
+  }
+
+  var root = make('div', 'position:fixed;left:0;top:0;right:0;bottom:0;z-index:2147483647;background:#0e0f11;display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;');
+  var header = make('div', 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:#1a1b1e;color:#e8e9eb;flex:0 0 auto;');
+  var close = button('✕', 'width:44px;height:44px;padding:0;font-size:20px;');
+  var titleWrap = make('div', 'flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;');
+  var title = make('div', 'font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;', '保存する画像を選択');
+  var count = make('div', 'font-size:12px;color:#9aa0a6;', '');
+  titleWrap.appendChild(title);
+  titleWrap.appendChild(count);
+  var all = button('すべて解除');
+  var save = button('保存', 'background:#1a73e8;color:#fff;');
+  header.appendChild(close);
+  header.appendChild(titleWrap);
+  header.appendChild(all);
+  header.appendChild(save);
+
+  var grid = make('div', 'flex:1 1 auto;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px;background:#0e0f11;');
+  var marks = [];
+
+  function updateCount() {
+    var n = 0;
+    for (var i = 0; i < selected.length; i++) if (selected[i]) n++;
+    count.textContent = n + ' / ' + urls.length + ' 枚';
+    save.textContent = n > 0 ? '保存 (' + n + ')' : '保存';
+    all.textContent = n === urls.length ? 'すべて解除' : 'すべて選択';
+  }
+
+  for (var i = 0; i < urls.length; i++) {
+    (function (index) {
+      var tile = make('button', 'position:relative;display:block;padding:0;border:0;background:#1a1b1e;overflow:hidden;');
+      tile.type = 'button';
+      var img = make('img', 'width:100%;display:block;aspect-ratio:3/4;object-fit:cover;background:#1a1b1e;');
+      img.src = urls[index];
+      img.loading = 'lazy';
+      img.alt = '';
+      var mark = make('span', 'position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:2px solid #1a73e8;background:#1a73e8;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:700;', '✓');
+      tile.appendChild(img);
+      tile.appendChild(mark);
+      tile.onclick = function () {
+        selected[index] = !selected[index];
+        mark.textContent = selected[index] ? '✓' : '';
+        mark.style.background = selected[index] ? '#1a73e8' : 'rgba(0,0,0,0.25)';
+        mark.style.borderColor = selected[index] ? '#1a73e8' : '#fff';
+        updateCount();
+      };
+      grid.appendChild(tile);
+      marks.push(mark);
+    })(i);
+  }
+
+  all.onclick = function () {
+    var n = 0;
+    for (var i = 0; i < selected.length; i++) if (selected[i]) n++;
+    var next = n !== selected.length;
+    for (var j = 0; j < selected.length; j++) {
+      selected[j] = next;
+      marks[j].textContent = next ? '✓' : '';
+      marks[j].style.background = next ? '#1a73e8' : 'rgba(0,0,0,0.25)';
+      marks[j].style.borderColor = next ? '#1a73e8' : '#fff';
+    }
+    updateCount();
+  };
+
+  save.onclick = function () {
+    var out = [];
+    for (var k = 0; k < urls.length; k++) if (selected[k]) out.push(urls[k]);
+    if (out.length === 0) return;
+    if (window.PawkemoSaver && window.PawkemoSaver.save) {
+      window.PawkemoSaver.save(JSON.stringify(out));
+    }
+  };
+
+  close.onclick = function () {
+    if (window.__pawkemoPickerClose) window.__pawkemoPickerClose();
+  };
+
+  root.appendChild(header);
+  root.appendChild(grid);
+  document.body.appendChild(root);
+  window.__pawkemoPickerClose = function () {
+    if (root.parentNode) root.parentNode.removeChild(root);
+    window.__pawkemoPickerClose = null;
+  };
+  updateCount();
+})(__URLS__);
 """
     }
 }
