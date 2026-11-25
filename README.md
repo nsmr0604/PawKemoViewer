@@ -1,6 +1,18 @@
-# PawKemoViewer
+<p align="center">
+  <img src="src-tauri/app-icons/pc.png" width="132" height="132" alt="PawKemoViewerのPC版アイコン">
+</p>
 
-[pawchive.pw](https://pawchive.pw) の非公式クライアントです。Windows / Linux / macOS / Android に対応し、iOS / iPadOS 向けには未署名 IPA をビルドできます。
+<h1 align="center">PawKemoViewer</h1>
+
+<p align="center">PawchiveのFANBOX・Patreon投稿を閲覧する非公式ビューアー</p>
+
+[![最新リリース](https://img.shields.io/badge/Release-Latest-087f73?style=flat-square)](../../releases/latest)
+[![ビルド状況](https://img.shields.io/badge/GitHub_Actions-Builds-2563eb?style=flat-square&logo=githubactions&logoColor=white)](../../actions)
+[![利用ガイド](https://img.shields.io/badge/Guide-Wiki-5b4bb7?style=flat-square&logo=github&logoColor=white)](../../wiki)
+[![MITライセンス](https://img.shields.io/badge/License-MIT-5b6472?style=flat-square)](LICENSE)
+
+[![PC対応: Windows、macOS、Linux](https://img.shields.io/badge/PC-Windows_%7C_macOS_%7C_Linux-24546c?style=flat-square)](#ダウンロード)
+[![モバイル対応: Android、iOS、iPadOS](https://img.shields.io/badge/Mobile-Android_%7C_iOS_%7C_iPadOS-24546c?style=flat-square)](#ダウンロード)
 
 pawchive の投稿・クリエイター・お気に入りを、デスクトップとモバイルの両方で快適に閲覧するためのビューアです。ブラウザを開かずに、フォローしたクリエイターの新着や保存済みの投稿を確認できます。
 
@@ -53,15 +65,15 @@ DNS フィルタ (AdGuard など) で pawchive.pw が遮断される環境では
 
 ## ダウンロード
 
-[GitHub Releases](../../releases) から入手できます。
+[GitHub Releases](../../releases/latest) から入手できます。以下は製品版の固定ファイル名です。
 
 | プラットフォーム | ファイル |
 |---|---|
-| Windows | `PawKemoViewer_x.y.z_x64-setup.exe` / `_x64_en-US.msi` |
-| Linux | `.AppImage` / `.deb` / `.rpm` |
-| macOS | `.dmg` (Apple Silicon) / `app.tar.gz` |
-| Android | `PawKemoViewer_x.y.z_universal.apk` |
-| iOS / iPadOS | `PawKemoViewer_x.y.z_ios-unsigned.ipa` (未署名) |
+| Windows | `PawKemoViewer.exe` / `PawKemoViewer.msi` |
+| Linux | `PawKemoViewer.AppImage` / `PawKemoViewer.deb` / `PawKemoViewer.rpm` |
+| macOS | `PawKemoViewer.dmg` (Apple Silicon) / `PawKemoViewer.app.tar.gz` |
+| Android | `PawKemoViewer.apk` |
+| iOS / iPadOS | `PawKemoViewer.ipa` (未署名) |
 
 - Windows / macOS の実行ファイルは現在未署名です。Windows では初回起動時にファイアウォールの許可が必要になる場合があります。macOS では右クリックから開いてください。
 - Android の APK は開発用キーで署名しています。Play ストアでは配布していません。端末の「提供元不明のアプリ」を許可してインストールしてください。
