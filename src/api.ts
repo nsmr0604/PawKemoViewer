@@ -44,6 +44,8 @@ export interface Settings {
   proxyImages: boolean
   /** 投稿内の画像・ファイルを一覧表示する (省データ・自動読み込みしない) */
   postFileListMode: boolean
+  /** 外部アクセス時の User-Agent: device (端末の UA・既定) / app (アプリ独自) / desktop (固定 Chrome) */
+  userAgentMode: "device" | "app" | "desktop"
   /** FANBOX の cover.jpeg (作品カバー画像) を投稿ファイルから除外する。
    *  グローバル設定 (投稿を切り替えても維持) */
   excludeFanboxCover: boolean
@@ -84,6 +86,7 @@ function defaultSettings(): Settings {
     timeoutSecs: 30,
     proxyImages: false,
     postFileListMode: false,
+    userAgentMode: "device",
     excludeFanboxCover: false,
     excludeAiPosts: false,
     developerToolsEnabled: false,

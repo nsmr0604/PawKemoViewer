@@ -30,6 +30,35 @@ static API_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .expect("failed to initialize API HTTP client")
 });
 
+/// 設定で選ばれた User-Agent。未設定ならデスクトップ Chrome の既定値。
+/// フロントエンドが起動時に端末の UA (`navigator.userAgent`) を設定する。
+static HTTP_USER_AGENT: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
+
+const DEFAULT_USER_AGENT: &str =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
+
+pub(crate) fn current_user_agent() -> String {
+    HTTP_USER_AGENT
+        .lock()
+        .ok()
+        .and_then(|guard| guard.clone())
+        .unwrap_or_else(|| DEFAULT_USER_AGENT.to_string())
+}
+
+/// 設定画面で選ばれた UA を反映する (空・制御文字・長すぎる値は拒否)。
+#[tauri::command]
+fn set_http_user_agent(user_agent: String) -> Result<(), String> {
+    let ua = user_agent.trim();
+    if ua.is_empty() || ua.len() > 512 || ua.chars().any(|c| c.is_control()) {
+        return Err("invalid user agent".to_string());
+    }
+    let mut guard = HTTP_USER_AGENT
+        .lock()
+        .map_err(|_| "user agent lock poisoned".to_string())?;
+    *guard = Some(ua.to_string());
+    Ok(())
+}
+
 static LOGIN_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .brotli(true)
@@ -192,6 +221,7 @@ async fn fetch_post_thumbnail(path: String) -> Result<tauri::ipc::Response, Stri
     const MAX_BYTES: usize = 4 * 1024 * 1024;
     let mut response = API_HTTP_CLIENT
         .get(format!("https://img.pawchive.pw/thumbnail/data{path}"))
+        .header(reqwest::header::USER_AGENT, current_user_agent())
         .timeout(std::time::Duration::from_secs(15))
         .send().await.map_err(|e| e.without_url().to_string())?
         .error_for_status().map_err(|e| e.without_url().to_string())?;
@@ -239,9 +269,8 @@ async fn api_request(
 
     headers.insert(
         USER_AGENT,
-        HeaderValue::from_static(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-        ),
+        HeaderValue::from_str(&current_user_agent())
+            .map_err(|_| "invalid user agent".to_string())?,
     );
 
     headers.insert(
@@ -404,9 +433,8 @@ async fn login_request(app: tauri::AppHandle, username: String, password: String
     // 追従すると最終応答のヘッダーしか見えず session を取り逃す)
     let client = &*LOGIN_HTTP_CLIENT;
 
-    let ua = HeaderValue::from_static(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-    );
+    let ua = HeaderValue::from_str(&current_user_agent())
+        .map_err(|_| "invalid user agent".to_string())?;
 
     // POST /account/login (フォーム送信) — pawchive は失敗時でも flash 入りの
     // session cookie を発行するため、取得後に有効性を検証する
@@ -572,9 +600,8 @@ async fn fetch_creator_icon(
     let mut headers = HeaderMap::new();
     headers.insert(
         USER_AGENT,
-        HeaderValue::from_static(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-        ),
+        HeaderValue::from_str(&current_user_agent())
+            .map_err(|_| "invalid user agent".to_string())?,
     );
     headers.insert(REFERER, HeaderValue::from_static("https://pawchive.pw/"));
     headers.insert(ORIGIN, HeaderValue::from_static("https://pawchive.pw"));
@@ -1012,6 +1039,7 @@ fn pkv_proxy_fetch(
         _ => client.get(target.clone()),
     };
     rb = rb
+        .header(header::USER_AGENT, current_user_agent())
         .header(header::REFERER, referer.as_str())
         .header(header::ORIGIN, origin.as_str());
     if let Some(rg) = &range {
@@ -1602,6 +1630,7 @@ pub fn run() {
                 #[cfg(any(target_os = "android", target_os = "ios"))]
                 open_external_page,
                 take_external_page_images,
+                set_http_user_agent,
                 #[cfg(all(target_os = "ios", feature = "debug-diag"))]
                 external_page_diagnostic_events,
                 // デバッグ診断コマンドは debug-diag feature のビルドにのみ含まれる
