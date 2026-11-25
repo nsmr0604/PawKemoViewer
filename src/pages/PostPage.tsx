@@ -18,6 +18,7 @@ import { logError, logInfo, logWarn } from "../log"
 import { t as tr } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
 import { canOpenExternalPage, openExternalPage, takeExternalPageImages } from "../external-page"
+import { failDownload, finishDownload, reportDownloadProgress, startDownload } from "../download-status"
 import { listen } from "@tauri-apps/api/event"
 import { cancelImageDownload, collectArticleImages, collectAttachmentImages, collectExternalPages, downloadArticleImages, isImageFileName, type DownloadImage } from "../post-download"
 import { parseOriginalPostLink } from "../original-post-link"
@@ -332,6 +333,7 @@ export function PostPage({
     let unlisten: (() => void) | undefined
     void listen<{ done: number; total: number }>("download-progress", (event) => {
       setDownloadProgress({ done: event.payload.done, total: event.payload.total })
+      reportDownloadProgress(event.payload.done, event.payload.total)
     }).then((fn) => {
       unlisten = fn
     })
@@ -358,6 +360,7 @@ export function PostPage({
       setDownloadProgress({ done: 0, total: images.length })
       setDownloadMessage(null)
       setDownloadFailures([])
+      startDownload(images.length)
       try {
         const result = await downloadArticleImages(
           target.creatorName,
@@ -377,6 +380,12 @@ export function PostPage({
               dir: result.directory,
             })
         setDownloadMessage({ text, ok: !result.cancelled && result.failed.length === 0 })
+        finishDownload({
+          saved: result.saved,
+          failed: result.failed.length,
+          message: text,
+          cancelled: result.cancelled,
+        })
         setDownloadFailures(
           result.failed.slice(0, 5).map((failure) => {
             let host = failure.url
@@ -392,12 +401,11 @@ export function PostPage({
           `画像ダウンロード saved=${result.saved} failed=${result.failed.length} skipped=${result.skipped} cancelled=${result.cancelled}`,
         )
       } catch (error) {
-        setDownloadMessage({
-          text: tr("post.downloadError", {
-            msg: error instanceof Error ? error.message : String(error),
-          }),
-          ok: false,
+        const text = tr("post.downloadError", {
+          msg: error instanceof Error ? error.message : String(error),
         })
+        setDownloadMessage({ text, ok: false })
+        failDownload(text)
       } finally {
         setDownloadState("idle")
       }

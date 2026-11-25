@@ -119,7 +119,8 @@ private final class ExternalPageController: UIViewController {
     fileprivate func saveSelected(_ urls: [String]) {
         let allowed = Set(candidates)
         let selected = urls.filter { allowed.contains($0) }
-        guard !selected.isEmpty else { return }        let payload: [String: Any] = [
+        guard !selected.isEmpty else { return }
+        let payload: [String: Any] = [
             "creatorName": creatorName,
             "service": service,
             "creatorId": creatorId,

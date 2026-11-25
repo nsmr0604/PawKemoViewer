@@ -17,6 +17,7 @@ import { resolveLayout, type ResolvedLayout } from "./platform/environment"
 import { getPlatformRuntime } from "./platform/runtime"
 import { AppShell } from "./components/AppShell"
 import { ErrorBox } from "./components/Feedback"
+import { DownloadFab } from "./components/DownloadFab"
 
 export default function App() {
   const route = useRoute()
@@ -213,6 +214,7 @@ export default function App() {
     <AppShell headerIcon={headerIcon} layout={layout} currentPath={route.path} followCount={followCount}
       hasSession={!!settings.sessionKey} accountId={settings.accountId}>
       {content}
+      <DownloadFab />
     </AppShell>
   )
 }
