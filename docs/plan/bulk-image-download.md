@@ -38,7 +38,10 @@
 - **外部ページ上の保存ボタン** (2026-11-25): ネイティブビュー (Android / iOS) の
   ツールバーに「画像を保存」を追加。表示中の DOM から画像 URL を集めて
   `Documents/.external-download.json` に書き、アプリ復帰時に通常の保存処理へ渡す。
-  reCAPTCHA や JavaScript のギャラリーでも、表示できた画像を保存できる
+  reCAPTCHA や JavaScript のギャラリーでも、表示できた画像を保存できる。
+  Android 実機 (Redmi K20 Pro) で、sakura.ne.jp のギャラリーページから
+  `Documents/Downloads/sasorigatame/001_まみれタペラフハロウィン.jpg` を保存できることを
+  確認 (画像の Referer はページ自身にした。投稿 URL のままだと 403)
 - **Android 確認 (2026-11-25 / Redmi K20 Pro・debug APK)**: 投稿詳細の
   「画像を一括保存」と 0 件メッセージを実機で確認。`Documents` は既存で、
   `Downloads` は未作成のまま (0 件時に空フォルダーを作らない)。
@@ -174,6 +177,8 @@
    `data-src` / `srcset`、`og:image`。ヘッダー・ナビ・フッターと SNS アバターは除外)
 5. 一覧を `Documents/.external-download.json` に書き、ページを閉じる
 6. アプリ復帰時に一覧を読み、通常の一括保存 (Rust) で保存する
+   - 画像の Referer は**そのページ自身**にする (サイトによっては投稿 URL だと 403)
+   - 保存先のクリエイター名は、外部ページを開いた投稿のもの
 
 - 保存先はこれまでと同じ `Downloads/<クリエイター名>/`
 - デスクトップは対象外 (ブラウザで開くため、ボタンを置けない)
