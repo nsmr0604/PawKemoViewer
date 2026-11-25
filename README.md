@@ -4,7 +4,7 @@
 
 <h1 align="center">PawKemoViewer</h1>
 
-<p align="center">PawchiveのFANBOX・Patreon投稿を閲覧する非公式ビューアー</p>
+<p align="center">Pawchiveの公開APIを使用する、Pawchiveの非公式ビューアー</p>
 
 [![最新リリース](https://img.shields.io/badge/Release-Latest-087f73?style=flat-square)](../../releases/latest)
 [![ビルド状況](https://img.shields.io/badge/GitHub_Actions-Builds-2563eb?style=flat-square&logo=githubactions&logoColor=white)](../../actions)
@@ -23,7 +23,7 @@ pawchive の投稿・クリエイター・お気に入りを、デスクトッ�
 - **投稿詳細**: 本文、画像・動画、コメント、改訂履歴、タグ、取得日時、前後の投稿への移動
 - **サムネイル優先表示**: 一覧はサムネイルを先に読み込み、必要なときだけ本体を取得
 - **FANBOX のカバー画像除外**: `cover.jpeg` を表示から外せます (グローバル設定)
-- **外部リンク**: 投稿本文の外部リンクは、Android / iOS では**元記事の URL を Referer にした外部ページビュー**で開きます。デスクトップでは pkv プロキシ経由で表示します
+- **外部リンク**: 投稿本文からリンク先を開けます。投稿上部のサイトボタンは OS のブラウザで開きます
 - **お気に入り**: 投稿・クリエイターの一覧、並べ替え
 - **URL 貼り付け**: pawchive の投稿 URL / クリエイター URL / fanbox の投稿 URL を貼り付けて直接開く
 - **元サービスで開く**: fanbox / patreon の投稿・クリエイターページを開く
@@ -49,14 +49,9 @@ pawchive の投稿・クリエイター・お気に入りを、デスクトッ�
 
 DNS フィルタ (AdGuard など) で pawchive.pw が遮断される環境では、API と画像に接続できません。この場合は DNS の設定を通常の DNS サーバーに変更してください。
 
-設定の **「投稿の外部メディアを pkv プロキシ経由で読み込む」** は、元サービス由来の画像や外部サイトの画像が表示されない場合に有効にします。pawchive 本体の通信は対象外です。
-
 ### 外部リンクについて
 
-投稿本文の外部リンク (例: 作者の配布ページ) は、閲覧している記事の service / creatorId / postId から元記事 URL を組み立て、Referer として送ります。
-
-- Android / iOS: 元記事の Referer を付けて**実サイトのままアプリ内の外部ページビュー**で開きます
-- デスクトップ: pkv プロキシ経由で表示します。reCAPTCHA を含むページは表示できない場合があります
+Android・iOSの外部ページビューでは、画面上部で現在のURLを確認できます。「閉じる」または戻る操作で投稿へ戻れます。
 
 ### 保存先
 
@@ -100,11 +95,10 @@ npm run tauri:dev     # 開発実行 (Vite + Tauri)
 
 テストとビルドの詳細は [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) と [docs/BUILD.md](docs/BUILD.md) を参照してください。
 
-## 注意事項
+## 免責事項
 
 - 本アプリは pawchive.pw の非公式クライアントであり、pawchive・fanbox・patreon などの各サービスとは提携していません。
-- 閲覧データ (フォロー・既読・キャッシュ) は端末内にのみ保存されます。
-- 過剰な通信を避けるため、API 呼び出しは同時実行数と間隔を制限しています。
+- 本アプリの利用に起因するトラブルや損害について、開発者・配布者は一切の責任を負いません。
 
 ## ライセンス
 
