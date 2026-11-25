@@ -36,6 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: 製品版と起動検証の同時指定を拒否
@@ -52,7 +53,7 @@ jobs:
       - name: 開発版のバージョン
         if: inputs.release != true
         shell: bash
-        run: node scripts/dev-version.mjs "${{ github.run_number }}"
+        run: node scripts/dev-version.mjs
 
       - uses: dtolnay/rust-toolchain@stable
 
