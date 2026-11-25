@@ -591,10 +591,21 @@ pub(crate) async fn download_post_images(
     images: Vec<DownloadImage>,
     pages: Vec<String>,
     session_key: Option<String>,
+    image_referer: Option<String>,
 ) -> Result<DownloadSummary, String> {
     if !is_allowed_referer(&referer) {
         return Err("referer must be a FANBOX or Patreon page".to_string());
     }
+    // 外部ページから集めた画像は、そのページ自身を Referer にしないと 403 になることがある
+    let image_referer = match image_referer.as_deref().map(str::trim) {
+        Some(value) if !value.is_empty() => match reqwest::Url::parse(value) {
+            Ok(url) if matches!(url.scheme(), "http" | "https") && url.host_str().is_some() => {
+                Some(value.to_string())
+            }
+            _ => return Err("invalid image referer".to_string()),
+        },
+        _ => None,
+    };
     if DOWNLOAD_RUNNING.swap(true, Ordering::SeqCst) {
         return Err("download already running".to_string());
     }
@@ -603,7 +614,15 @@ pub(crate) async fn download_post_images(
     let directory = creator_directory_path(&app, &creator_name, &service, &creator_id)?;
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
-        run_download(&app_for_worker, &directory, &referer, images, pages, session_key)
+        run_download(
+            &app_for_worker,
+            &directory,
+            &referer,
+            images,
+            pages,
+            session_key,
+            image_referer,
+        )
     })
     .await;
 
@@ -762,14 +781,16 @@ fn run_download(
     images: Vec<DownloadImage>,
     pages: Vec<String>,
     session: Option<String>,
+    image_referer: Option<String>,
 ) -> Result<DownloadSummary, String> {
     let mut downloader = Downloader::new(app, directory, images.len().min(MAX_FILES), session);
+    let image_ref = image_referer.as_deref().unwrap_or(referer);
 
     for image in images.into_iter().take(MAX_FILES) {
         if downloader.stop_requested() {
             return Ok(downloader.into_summary());
         }
-        downloader.fetch_and_store(&image.url, image.name.as_deref(), referer);
+        downloader.fetch_and_store(&image.url, image.name.as_deref(), image_ref);
     }
 
     for page in pages.iter().take(MAX_PAGES) {

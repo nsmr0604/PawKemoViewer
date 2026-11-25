@@ -80,6 +80,7 @@ export function downloadArticleImages(
   images: DownloadImage[],
   pages: string[],
   sessionKey?: string,
+  imageReferer?: string,
 ): Promise<DownloadSummary> {
   return invoke<DownloadSummary>("download_post_images", {
     creatorName,
@@ -89,6 +90,7 @@ export function downloadArticleImages(
     images,
     pages,
     sessionKey: sessionKey || null,
+    imageReferer: imageReferer || null,
   })
 }
 
