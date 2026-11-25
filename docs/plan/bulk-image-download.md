@@ -42,6 +42,12 @@
   Android 実機 (Redmi K20 Pro) で、sakura.ne.jp のギャラリーページから
   `Documents/Downloads/sasorigatame/001_まみれタペラフハロウィン.jpg` を保存できることを
   確認 (画像の Referer はページ自身にした。投稿 URL のままだと 403)
+- **外部ページの選択 UI をチェック式に** (2026-11-25 / `4a662be1` / `db7d4fbe` / `de190bc4`):
+  「画像を保存」で 3 列のサムネイルグリッドを重ね、各画像の右上に円形チェックを置く。
+  既定はすべて選択で、「すべて選択 / すべて解除」「保存 (n)」、✕ で閉じる。
+  選択は `window.__pawkemoSelected` に入れて `pawkemo-save://` に遷移し、
+  `WebViewClient` / iOS のナビゲーション delegate が受け取る (JS ブリッジは使わない)。
+  Android 実機で 1 枚を選択して保存できることを確認
 - **Android 確認 (2026-11-25 / Redmi K20 Pro・debug APK)**: 投稿詳細の
   「画像を一括保存」と 0 件メッセージを実機で確認。`Documents` は既存で、
   `Downloads` は未作成のまま (0 件時に空フォルダーを作らない)。
