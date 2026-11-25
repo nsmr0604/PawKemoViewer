@@ -19,6 +19,13 @@ export function DownloadFab() {
   )
   const [open, setOpen] = useState(false)
 
+  // 画面遷移したらパネルは閉じる
+  useEffect(() => {
+    const close = () => setOpen(false)
+    window.addEventListener("hashchange", close)
+    return () => window.removeEventListener("hashchange", close)
+  }, [])
+
   // 完了・失敗の表示はしばらく残してから消す
   useEffect(() => {
     if (status.phase !== "done" && status.phase !== "error") return
