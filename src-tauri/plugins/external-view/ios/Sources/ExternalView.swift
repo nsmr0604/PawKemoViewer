@@ -240,7 +240,7 @@ private final class ExternalPageController: UIViewController {
       header.appendChild(all);
       header.appendChild(save);
 
-      var grid = make('div', 'flex:1 1 auto;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px;background:#0e0f11;');
+      var grid = make('div', 'flex:1 1 auto;overflow-y:auto;display:grid;grid-template-columns:repeat(3,1fr);align-content:start;gap:2px;padding:2px;background:#0e0f11;');
       var marks = [];
 
       function updateCount() {
@@ -253,7 +253,7 @@ private final class ExternalPageController: UIViewController {
 
       for (var i = 0; i < urls.length; i++) {
         (function (index) {
-          var tile = make('button', 'position:relative;display:block;padding:0;border:0;background:#1a1b1e;overflow:hidden;');
+          var tile = make('button', 'position:relative;display:flex;align-items:flex-start;justify-content:flex-start;padding:0;border:0;background:#1a1b1e;overflow:hidden;');
           tile.type = 'button';
           var img = make('img', 'width:100%;display:block;aspect-ratio:3/4;object-fit:cover;background:#1a1b1e;');
           img.src = urls[index];
@@ -453,3 +453,4 @@ private final class ExternalViewPlugin: Plugin {
 public func initPlugin() -> Plugin {
     ExternalViewPlugin()
 }
+
