@@ -7,7 +7,6 @@ import android.os.Environment
 import android.text.TextUtils
 import android.view.ViewGroup
 import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -41,7 +40,6 @@ class ExternalPageActivity : Activity() {
     private var referer: String = ""
     /** 選択画面に出した候補。ここに無い URL は保存させない。 */
     private var candidates: List<String> = emptyList()
-    private var bridgeInstalled = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,6 +101,26 @@ class ExternalPageActivity : Activity() {
             override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
                 title.text = url
             }
+
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: android.webkit.WebResourceRequest,
+            ): Boolean {
+                if (request.url.toString().startsWith(SAVE_SCHEME)) {
+                    captureSelection(view)
+                    return true
+                }
+                return false
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                if (url.startsWith(SAVE_SCHEME)) {
+                    captureSelection(view)
+                    return true
+                }
+                return false
+            }
         }
         view.webChromeClient = WebChromeClient()
         CookieManager.getInstance().setAcceptCookie(true)
@@ -126,13 +144,18 @@ class ExternalPageActivity : Activity() {
                 return@evaluateJavascript
             }
             candidates = urls
-            if (!bridgeInstalled) {
-                view.addJavascriptInterface(SelectionBridge(), "PawkemoSaver")
-                bridgeInstalled = true
-            }
             val payload = JSONArray(urls).toString()
             val script = PICKER_SCRIPT.replace("__URLS__", payload)
             view.evaluateJavascript(script, null)
+        }
+    }
+
+    /** 選択画面の「保存」から呼ばれる。候補に無い URL は無視する。 */
+    private fun captureSelection(view: WebView) {
+        view.evaluateJavascript("JSON.stringify(window.__pawkemoSelected || [])") { result ->
+            val allowed = candidates.toSet()
+            val urls = parseUrls(result).filter { allowed.contains(it) }
+            if (urls.isNotEmpty()) writeAndFinish(urls)
         }
     }
 
@@ -151,29 +174,6 @@ class ExternalPageActivity : Activity() {
             }
         } catch (_: Exception) {
             emptyList()
-        }
-    }
-
-    /** 選択画面の「保存」から呼ばれる。候補に無い URL は無視する。 */
-    private inner class SelectionBridge {
-        @JavascriptInterface
-        fun save(json: String) {
-            val allowed = candidates.toSet()
-            val array = try {
-                JSONArray(json)
-            } catch (_: Exception) {
-                JSONArray()
-            }
-            val urls = (0 until array.length()).mapNotNull { index ->
-                array.optString(index).takeIf { it.isNotEmpty() && allowed.contains(it) }
-            }
-            if (urls.isEmpty()) return
-            runOnUiThread { writeAndFinish(urls) }
-        }
-
-        @JavascriptInterface
-        fun cancel() {
-            // 選択画面側で閉じるため、ネイティブでは何もしない
         }
     }
 
@@ -234,6 +234,9 @@ class ExternalPageActivity : Activity() {
 
         /** アプリ (Rust) が復帰時に読む受け渡しファイル */
         const val QUEUE_FILE = ".external-download.json"
+
+        /** 選択画面の「保存」で開くカスタムスキーム (WebViewClient が拾う) */
+        private const val SAVE_SCHEME = "pawkemo-save:"
 
         /** 表示中ページから保存対象の画像 URL を集める (アプリ側と同じ除外規則) */
         private const val COLLECT_SCRIPT = """
@@ -373,9 +376,8 @@ class ExternalPageActivity : Activity() {
     var out = [];
     for (var k = 0; k < urls.length; k++) if (selected[k]) out.push(urls[k]);
     if (out.length === 0) return;
-    if (window.PawkemoSaver && window.PawkemoSaver.save) {
-      window.PawkemoSaver.save(JSON.stringify(out));
-    }
+    window.__pawkemoSelected = out;
+    location.href = 'pawkemo-save://start';
   };
 
   close.onclick = function () {
