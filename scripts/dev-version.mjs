@@ -1,6 +1,7 @@
-// 開発ビルドのバージョンを `x.y.z-<run>` にする。
-// Tauri は 4 桁 (x.y.z.run) を semver として受け付けないため、prerelease で表現する。
-// リリースビルドでは実行しない (workflow 側で inputs.release を見て分岐)。
+// 開発ビルドのバージョンを `x.y.z+<run>` にする。
+// - Tauri は 4 桁 (x.y.z.run) を semver として受け付けない
+// - Linux の .deb/.rpm は `-` を許可しない (RPM の Version に使えない)
+// そのため semver の build metadata (`+`) を使う。リリースビルドでは実行しない。
 import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -14,7 +15,7 @@ if (!/^\d+$/.test(run ?? "")) {
 const packagePath = join(root, "package.json")
 const pkg = JSON.parse(readFileSync(packagePath, "utf8"))
 const base = String(pkg.version).split(/[-+]/)[0]
-const next = `${base}-${run}`
+const next = `${base}+${run}`
 pkg.version = next
 writeFileSync(packagePath, JSON.stringify(pkg, null, 2) + "\n")
 
