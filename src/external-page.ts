@@ -22,10 +22,15 @@ export interface ExternalPageContext {
   postId: string
 }
 
-/** 実オリジンのまま外部ページを開けるプラットフォームか (Android / iOS のネイティブのみ) */
+/**
+ * 実オリジンのまま外部ページを開けるプラットフォームか。
+ * Android / iOS はネイティブビュー、Windows は WebView2 の Referer 付きナビゲーション。
+ * macOS / Linux は Referer を差し込む手段が無いため pkv プロキシのまま。
+ */
 export function canOpenExternalPage(): boolean {
   const descriptor = getPlatformRuntime().descriptor
-  return descriptor.isNative && (descriptor.os === "android" || descriptor.os === "ios")
+  if (!descriptor.isNative) return false
+  return descriptor.os === "android" || descriptor.os === "ios" || descriptor.os === "windows"
 }
 
 /** 元記事 URL を Referer にして、外部ページをネイティブビューで開く */
