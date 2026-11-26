@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { getSettings } from "../api"
 import { isValidPostContext } from "../domain/post-identity"
-import { isFollowed } from "../follows"
 import { t } from "../i18n"
 import { logWarn } from "../log"
-import { FAVORITE_POSTS_CHANGED_EVENT, isFavoritePost, loadFavoritePosts } from "../post-favorites"
+import { usePostMarks } from "../post-marks"
 import { navigate } from "../router"
 import type { PawPost } from "../types"
 import { Spinner } from "./Feedback"
@@ -88,38 +87,6 @@ interface PostGridProps {
   /** 表示モード: grid (既定) / list */
   viewMode?: "grid" | "list"
 }
-
-
-/** 投稿カード用のマーク状態 (フォロー中クリエイター / お気に入り投稿)。
- *  お気に入りとフォローの変更イベントを購読して全カードが同期する。
- *  web はフォロー = クリエイターのお気に入り、☆ = 投稿のお気に入り */
-function usePostMarks(
-  service: string | undefined,
-  userId: string | undefined,
-  postId: string | undefined,
-): { faved: boolean; followed: boolean } {
-  const [marks, setMarks] = useState(() => ({
-    faved: !!(service && postId && isFavoritePost(service, postId)),
-    followed: !!(service && userId && isFollowed(service, userId)),
-  }))
-  useEffect(() => {
-    const upd = () =>
-      setMarks({
-        faved: !!(service && postId && isFavoritePost(service, postId)),
-        followed: !!(service && userId && isFollowed(service, userId)),
-      })
-    loadFavoritePosts()
-    window.addEventListener(FAVORITE_POSTS_CHANGED_EVENT, upd)
-    window.addEventListener("pawkemo-follows-changed", upd)
-    upd()
-    return () => {
-      window.removeEventListener(FAVORITE_POSTS_CHANGED_EVENT, upd)
-      window.removeEventListener("pawkemo-follows-changed", upd)
-    }
-  }, [service, userId, postId])
-  return marks
-}
-
 
 /** 不完全な投稿データから壊れた投稿URLを生成しない */
 function postPath(post: PawPost): string | null {
