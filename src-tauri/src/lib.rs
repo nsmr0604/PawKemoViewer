@@ -34,6 +34,18 @@ static API_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .expect("failed to initialize API HTTP client")
 });
 
+/// アイコン取得はクリエイターごとに走るため、Client を作り直さない。
+static ICON_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .brotli(true)
+        .gzip(true)
+        .build()
+        .expect("failed to initialize icon HTTP client")
+});
+
+/// アイコンの応答上限 (data URL にして UI へ返すため)
+const MAX_ICON_BYTES: usize = 2 * 1024 * 1024;
+
 /// 設定で選ばれた User-Agent。未設定ならデスクトップ Chrome の既定値。
 /// フロントエンドが起動時に端末の UA (`navigator.userAgent`) を設定する。
 static HTTP_USER_AGENT: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
@@ -195,7 +207,8 @@ static PROXY_HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(||
         .user_agent(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
         )
-        .gzip(true)
+        // 自動解凍すると Content-Encoding を落としたまま圧縮 body を返してしまうため、
+        // 圧縮はそのまま中継する (CONTENT_ENCODING を転送する)
         .connect_timeout(std::time::Duration::from_secs(PROXY_CONNECT_TIMEOUT_SECS))
         // 全量バッファ前提のため、停止した接続でワーカーを占有し続けないよう上限を置く
         .timeout(std::time::Duration::from_secs(PROXY_TIMEOUT_SECS))
@@ -324,6 +337,10 @@ async fn api_request(
     #[cfg(feature = "debug-diag")]
     log_http_headers(&app, "Pawchive::API", "REQUEST", &headers);
 
+    // 想定外の method は GET に読み替えず拒否する
+    if !matches!(method.as_str(), "GET" | "POST" | "DELETE") {
+        return Err("unsupported method".to_string());
+    }
     let response = match method.as_str() {
         "POST" => {
             client
@@ -386,8 +403,14 @@ async fn api_request(
     }
 
     if !status.is_success() {
-        log::error!(target: "Pawchive::API", "API_ERROR destination={} body={}", reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), text);
-        append_app_log(&app, &format!("API_ERROR destination={} body={}", reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), text));
+        let destination = reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into());
+        // 製品版の永続ログには応答本文を残さない (利用者の投稿内容や個人情報を含み得る)
+        #[cfg(feature = "debug-diag")]
+        let detail = format!("body={}", text);
+        #[cfg(not(feature = "debug-diag"))]
+        let detail = format!("bodyBytes={}", text.len());
+        log::error!(target: "Pawchive::API", "API_ERROR destination={} {}", destination, detail);
+        append_app_log(&app, &format!("API_ERROR destination={} {}", destination, detail));
         return Err(format!("STATUS={} BODY={}", status, text));
     }
 
@@ -597,20 +620,19 @@ async fn fetch_creator_icon(
         format!("data:image/webp;base64,{}", b64)
     };
 
-    // ディスクキャッシュヒット → そのまま返す
+    // ディスクキャッシュヒット → そのまま返す (壊れた巨大ファイルは捨てる)
     if let Ok(bytes) = std::fs::read(&cache_path) {
-        return Ok(Some(to_data_url(bytes)));
+        if bytes.len() <= MAX_ICON_BYTES {
+            return Ok(Some(to_data_url(bytes)));
+        }
+        let _ = std::fs::remove_file(&cache_path);
     }
 
     let url = format!("https://pawchive.pw/icons/{}/{}", service, id);
     #[cfg(feature = "debug-diag")]
     println!("ICON REQUEST => {}", url);
 
-    let client = reqwest::Client::builder()
-        .brotli(true)
-        .gzip(true)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = &*ICON_HTTP_CLIENT;
     let mut headers = HeaderMap::new();
     headers.insert(
         USER_AGENT,
@@ -656,7 +678,17 @@ async fn fetch_creator_icon(
         full_http_log(&app, "Pawchive::Icon", &format!("RESPONSE url={} status={}", safe_log_url(&reqwest::Url::parse(&url).unwrap()), status));
         log_http_headers(&app, "Pawchive::Icon", "RESPONSE", resp.headers());
     }
-    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    if resp.content_length().is_some_and(|len| len as usize > MAX_ICON_BYTES) {
+        return Ok(None);
+    }
+    let mut resp = resp;
+    let mut bytes: Vec<u8> = Vec::new();
+    while let Some(chunk) = resp.chunk().await.map_err(|e| e.to_string())? {
+        if bytes.len() + chunk.len() > MAX_ICON_BYTES {
+            return Ok(None);
+        }
+        bytes.extend_from_slice(&chunk);
+    }
     #[cfg(feature = "debug-diag")]
     full_http_log(&app, "Pawchive::Icon", &format!("RESPONSE_BODY <binary omitted; {} bytes>", bytes.len()));
     if bytes.is_empty() {
@@ -665,7 +697,7 @@ async fn fetch_creator_icon(
 
     // ディスクへ保存して data URL を返す
     let _ = std::fs::write(&cache_path, &bytes);
-    Ok(Some(to_data_url(bytes.to_vec())))
+    Ok(Some(to_data_url(bytes)))
 }
 
 // ---------------------------------------------------------------------------
@@ -995,6 +1027,7 @@ fn pkv_proxy_fetch(
     // ヘッダーは本文を読む前に控え、Content-Length は実バイト数で付け直す。
     let forwarded: Vec<(tauri::http::HeaderName, String)> = [
         header::CONTENT_TYPE,
+        header::CONTENT_ENCODING,
         header::CONTENT_RANGE,
         header::ACCEPT_RANGES,
         header::CACHE_CONTROL,
@@ -1078,7 +1111,16 @@ fn proxy_queue() -> &'static mpsc::SyncSender<ProxyJob> {
                     };
                     match job {
                         Ok((app, method, uri, body, range, responder)) => {
-                            let response = pkv_proxy_fetch(&app, &method, &uri, body, range);
+                            // 1 件の panic でワーカーを恒久停止させない
+                            let response = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                pkv_proxy_fetch(&app, &method, &uri, body, range)
+                            })) {
+                                Ok(response) => response,
+                                Err(_) => tauri::http::Response::builder()
+                                    .status(500)
+                                    .body(b"proxy failed".to_vec())
+                                    .unwrap_or_else(|_| tauri::http::Response::new(Vec::new())),
+                            };
                             responder.respond(response);
                         }
                         Err(_) => return,
@@ -1105,11 +1147,27 @@ fn export_log(
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
 
     // 起動ごとに 1 ファイル (JHenTai の logs/YYYY-MM-DD_HH-MM-SS.log 型)。
-    // 同一セッション内の追記は JS 側のリングバッファ (formatLog) が担当する
-    let name = format!("{}_viewer.log", chrono_free_name());
-    let path = dir.join(&name);
-    let mut f = std::fs::File::create(&path).map_err(|e| e.to_string())?;
-    f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+    // 同一秒に 2 回呼ばれても上書きしないよう、ミリ秒と連番を付ける。
+    let stamp = chrono_free_name();
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_millis())
+        .unwrap_or(0);
+    let mut index = 0u32;
+    let (path, mut file) = loop {
+        let name = if index == 0 {
+            format!("{}_{:03}_viewer.log", stamp, millis)
+        } else {
+            format!("{}_{:03}-{index}_viewer.log", stamp, millis)
+        };
+        let candidate = dir.join(name);
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&candidate) {
+            Ok(file) => break (candidate, file),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists && index < 100 => index += 1,
+            Err(error) => return Err(error.to_string()),
+        }
+    };
+    file.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().to_string())
 }
 
@@ -1393,6 +1451,12 @@ async fn take_external_page_images(
     if !path.exists() {
         return Ok(None);
     }
+    // 第三者アプリが置いた巨大なファイルを読み込まない
+    const MAX_PAYLOAD_BYTES: u64 = 1024 * 1024;
+    if std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0) > MAX_PAYLOAD_BYTES {
+        let _ = std::fs::remove_file(&path);
+        return Ok(None);
+    }
     let text = match std::fs::read_to_string(&path) {
         Ok(text) => text,
         Err(_) => {
@@ -1400,11 +1464,15 @@ async fn take_external_page_images(
             return Ok(None);
         }
     };
-    let _ = std::fs::remove_file(&path);
+    // 検証できるまで消さない (壊れた JSON はその場で捨てる)
     let value: serde_json::Value = match serde_json::from_str(&text) {
         Ok(value) => value,
-        Err(_) => return Ok(None),
+        Err(_) => {
+            let _ = std::fs::remove_file(&path);
+            return Ok(None);
+        }
     };
+    let _ = std::fs::remove_file(&path);
     Ok(Some(value))
 }
 
