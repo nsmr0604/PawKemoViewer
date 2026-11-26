@@ -47,14 +47,6 @@
       "date": "2026-11-26",
       "tintColor": "#1E88E5",
       "appID": "com.nsmr0604.pawkemoviewer"
-    },
-    {
-      "title": "0.5.8",
-      "identifier": "release-0.5.8",
-      "caption": "Initial AltStore / LiveContainer release.",
-      "date": "2026-11-26",
-      "tintColor": "#1E88E5",
-      "appID": "com.nsmr0604.pawkemoviewer"
     }
   ]
 }
