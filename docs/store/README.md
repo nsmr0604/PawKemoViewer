@@ -55,4 +55,4 @@ An unofficial viewer for the pawchive.pw API
 ## 連絡先
 
 - 一般: https://github.com/nsmr0604/PawKemoViewer/issues
-- 権利侵害・削除依頼・プライバシー: X の DM (@nsmr0604) / https://x.com/nsmr0604
+- 権利侵害・削除依頼・プライバシー: GitHub Issues (https://github.com/nsmr0604/PawKemoViewer/issues) / nsmr0604@users.noreply.github.com

@@ -31,4 +31,4 @@ An unofficial viewer that uses the pawchive.pw API to browse posts, creators, an
 ## Contact
 
 - General: https://github.com/nsmr0604/PawKemoViewer/issues
-- Rights infringement, takedown, privacy: X DM (@nsmr0604) / https://x.com/nsmr0604
+- Rights infringement, takedown, privacy: GitHub Issues (https://github.com/nsmr0604/PawKemoViewer/issues) / nsmr0604@users.noreply.github.com

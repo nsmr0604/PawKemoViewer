@@ -11,7 +11,7 @@ GitHub Pages で公開する手順です。
 GitHub Pages は `https://www.nsmr0604.geek.jp/PawKemoViewer/` へリダイレクトされます。
 リダイレクトを扱えないクライアントでは、`https://www.nsmr0604.geek.jp/PawKemoViewer/repo` を使用してください。
 
-パッケージ名はどちらも `paw-kemo-viewer` です。
+パッケージ名はどちらも `pawkemo-viewer` です。
 
 ## 署名鍵
 

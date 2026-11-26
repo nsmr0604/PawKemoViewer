@@ -65,7 +65,7 @@
 本アプリは開発者のサーバーに利用者情報を保存しないため、開示等の請求の対象となる情報は原則として端末内に限られます。ご不明な点は下記までご連絡ください。
 
 - 一般: https://github.com/nsmr0604/PawKemoViewer/issues
-- プライバシー: X の DM (@nsmr0604) / https://x.com/nsmr0604
+- プライバシー: GitHub Issues (https://github.com/nsmr0604/PawKemoViewer/issues) / nsmr0604@users.noreply.github.com
 
 ## 10. 本ポリシーの変更
 

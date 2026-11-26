@@ -4,7 +4,7 @@ import { getSettings } from "./api"
  *  main へマージしたら LEGAL_BASE を main に切り替える。 */
 const LEGAL_BASE = "https://github.com/nsmr0604/PawKemoViewer/blob/0.6.0/docs/legal"
 const ISSUES_URL = "https://github.com/nsmr0604/PawKemoViewer/issues"
-const RIGHTS_CONTACT_URL = "https://x.com/nsmr0604"
+const RIGHTS_CONTACT_URL = "https://github.com/nsmr0604/PawKemoViewer/issues"
 
 function localeSuffix(): "ja" | "en" {
   return getSettings().locale === "ja" ? "ja" : "en"
