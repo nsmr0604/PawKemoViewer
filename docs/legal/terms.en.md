@@ -8,14 +8,14 @@ These Terms of Use ("Terms") govern your use of PawKemoViewer ("the App"). By us
 ## 1. What this app is
 
 1. The App is an **unofficial client** that uses the public API provided by pawchive.pw to view posts and related content.
-2. The App is **not affiliated with** pixiv, FANBOX, Patreon, pawchive, or their operators. It is not official, endorsed, or sponsored by them.
+2. The App is **not affiliated with** pawchive.pw or the content providers and their operators. It is not official, endorsed, or sponsored by them.
 3. The App is provided free of charge. Its source code is licensed under the MIT License; third-party content is separate.
 
 ## 2. Conditions of use
 
 1. The App is intended **only for users aged 18 or older**. Minors may not use it.
 2. You use the App at your own risk.
-3. You are responsible for reviewing and complying with the terms of FANBOX, Patreon, pawchive, and any other service you use.
+3. You are responsible for reviewing and complying with the terms of pawchive.pw and any other third-party service you use.
 4. Using an unofficial client may result in restrictions or suspension of your third-party accounts. You accept this risk.
 
 ## 3. Accounts and credentials
