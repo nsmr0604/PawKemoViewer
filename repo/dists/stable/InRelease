@@ -1,0 +1,38 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Architectures: amd64
+Codename: stable
+Components: main
+Date: Thu, 26 Nov 2026 22:04:07 +0000
+Label: PawKemoViewer
+Origin: PawKemoViewer
+Suite: stable
+MD5Sum:
+ bfa503cdf23c78668422ef9bf67e63cf              566 main/binary-amd64/Packages
+ 1f97a044103e2eda39aff33d8f538c93              423 main/binary-amd64/Packages.gz
+SHA1:
+ 6579d65ebc8e007435a6fe752dc9ebb702306181              566 main/binary-amd64/Packages
+ 2ff3956153af46d192ff8f4ca3cd32e89e8a7d0d              423 main/binary-amd64/Packages.gz
+SHA256:
+ 2b2c95fa138fba8b388b73d6f4df940817332d59b3cbb28114f6e739847a1a71              566 main/binary-amd64/Packages
+ 17fd363aa42976761a9a3194f4adca343cb610b86056c0e409090f17ef9a315a              423 main/binary-amd64/Packages.gz
+SHA512:
+ 4eb248a3cfea4f22aae75d8034d8a15ba2e7db7806e2aefe939334500d6c5ff67cfab0713ab85c1e8b78bda2ea003c3a87e41b8b5cff7a263e6f1074e998e1f8              566 main/binary-amd64/Packages
+ 79c8a7bfd40de7ac457a2cd1dd8c01b1719a1582e17be550cde2fa9520c33f3b4e02b410b2320186003567b0ea321dc60fd9e14ddba3cbf1f7ef11b869b465ed              423 main/binary-amd64/Packages.gz
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEEvMH7LY+H4+zLcNqM3TXArmIH7x0FAmsIrNcACgkQ3TXArmIH
+7x3F3BAAtOimdicpThThAams2EEIQAUIG9QYofsowhpV8kDcUVfdBCnR/IzCQ8FN
+sSp2sLX6KDXh95ea/sCCKMHd9Fbuqv6CltVom1G9h/ZP7HJtEr67Zmso+SKP3nxw
+kFRs4CZdXJqkFvE42ztdaVbGSFej/YzpeZOGZkDoJv+zGO8Ozgdg7xRUnlCx9fyZ
+9Lg5tQ6ms0cb6ZBrPI67elBcPt5AihB8e5DQEIgzDP4PDIuTEVltWIsnLDqtFjms
+i3iblDNF8vhhMrosA84DsxxXmEFSCT+XaZOiKWZ+mjj2cU+MDK50YOEIvM2ypCgl
+JwEmWKWEZdklqpOjx7UKpuWlmP5uE0Da3FkABg6zDsY8lGAGNZZaXbG50hLmHcly
+1O+pGQX03MLe3w8UcOCTICVSpjcOynxh/xTDYjKmv8NeN7BtdBZjk26VzwGH7Sg4
+sZUCv76zosGuNuswrBtr7n4gBLZmHW5TgQP0ZUaPsWoLTDJZ0o2+kByIQQ+phIkI
+wWh2up7mkJaG1XmnJL8amVcRJbITg/hKFe0/Xx9dBas2R8iDFMp+iR4QvjRbM+0o
+yKmYKa7RzUpMKqLUa6a2+FZsNVKhupqXhNwOIeoXQa5KJxKvt/j5nBDujDWWArfr
+xuQYJEppHSaCDd4cBC+AK+ZjcZUEA6DmJhaG+SnVeig9MqEDR5s=
+=QhEy
+-----END PGP SIGNATURE-----
