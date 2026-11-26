@@ -73,11 +73,19 @@ def main() -> None:
     )
 
     news = source.setdefault("news", [])
+    news_identifier = f"release-{version}-{build}"
+    news = [
+        item
+        for item in news
+        if item.get("identifier") != news_identifier
+        and not str(item.get("identifier", "")).startswith(f"release-{version}")
+        and item.get("title") != version
+    ]
     news.insert(
         0,
         {
             "title": version,
-            "identifier": f"release-{version}-{build}",
+            "identifier": news_identifier,
             "caption": notes,
             "date": args.date,
             "tintColor": source.get("tintColor", "#1E88E5"),
