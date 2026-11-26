@@ -1,31 +1,35 @@
-# 設計資料の目次
+# 設計資料
 
-アプリ基盤の設計と検証の記録です。現在の進捗と残課題は [開発状況](../STATUS.md)、
-変更履歴は [変更履歴](../HISTORY.md) にまとめています。
+PawKemoViewer 0.6.0 の現行設計です。実装の詳細はコードを正とし、この資料は構成・責務・判断の理由を説明します。
 
 | 資料 | 内容 |
 |---|---|
-| [作業・引き継ぎ手順](AGENT_WORKFLOW.md) | 着手前・作業中・完了時のルール |
-| [初期棚卸し](inventory.md) | コードの位置と検証の基準 |
-| [プラットフォーム契約](platform-contracts.md) | サービスごとの機能・未対応時・失敗時の扱い |
-| [ユースケース](use-cases.md) | 処理の境界、入出力、キャンセル |
-| [リポジトリとインフラ](repositories.md) | データアクセスの責務と通信方針 |
-| [ドメイン境界](domain.md) | モデルの責務と純粋ルール |
-| [OS のストレージ](os-storage.md) | Android SAF / iOS Files と実機確認手順 |
-| [HTTP の User-Agent とヘッダー](http-user-agent.md) | UA の選択 (端末 / アプリ / Chrome) と経路別ヘッダー |
-| [画面構成](adaptive-ui.md) | デスクトップ / モバイルのレイアウトと検証範囲 |
-| [安定化の検証記録](stabilization.md) | 依存境界チェック、パッケージ、起動の検証根拠 |
+| [レイヤーと起動時の構成](application.md) | ドメイン、アプリケーション、インフラ、プラットフォーム、表示層の責務 |
+| [プラットフォームとストレージ](platform.md) | desktop / mobile / Web、OS 別ファイル操作、ネイティブプラグイン |
+| [データ、キャッシュ、バックアップ](data.md) | 保存キー、IndexedDB、バックアップ、言語、キャッシュ |
+| [HTTP User-Agent とヘッダー](http-user-agent.md) | API、pkv、一括保存、外部ページのヘッダーと Referer |
+| [画面構成](adaptive-ui.md) | ルート、ナビゲーション、レイアウト、キーボード、モバイル表示 |
+| [アイコン](icons.md) | マスター画像、生成、テーマ連動、プラットフォーム別の扱い |
 
-## 読み方
-
-- 新しい作業を始めるときは、`AGENTS.md`、[開発状況](../STATUS.md)、
-  [作業・引き継ぎ手順](AGENT_WORKFLOW.md) を先に読む
-- 設計と実装が食い違う場合は、コードと [開発ガイド](../DEVELOPMENT.md) を正とし、
-  この目次以下の資料を同じ作業で更新する
-- 完了した移行の経緯は [変更履歴](../HISTORY.md) に要約し、個別の設計資料は現行仕様だけを残す
+画面ごとの詳細は[画面設計](../screens/README.md)、保存データの詳細は[データ設計](../data/schema.md)、
+関数の一覧は[フロントエンド](../reference/frontend.md)と [Rust](../reference/rust.md) のリファレンスに分けています。
 
 ## 構成の原則
 
-共有 UI → プラットフォーム共通の契約 → デスクトップ / モバイルのファミリー層 → OS 固有アダプター。
-ユースケースは処理の流れ、リポジトリはデータアクセス、ドメインはフレームワーク非依存のルールを担う。
-プラットフォーム固有の処理は型付き契約の背後に置き、共通コードに OS 分岐を散らさない。
+1. **pawchive とは直接通信する**。Cloudflare Pages / Workers / Functions / Wrangler / リバースプロキシは使いません。
+2. **WebView は pawchive API を直接 fetch しない**。API・ログインは Rust の Tauri コマンド経由で reqwest に送ります。
+3. **OS 固有処理を共通 UI に散らさない**。`src/platform/` の型付き契約とアダプターに閉じ込めます。
+4. **保存形式と既存キーを維持する**。引継ぎ・バックアップ・キャッシュの互換性を優先します。
+5. **診断コードはビルド時に分離する**。製品版に Full 診断コードを含めません。
+6. **秘密情報は端末内だけに保持する**。pawchive の session Cookie を外部ホストへ送らず、ログでもマスキングします。
+
+## 関連資料
+
+- [開発ガイド](../DEVELOPMENT.md): ディレクトリ構成、命名、実装規約
+- [API 仕様](../API.md): エンドポイント、コマンド、イベント、pkv プロトコル
+- [画面設計](../screens/README.md): 画面、遷移、コンポーネント
+- [データ設計](../data/schema.md): IndexedDB、Web Storage、ファイル
+- [フロントエンドリファレンス](../reference/frontend.md): モジュールと関数
+- [Rust リファレンス](../reference/rust.md): コマンド、関数、資源制約
+- [一括画像保存](../features/image-download.md): 抽出、保存、進捗、外部ページ連携
+- [検証ガイド](../verification.md): 自動テストと実機確認

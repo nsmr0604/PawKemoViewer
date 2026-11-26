@@ -157,8 +157,9 @@ notes/
   バンドラが分岐ごと排除する
   - 開発サーバ (`npm run dev`): `.env.development` で自動有効
   - テスト用ビルド: `VITE_DEBUG_DIAG=1 npm run build`
-  - CI: android.yml の workflow_dispatch input `debug_diag` (**リリース添付をスキップ**)。
-    push (リリース) ビルドでは常に無効
+  - CI: **既定 (`release=false`) が診断ビルド**。`artifact_only=true` で成果物の
+    リリース添付をスキップする。`release=true` は正式版で、診断コードは含まれない
+    (push ビルドでは常に無効)
 - **Rust 側**: cargo feature `debug-diag` (src-tauri/Cargo.toml)。
   診断コードは `#[cfg(feature = "debug-diag")]` で書き、テスト用ビルドでのみ
   `--features debug-diag` を付ける

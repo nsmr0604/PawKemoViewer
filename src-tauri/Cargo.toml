@@ -18,7 +18,7 @@ name = "pawkemoviewer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.7.4" }
+tauri-build = { version = "2.7.4", features = [] }
 
 [dependencies]
 
@@ -55,5 +55,23 @@ base64 = "0.22"
 tauri-plugin-locale-picker = { path = "plugins/locale-picker" }
 tauri-plugin-external-view = { path = "plugins/external-view" }
 
+# Android の共有 Downloads (MediaStore) への保存
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-downloads-store = { path = "plugins/downloads-store" }
+
+# デスクトップの外部ページビュー (Referer 付きナビゲーション)
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows = "0.62"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSURL", "NSURLRequest", "NSString"] }
+objc2-web-kit = { version = "0.3", features = ["WKWebView"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "=2.0.2", features = ["v2_38"] }
+
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-dialog = "2"
+getrandom = "0.3"

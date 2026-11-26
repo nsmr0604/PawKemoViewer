@@ -2,6 +2,7 @@
 //!
 //! 保存先は Logs / Languages と同じ Documents を基準にする。
 //! モバイルは `Documents/Downloads`、デスクトップは `Downloads/PawKemoView`。
+//! Android 10 以降は端末の共有 `Download/PawKemoViewer` へ MediaStore 経由で保存する。
 //! 作成できない場合は Documents、最後にアプリデータ領域へフォールバックする。
 
 use std::collections::HashSet;
@@ -113,29 +114,87 @@ pub(crate) fn download_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(fallback)
 }
 
-/// クリエイター名のディレクトリ。名前が空になる場合は `service_creatorId` を使う。
-/// ディレクトリは作成しない (最初の 1 枚を保存するときに作る)。
-pub(crate) fn creator_directory_path(
-    app: &tauri::AppHandle,
-    creator_name: &str,
-    service: &str,
-    creator_id: &str,
-) -> Result<PathBuf, String> {
-    let fallback = format!("{}_{}", service, creator_id);
-    let name = sanitize_segment(creator_name, &fallback);
-    Ok(download_root(app)?.join(name))
+/// 1 回の保存先。Android の共有 Downloads では表示用パスと実際の書き込み先が異なる。
+pub(crate) struct DownloadTarget {
+    /// 結果表示に出す保存先
+    pub display: PathBuf,
+    /// 実際にファイルを書くディレクトリ (Android はアプリのキャッシュ)
+    pub staging: PathBuf,
+    /// Android の MediaStore 相対ディレクトリ (`Download/` 配下)。直接書き込む場合は None
+    pub shared: Option<String>,
 }
 
-/// クリエイター名のディレクトリ。存在しなければ作成する。
-pub(crate) fn creator_directory(
+/// クリエイター名のディレクトリ。名前が空になる場合は `service_creatorId` を使う。
+/// ディレクトリは作成しない (最初の 1 枚を保存するときに作る)。
+pub(crate) fn creator_target(
     app: &tauri::AppHandle,
     creator_name: &str,
     service: &str,
     creator_id: &str,
-) -> Result<PathBuf, String> {
-    let directory = creator_directory_path(app, creator_name, service, creator_id)?;
-    std::fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-    Ok(directory)
+) -> Result<DownloadTarget, String> {
+    let fallback = format!("{}_{}", service, creator_id);
+    let name = sanitize_segment(creator_name, &fallback);
+
+    #[cfg(target_os = "android")]
+    {
+        if android_shared_downloads(app) {
+            let relative = format!("PawKemoViewer/{name}");
+            let staging = app
+                .path()
+                .app_cache_dir()
+                .map_err(|error| error.to_string())?
+                .join("downloads")
+                .join(&name);
+            return Ok(DownloadTarget {
+                display: PathBuf::from(format!("Download/{relative}")),
+                staging,
+                shared: Some(relative),
+            });
+        }
+    }
+
+    let directory = download_root(app)?.join(name);
+    Ok(DownloadTarget {
+        display: directory.clone(),
+        staging: directory,
+        shared: None,
+    })
+}
+
+/// Android 10 以降で MediaStore 経由の共有 Downloads 保存が使えるか。
+#[cfg(target_os = "android")]
+fn android_shared_downloads(app: &tauri::AppHandle) -> bool {
+    tauri::async_runtime::block_on(tauri_plugin_downloads_store::is_supported(app)).unwrap_or(false)
+}
+
+/// 共有 Downloads へ 1 枚移す。成功したらキャッシュ上のファイルは消える。
+#[cfg(target_os = "android")]
+fn store_shared(app: &tauri::AppHandle, path: &Path, file_name: &str, relative: &str) -> Result<(), String> {
+    let result = tauri::async_runtime::block_on(tauri_plugin_downloads_store::save_to_downloads(
+        app,
+        path.to_string_lossy().to_string(),
+        file_name.to_string(),
+        relative.to_string(),
+        mime_for(file_name).to_string(),
+    ));
+    let _ = std::fs::remove_file(path);
+    result.map(|_| ())
+}
+
+/// 拡張子から MIME を決める。不明は octet-stream。
+#[cfg(target_os = "android")]
+fn mime_for(file_name: &str) -> &'static str {
+    match file_name.rsplit('.').next().unwrap_or("").to_ascii_lowercase().as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        "avif" => "image/avif",
+        "bmp" => "image/bmp",
+        "mp4" => "video/mp4",
+        "webm" => "video/webm",
+        _ => "application/octet-stream",
+    }
 }
 
 /// 衝突しないファイル名を組み立てる。`stem` と `extension` はサニタイズ済みの想定。
@@ -222,6 +281,19 @@ fn is_allowed_referer(referer: &str) -> bool {
         || host.ends_with(".fanbox.cc")
         || host == "patreon.com"
         || host.ends_with(".patreon.com")
+}
+
+/// 取得先と同一ホスト、または FANBOX / Patreon のページだけ Referer に使う。
+fn referer_allowed(target: &reqwest::Url, referer: &str) -> bool {
+    let Ok(url) = reqwest::Url::parse(referer) else {
+        return false;
+    };
+    if !matches!(url.scheme(), "http" | "https") {
+        return false;
+    }
+    let referer_host = url.host_str().unwrap_or("").to_ascii_lowercase();
+    let target_host = target.host_str().unwrap_or("").to_ascii_lowercase();
+    !referer_host.is_empty() && (referer_host == target_host || crate::is_service_page(&url))
 }
 
 fn referer_origin(referer: &str) -> Option<String> {
@@ -332,11 +404,15 @@ fn fetch(
     let mut request = DOWNLOAD_CLIENT
         .get(target.clone())
         .header(reqwest::header::USER_AGENT, crate::current_user_agent())
-        .header(reqwest::header::REFERER, referer)
         .header(
             reqwest::header::ACCEPT_LANGUAGE,
             "ja,en-US;q=0.9,en;q=0.8",
         );
+    // Referer / Origin は、取得先と同一ホストか FANBOX / Patreon のページだけに付ける
+    let allow_referer = referer_allowed(&target, referer);
+    if allow_referer {
+        request = request.header(reqwest::header::REFERER, referer);
+    }
     match kind {
         FetchKind::Image => {
             request = request
@@ -360,8 +436,10 @@ fn fetch(
                 .header("upgrade-insecure-requests", "1");
         }
     }
-    if let Some(origin) = referer_origin(referer) {
-        request = request.header(reqwest::header::ORIGIN, origin);
+    if allow_referer {
+        if let Some(origin) = referer_origin(referer) {
+            request = request.header(reqwest::header::ORIGIN, origin);
+        }
     }
     if let Some(cookie) = session_cookie(&target, session) {
         request = request.header(reqwest::header::COOKIE, cookie);
@@ -425,7 +503,7 @@ pub(crate) fn extract_page_images(html: &str, base: &reqwest::Url) -> Vec<String
 
     let mut seen = HashSet::new();
     let mut images = Vec::new();
-    let mut push = |raw: &str, images: &mut Vec<String>, seen: &mut HashSet<String>| {
+    let push = |raw: &str, images: &mut Vec<String>, seen: &mut HashSet<String>| {
         if images.len() >= MAX_PAGE_IMAGES {
             return;
         }
@@ -597,6 +675,9 @@ pub(crate) async fn download_post_images(
     if !is_allowed_referer(&referer) {
         return Err("referer must be a FANBOX or Patreon page".to_string());
     }
+    // 実行ロックは Drop で必ず解除する (Future の drop でも残らない)
+    let _running = DownloadGuard::acquire()?;
+    DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
     // 外部ページから集めた画像は、そのページ自身を Referer にしないと 403 になることがある
     let image_referer = match image_referer.as_deref().map(str::trim) {
         Some(value) if !value.is_empty() => match reqwest::Url::parse(value) {
@@ -607,17 +688,15 @@ pub(crate) async fn download_post_images(
         },
         _ => None,
     };
-    if DOWNLOAD_RUNNING.swap(true, Ordering::SeqCst) {
-        return Err("download already running".to_string());
-    }
-    DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
 
-    let directory = creator_directory_path(&app, &creator_name, &service, &creator_id)?;
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
+        // 保存先の決定は Android でプラグイン呼び出し (block_on) を伴うため、
+        // async ランタイムのスレッドではなくブロッキングスレッドで行う。
+        let target = creator_target(&app_for_worker, &creator_name, &service, &creator_id)?;
         run_download(
             &app_for_worker,
-            &directory,
+            &target,
             &referer,
             images,
             pages,
@@ -627,16 +706,33 @@ pub(crate) async fn download_post_images(
     })
     .await;
 
-    DOWNLOAD_RUNNING.store(false, Ordering::SeqCst);
     match result {
         Ok(summary) => summary,
         Err(error) => Err(error.to_string()),
     }
 }
 
+/// 一括保存の実行ロック。Drop で必ず解除する。
+struct DownloadGuard;
+
+impl DownloadGuard {
+    fn acquire() -> Result<Self, String> {
+        if DOWNLOAD_RUNNING.swap(true, Ordering::SeqCst) {
+            return Err("download already running".to_string());
+        }
+        Ok(Self)
+    }
+}
+
+impl Drop for DownloadGuard {
+    fn drop(&mut self) {
+        DOWNLOAD_RUNNING.store(false, Ordering::SeqCst);
+    }
+}
+
 struct Downloader<'a> {
     app: &'a tauri::AppHandle,
-    directory: &'a Path,
+    target: &'a DownloadTarget,
     session: Option<String>,
     seen: HashSet<String>,
     width: usize,
@@ -652,14 +748,14 @@ struct Downloader<'a> {
 impl<'a> Downloader<'a> {
     fn new(
         app: &'a tauri::AppHandle,
-        directory: &'a Path,
+        target: &'a DownloadTarget,
         total: usize,
         session: Option<String>,
     ) -> Self {
         let width = total.max(1).to_string().len().max(3);
         Self {
             app,
-            directory,
+            target,
             session,
             seen: HashSet::new(),
             width,
@@ -737,7 +833,7 @@ impl<'a> Downloader<'a> {
         }
         // 保存する 1 枚目でディレクトリを作る (0 件のときに空フォルダーを残さない)
         if self.saved == 0 {
-            if let Err(reason) = std::fs::create_dir_all(self.directory) {
+            if let Err(reason) = std::fs::create_dir_all(&self.target.staging) {
                 self.failed.push(DownloadFailure {
                     url: url.to_string(),
                     reason: reason.to_string(),
@@ -751,22 +847,34 @@ impl<'a> Downloader<'a> {
             sanitize_segment(name, "image"),
             width = self.width
         );
-        let path = unique_file_path(self.directory, &prefixed);
-        match atomic_write(&path, bytes) {
-            Ok(()) => {
-                self.saved += 1;
-                self.total_bytes += bytes.len() as u64;
-            }
-            Err(reason) => self.failed.push(DownloadFailure {
+        let path = unique_file_path(&self.target.staging, &prefixed);
+        if let Err(reason) = atomic_write(&path, bytes) {
+            self.failed.push(DownloadFailure {
                 url: url.to_string(),
                 reason,
-            }),
+            });
+            return;
         }
+        // Android の共有 Downloads は MediaStore 経由で移す
+        if let Some(relative) = self.target.shared.as_deref() {
+            #[cfg(target_os = "android")]
+            if let Err(reason) = store_shared(self.app, &path, &prefixed, relative) {
+                self.failed.push(DownloadFailure {
+                    url: url.to_string(),
+                    reason,
+                });
+                return;
+            }
+            #[cfg(not(target_os = "android"))]
+            let _ = relative;
+        }
+        self.saved += 1;
+        self.total_bytes += bytes.len() as u64;
     }
 
     fn into_summary(self) -> DownloadSummary {
         DownloadSummary {
-            directory: self.directory.to_string_lossy().to_string(),
+            directory: self.target.display.to_string_lossy().to_string(),
             saved: self.saved,
             skipped: self.skipped,
             cancelled: self.cancelled,
@@ -777,14 +885,14 @@ impl<'a> Downloader<'a> {
 
 fn run_download(
     app: &tauri::AppHandle,
-    directory: &Path,
+    target: &DownloadTarget,
     referer: &str,
     images: Vec<DownloadImage>,
     pages: Vec<String>,
     session: Option<String>,
     image_referer: Option<String>,
 ) -> Result<DownloadSummary, String> {
-    let mut downloader = Downloader::new(app, directory, images.len().min(MAX_FILES), session);
+    let mut downloader = Downloader::new(app, target, images.len().min(MAX_FILES), session);
     let image_ref = image_referer.as_deref().unwrap_or(referer);
 
     for image in images.into_iter().take(MAX_FILES) {
@@ -886,6 +994,15 @@ mod tests {
         assert!(is_allowed_referer("https://a.fanbox.cc/posts/1"));
         assert!(is_allowed_referer("https://www.patreon.com/posts/1"));
         assert!(!is_allowed_referer("https://example.com/"));
+    }
+
+    #[test]
+    fn referer_is_only_sent_to_same_host_or_services() {
+        let image = reqwest::Url::parse("https://yufukirima.sakura.ne.jp/img/1.png").unwrap();
+        assert!(referer_allowed(&image, "https://yufukirima.sakura.ne.jp/events/show.php"));
+        assert!(!referer_allowed(&image, "https://evil.example/"));
+        assert!(referer_allowed(&image, "https://www.fanbox.cc/@a/posts/1"));
+        assert!(!referer_allowed(&image, "not a url"));
     }
 
     #[test]

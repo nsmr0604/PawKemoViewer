@@ -7,6 +7,14 @@ export const THUMBNAIL_CACHE_LIMITS = [100, 250, 500, 1000, 2000] as const
 const MAX_ENTRY_BYTES = 200 * 1024
 const pending = new Map<string, Promise<Blob>>()
 
+interface ThumbRecord {
+  image: Blob
+  savedAt: number
+  /** 近いサイズのキャッシュを探すための索引キー */
+  path: string
+  size: number
+}
+
 async function cropThumbnail(path: string, size: number): Promise<Blob> {
   const bytes = await invoke<ArrayBuffer | number[]>("fetch_post_thumbnail", { path })
   const source = new Blob([Array.isArray(bytes) ? Uint8Array.from(bytes) : bytes])
@@ -28,8 +36,12 @@ async function cropThumbnail(path: string, size: number): Promise<Blob> {
 
 async function openCache() {
   const storage = getPlatformRuntime().services.indexedDatabase
-  return storage?.open("pawkemo-post-thumbnails", 1, (database) => {
-    database.createObjectStore(STORE).createIndex("savedAt", "savedAt")
+  return storage?.open("pawkemo-post-thumbnails", 2, (database) => {
+    // v1 はパスで引ける索引が無かったため、作り直して近いサイズを索引で探す
+    if (database.objectStoreNames.contains(STORE)) database.deleteObjectStore(STORE)
+    const store = database.createObjectStore(STORE)
+    store.createIndex("savedAt", "savedAt")
+    store.createIndex("path", "path")
   }).catch(() => undefined)
 }
 
@@ -48,18 +60,17 @@ export async function readPostThumbnail(path: string, size: number) {
   const exact = await readCache(db, `${size}:${path}`)
   if (exact) return exact
 
+  // パスの索引で数件だけ読み、サイズが近いものを選ぶ (全キー走査をしない)
   const closest = await new Promise<string | undefined>((resolve) => {
-    const request = db.transaction(STORE).objectStore(STORE).getAllKeys()
+    const request = db.transaction(STORE).objectStore(STORE).index("path").getAll(IDBKeyRange.only(path))
     request.onsuccess = () => {
       let best: string | undefined
       let distance = Infinity
-      for (const key of request.result) {
-        if (typeof key !== "string") continue
-        const separator = key.indexOf(":")
-        if (key.slice(separator + 1) !== path) continue
-        const difference = Math.abs(Number(key.slice(0, separator)) - size)
+      for (const record of request.result as ThumbRecord[]) {
+        if (!record || typeof record.size !== "number") continue
+        const difference = Math.abs(record.size - size)
         if (difference >= distance) continue
-        best = key
+        best = `${record.size}:${path}`
         distance = difference
       }
       resolve(best)
@@ -76,7 +87,7 @@ async function load(path: string, size: number, key: string): Promise<Blob> {
 
   const image = await cropThumbnail(path, size)
   if (db && image.size <= MAX_ENTRY_BYTES) {
-    await limitCache(db, { key, image })
+    await limitCache(db, { key, image, path, size })
   }
   return image
 }
@@ -85,11 +96,11 @@ export function getThumbnailCacheLimit(): number {
   return THUMBNAIL_CACHE_LIMITS.find((limit) => limit === getSettings().thumbnailCacheLimit) ?? 500
 }
 
-function limitCache(db: IDBDatabase, entry?: { key: string; image: Blob }) {
+function limitCache(db: IDBDatabase, entry?: { key: string; image: Blob; path: string; size: number }) {
   return new Promise<void>((resolve) => {
     const tx = db.transaction(STORE, "readwrite")
     const store = tx.objectStore(STORE)
-    if (entry) store.put({ image: entry.image, savedAt: Date.now() }, entry.key)
+    if (entry) store.put({ image: entry.image, savedAt: Date.now(), path: entry.path, size: entry.size }, entry.key)
     const count = store.count()
     count.onsuccess = () => {
       let excess = count.result - getThumbnailCacheLimit()

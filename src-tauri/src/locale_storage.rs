@@ -99,6 +99,9 @@ pub(crate) fn list_locale_files(app: tauri::AppHandle) -> Result<LocaleList, Str
 
 fn list_locale_directory(dir: std::path::PathBuf) -> Result<LocaleList, String> {
     use std::io::Read;
+    // ディレクトリに大量のファイルを置かれても一覧を無制限に展開しない
+    const MAX_LOCALE_FILES: usize = 64;
+    const MAX_INVALID_FILES: usize = 64;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let mut files = Vec::new();
     let mut invalid = Vec::new();
@@ -119,7 +122,15 @@ fn list_locale_directory(dir: std::path::PathBuf) -> Result<LocaleList, String> 
             .map(|m| m.len() > LOCALE_MAX_BYTES)
             .unwrap_or(true);
         if !valid_locale_code(code) || too_big {
-            invalid.push(name);
+            if invalid.len() < MAX_INVALID_FILES {
+                invalid.push(name);
+            }
+            continue;
+        }
+        if files.len() >= MAX_LOCALE_FILES {
+            if invalid.len() < MAX_INVALID_FILES {
+                invalid.push(name);
+            }
             continue;
         }
         let mut json = String::new();
@@ -130,7 +141,7 @@ fn list_locale_directory(dir: std::path::PathBuf) -> Result<LocaleList, String> 
                 code: code.to_string(),
                 json,
             });
-        } else {
+        } else if invalid.len() < MAX_INVALID_FILES {
             invalid.push(name);
         }
     }

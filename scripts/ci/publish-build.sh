@@ -46,11 +46,31 @@ fi
 
 # プラットフォームを並行公開した場合、別の実行が先にリリースを作ることがある。
 if gh release view "$tag" >/dev/null 2>&1; then
-  gh release upload "$tag" "${assets[@]}" --clobber
+  if [[ "$mode" == release ]]; then
+    # 正式版は、タグの指すコミットと成果物のビルド元が一致するときだけ追加する。
+    # 既存アセットは上書きしない (同じ番号で別バイナリが出回るのを防ぐ)。
+    target=$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)
+    if [[ "$target" != "$GITHUB_SHA" ]]; then
+      echo "Release $tag points to $target, not $GITHUB_SHA" >&2
+      exit 1
+    fi
+    gh release upload "$tag" "${assets[@]}"
+  else
+    gh release upload "$tag" "${assets[@]}" --clobber
+  fi
 elif ! gh release create "$tag" "${assets[@]}" --target "$GITHUB_SHA" \
   --title "$title" --notes "$notes" "${flags[@]}"; then
   gh release view "$tag" >/dev/null
-  gh release upload "$tag" "${assets[@]}" --clobber
+  if [[ "$mode" == release ]]; then
+    target=$(gh release view "$tag" --json targetCommitish --jq .targetCommitish)
+    if [[ "$target" != "$GITHUB_SHA" ]]; then
+      echo "Release $tag points to $target, not $GITHUB_SHA" >&2
+      exit 1
+    fi
+    gh release upload "$tag" "${assets[@]}"
+  else
+    gh release upload "$tag" "${assets[@]}" --clobber
+  fi
 fi
 
 if [[ "$mode" == release ]]; then

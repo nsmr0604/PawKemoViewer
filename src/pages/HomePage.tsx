@@ -168,7 +168,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
                   className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
                   aria-pressed={serviceFilter === service}
                   onClick={() => setServiceFilter(service)}>
-                  {service === "all" ? t("home.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+                  {service === "all" ? t("home.allServices") : service === "fanbox" ? "fanbox" : "patreon"}
                 </button>
               ))}
             </div>
@@ -222,7 +222,11 @@ export function HomePage({ query }: { query: URLSearchParams }) {
           loading={loading}
           done={done}
           viewMode={viewMode}
-          onEndReached={loading || done ? undefined : () => load(offset + POST_PAGE_SIZE, false)}
+          onEndReached={
+            loading || done || filteredPosts.length === 0
+              ? undefined
+              : () => load(offset + POST_PAGE_SIZE, false)
+          }
         />
       )}
       {!loading && !error && filteredPosts.length === 0 && done && (

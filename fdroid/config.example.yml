@@ -1,0 +1,25 @@
+# PawKemoViewer self-hosted repo (example)
+#
+# `fdroid init` creates `config.yml` and `keystore.p12`. Keep the real
+# `config.yml` and keystore out of git; this file is only a template.
+#
+# Required settings:
+#   repo_url, repo_name, repo_keyalias, keystore, keystorepass, keypass, keydname
+#
+# Generate keys with:
+#   keytool -genkeypair -v -keystore keystore.p12 -alias pawkemoviewer-repo \
+#     -keyalg RSA -keysize 4096 -validity 10950 \
+#     -dname "CN=PawKemoViewer Repo, O=nsmr0604, C=JP"
+
+repo_url: https://nsmr0604.github.io/PawKemoViewer/repo
+repo_name: PawKemoViewer
+repo_description: >-
+  Self-hosted F-Droid repository for PawKemoViewer, an unofficial viewer for
+  the pawchive.pw API.
+archive_older: 0
+
+repo_keyalias: pawkemoviewer-repo
+keystore: keystore.p12
+keystorepass: CHANGE_ME
+keypass: CHANGE_ME
+keydname: CN=PawKemoViewer Repo, O=nsmr0604, C=JP

@@ -1,0 +1,97 @@
+name: AltStore source
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (empty = latest)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pawkemoviewer-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: 0.6.0
+          persist-credentials: false
+
+      - name: Download IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          PUBLISHED_AT: ${{ github.event.release.published_at }}
+        run: |
+          set -euo pipefail
+          tag="$TAG"
+          if [[ -z "$tag" ]]; then
+            tag="$(gh release view --json tagName --jq .tagName)"
+          fi
+          echo "tag=$tag" >> "$GITHUB_ENV"
+          mkdir -p dist-ios
+          for attempt in $(seq 1 20); do
+            gh release download "$tag" -p '*.ipa' -D dist-ios 2>/dev/null || true
+            if compgen -G 'dist-ios/*.ipa' >/dev/null; then
+              break
+            fi
+            echo "waiting for .ipa asset (attempt $attempt/20)"
+            sleep 30
+          done
+          if ! compgen -G 'dist-ios/*.ipa' >/dev/null; then
+            echo "Release $tag does not contain an .ipa asset" >&2
+            exit 1
+          fi
+          ipa="$(find dist-ios -maxdepth 1 -name '*.ipa' -print -quit)"
+          echo "ipa=$(basename "$ipa")" >> "$GITHUB_ENV"
+          if [[ -n "${PUBLISHED_AT:-}" ]]; then
+            echo "date=${PUBLISHED_AT%%T*}" >> "$GITHUB_ENV"
+          else
+            echo "date=$(date -u +%F)" >> "$GITHUB_ENV"
+          fi
+
+      - name: Update source JSON
+        env:
+          TAG: ${{ env.tag }}
+          IPA_NAME: ${{ env.ipa }}
+          DATE: ${{ env.date }}
+        run: |
+          set -euo pipefail
+          url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${IPA_NAME}"
+          python3 scripts/altstore/update-source.py \
+            --ipa "dist-ios/${IPA_NAME}" \
+            --url "$url" \
+            --source altstore/apps.json \
+            --date "$DATE" \
+            --notes "Release ${TAG}"
+
+      - name: Publish to gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin +refs/heads/gh-pages:refs/remotes/origin/gh-pages
+          git worktree add -B gh-pages site origin/gh-pages
+          cd site
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          mkdir -p repo
+          cp ../altstore/apps.json repo/apps.json
+          git add repo/apps.json
+          if git diff --cached --quiet; then
+            echo "No source changes"
+            exit 0
+          fi
+          git commit -m "Update AltStore source for $tag"
+          git push origin gh-pages

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getApplication } from "../application/composition"
 import type { CreatorRow } from "../application/creator-index-repository"
 import { Spinner, ErrorBox, Empty } from "../components/Feedback"
@@ -27,30 +27,27 @@ export function CreatorsPage() {
   const searchSeq = useRef(0)
   const indexLoad = useRef<AbortController | null>(null)
 
-  // クリップボードの URL 検出 (JHenTai の Check Gallery URL in Clipboard 参考)
-  useEffect(() => {
-    let active = true
-    const checkClip = async () => {
-      const text = await readClipboardTextSafe()
-      if (!active || !text) return
-      const found = extractCreatorFromText(text)
-      if (found) setClipCreator(found)
-    }
-    checkClip()
-    window.addEventListener("focus", checkClip)
-    return () => {
-      active = false
-      window.removeEventListener("focus", checkClip)
-    }
+  // クリップボードの URL 検出 (JHenTai の Check Gallery URL in Clipboard 参考)。
+  // 常時の読み取りは OS の許可ダイアログやプライバシー問題になるため、明示操作でのみ読む。
+  const checkClip = useCallback(async () => {
+    const text = await readClipboardTextSafe()
+    if (!text) return
+    const found = extractCreatorFromText(text)
+    setClipCreator(found ?? null)
   }, [])
 
   // メモリ索引から即時検索 (構築途中でも部分結果を表示)
   const runSearch = useCallback(async (value: string) => {
     const seq = ++searchSeq.current
-    const result = await getApplication().creators.searchCreatorIndex(value)
-    if (seq !== searchSeq.current) return
-    setRows(result.rows)
-    setPostLink(result.postLink)
+    try {
+      const result = await getApplication().creators.searchCreatorIndex(value)
+      if (seq !== searchSeq.current) return
+      setRows(result.rows)
+      setPostLink(result.postLink)
+      setError(null)
+    } catch (error) {
+      if (seq === searchSeq.current) setError(error)
+    }
   }, [])
 
   // Show the cached results before checking whether the index needs a rebuild.
@@ -88,14 +85,25 @@ export function CreatorsPage() {
     }
   }, [runSearch])
 
+  const searchTimer = useRef<number | null>(null)
+
   const onSearch = useCallback(
-    async (value: string) => {
+    (value: string) => {
       setQ(value)
       setVisibleCount(60)
-      await runSearch(value)
+      // 1 文字ごとの全件検索を避ける
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current)
+      searchTimer.current = window.setTimeout(() => {
+        searchTimer.current = null
+        void runSearch(value)
+      }, 150)
     },
     [runSearch],
   )
+
+  useEffect(() => () => {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current)
+  }, [])
 
   /** Enter で確定した場合のみ履歴に追加 (キー入力ごとの追加を避ける) */
   const onSearchSubmit = (e: React.FormEvent) => {
@@ -107,14 +115,18 @@ export function CreatorsPage() {
     }
   }
 
-  const visibleRows = rows
-    .filter((row) => serviceFilter === "all" || row.service === serviceFilter)
-    .sort((a, b) => {
-      if (sortBy === "updated") return (b.updated || 0) - (a.updated || 0) || (b.favorited || 0) - (a.favorited || 0)
-      if (sortBy === "popular") return (b.favorited || 0) - (a.favorited || 0) || (b.updated || 0) - (a.updated || 0)
-      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
-    })
-  const displayedRows = visibleRows.slice(0, visibleCount)
+  const visibleRows = useMemo(
+    () =>
+      rows
+        .filter((row) => serviceFilter === "all" || row.service === serviceFilter)
+        .sort((a, b) => {
+          if (sortBy === "updated") return (b.updated || 0) - (a.updated || 0) || (b.favorited || 0) - (a.favorited || 0)
+          if (sortBy === "popular") return (b.favorited || 0) - (a.favorited || 0) || (b.updated || 0) - (a.updated || 0)
+          return a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+        }),
+    [rows, serviceFilter, sortBy],
+  )
+  const displayedRows = useMemo(() => visibleRows.slice(0, visibleCount), [visibleRows, visibleCount])
 
   return (
     <div className="page creators-page">
@@ -158,6 +170,9 @@ export function CreatorsPage() {
             ×
           </button>
         )}
+        <button type="button" className="btn btn-sm" onClick={() => void checkClip()}>
+          {t("creators.readClipboard")}
+        </button>
       </form>
       {!q && history.length > 0 && (
         <div className="history-chips">
@@ -186,7 +201,7 @@ export function CreatorsPage() {
                 className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
                 aria-pressed={serviceFilter === service}
                 onClick={() => { setServiceFilter(service); setVisibleCount(60) }}>
-                {service === "all" ? t("creators.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+                {service === "all" ? t("creators.allServices") : service === "fanbox" ? "fanbox" : "patreon"}
               </button>
             ))}
           </div>
