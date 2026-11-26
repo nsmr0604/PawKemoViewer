@@ -1,51 +1,107 @@
-# HTTP の User-Agent とヘッダー
+# HTTP User-Agent、Referer、ヘッダー
 
-外部へアクセスするときの UA・Referer・Cookie の方針です。
-対象は Rust 側の HTTP (API / プロキシ / 一括保存) と、外部ページを表示するネイティブビューです。
+外部へアクセスする経路ごとに、UA・Referer・Cookie・タイムアウトを定めます。
 
-## User-Agent の選択 (設定)
+## User-Agent
 
-設定 → 接続 → **User-Agent** で 3 つから選べます (`settings.userAgentMode`)。
+設定 → 通信 → User-Agent で選びます。既定は **端末** です。
 
 | 選択肢 | 値 | 内容 |
 |---|---|---|
-| 端末 (**既定**) | `device` | アプリを動かしている WebView の UA (`navigator.userAgent`) |
+| 端末 | `device` | アプリを動かしている WebView の `navigator.userAgent` |
 | アプリ | `app` | `PawKemoViewer/<version> (<OS>)` |
-| Chrome | `desktop` | 固定の Windows Chrome 文字列 (旧来の既定値) |
+| Chrome | `desktop` | 固定の Windows Chrome 文字列 |
 
-- 起動時に `set_http_user_agent` で Rust へ渡し、以後のすべての HTTP に適用する
-- 端末の UA が最も互換性が高い。pawchive の公開 API はアプリ独自 UA でも構わない
-- ミラー (`n1`〜`n4.pawchive.pw`) は Cloudflare が UA・`Accept`・`Sec-Fetch-*` を見るため、
-  アプリ UA では 403 になることがある (その場合は端末 UA を選ぶ)
+起動時と設定変更時に `set_http_user_agent(userAgent)` へ渡します。Rust 側には永続化されず、毎起動時にフロントから再設定します。
 
-## 経路ごとのヘッダー
+- 拒否条件: trim 後が空、512 バイト超、制御文字を含む。
+- 対象: API、login、thumbnail、creator icon、pkv、一括保存の reqwest。
+- 対象外: Android WebView / iOS WKWebView / デスクトップの外部ページウィンドウ。外部ページは
+  各 WebView の標準 UA を使います（Linux だけは Rust 取得時に選択中 UA を付けます）。
 
-| 経路 | UA | ヘッダー |
-|---|---|---|
-| **API** (`pawchive.pw/api/v1/…`) | 設定値 | `Accept: application/json,text/plain,*/*`<br>`Accept-Language: ja,en-US;q=0.9,en;q=0.8`<br>`Referer: https://pawchive.pw/`<br>`Origin: https://pawchive.pw`<br>`Cookie: session=<sessionKey>` (設定時)<br>`Accept-Encoding: gzip, br, deflate` |
-| **ログイン** (`/account/login`) | 設定値 | `Referer: https://pawchive.pw/account/login`<br>`Origin: https://pawchive.pw`<br>POST は `application/x-www-form-urlencoded`<br>リダイレクトは追わない (Set-Cookie の取得) |
-| **アイコン** (`pawchive.pw/icons/…`) | 設定値 | `Referer: https://pawchive.pw/`<br>`Origin: https://pawchive.pw` |
-| **サムネイル** (`img.pawchive.pw/thumbnail/…`) | 設定値 | 追加ヘッダーなし |
-| **pkv プロキシ** (外部画像・外部ページ) | 設定値 | `Referer`: クエリ指定 (許可ホストのみ) かホスト別既定<br>・`*.pawchive.pw` → `https://pawchive.pw/`<br>・`*.fanbox.cc` / `*.pximg.net` → `https://www.fanbox.cc/`<br>・`*.patreon.com` / `*.patreonusercontent.com` → `https://www.patreon.com/`<br>・その他 → `https://www.fanbox.cc/`<br>`Origin`: Referer の origin<br>`Range` は透過<br>Cookie は付けない |
-| **一括保存** | 設定値 | `Accept-Language: ja,en-US;q=0.9,en;q=0.8`<br>画像: `Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8`<br>`Sec-Fetch-Dest: image` / `Mode: no-cors` / `Site: cross-site`<br>HTML: `Accept: text/html,application/xhtml+xml,…`<br>`Sec-Fetch-Dest: document` / `Mode: navigate` / `Site: cross-site`<br>`Upgrade-Insecure-Requests: 1`<br>`Referer`: 投稿 URL (外部ページ由来の画像はそのページ URL)<br>`Cookie: session=…` は `*.pawchive.pw` のみ |
-| **外部ページのビュー** (Android / iOS) | OS 標準の WebView / WKWebView | 初回読み込み時だけ `Referer: <投稿ページ>`<br>Cookie は WebView の Cookie ジャー |
+Chrome モードの文字列:
 
-## 固定の Chrome 文字列 (`desktop` と Rust の既定値)
-
-```
+```text
 Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
 ```
 
-## 安全上の決まり
+## 経路別のヘッダーとタイムアウト
 
-- `session` Cookie は **pawchive のホストにだけ**付ける (`downloads.rs` の `session_cookie`)
-- Referer を指定できるのは FANBOX / Patreon のページか、中継先と同じホストのページだけ
-- 取得先は `host_is_public` で内部アドレス・名前解決先を検査し、リダイレクト先も再検査する
-- UA は 512 文字以内・制御文字なしだけを受け付ける
+| 経路 | 主なヘッダー | connect / total |
+|---|---|---:|
+| API | `Accept: application/json,text/plain,*/*`、`Accept-Language`、pawchive の Referer / Origin、session Cookie | 個別指定なし / 既定 30 秒（1〜300 秒） |
+| login | pawchive の Referer / Origin、form `application/x-www-form-urlencoded` | 個別指定なし / 設定値。session 検証にも適用 |
+| 投稿 thumbnail | 選択中 UA のみ。Referer / Origin / Cookie なし | 個別指定なし / 15 秒 |
+| creator icon | 選択中 UA、pawchive の Referer / Origin | 個別指定なし / 15 秒 |
+| pkv | 選択中 UA、許可済み Referer、その Origin、Range を透過 | 10 秒 / 180 秒 |
+| 一括保存 | 選択中 UA、Accept / Accept-Language / Sec-Fetch-*、画像または HTML の Referer | 10 秒 / 120 秒 |
+| 外部ページ | 初回リクエストに Referer。WebView の標準ヘッダー。Linux は Rust 取得時に選択中 UA と Referer を付ける | OS 標準（Linux は 30 秒） |
 
-## 実装の場所
+設定の `timeoutSecs` は API と login にだけ使います。thumbnail、icon、pkv、一括保存、外部 WebView には適用されません。
 
-- `src-tauri/src/lib.rs` — `current_user_agent` / `set_http_user_agent`、API・ログイン・アイコン・プロキシ
-- `src-tauri/src/downloads.rs` — 一括保存のヘッダーと Cookie の範囲
-- `src/http-user-agent.ts` — 設定値から UA を決めて Rust へ渡す
-- `src-tauri/plugins/external-view/` — 外部ページのネイティブビュー
+## Cookie の範囲
+
+- API: 呼び出しごとに `Cookie: session=<sessionKey>` を手動付与。
+- login: リダイレクトを追わず、`Set-Cookie` から session を手動抽出。
+- pkv: 上流へ Cookie を送らず、上流の `Set-Cookie` も破棄。
+- 一括保存: 取得先が `pawchive.pw` / `*.pawchive.pw` のときだけ session を付与。
+- 外部ページ: Android は `CookieManager`、iOS は WKWebView 標準の cookie jar、デスクトップは
+  WebView 標準の cookie jar（Linux は Rust 取得分の Set-Cookie が入らない）。
+
+session はフロントの localStorage に平文保存されます。Keychain / Keystore による暗号化は未実装です。
+
+## pkv の URL と Referer
+
+| OS | 形式 |
+|---|---|
+| Windows / Android | `http://pkv.localhost/file?u=<対象URL>&r=<Referer>` |
+| macOS / iOS / Linux | `pkv://localhost/file?u=<対象URL>&r=<Referer>` |
+
+- `u`: 取得先 URL
+- `r`: Referer
+- `f=1` の強制中継は現行ハンドラでは解釈しません
+
+Referer として許可されるのは次のいずれかです。
+
+1. `fanbox.cc` / `*.fanbox.cc`
+2. `patreon.com` / `*.patreon.com`
+3. 取得先と完全一致の hostname
+
+未指定・不正時は、fanbox / pximg 系は `https://www.fanbox.cc/`、patreon 系は `https://www.patreon.com/`、その他は fanbox のトップを既定にします。Origin は Referer から導出します。
+
+## pkv の取得先と HTTP 動作
+
+- http / https のみ。
+- `pawchive.pw` / `*.pawchive.pw`、localhost、`.local`、`.internal`、単一ラベル、IP リテラルを拒否。
+- それ以外の外部ホストを広く許可します。フロントは投稿文脈のある URL を生成しますが、Rust はその文脈を検証しません。
+- 実質 GET / POST。HEAD / PUT / DELETE なども GET として送信します。
+- POST は `application/x-www-form-urlencoded` 固定で、multipart と Android custom protocol の POST body は利用できません。
+- Range は透過しますが、実装は全量をメモリへ読みます。
+- リダイレクトは最大 5 回。各ホップで宛先と DNS 解決 IP を検査します。
+- 本文 64 MiB、HTML 8 MiB、connect 10 秒、total 180 秒、worker 4。
+
+HTML は `<base>`、`<img src>`、`<form action>`、`<a href>` を pkv URL へ書き換えます。`srcset`、CSS URL、iframe、script は書き換えません。
+
+## SSRF 検査と残る制約
+
+拒否対象は loopback、private、link-local、unspecified、broadcast、multicast、CGNAT、`192.0.0.0/24`、`198.18.0.0/15`、IPv6 unique-local / link-local、IPv4-mapped private です。DNS 結果が複数ある場合は、すべて public IP であることを要求します。
+
+ただし、現在は次の制約が残ります。
+
+- DNS 解決失敗は reqwest の接続失敗に任せ、検査としては fail-open。
+- 検査した IP と実際の接続先 IP を固定しておらず、DNS rebinding の TOCTOU がある。
+- TEST-NET など、拒否対象に含まれない予約アドレスがある。
+- pkv の worker 前キューと POST body に上限がない。
+- HTML は script を残し、CSP も付与しない。Tauri の CSP は `null`。
+- 取得先に関係なく pkv の同一オリジンで実行し、localStorage を共有し得る。
+- HTML の入力上限は 8 MiB だが、URL 書き換え後の出力膨張は上限化していない。
+
+## 外部ページと一括保存
+
+- 外部ページは全 OS で実オリジンで開き、初回リクエストにだけ Referer を付ける。
+  Android / iOS はプラグインのネイティブビュー、デスクトップは専用ウィンドウ。
+- デスクトップの Referer 付与は Windows = WebView2 の `WebResourceRequested`、
+  macOS = WKWebView の `loadRequest`、Linux = Referer 付き取得後の `load_html`。
+- 外部ページから保存する画像は、そのページ自身を `imageReferer` にできる。
+- 一括保存のミラー対策として、Accept / Accept-Language / Sec-Fetch-* を付与する。
+- 一括保存の詳細は[一括画像保存](../features/image-download.md)を参照してください。

@@ -1,120 +1,119 @@
 # 開発状況と残課題
 
-最終更新: 2026-11-26 / 対象バージョン: **0.6.0 (開発中)**
+最終更新: 2026-11-26 / 対象バージョン: **0.6.0（開発中）**
 
-この文書は現在の状態だけをまとめたものです。リリースごとの変更は [変更履歴](HISTORY.md)、
-アーキテクチャの詳細は [開発ガイド](DEVELOPMENT.md) と [設計資料](architecture/README.md) を参照してください。
+この文書は現在の事実だけをまとめます。公開済み版と開発版を混同しないでください。
 
-## 1. 現在のリリース状態
+## 1. リリース状態
 
-- 最新リリース: **`pawkemoviewer-v0.5.7`**(Latest / prerelease=false)
-  - Windows setup.exe / msi、Linux rpm / AppImage / deb、macOS dmg / app.tar.gz、
-    Android universal APK、iOS 無署名 IPA の 9 アセット
-  - 4 系統のリリースビルド (Android / Build Tauri / iOS / macOS) が success
-- 開発ビルド: `debug-latest` プレリリース (push 時に自動更新)
-- main のバージョン: `0.6.0` (開発中。次のリリース番号) (`package.json` / `src-tauri/Cargo.toml`)
-- ブランチ運用: 統合先は `main`。リリースは `workflow_dispatch` の `release=true` で作成する
-
-## 2. 対象プラットフォーム
-
-| 対象 | 状態 |
+| 項目 | 状態 |
 |---|---|
-| Windows | ビルド・起動・公開 API を確認済み |
-| Linux | DEB インストール・起動・公開 API を確認済み |
-| macOS | Apple Silicon の DMG 起動・公開 API を確認済み |
-| Android | 実機 (Redmi K20 Pro) で起動・設定・投稿閲覧・外部ページを確認済み |
-| iOS / iPadOS | iPadOS 16.5 + TrollStore で修正版の iOS 判定、テストページ表示、診断ログ書き出し、投稿リンクの表示と復帰を確認。iPhone は確認待ち |
+| 最新の公開版 | **`pawkemoviewer-v0.5.7`**（Latest、2026-11-24、9 アセット） |
+| 0.5.8 | タグ・リリースなし。版番号のコミットのみで、機能は 0.6.0 に継承 |
+| 開発版 | **0.6.0**。`package.json` と `src-tauri/Cargo.toml` に設定 |
+| 開発ビルド | `debug-latest` プレリリース。プラットフォームごとに最新の更新時刻が異なる |
+| 開発ブランチ | `0.6.0`。番号ブランチへの push で Windows / Linux / Android の開発ビルドを実行 |
+| 正式リリース | `main` へ統合後、4 つのビルドワークフローを `release=true` で実行 |
 
-## 3. 実装済みの基盤
+`debug-latest` の macOS DMG と iOS IPA は自動更新対象外です。ファイル名だけを見て全プラットフォームが同じ版と判断しないでください。
 
-- **レイヤー分離**: `domain` / `application` / `infrastructure` / `platform` / `components` / `pages`。
-  依存境界は `npm run check:boundaries` で検証する
-- **プラットフォーム層**: 実行環境・ストレージ・ログ・ネットワーク・ファイル選択を型付き契約の背後に置き、
-  デスクトップ / モバイル / Web のアダプターを切り替える
-- **ファイル I/O**: 言語ファイルとバックアップの JSON を、デスクトップのダイアログ、
-  Android の SAF、iOS の Files から共通 IPC で読み書きする (用途別のサイズ上限あり)
-- **標準フォルダー**: Android は `Android/data/<アプリ ID>/files/Documents`、
-  iOS/iPadOS は Files 公開の `PawKemoViewer/Documents` に `Languages` / `Backups` / `Logs` を置く
-- **外部ページ**: 投稿本文の外部リンクを、元記事 URL を Referer にした実オリジンの
-  ネイティブビュー (Android / iOS) で開く。デスクトップは pkv プロキシ
-- **pkv プロキシ**: ホットリンク対策ホストと投稿コンテキストのある外部メディアを中継する。
-  OS 別 URL 形式、Referer 許可リスト、SSRF 検査 (名前解決 IP を含む)、リダイレクト検査、
-  タイムアウトとサイズ上限、固定ワーカーでの処理を実装済み
-- **元記事リンクの解決**: 投稿本文内の fanbox / patreon の投稿 URL を解析し、
-  対応する pawchive の投稿へアプリ内で遷移する。見つからない場合は元記事を開く導線を出す
-- **キャッシュ**: クリエイター索引、アイコン、投稿サムネイルを端末に保存する
+## 2. 0.6.0 の主な変更
 
-## 4. マイルストーン
+- 投稿本文、添付、外部リンク先の画像を一括保存。
+- 保存前の対象選択、右下の常時表示ボタン、進捗・中止・失敗理由の表示。
+- 外部ページを全 OS で実オリジンのまま表示し、表示中の画像をチェック式で選んで保存。デスクトップは専用ウィンドウ + ツールバー。
+- User-Agent を「端末 / アプリ / Chrome」から選択。
+- 投稿の前後移動後でも、一覧へ戻る「ホーム」導線。
+- 開発版の表示を `X.Y.Z+コミット数 (SHA)` に統一。
 
-| 範囲 | 状態 | 内容 |
+詳細は[一括画像保存](features/image-download.md)と[変更履歴](HISTORY.md)を参照してください。
+
+## 3. プラットフォームの確認状況
+
+| 対象 | 確認済み | 未確認・制約 |
 |---|---|---|
-| M0〜M4 | 完了 | 棚卸し、プラットフォーム契約、ユースケース、リポジトリ、ドメイン境界 |
-| M5.1〜M5.3 | 完了 | OS 別ストレージの整理、Android SAF の権限ライフサイクル、iOS Files の試作 |
-| M5.4〜M5.5 | 実装済み・実機確認待ち | 言語ファイルの取り込み / 書き出し / 追加フォルダーの統合版 |
-| M6 | 完了 | デスクトップとモバイルの画面構成の分離 |
-| M7.1 | 完了 | 依存境界の自動検証 |
-| M7.2 | 一部完了 | 5 対象のパッケージ生成と Linux / Windows / macOS の起動・公開 API を確認。認証付き操作と M5 の実機操作が残る |
-| M7.3 | 暫定 | リリース判定の資料。M7.2 の結果を反映して確定する |
+| Windows | パッケージ、起動、公開 API、一括画像保存（本文・添付・外部ページ）、外部ページの Referer / チェック式保存 | 認証付き操作の全ケース |
+| Linux | DEB インストール、起動、公開 API、外部ページのビルド | 一括画像保存と外部ページの実機確認 |
+| macOS | Apple Silicon の DMG 起動、公開 API、外部ページのビルド | 一括画像保存、外部ページの実機確認、認証付き操作 |
+| Android | Redmi K20 Pro / Android 11 で起動、設定、投稿、外部ページ、画像保存、前後移動とホームへ戻る操作 | 他機種差、設定レイアウトの再確認 |
+| iOS / iPadOS | iPadOS 16.5 + TrollStore で外部ページ、診断ログ、投稿リンクの表示と復帰 | 一括画像保存、iPhone、署名配布 |
+| Web / ブラウザー | モック IPC による画面とレイアウト確認 | 製品配布対象ではない。ネイティブ機能の代替にはならない |
 
-## 5. 検証済みの根拠
+## 4. 自動検証（2026-11-26）
 
-- 診断検証ブランチで `npm run test:domain` / `test:application` / `test:platform` の合計 39 件が通過
-- `npm run build` (境界チェック + 型検査 + Vite) と `cargo check` (通常 / `debug-diag`) が通過
-- 0.5.5 のリリースビルド 4 系統が success。9 アセットを確認
-- 0.5.7 のリリースビルド 4 系統が success。`pawkemoviewer-v0.5.7` に 9 アセットを確認
-- Android 実機で、設定・投稿一覧・投稿詳細・外部ページ (sakura.ne.jp) の表示と戻る操作を確認
-- iPadOS 16.5 + TrollStore で、iOS 判定・テストページ・診断ログ・投稿リンクの表示と復帰を確認
-- 詳細な検証記録は [安定化の検証記録](architecture/stabilization.md) と各設計資料にある
+| 確認 | 結果 |
+|---|---|
+| `npm run test:domain` | 5 件成功 |
+| `npm run test:application` | 17 件成功 |
+| `npm run test:platform` | 18 件成功 |
+| `node --test tests/post-download.test.mjs` | 7 件成功（通常の npm test スクリプトには未含む） |
+| `npm run check:boundaries` | 成功 |
+| `npm run check:locales` | 成功 |
+| `npm run build` | 成功 |
+| `npm run build:debug` | 成功 |
+| `cargo test --lib --manifest-path src-tauri/Cargo.toml` | 16 件成功 |
+| `cargo check --manifest-path src-tauri/Cargo.toml` | 成功（warning 6 件） |
+| `cargo check --manifest-path src-tauri/Cargo.toml --features debug-diag` | 成功（warning 1 件） |
+| CI: Build Tauri（Windows + Linux、`cf04b3ff`） | 成功 |
+| CI: macOS Build（`cf04b3ff`） | 成功 |
 
-## 6. 既知の制約・未解決事項
+デスクトップの外部ページは Windows 実機で Referer 送信と画像保存を確認しました。macOS / Linux は CI のビルド確認までです。
+
+通常構成の warning は `login_request` の未使用変数 5 件と `downloads.rs` の `unused_mut` 1 件です。診断構成では `unused_mut` 1 件が残ります。機能失敗ではないため、別途整理します。
+
+## 5. 既知の制約・残課題
 
 ### 優先度: 高
 
-- **M5.4 / M5.5 の実機確認**: 統合 APK / IPA で、言語ファイルの選択キャンセル、重複・不正入力、
-  追加フォルダーへの直接保存、再読み込み、書き出したファイルの再読込を確認する
-- **設定画面のラベル崩れ**: Android 実機 (Redmi K20 Pro) で、一部セクションの項目名が
-  1 文字幅に潰れる事象を確認。再入場で正常に戻ることがある。原因調査中
+- **iOS / iPadOS の一括画像保存**: 実機で未確認。外部ページのチェック式選択と `Documents/Downloads` への保存を確認する。
+- **iPhone**: 実機確認がない。iPad の結果を iPhone の確認として扱わない。
+- **認証付き操作のプラットフォーム Matrix**: ログイン、お気に入り、フォロー、ログアウトを全対象で確認する。
+- **Android の設定レイアウト**: Redmi K20 Pro で項目名が 1 文字幅へ潰れる事象を確認。縦積みへ変更済みだが、最新ビルドでの再確認が必要。
+- **ログイン後の同期失敗**: ログインと session 保存は成功していても、フォロー同期の失敗がログイン全体の「通信エラー」として表示される。
+- **一括保存の lock**: 保存先ディレクトリーの解決に失敗すると、`DOWNLOAD_RUNNING` が解除されず、次の実行をブロックし得る。
+- **アカウント切替のお気に入り表示**: 投稿お気に入りのメモリキャッシュが session 変更時に消去されず、前のアカウントの状態が残り得る。
+- **バックアップの設定復元**: `accountId` と `userAgentMode` が復元対象外。ほかの設定・フォロー・既読は復元される。
 
 ### 優先度: 中
 
-- **デスクトップの外部ページ**: wry が Referer 付きナビゲーションを公開していないため、
-  pkv プロキシを使う。reCAPTCHA を含むページは表示できない
-- **M7.2 の残り**: 認証付き通信 (ログイン・お気に入り・フォロー) の全対象での確認、
-  iOS/iPadOS 実機の確認
-- **pkv の追加強化**: プロキシした HTML のオリジン分離 (CSP / ホスト別サブドメイン) は未対応
+- **デスクトップの外部ページ**: 全 OS で実オリジンのビューを使う。macOS / Linux は実機で未確認。Linux は Referer 付き取得後に `load_html` するため、初回応答の Set-Cookie が WebView の Cookie ジャーに入らない。
+- **pkv の HTML オリジン分離**: CSP / ホスト別サブドメインによる隔離は未対応。script を残し、取得先に関係なく pkv の同一オリジンで実行する。
+- **pkv の宛先制約**: Rust 側は外部ホストを広く許可し、投稿文脈を検証しない。内部 IP と DNS 解決先は検査するが、DNS rebinding の TOCTOU と解決失敗時の fail-open が残る。
+- **ネイティブ外部ページの宛先制約**: `open_external_page` は http(s) と Referer を検証するが、内部 IP の検査を通さない（Linux の Rust 取得も同じ）。
+- **HTTP による外部ページの画像抽出**: JavaScript 描画のギャラリーは HTML だけでは取得できない。ネイティブ外部ページの「画像を保存」は表示中 DOM を使う。
+- **pawchive のサムネイルのみ投稿**: 原画 URL が 404 の場合、一括保存は失敗理由を表示する。サムネイルを本体として保存しない。
+- **ホームのサービス絞り込み**: 絞り込み後 0 件が続くと、無限スクロールが次ページを自動取得し続ける場合がある。
+- **コメント取得エラー**: 取得失敗を「コメントなし」と同じ空配列として扱うため、区別できない。
+- **クリエイター索引のアトミック性**: パックとメタデータの書き込みは別トランザクション。中断時に古いメタデータと新しいパックが併存し得る。
+- **session とログの機密性**: session は localStorage に平文保存。Full の response body と製品版の API error body には秘密情報が残り得る。
 
 ### 優先度: 低
 
-- `target="_blank"` を伴う外部リンクの開き方は OS / WebView の既定に依存する
-- iOS の代替アイコン切替は OS の確認ダイアログが出る (仕様)
-- Windows / macOS の実行ファイルは未署名 (将来 eMudhra / Apple 署名を検討)
+- Windows / macOS の実行ファイルは未署名。
+- Android APK は標準 debug.keystore で署名。Play ストア配布ではない。
+- iOS IPA は未署名。実機導入には再署名が必要。
+- `target="_blank"` の外部リンクの開き方は OS / WebView に依存する。
+- iOS の代替アイコン切替では OS の確認ダイアログが出る場合がある。
 
-## 7. 維持する設計・制約
+## 6. 維持する設計
 
-- 正式構成は **React + Tauri 2 + Rust + reqwest の直接通信**。Cloudflare Pages / Workers /
-  Functions / Wrangler / リバースプロキシは導入しない (pawchive 側で Fake site と判定される)
-- reqwest は `default-features = false` + `rustls-tls` を維持する (OpenSSL 不使用)
-- pawchive API (`pawchive.pw/api/v1`) は Swagger に準拠し、`fancards` / `links` / GET flag は実装しない
-- フォロー情報は pawchive を正とし、ローカルはミラーとして扱う
-- pkv と外部ページビューの Referer は fanbox.cc / patreon.com に限定する。
-  pawchive 本体と `*.pawchive.pw` は常に直接通信する
-- API スケジューラ (同時 3 / 最小間隔 250ms / キャッシュ)、Favorites のクールダウンを維持する
-- セッションキー・パスワード・署名鍵などの秘密情報をコード・資料・ログ・コミットに含めない
-- ビルドは GitHub Actions を正とし、成功を確認する前に「成功」と報告しない
+- React + Tauri 2 + Rust + reqwest の直接通信。Cloudflare 系の中継は禁止。
+- reqwest は `default-features = false` + `rustls-tls`。OpenSSL を使用しない。
+- pawchive API は `pawchive.pw/api/v1`。`fancards` / `links` / GET flag は実装しない。
+- フォローは pawchive を正とし、ローカルをミラーとして扱う。
+- API スケジューラ（同時 3 / 最小間隔 250ms / GET キャッシュ）と Favorites のクールダウンを維持。
+- pawchive の session Cookie は pawchive ホストにだけ送る。
+- Full 診断はフロントの `VITE_DEBUG_DIAG` と Cargo の `debug-diag` でビルド時に分離。
+- 秘密情報をコード、文書、ログ、コミットへ含めない。
+- CI の成功、ソースレビュー、実機確認を区別して報告する。
 
-## 8. 次の作業
+## 7. 0.6.0 リリース前の作業
 
-1. M5.4 / M5.5 の実機確認 (Android / iOS) と結果の記録
-2. 設定画面のラベル崩れの修正と回帰確認
-3. M7.2 の認証付き操作 (ログイン・お気に入り・フォロー) の検証
-4. デスクトップの外部ページ対応方針の決定 (現状維持 / ネイティブ実装)
-5. パフォーマンス計測 (投稿詳細の初期表示) とキャッシュの監査
-6. 一括画像ダウンロード機能 ([計画](plan/bulk-image-download.md)) — 本文・添付・外部リンクを選択して保存できる。
-   Windows / Android で保存まで確認済み (iOS と、ヘッダー・アバター除外などの改善が残り)
+1. iOS / iPadOS と iPhone の一括画像保存を確認し、結果を記録する。
+2. Android の設定レイアウトを最新ビルドで再確認する。
+3. 認証付き操作のプラットフォーム Matrix を埋める。
+4. Linux / macOS で一括画像保存を確認する。
+5. 通常構成の Rust warning を整理する。
+6. `main` へ統合し、4 系統の `release=true` とリリースアセットを確認する。
 
-## 9. 関連資料
-
-- [変更履歴](HISTORY.md)
-- [開発ガイド](DEVELOPMENT.md) / [ビルドガイド](BUILD.md) / [API 仕様](API.md)
-- [設計資料の目次](architecture/README.md)
-- 作業・引き継ぎのルール: [作業・引き継ぎ手順](architecture/AGENT_WORKFLOW.md)、`AGENTS.md`
+手順は[ビルドガイド](BUILD.md#正式リリース手順)と[検証ガイド](verification.md)を参照してください。
