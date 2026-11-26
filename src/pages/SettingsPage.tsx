@@ -16,7 +16,7 @@ import { activateAccount } from "../account-action"
 import type { ResolvedLayout } from "../platform/environment"
 import { Toggle } from "../components/Toggle"
 import { BrowserLink } from "../components/BrowserLink"
-import { privacyUrl, termsUrl } from "../legal"
+import { contactUrl, privacyUrl, rightsContactUrl, termsUrl } from "../legal"
 import { getPlatformName, type LayoutMode } from "../platform/environment"
 import { applyBackup, buildBackup, MAX_BACKUP_BYTES } from "../backup"
 import { stripSessionFromBackup } from "../domain/backup-secrets"
@@ -867,6 +867,12 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
             </BrowserLink>
             <BrowserLink className="btn" href={privacyUrl()}>
               {t("legal.privacy")}
+            </BrowserLink>
+            <BrowserLink className="btn" href={contactUrl()}>
+              {t("legal.contact")}
+            </BrowserLink>
+            <BrowserLink className="btn" href={rightsContactUrl()}>
+              {t("legal.report")}
             </BrowserLink>
           </div>
         </div>

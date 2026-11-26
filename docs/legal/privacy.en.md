@@ -65,7 +65,7 @@ The App is intended only for users aged 18 or older. Do not use it if you are un
 Because the developer does not store user information on a server, the information subject to such requests is generally limited to your device. Contact us with any questions:
 
 - General: https://github.com/nsmr0604/PawKemoViewer/issues
-- Privacy: {{CONTACT_EMAIL}}
+- Privacy: X DM (@nsmr0604) / https://x.com/nsmr0604
 
 ## 10. Changes
 

@@ -9,19 +9,18 @@ PawKemoViewer の配布に必要な最低限の法務文書です。**法的助�
 | `terms.ja.md` / `terms.en.md` | 利用規約 |
 | `privacy.ja.md` / `privacy.en.md` | プライバシーポリシー |
 
-## 公開前に埋めるプレースホルダー
+## 公開状況
 
-- `{{JURISDICTION}}`: 第一審の専属的合意管轄裁判所(例: 東京地方裁判所)
-- `{{CONTACT_EMAIL}}`: 権利侵害・削除依頼・プライバシー用の連絡先
+プレースホルダーは記入済みです(管轄: 東京地方裁判所、連絡先: GitHub Issues / X DM)。
 
-`src/legal.ts` は次の URL を参照します(リポジトリの `main` ブランチ)。
+`src/legal.ts` は **0.6.0 ブランチ**の次の URL を参照します(0.6.0 は公開済みのため、現在のリンクは有効です)。
 
 ```
-https://github.com/nsmr0604/PawKemoViewer/blob/main/docs/legal/terms.ja.md
-https://github.com/nsmr0604/PawKemoViewer/blob/main/docs/legal/privacy.ja.md
+https://github.com/nsmr0604/PawKemoViewer/blob/0.6.0/docs/legal/terms.ja.md
+https://github.com/nsmr0604/PawKemoViewer/blob/0.6.0/docs/legal/privacy.ja.md
 ```
 
-`main` へマージされるまではリンクが 404 になります。公開時には `main` に反映するか、`src/legal.ts` の `LEGAL_BASE` を実際の公開先へ変更してください。
+`main` へマージした後は、`src/legal.ts` の `LEGAL_BASE` を `main` に切り替えてください。
 
 ## 非公式表記
 
@@ -53,8 +52,18 @@ https://github.com/nsmr0604/PawKemoViewer/blob/main/docs/legal/privacy.ja.md
   - 注意: 称呼検索・類似検索・図形商標は未確認。正式な調査は弁理士へ。
 - サービス名は、機能上必要な箇所(絞り込み等)を除き、説明文・タイトル・年齢確認では前面に出さない。
 - ストア用スクリーンショットは SFW のみに差し替える。
+- アプリ名のストア検索: Google Play / F-Droid / App Store / IzzyOnDroid で同名アプリは確認できず。
+- アイコン: 第三者サービスのロゴは含まれていない。キャラクター画像の権利(AI 生成・委託・自作)は要確認。
+- 連絡先: GitHub Issues と X DM を記載済み。
 - pawchive は第三者コンテンツのアーカイブとして紹介されている例があり、
   権利上のリスクは残る。権利者からの削除依頼に備える。
+
+## pawchive API の利用条件(確認結果)
+
+- API 仕様は `https://pawchive.pw/api/schema` にありますが、**ログインが必要**で、公開の利用規約・レート制限は確認できませんでした。
+- 第三者クライアントの利用が明示的に許可されているかは**未確認**です。運営者への問い合わせ、または API 仕様の公開を待つことを推奨します。
+- レート制限に配慮し、アプリ側の API スケジューラとクールダウンを維持してください。
+- 仕様変更・停止で動かなくなる可能性は、利用規約にも明記しています。
 
 ## 注意
 
