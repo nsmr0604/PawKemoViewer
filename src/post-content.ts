@@ -84,3 +84,8 @@ export function sanitizePostContent(html: string, service?: string, postId?: str
   return doc.body.innerHTML
 }
 
+
+/** コメントなどが HTML かプレーンテキストかをざっくり判別する。 */
+export function looksLikeHtml(value: string): boolean {
+  return /<\/?[a-z][^>]*>/i.test(value)
+}

@@ -222,7 +222,11 @@ export function HomePage({ query }: { query: URLSearchParams }) {
           loading={loading}
           done={done}
           viewMode={viewMode}
-          onEndReached={loading || done ? undefined : () => load(offset + POST_PAGE_SIZE, false)}
+          onEndReached={
+            loading || done || filteredPosts.length === 0
+              ? undefined
+              : () => load(offset + POST_PAGE_SIZE, false)
+          }
         />
       )}
       {!loading && !error && filteredPosts.length === 0 && done && (

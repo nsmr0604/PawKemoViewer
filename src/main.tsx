@@ -1,6 +1,7 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
 import App from "./App"
+import { ErrorBoundary } from "./components/ErrorBoundary"
 import { getSettings, initializeSettingsStorage } from "./api"
 import { loadLocale } from "./i18n"
 import { initializePlatformRuntime } from "./platform/runtime"
@@ -18,7 +19,9 @@ async function bootstrap() {
   await loadLocale(getSettings().locale)
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </React.StrictMode>,
   )
 }

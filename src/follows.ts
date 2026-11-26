@@ -26,7 +26,19 @@ function notifyChanged() {
 export function loadFollows(): FollowEntry[] {
   try {
     const raw = storage().get(KEY)
-    if (raw) return JSON.parse(raw)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    // 壊れた要素が混ざっていても描画を落とさない
+    return parsed.filter(
+      (item): item is FollowEntry =>
+        !!item &&
+        typeof item === "object" &&
+        typeof (item as FollowEntry).service === "string" &&
+        typeof (item as FollowEntry).id === "string" &&
+        !!(item as FollowEntry).service &&
+        !!(item as FollowEntry).id,
+    )
   } catch {
     /* ignore */
   }
@@ -87,7 +99,8 @@ export function syncFollowsWithAccount(): Promise<number> {
       }
     }
 
-    const latest = await api.accountFavorites("artist")
+    // 移行で追加した分を反映するため、GET キャッシュを使わずに取り直す
+    const latest = await api.accountFavorites("artist", undefined, false)
     const synced = latest
       .filter((f) => !!f.service && !!f.id)
       .map((f) => ({ service: f.service!, id: f.id, name: f.name || f.id }))
