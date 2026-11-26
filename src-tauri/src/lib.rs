@@ -1578,6 +1578,8 @@ pub fn run() {
     let builder = builder
         .plugin(tauri_plugin_locale_picker::init())
         .plugin(tauri_plugin_external_view::init());
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(tauri_plugin_downloads_store::init());
     #[cfg(target_os = "ios")]
     let builder = builder.setup(|app| {
         if let Err(error) = locale_storage::prepare_ios_files_directory(app.handle()) {
