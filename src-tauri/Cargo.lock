@@ -2478,6 +2478,7 @@ name = "pawkemoviewer"
 version = "0.6.0"
 dependencies = [
  "base64 0.22.1",
+ "getrandom 0.3.4",
  "log",
  "objc2",
  "objc2-foundation",

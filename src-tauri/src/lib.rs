@@ -5,7 +5,6 @@ mod downloads;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod external_page_desktop;
 
-use regex::Regex;
 use tauri::Manager;
 use reqwest::header::{
     HeaderMap,
@@ -163,7 +162,7 @@ fn log_http_request_body(app: &tauri::AppHandle, target: &str, content_type: Opt
             format!("{}={}", key, if secret { "<redacted>" } else { value })
         }).collect::<Vec<_>>().join("&");
     } else if ct.contains("json") || safe.trim_start().starts_with('{') || safe.trim_start().starts_with('[') {
-        let re = Regex::new(r#"(?i)("(?:[^"]*(?:password|passwd|token|secret|session|auth|credential|api[_-]?key|jwt)[^"]*)"[ ]*:[ ]*)("(?:\\\\.|[^"])*"|[^,}\\]]+)"#).unwrap();
+        let re = regex::Regex::new(r#"(?i)("(?:[^"]*(?:password|passwd|token|secret|session|auth|credential|api[_-]?key|jwt)[^"]*)"[ ]*:[ ]*)("(?:\\\\.|[^"])*"|[^,}\\]]+)"#).unwrap();
         safe = re.replace_all(&safe, "$1\"<redacted>\"").into_owned();
     }
     const MAX_CHUNK_BYTES: usize = 3000;
@@ -184,7 +183,6 @@ fn log_http_request_body(app: &tauri::AppHandle, target: &str, content_type: Opt
 
 // pkv プロキシの資源制御。応答は最終的に全量メモリへ載るため上限を設ける。
 const PROXY_MAX_BODY_BYTES: u64 = 64 * 1024 * 1024;
-const PROXY_MAX_HTML_BYTES: u64 = 8 * 1024 * 1024;
 const PROXY_CONNECT_TIMEOUT_SECS: u64 = 10;
 const PROXY_TIMEOUT_SECS: u64 = 180;
 const PROXY_MAX_REDIRECTS: usize = 5;
@@ -671,22 +669,6 @@ async fn fetch_creator_icon(
 // ---------------------------------------------------------------------------
 
 /// pkv カスタムプロトコルの基底 URL。
-/// Tauri は Windows / Android だけ `http://<scheme>.localhost` で配信し、
-/// macOS / iOS / Linux は `<scheme>://localhost` になる。
-#[cfg(any(windows, target_os = "android"))]
-const PKV_BASE_URL: &str = "http://pkv.localhost/file";
-#[cfg(not(any(windows, target_os = "android")))]
-const PKV_BASE_URL: &str = "pkv://localhost/file";
-
-/// リファラーチェックが無い (実測) / ミラー済みのため直接アクセス可能なホスト。
-/// HTML 変換も行わない (fanbox / patreon は SPA のため同一オリジン化すると壊れる)。
-fn is_direct_host(hostname: &str) -> bool {
-    let h = hostname.to_ascii_lowercase();
-    ["fanbox.cc", "patreon.com", "patreonusercontent.com", "pximg.net", "pawchive.pw"]
-        .iter()
-        .any(|d| h == *d || h.ends_with(&format!(".{}", d)))
-}
-
 /// SSRF 対策: 内部アドレス・IP 直指定・ローカル名を拒否する
 fn forbidden_host(hostname: &str) -> bool {
     let h = hostname.to_ascii_lowercase();
@@ -731,6 +713,8 @@ fn is_public_ip(ip: IpAddr) -> bool {
 
 /// ホストが内部アドレスへ解決しないことを確認する。
 /// 名前解決自体に失敗した場合は reqwest の接続失敗に任せる。
+/// グローバル到達可能なホストか。名前解決に失敗した場合は拒否する (fail-closed)。
+/// 注意: 名前解決はこの時点の結果で、接続時の解決先とは別になり得る (DNS rebinding)。
 fn host_is_public(u: &reqwest::Url) -> bool {
     let host = match u.host_str() {
         Some(h) if !h.is_empty() => h,
@@ -739,7 +723,7 @@ fn host_is_public(u: &reqwest::Url) -> bool {
     let port = u.port_or_known_default().unwrap_or(443);
     match (host, port).to_socket_addrs() {
         Ok(addrs) => addrs.into_iter().all(|addr| is_public_ip(addr.ip())),
-        Err(_) => true,
+        Err(_) => false,
     }
 }
 
@@ -840,123 +824,6 @@ fn percent_decode(s: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
-}
-
-/// pkv プロトコルの URL を生成する
-fn pkv_url(abs: &reqwest::Url, referer: &str) -> String {
-    let mut u = reqwest::Url::parse(PKV_BASE_URL).unwrap();
-    u.query_pairs_mut()
-        .append_pair("u", abs.as_str())
-        .append_pair("r", referer);
-    u.to_string()
-}
-
-/// タグ内の属性値を書き換える (変換先が None の場合は元のまま)
-fn rewrite_attr(tag: &str, attr: &str, transform: &dyn Fn(&str) -> Option<String>) -> String {
-    let re = Regex::new(&format!(
-        r#"(?is)\b{}\s*=\s*(?:"([^"]*)"|'([^']*)')"#,
-        attr
-    ))
-    .unwrap();
-    if let Some(c) = re.captures(tag) {
-        let val = c
-            .get(2)
-            .or_else(|| c.get(3))
-            .map(|m| m.as_str())
-            .unwrap_or("");
-        if let Some(new) = transform(val) {
-            let m0 = c.get(0).unwrap();
-            let rebuilt = format!("{}=\"{}\"", attr, new.replace('"', "%22"));
-            return format!(
-                "{}{}{}",
-                &tag[..m0.start()],
-                rebuilt,
-                &tag[m0.end()..]
-            );
-        }
-    }
-    tag.to_string()
-}
-
-/// 外部ページの HTML 変換:
-/// - <base> 注入 (相対 URL を元サイト基準に)
-/// - img / form / a の URL を pkv:// 経由に書き換え (リファラーを揃える)
-fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> String {
-    let base_href = target
-        .join(".")
-        .map(|u| u.to_string())
-        .unwrap_or_else(|_| target.to_string());
-
-    // <head ...> 直後に <base> を注入
-    let lower = html.to_ascii_lowercase();
-    let inject_at = match lower.find("<head") {
-        Some(p) => match lower[p..].find('>') {
-            Some(o) => p + o + 1,
-            None => 0,
-        },
-        None => 0,
-    };
-    let base_tag = format!(r#"<base href="{}">"#, base_href);
-    let html = if inject_at > 0 {
-        format!("{}{}{}", &html[..inject_at], base_tag, &html[inject_at..])
-    } else {
-        format!("{}{}", base_tag, html)
-    };
-
-    // img
-    let img_re = Regex::new(r#"(?is)<img\b[^>]*>"#).unwrap();
-    let html = img_re
-        .replace_all(&html, |c: &regex::Captures| {
-            let tag = c.get(0).unwrap().as_str();
-            rewrite_attr(tag, "src", &|v: &str| {
-                if v.starts_with("data:") {
-                    return None;
-                }
-                target
-                    .join(v)
-                    .ok()
-                    .filter(|u| is_proxyable(u))
-                    .map(|u| pkv_url(&u, self_referer))
-            })
-        })
-        .into_owned();
-
-    // form (action が無い場合は自身の URL への POST)
-    let form_re = Regex::new(r#"(?is)<form\b[^>]*>"#).unwrap();
-    let html = form_re
-        .replace_all(&html, |c: &regex::Captures| {
-            let tag = c.get(0).unwrap().as_str();
-            rewrite_attr(tag, "action", &|v: &str| {
-                let abs = if v.is_empty() {
-                    Some(target.clone())
-                } else {
-                    target.join(v).ok()
-                };
-                abs.filter(|u| is_proxyable(u))
-                    .map(|u| pkv_url(&u, self_referer))
-            })
-        })
-        .into_owned();
-
-    // a
-    let a_re = Regex::new(r#"(?is)<a\b[^>]*>"#).unwrap();
-    let html = a_re
-        .replace_all(&html, |c: &regex::Captures| {
-            let tag = c.get(0).unwrap().as_str();
-            rewrite_attr(tag, "href", &|v: &str| {
-                if v.starts_with('#') || v.starts_with("mailto:") || v.starts_with("javascript:") {
-                    return None;
-                }
-                target
-                    .join(v)
-                    .ok()
-                    .filter(|u| is_proxyable(u))
-                    .map(|u| pkv_url(&u, self_referer))
-            })
-        })
-        .into_owned();
-
-    html
 }
 
 /// pkv:// ハンドラ本体 (GET / POST を中継)
@@ -1102,33 +969,13 @@ fn pkv_proxy_fetch(
         .unwrap_or("")
         .to_string();
 
-    // 外部 (direct 以外) ホストの HTML ページ: base 注入 + リンク/リソースのプロキシ化
-    if ct.contains("text/html") && !is_direct_host(&host) {
-        let bytes = match read_body_limited(resp, PROXY_MAX_HTML_BYTES) {
-            Ok(bytes) => bytes,
-            Err(BodyReadError::TooLarge) => {
-                let message = format!("PROXY_ERROR destination={} body=too_large", safe_log_url(&target));
-                log::error!(target: "Pawchive::Proxy", "{}", message);
-                append_app_log(app, &message);
-                return bad(413, "response too large");
-            }
-            Err(BodyReadError::Read(error)) => {
-                let message = format!("PROXY_ERROR destination={} body_read_error={}", safe_log_url(&target), error);
-                log::error!(target: "Pawchive::Proxy", "{}", message);
-                append_app_log(app, &message);
-                return bad(502, "upstream body");
-            }
-        };
-        let html = String::from_utf8_lossy(&bytes).into_owned();
-        #[cfg(feature = "debug-diag")]
-        log_http_response_body(app, "Pawchive::Proxy", &html);
-        let self_referer = format!("{}://{}/", target.scheme(), host);
-        let out = transform_html(&html, &target, &self_referer);
-        return Response::builder()
-            .status(status)
-            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
-            .body(out.into_bytes())
-            .unwrap();
+    // HTML は中継しない。pkv オリジンはローカル扱いになり、中継した HTML の JS が
+    // アプリの Tauri コマンドへ到達し得るため (外部ページは実オリジンの専用ウィンドウで開く)。
+    if ct.contains("text/html") {
+        let message = format!("PROXY_BLOCKED destination={} reason=html", safe_log_url(&target));
+        log::error!(target: "Pawchive::Proxy", "{}", message);
+        append_app_log(app, &message);
+        return bad(415, "html responses are not proxied");
     }
 
     // そのまま中継 (バイナリ / direct ホストの HTML)。
@@ -1680,18 +1527,6 @@ mod tests {
         let parsed = reqwest::Url::parse("pkv://localhost/file").unwrap();
         assert_eq!(parsed.scheme(), "pkv");
         assert_eq!(parsed.host_str(), Some("localhost"));
-    }
-
-    #[test]
-    fn pkv_url_keeps_target_and_referer() {
-        let target = reqwest::Url::parse("https://example.com/a%20b.png?x=1&y=2").unwrap();
-        let referer = "https://www.fanbox.cc/@tateha/posts/1";
-        let url = pkv_url(&target, referer);
-        assert!(url.starts_with(PKV_BASE_URL), "{url}");
-        let parsed = reqwest::Url::parse(&url).unwrap();
-        let pairs: std::collections::HashMap<_, _> = parsed.query_pairs().into_owned().collect();
-        assert_eq!(pairs.get("u").map(String::as_str), Some(target.as_str()));
-        assert_eq!(pairs.get("r").map(String::as_str), Some(referer));
     }
 
     #[test]

@@ -6,8 +6,9 @@
   if (window.__pawkemoOverlayInstalled) return;
   window.__pawkemoOverlayInstalled = true;
 
-  var SAVE_PREFIX = "pawkemo-save#";
-  var CLOSE_TITLE = "pawkemo-close#";
+  var TOKEN = "__PAWKEMO_TOKEN__";
+  var SAVE_PREFIX = "pawkemo-save#" + TOKEN + "#";
+  var CLOSE_TITLE = "pawkemo-close#" + TOKEN;
   var MAX_IMAGES = 300;
   var BAR_ID = "__pawkemo_bar";
 
