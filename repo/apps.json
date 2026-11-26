@@ -1,7 +1,7 @@
 {
   "name": "PawKemoViewer",
   "identifier": "com.nsmr0604.pawkemoviewer.source",
-  "sourceURL": "https://nsmr0604.github.io/PawKemoViewer/altstore/apps.json",
+  "sourceURL": "https://nsmr0604.github.io/PawKemoViewer/repo/apps.json",
   "subtitle": "Unofficial viewer for the pawchive.pw API",
   "description": "Unofficial viewer for the pawchive.pw API. Browse posts, creators, favorites, and follows. The app does not collect personal information and contains no analytics or advertising SDKs. For users aged 18 or older; may display adult content.",
   "iconURL": "https://raw.githubusercontent.com/nsmr0604/PawKemoViewer/main/src-tauri/app-icons/pc.png",
