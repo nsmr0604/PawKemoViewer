@@ -70,7 +70,7 @@ echo "deb [signed-by=/usr/share/keyrings/pawkemoviewer.gpg] https://nsmr0604.git
   | sudo tee /etc/apt/sources.list.d/pawkemoviewer.list
 
 sudo apt update
-sudo apt install paw-kemo-viewer
+sudo apt install pawkemo-viewer
 ```
 
 ## rpm でのインストール
@@ -88,7 +88,7 @@ repo_gpgcheck=1
 gpgkey=https://nsmr0604.github.io/PawKemoViewer/repo/RPM-GPG-KEY-pawkemoviewer
 EOF
 
-sudo dnf install paw-kemo-viewer
+sudo dnf install pawkemo-viewer
 ```
 
 `repo_gpgcheck=1` はリポジトリメタデータ(`repomd.xml`)の署名を検証します。
