@@ -161,16 +161,36 @@ jobs:
             npx tauri android build --features debug-diag
           fi
 
-      - name: Sign APKs (debug keystore / 開発用仮署名)
-        # 標準手順の debug.keystore を使用。パスワード "android" は Android SDK の
-        # 公開定数 (debug.keystore は開発環境共通) のため直書き可 (例外規定: AGENT.md 参照)。
-        # 秘密鍵 (正式リリース用の鍵) では GitHub Secrets を使うこと
+      - name: Sign APKs
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        # 正式リリースは release key (Secrets) で署名する。開発ビルドだけ debug.keystore。
+        # debug.keystore のパスワード "android" は公開定数のため直書き可 (AGENT.md 参照)。
         run: |
           set -e
           BT="$ANDROID_HOME/build-tools/35.0.0"
-          KS="$GITHUB_WORKSPACE/src-tauri/android-debug.keystore"
           VER=$(node -p "require('./package.json').version")
           mkdir -p dist-apk
+
+          if [[ "${{ inputs.release }}" == "true" ]]; then
+            if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" ]]; then
+              echo "Release signing secrets are not configured (ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS)" >&2
+              exit 1
+            fi
+            KS="$RUNNER_TEMP/release.keystore"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KS"
+            KS_PASS="$ANDROID_KEYSTORE_PASSWORD"
+            KEY_PASS="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+            ALIAS="$ANDROID_KEY_ALIAS"
+          else
+            KS="$GITHUB_WORKSPACE/src-tauri/android-debug.keystore"
+            KS_PASS="android"
+            KEY_PASS="android"
+            ALIAS="androiddebugkey"
+          fi
 
           mapfile -d '' -t packages < <(find src-tauri/gen/android/app/build/outputs -type f -name '*.apk' -print0)
           if [[ "${#packages[@]}" -eq 0 ]]; then
@@ -191,11 +211,11 @@ jobs:
             "$BT/zipalign" -f -p 4 "$apk" "$out.aligned"
             "$BT/apksigner" sign \
               --ks "$KS" \
-              --ks-pass 'pass:android' \
-              --key-pass 'pass:android' \
-              --ks-key-alias androiddebugkey \
+              --ks-pass "pass:$KS_PASS" \
+              --key-pass "pass:$KEY_PASS" \
+              --ks-key-alias "$ALIAS" \
               --out "$out" "$out.aligned"
-            "$BT/apksigner" verify "$out"
+            "$BT/apksigner" verify --print-certs "$out"
             rm -f "$out.aligned"
             echo "signed: $out"
           done
