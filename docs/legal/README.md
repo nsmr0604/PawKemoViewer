@@ -46,7 +46,11 @@ https://github.com/nsmr0604/PawKemoViewer/blob/main/docs/legal/privacy.ja.md
 ### 実施記録 (2026-11-26)
 
 - Web 検索: 「PawKemoViewer」の同名アプリは確認できず(ユーザーの X 投稿のみ)。
-- J-PlatPat: **未実施**。公開前に実施する。
+- J-PlatPat 商標検索(商標(検索用)・出願/登録情報・部分一致):
+  - `PawKemoViewer` / `PawKemo` / `パウケモ` / `パウケモビューア`: **0 件**
+  - `pawchive` / `PAWCHIVE` / `Pawchive` / `パウチャイブ`: **0 件**
+  - 参考: `FANBOX` はピクシブ株式会社の登録 3 件、`Patreon` は PATREON, INC. の国際登録 1 件
+  - 注意: 称呼検索・類似検索・図形商標は未確認。正式な調査は弁理士へ。
 - サービス名は、機能上必要な箇所(絞り込み等)を除き、説明文・タイトル・年齢確認では前面に出さない。
 - ストア用スクリーンショットは SFW のみに差し替える。
 - pawchive は第三者コンテンツのアーカイブとして紹介されている例があり、
