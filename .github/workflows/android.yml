@@ -99,6 +99,9 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          # Cargo.toml の rust-version と揃える
+          toolchain: "1.100.0"
 
       - name: Setup Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5

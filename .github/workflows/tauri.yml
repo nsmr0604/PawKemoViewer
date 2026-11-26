@@ -82,6 +82,9 @@ jobs:
           cache: npm
 
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          # Cargo.toml の rust-version と揃える
+          toolchain: "1.100.0"
 
       - name: Linux のビルド依存をインストール
         if: runner.os == 'Linux'
@@ -91,6 +94,11 @@ jobs:
 
       - run: npm ci
       - run: npm run icons:generate
+
+      - name: 依存の既知脆弱性 (npm)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: npm audit --omit=dev --audit-level=high
 
       - name: 単体テスト (Node / Rust)
         env:
