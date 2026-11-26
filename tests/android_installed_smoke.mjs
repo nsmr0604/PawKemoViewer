@@ -62,6 +62,20 @@ function match(nodes, key, accept = () => true) {
 
 const button = node => node.clickable === 'true' && node.enabled === 'true';
 
+/** 初回起動の年齢確認が出ていれば承認する(既に確認済みなら何もしない)。 */
+async function dismissAgeGate() {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const nodes = screen();
+    const accept = match(nodes, 'age.accept', button);
+    if (accept) {
+      tap(accept);
+      return;
+    }
+    if (match(nodes, 'nav.settings', button)) return;
+    await delay(300);
+  }
+}
+
 function tap({ area: [left, top, right, bottom] }) {
   shell('input', 'tap', String(Math.round((left + right) / 2)), String(Math.round((top + bottom) / 2)));
 }
@@ -127,6 +141,7 @@ try {
     'android.intent.action.MAIN', '-c', 'android.intent.category.LAUNCHER', '-p', app).trim().split(/\s+/).at(-1);
   assert.ok(resolve.startsWith(`${app}/`), 'PawKemoViewer launcher is unavailable');
   assert.match(shell('am', 'start', '-W', '-n', resolve), /Status: ok/);
+  await dismissAgeGate();
   const settings = await waitFor('Settings navigation is missing', nodes => match(nodes, 'nav.settings', button));
   tap(settings);
   tap(findBelow('settings.languageTitle', button));

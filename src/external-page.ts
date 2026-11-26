@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core"
 import { DEBUG_DIAG } from "./build-flags"
+import { isAllowedExternalPageUrl } from "./external-page-url"
 import { traceExternalPage, traceExternalPageError } from "./external-page-diagnostics"
 import { getPlatformRuntime } from "./platform/runtime"
 
@@ -22,10 +23,17 @@ export interface ExternalPageContext {
   postId: string
 }
 
-/** 実オリジンのまま外部ページを開けるプラットフォームか (Android / iOS のネイティブのみ) */
+/** 外部ページとして開いてよい URL か。判定は external-page-url に置く。 */
+export { isAllowedExternalPageUrl }
+
+/**
+ * 実オリジンのまま外部ページを開けるプラットフォームか。
+ * Android / iOS はネイティブビュー、デスクトップは専用ウィンドウで
+ * 最初のナビゲーションに Referer を付ける (Windows / macOS / Linux)。
+ */
 export function canOpenExternalPage(): boolean {
   const descriptor = getPlatformRuntime().descriptor
-  return descriptor.isNative && (descriptor.os === "android" || descriptor.os === "ios")
+  return descriptor.isNative && descriptor.os !== "unknown"
 }
 
 /** 元記事 URL を Referer にして、外部ページをネイティブビューで開く */
@@ -34,6 +42,10 @@ export async function openExternalPage(
   referer: string,
   context?: ExternalPageContext,
 ): Promise<void> {
+  if (!isAllowedExternalPageUrl(url)) {
+    if (DEBUG_DIAG) traceExternalPage("external_page_url_rejected")
+    return
+  }
   const args = {
     url,
     referer,

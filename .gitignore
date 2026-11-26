@@ -26,7 +26,7 @@ src-tauri/binaries/
 src-tauri/icons/
 
 # rust
-Cargo.lock
+# アプリケーションなので Cargo.lock は追跡する (再現性のため)
 
 # windows
 Thumbs.db
@@ -54,3 +54,13 @@ Desktop.ini
 # OS
 Thumbs.db
 Desktop.ini
+
+# 自己ホスト F-Droid リポジトリ (鍵・生成物はコミットしない)
+/fdroid/config.yml
+/fdroid/keystore.p12
+/fdroid/repo/
+
+# Linux リポジトリ生成物
+/linux-repo/
+/dist-deb/
+/dist-rpm/

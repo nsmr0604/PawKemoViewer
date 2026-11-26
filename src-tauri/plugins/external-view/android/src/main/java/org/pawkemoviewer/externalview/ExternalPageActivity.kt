@@ -40,11 +40,18 @@ class ExternalPageActivity : Activity() {
     private var referer: String = ""
     /** 選択画面に出した候補。ここに無い URL は保存させない。 */
     private var candidates: List<String> = emptyList()
+    /** 選択画面の二重表示を防ぐ */
+    private var pickerOpen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val url = intent.getStringExtra(EXTRA_URL)
         if (url.isNullOrEmpty()) {
+            finish()
+            return
+        }
+        val scheme = android.net.Uri.parse(url).scheme?.lowercase()
+        if (scheme != "http" && scheme != "https") {
             finish()
             return
         }
@@ -90,12 +97,18 @@ class ExternalPageActivity : Activity() {
             domStorageEnabled = true
             loadsImagesAutomatically = true
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            // 外部ページから端末内のファイル・コンテンツへ触れないようにする
+            allowFileAccess = false
+            allowContentAccess = false
+            allowFileAccessFromFileURLs = false
+            allowUniversalAccessFromFileURLs = false
         }
         view.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 title.text = url
-                // ページ遷移したら候補は作り直す
+                // ページ遷移したら候補と選択画面の状態は作り直す
                 candidates = emptyList()
+                pickerOpen = false
             }
 
             override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
@@ -106,11 +119,12 @@ class ExternalPageActivity : Activity() {
                 view: WebView,
                 request: android.webkit.WebResourceRequest,
             ): Boolean {
-                if (request.url.toString().startsWith(SAVE_SCHEME)) {
+                val target = request.url.toString()
+                if (target.startsWith(SAVE_SCHEME)) {
                     captureSelection(view)
                     return true
                 }
-                return false
+                return isBlockedAddress(target)
             }
 
             @Deprecated("Deprecated in Java")
@@ -119,7 +133,7 @@ class ExternalPageActivity : Activity() {
                     captureSelection(view)
                     return true
                 }
-                return false
+                return isBlockedAddress(url)
             }
         }
         view.webChromeClient = WebChromeClient()
@@ -134,12 +148,42 @@ class ExternalPageActivity : Activity() {
         view.loadUrl(url, headers)
     }
 
+    /** 内部ネットワーク宛ての http(s) 遷移を止める (ページ内リンク経由の SSRF 対策)。 */
+    private fun isBlockedAddress(url: String): Boolean {
+        val uri = android.net.Uri.parse(url)
+        val scheme = uri.scheme?.lowercase()
+        if (scheme != "http" && scheme != "https") return false
+        val host = uri.host?.lowercase() ?: return true
+        if (host == "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return true
+        if (host == "::1" || host == "0.0.0.0") return true
+        val parts = host.split(".")
+        if (parts.size == 4) {
+            val octets = parts.map { it.toIntOrNull() ?: return false }
+            if (octets.any { it > 255 }) return true
+            val a = octets[0]
+            val b = octets[1]
+            if (a == 0 || a == 10 || a == 127) return true
+            if (a == 169 && b == 254) return true
+            if (a == 172 && b in 16..31) return true
+            if (a == 192 && b == 168) return true
+        }
+        return false
+    }
+
     /** 表示中ページの画像候補を集め、チェック式の選択画面を出す。 */
     private fun openPicker() {
         val view = page ?: return
+        if (pickerOpen) {
+            // もう一度押したら閉じる (重ねて表示しない)
+            view.evaluateJavascript("if (window.__pawkemoPickerClose) window.__pawkemoPickerClose();", null)
+            pickerOpen = false
+            return
+        }
+        pickerOpen = true
         view.evaluateJavascript(COLLECT_SCRIPT) { result ->
             val urls = parseUrls(result)
             if (urls.isEmpty()) {
+                pickerOpen = false
                 Toast.makeText(this, "保存できる画像が見つかりませんでした", Toast.LENGTH_SHORT).show()
                 return@evaluateJavascript
             }
@@ -152,6 +196,7 @@ class ExternalPageActivity : Activity() {
 
     /** 選択画面の「保存」から呼ばれる。候補に無い URL は無視する。 */
     private fun captureSelection(view: WebView) {
+        pickerOpen = false
         view.evaluateJavascript("JSON.stringify(window.__pawkemoSelected || [])") { result ->
             val allowed = candidates.toSet()
             val urls = parseUrls(result).filter { allowed.contains(it) }

@@ -104,6 +104,8 @@ export default function App() {
   // デスクトップ向けキーボードショートカット (JHenTai 参考: H/C/F/S/Esc//)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // 子画面 (ライトボックス等) が処理済みならショートカットを実行しない
+      if (e.defaultPrevented) return
       // 入力フォーム操作中はスキップ
       const target = e.target as HTMLElement | null
       const isInput =
@@ -198,7 +200,7 @@ export default function App() {
       )
       break
     case "favorites":
-      content = <FavoritesPage key={settings.sessionKey ? "signed-in" : "signed-out"} />
+      content = <FavoritesPage key={settings.sessionKey || "signed-out"} />
       break
     case "settings":
       content = <SettingsPage layout={layout} section={route.query.get("section")} />

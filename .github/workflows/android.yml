@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+      # バージョン番号のブランチ (例: 0.6.0) でも開発ビルドを作る
+      - "[0-9]*.[0-9]*.[0-9]*"
     # ビルド関連ファイルの変更時のみ発火 (ドキュメントのみのコミットではスキップ)
     paths:
       - "src/**"
@@ -18,6 +20,9 @@ on:
       - "scripts/app-icon/**"
       - "scripts/generate-icons.mjs"
       - "scripts/check-locales.mjs"
+      - "scripts/dev-version.mjs"
+      - "scripts/sync-version.mjs"
+      - "scripts/ci/**"
       - "src-tauri/app-icons.json"
       - "src-tauri/app-icons/**"
       - ".github/workflows/android.yml"
@@ -61,7 +66,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -82,7 +87,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: npm
@@ -93,16 +98,19 @@ jobs:
         run: node scripts/dev-version.mjs
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          # Cargo.toml の rust-version と揃える
+          toolchain: "1.100.0"
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: 17
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
 
       - name: Install Android SDK Packages
         run: |
@@ -111,6 +119,7 @@ jobs:
           sdkmanager \
             "platform-tools" \
             "platforms;android-35" \
+            "platforms;android-36" \
             "build-tools;35.0.0"
 
       - name: Install Dependencies
@@ -152,16 +161,36 @@ jobs:
             npx tauri android build --features debug-diag
           fi
 
-      - name: Sign APKs (debug keystore / 開発用仮署名)
-        # 標準手順の debug.keystore を使用。パスワード "android" は Android SDK の
-        # 公開定数 (debug.keystore は開発環境共通) のため直書き可 (例外規定: AGENT.md 参照)。
-        # 秘密鍵 (正式リリース用の鍵) では GitHub Secrets を使うこと
+      - name: Sign APKs
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        # 正式リリースは release key (Secrets) で署名する。開発ビルドだけ debug.keystore。
+        # debug.keystore のパスワード "android" は公開定数のため直書き可 (AGENT.md 参照)。
         run: |
           set -e
           BT="$ANDROID_HOME/build-tools/35.0.0"
-          KS="$GITHUB_WORKSPACE/src-tauri/android-debug.keystore"
           VER=$(node -p "require('./package.json').version")
           mkdir -p dist-apk
+
+          if [[ "${{ inputs.release }}" == "true" ]]; then
+            if [[ -z "$ANDROID_KEYSTORE_BASE64" || -z "$ANDROID_KEYSTORE_PASSWORD" || -z "$ANDROID_KEY_ALIAS" ]]; then
+              echo "Release signing secrets are not configured (ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS)" >&2
+              exit 1
+            fi
+            KS="$RUNNER_TEMP/release.keystore"
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KS"
+            KS_PASS="$ANDROID_KEYSTORE_PASSWORD"
+            KEY_PASS="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+            ALIAS="$ANDROID_KEY_ALIAS"
+          else
+            KS="$GITHUB_WORKSPACE/src-tauri/android-debug.keystore"
+            KS_PASS="android"
+            KEY_PASS="android"
+            ALIAS="androiddebugkey"
+          fi
 
           mapfile -d '' -t packages < <(find src-tauri/gen/android/app/build/outputs -type f -name '*.apk' -print0)
           if [[ "${#packages[@]}" -eq 0 ]]; then
@@ -182,11 +211,11 @@ jobs:
             "$BT/zipalign" -f -p 4 "$apk" "$out.aligned"
             "$BT/apksigner" sign \
               --ks "$KS" \
-              --ks-pass 'pass:android' \
-              --key-pass 'pass:android' \
-              --ks-key-alias androiddebugkey \
+              --ks-pass "pass:$KS_PASS" \
+              --key-pass "pass:$KEY_PASS" \
+              --ks-key-alias "$ALIAS" \
               --out "$out" "$out.aligned"
-            "$BT/apksigner" verify "$out"
+            "$BT/apksigner" verify --print-certs "$out"
             rm -f "$out.aligned"
             echo "signed: $out"
           done
@@ -194,7 +223,7 @@ jobs:
           ls -la dist-apk
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: pawchive-android
           path: dist-apk/*.apk
@@ -202,17 +231,17 @@ jobs:
 
   publish:
     needs: build
-    if: inputs.artifact_only != true && inputs.locale_test != true
+    if: inputs.artifact_only != true && inputs.locale_test != true && (inputs.release != true || github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: pawchive-android
           path: artifacts

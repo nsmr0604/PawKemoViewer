@@ -23,10 +23,31 @@ function notifyChanged() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(CHANGED_EVENT))
 }
 
+let cached: FollowEntry[] | null = null
+
 export function loadFollows(): FollowEntry[] {
+  // 一覧カードが 1 枚ごとに呼ぶため、JSON のパースは変更時だけにする
+  if (cached) return cached
+  cached = readFollows()
+  return cached
+}
+
+function readFollows(): FollowEntry[] {
   try {
     const raw = storage().get(KEY)
-    if (raw) return JSON.parse(raw)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    // 壊れた要素が混ざっていても描画を落とさない
+    return parsed.filter(
+      (item): item is FollowEntry =>
+        !!item &&
+        typeof item === "object" &&
+        typeof (item as FollowEntry).service === "string" &&
+        typeof (item as FollowEntry).id === "string" &&
+        !!(item as FollowEntry).service &&
+        !!(item as FollowEntry).id,
+    )
   } catch {
     /* ignore */
   }
@@ -35,6 +56,7 @@ export function loadFollows(): FollowEntry[] {
 
 function save(list: FollowEntry[]) {
   storage().set(KEY, JSON.stringify(list))
+  cached = list.slice()
   notifyChanged()
 }
 
@@ -45,8 +67,7 @@ export function isFollowed(service: string, id: string): boolean {
 export function follow(f: FollowEntry) {
   const list = loadFollows()
   if (!list.some((x) => x.service === f.service && x.id === f.id)) {
-    list.unshift(f)
-    save(list)
+    save([f, ...list])
   }
 }
 
@@ -75,7 +96,9 @@ export function syncFollowsWithAccount(): Promise<number> {
   if (!sessionKey) return Promise.resolve(0)
 
   syncInFlight = (async () => {
+    const startKey = sessionKey
     const remote = await api.accountFavorites("artist")
+    if (getSettings().sessionKey !== startKey) return 0
     // 既存ローカルデータの移行は初回だけ。以降はアカウント側を正として反映し、
     // 別端末で解除されたフォローを古いローカルデータから復活させない。
     if (storage().get(MIGRATED_KEY) !== "1") {
@@ -87,7 +110,10 @@ export function syncFollowsWithAccount(): Promise<number> {
       }
     }
 
-    const latest = await api.accountFavorites("artist")
+    // 移行で追加した分を反映するため、GET キャッシュを使わずに取り直す
+    const latest = await api.accountFavorites("artist", undefined, false)
+    // 実行中にログアウト・アカウント切替が起きたら、古い一覧を書き戻さない
+    if (getSettings().sessionKey !== startKey) return 0
     const synced = latest
       .filter((f) => !!f.service && !!f.id)
       .map((f) => ({ service: f.service!, id: f.id, name: f.name || f.id }))
@@ -97,6 +123,15 @@ export function syncFollowsWithAccount(): Promise<number> {
   })()
 
   return syncInFlight.finally(() => { syncInFlight = null })
+}
+
+/** フォロー一覧に保存済みの表示名を更新する (一覧に無ければ何もしない) */
+export function updateFollowName(service: string, id: string, name: string): void {
+  if (!name) return
+  const list = loadFollows()
+  const entry = list.find((f) => f.service === service && f.id === id)
+  if (!entry || entry.name === name) return
+  save(list.map((f) => (f === entry ? { ...f, name } : f)))
 }
 
 /** ログイン中はサーバー更新成功後にローカルへ反映し、片側だけの更新を防ぐ。 */

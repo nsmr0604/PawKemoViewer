@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api, getSettings, clearApiCache, ApiError, apiStatus } from "../api"
 import type { PawPost, AccountFavorite } from "../types"
 import { getAllSeen, setSeen, getSeen, updateSeenCheck } from "../db"
@@ -65,6 +65,8 @@ export function FavoritesPage() {
   const [accountErr, setAccountErr] = useState<unknown>(null)
   const [syncResult, setSyncResult] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
+  const autoRun = useRef<Promise<void> | null>(null)
+  const autoRerun = useRef(false)
   // ソート (web の favorites UI 相当: お気に入り日 / 投稿日 / 取得日 + 降順/昇順)
   const [favSort, setFavSort] = useState<"faved" | "published" | "added">("faved")
   const [favOrder, setFavOrder] = useState<"desc" | "asc">("desc")
@@ -133,7 +135,7 @@ export function FavoritesPage() {
 
   /** 新着チェック: 各フォローの最新投稿を取得して既読IDと比較 (4並列)。
    *  force=false (自動) の場合はチェック済みのものをクールダウン中スキップして API 負荷を抑える */
-  const checkNew = useCallback(async (force = false) => {
+  const runCheck = useCallback(async (force = false) => {
     setChecking(true)
     const list = loadFollows()
     const queue = [...list]
@@ -191,6 +193,30 @@ export function FavoritesPage() {
     await Promise.all(workers)
     setChecking(false)
   }, [])
+
+  /** 自動チェックは 1 本に直列化する。同期でフォローが増えた場合だけ、
+   *  実行中のチェックが終わってから追加分を確認する (同じフォローを二重に叩かない)。 */
+  const checkNew = useCallback(
+    async (force = false) => {
+      if (force) return runCheck(true)
+      if (autoRun.current) {
+        autoRerun.current = true
+        return autoRun.current
+      }
+      const run = (async () => {
+        await runCheck(false)
+        while (autoRerun.current) {
+          autoRerun.current = false
+          await runCheck(false)
+        }
+      })()
+      autoRun.current = run.finally(() => {
+        autoRun.current = null
+      })
+      return autoRun.current
+    },
+    [runCheck],
+  )
 
   useEffect(() => {
     checkNew(false) // 自動チェック (クールダウン適用)

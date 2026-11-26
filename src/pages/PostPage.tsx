@@ -1,7 +1,7 @@
 import { getApplication } from "../application/composition"
 import { isValidPostContext } from "../domain/post-identity"
 import { normalizeFanboxSlug, originalPostReferer } from "../domain/post-referer"
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react"
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, directFileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavoritePost } from "../post-favorites"
 import { CreatorAvatar } from "../components/CreatorAvatar"
@@ -11,13 +11,13 @@ import { isFanboxCoverFile } from "../post-files"
 import type { PawComment, PawPost, PawRevision, PawFile } from "../types"
 import { Spinner, ErrorBox, Empty } from "../components/Feedback"
 import { formatDate } from "../format-date"
-import { sanitizePostContent } from "../post-content"
+import { sanitizePostContent, looksLikeHtml } from "../post-content"
 import { navigate } from "../router"
 import { FollowButton } from "../components/FollowButton"
 import { logError, logInfo, logWarn } from "../log"
 import { t as tr } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
-import { canOpenExternalPage, openExternalPage, takeExternalPageImages } from "../external-page"
+import { canOpenExternalPage, isAllowedExternalPageUrl, openExternalPage, takeExternalPageImages } from "../external-page"
 import { failDownload, finishDownload, reportDownloadProgress, startDownload } from "../download-status"
 import { listen } from "@tauri-apps/api/event"
 import { cancelImageDownload, collectArticleImages, collectAttachmentImages, collectExternalPages, downloadArticleImages, isImageFileName, type DownloadImage } from "../post-download"
@@ -135,8 +135,10 @@ export function PostPage({
       return
     }
     const url = anchor.getAttribute("data-external-url")
-    if (!url) {
-      if (DEBUG_DIAG) traceExternalPage("post_link_no_original_url")
+    if (!url || !isAllowedExternalPageUrl(url)) {
+      if (DEBUG_DIAG) traceExternalPage(url ? "post_link_rejected_url" : "post_link_no_original_url")
+      // 内部アドレスなどは既定の遷移にも渡さない
+      event.preventDefault()
       return
     }
     if (DEBUG_DIAG) traceExternalPage("post_link_native")
@@ -168,6 +170,10 @@ export function PostPage({
     setRevisions(null)
     setRevisionsError(null)
     setSelectedRevisionId(null)
+    // 前の投稿の保存候補・結果を持ち越さない
+    setDownloadPicker(null)
+    setDownloadMessage(null)
+    setDownloadState("idle")
     try {
       const useCases = getApplication().postDetail
       const detail = await useCases.loadPostDetail(context, signal)
@@ -304,6 +310,8 @@ export function PostPage({
 
       if (lightboxIndex !== null) {
         if (e.key === "Escape") {
+          // App 側のショートカット (戻る) が同時に走らないよう、既定動作も止める
+          e.preventDefault()
           e.stopPropagation()
           setLightboxIndex(null)
         } else if (e.key === "ArrowRight") {
@@ -469,6 +477,14 @@ export function PostPage({
       ? (revisions.find((r) => r.revision_id === selectedRevisionId) || null)
       : null
   const displayPost: PawPost = activeRevision || post
+  // 長い本文でも進捗イベントの再レンダリングごとに DOMParser を回さない
+  const displayContentHtml = useMemo(
+    () =>
+      displayPost
+        ? sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer)
+        : "",
+    [displayPost, postContext.service, postContext.postId, proxyReferer],
+  )
 
   /** 添付 (file / attachments) のうち画像だけを保存候補にする */
   const attachmentImages = (() => {
@@ -722,7 +738,7 @@ export function PostPage({
 
       {displayPost.content && (
         <>
-          <div className="post-content" onClick={openExternalLink} dangerouslySetInnerHTML={{ __html: sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
+          <div className="post-content" onClick={openExternalLink} dangerouslySetInnerHTML={{ __html: displayContentHtml }} />
           {linkState && (
             <div className="hint-row" role="status">
               {tr(linkState.kind === "loading" ? "common.loading" : "post.mirrorLinkMissing")}
@@ -917,7 +933,13 @@ export function PostPage({
                 <div className="comment-head">
                   <b>{c.commenter_name || c.commenter}</b> · {formatDate(c.published)}
                 </div>
-                <div className="comment-body" onClick={openExternalLink}>{sanitizePostContent(c.content, postContext.service, postContext.postId, proxyReferer)}</div>
+                <div
+                  className="comment-body"
+                  onClick={openExternalLink}
+                  {...(looksLikeHtml(c.content)
+                    ? { dangerouslySetInnerHTML: { __html: sanitizePostContent(c.content, postContext.service, postContext.postId, proxyReferer) } }
+                    : { children: c.content })}
+                />
               </li>
             ))}
           </ul>

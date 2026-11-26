@@ -2,7 +2,9 @@ mod json_files;
 mod locale_storage;
 mod downloads;
 
-use regex::Regex;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod external_page_desktop;
+
 use tauri::Manager;
 use reqwest::header::{
     HeaderMap,
@@ -26,9 +28,23 @@ static API_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .brotli(true)
         .gzip(true)
+        // 3xx を成功として扱わない (未認証の POST が login へ 302 した場合に検出する)
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("failed to initialize API HTTP client")
 });
+
+/// アイコン取得はクリエイターごとに走るため、Client を作り直さない。
+static ICON_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .brotli(true)
+        .gzip(true)
+        .build()
+        .expect("failed to initialize icon HTTP client")
+});
+
+/// アイコンの応答上限 (data URL にして UI へ返すため)
+const MAX_ICON_BYTES: usize = 2 * 1024 * 1024;
 
 /// 設定で選ばれた User-Agent。未設定ならデスクトップ Chrome の既定値。
 /// フロントエンドが起動時に端末の UA (`navigator.userAgent`) を設定する。
@@ -160,7 +176,7 @@ fn log_http_request_body(app: &tauri::AppHandle, target: &str, content_type: Opt
             format!("{}={}", key, if secret { "<redacted>" } else { value })
         }).collect::<Vec<_>>().join("&");
     } else if ct.contains("json") || safe.trim_start().starts_with('{') || safe.trim_start().starts_with('[') {
-        let re = Regex::new(r#"(?i)("(?:[^"]*(?:password|passwd|token|secret|session|auth|credential|api[_-]?key|jwt)[^"]*)"[ ]*:[ ]*)("(?:\\\\.|[^"])*"|[^,}\\]]+)"#).unwrap();
+        let re = regex::Regex::new(r#"(?i)("(?:[^"]*(?:password|passwd|token|secret|session|auth|credential|api[_-]?key|jwt)[^"]*)"[ ]*:[ ]*)("(?:\\\\.|[^"])*"|[^,}\\]]+)"#).unwrap();
         safe = re.replace_all(&safe, "$1\"<redacted>\"").into_owned();
     }
     const MAX_CHUNK_BYTES: usize = 3000;
@@ -181,7 +197,6 @@ fn log_http_request_body(app: &tauri::AppHandle, target: &str, content_type: Opt
 
 // pkv プロキシの資源制御。応答は最終的に全量メモリへ載るため上限を設ける。
 const PROXY_MAX_BODY_BYTES: u64 = 64 * 1024 * 1024;
-const PROXY_MAX_HTML_BYTES: u64 = 8 * 1024 * 1024;
 const PROXY_CONNECT_TIMEOUT_SECS: u64 = 10;
 const PROXY_TIMEOUT_SECS: u64 = 180;
 const PROXY_MAX_REDIRECTS: usize = 5;
@@ -192,7 +207,8 @@ static PROXY_HTTP_CLIENT: LazyLock<reqwest::blocking::Client> = LazyLock::new(||
         .user_agent(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
         )
-        .gzip(true)
+        // 自動解凍すると Content-Encoding を落としたまま圧縮 body を返してしまうため、
+        // 圧縮はそのまま中継する (CONTENT_ENCODING を転送する)
         .connect_timeout(std::time::Duration::from_secs(PROXY_CONNECT_TIMEOUT_SECS))
         // 全量バッファ前提のため、停止した接続でワーカーを占有し続けないよう上限を置く
         .timeout(std::time::Duration::from_secs(PROXY_TIMEOUT_SECS))
@@ -250,6 +266,16 @@ async fn api_request(
     timeout_secs: Option<u64>,
 ) -> Result<String, String> {
     let path = path.trim_start_matches('/');
+    // API v1 配下のパスだけを許可する (絶対 URL・遡り・フラグメントを拒否)
+    if path.is_empty()
+        || path.len() > 512
+        || path.contains("://")
+        || path.contains("..")
+        || path.contains('#')
+        || path.chars().any(|ch| ch.is_control())
+    {
+        return Err("invalid api path".to_string());
+    }
 
     let url = format!(
         "https://pawchive.pw/api/v1/{}",
@@ -311,6 +337,10 @@ async fn api_request(
     #[cfg(feature = "debug-diag")]
     log_http_headers(&app, "Pawchive::API", "REQUEST", &headers);
 
+    // 想定外の method は GET に読み替えず拒否する
+    if !matches!(method.as_str(), "GET" | "POST" | "DELETE") {
+        return Err("unsupported method".to_string());
+    }
     let response = match method.as_str() {
         "POST" => {
             client
@@ -373,8 +403,14 @@ async fn api_request(
     }
 
     if !status.is_success() {
-        log::error!(target: "Pawchive::API", "API_ERROR destination={} body={}", reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), text);
-        append_app_log(&app, &format!("API_ERROR destination={} body={}", reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into()), text));
+        let destination = reqwest::Url::parse(&url).map(|u| safe_log_url(&u)).unwrap_or_else(|_| "<invalid-url>".into());
+        // 製品版の永続ログには応答本文を残さない (利用者の投稿内容や個人情報を含み得る)
+        #[cfg(feature = "debug-diag")]
+        let detail = format!("body={}", text);
+        #[cfg(not(feature = "debug-diag"))]
+        let detail = format!("bodyBytes={}", text.len());
+        log::error!(target: "Pawchive::API", "API_ERROR destination={} {}", destination, detail);
+        append_app_log(&app, &format!("API_ERROR destination={} {}", destination, detail));
         return Err(format!("STATUS={} BODY={}", status, text));
     }
 
@@ -417,6 +453,7 @@ pub struct LoginResult {
 }
 
 #[tauri::command]
+#[allow(unused_variables)] // 診断ビルドでのみ使う値
 async fn login_request(app: tauri::AppHandle, username: String, password: String, timeout_secs: Option<u64>) -> Result<LoginResult, String> {
     if username.is_empty() || password.is_empty() {
         return Ok(LoginResult {
@@ -583,20 +620,19 @@ async fn fetch_creator_icon(
         format!("data:image/webp;base64,{}", b64)
     };
 
-    // ディスクキャッシュヒット → そのまま返す
+    // ディスクキャッシュヒット → そのまま返す (壊れた巨大ファイルは捨てる)
     if let Ok(bytes) = std::fs::read(&cache_path) {
-        return Ok(Some(to_data_url(bytes)));
+        if bytes.len() <= MAX_ICON_BYTES {
+            return Ok(Some(to_data_url(bytes)));
+        }
+        let _ = std::fs::remove_file(&cache_path);
     }
 
     let url = format!("https://pawchive.pw/icons/{}/{}", service, id);
     #[cfg(feature = "debug-diag")]
     println!("ICON REQUEST => {}", url);
 
-    let client = reqwest::Client::builder()
-        .brotli(true)
-        .gzip(true)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = &*ICON_HTTP_CLIENT;
     let mut headers = HeaderMap::new();
     headers.insert(
         USER_AGENT,
@@ -642,7 +678,17 @@ async fn fetch_creator_icon(
         full_http_log(&app, "Pawchive::Icon", &format!("RESPONSE url={} status={}", safe_log_url(&reqwest::Url::parse(&url).unwrap()), status));
         log_http_headers(&app, "Pawchive::Icon", "RESPONSE", resp.headers());
     }
-    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    if resp.content_length().is_some_and(|len| len as usize > MAX_ICON_BYTES) {
+        return Ok(None);
+    }
+    let mut resp = resp;
+    let mut bytes: Vec<u8> = Vec::new();
+    while let Some(chunk) = resp.chunk().await.map_err(|e| e.to_string())? {
+        if bytes.len() + chunk.len() > MAX_ICON_BYTES {
+            return Ok(None);
+        }
+        bytes.extend_from_slice(&chunk);
+    }
     #[cfg(feature = "debug-diag")]
     full_http_log(&app, "Pawchive::Icon", &format!("RESPONSE_BODY <binary omitted; {} bytes>", bytes.len()));
     if bytes.is_empty() {
@@ -651,7 +697,7 @@ async fn fetch_creator_icon(
 
     // ディスクへ保存して data URL を返す
     let _ = std::fs::write(&cache_path, &bytes);
-    Ok(Some(to_data_url(bytes.to_vec())))
+    Ok(Some(to_data_url(bytes)))
 }
 
 // ---------------------------------------------------------------------------
@@ -668,22 +714,6 @@ async fn fetch_creator_icon(
 // ---------------------------------------------------------------------------
 
 /// pkv カスタムプロトコルの基底 URL。
-/// Tauri は Windows / Android だけ `http://<scheme>.localhost` で配信し、
-/// macOS / iOS / Linux は `<scheme>://localhost` になる。
-#[cfg(any(windows, target_os = "android"))]
-const PKV_BASE_URL: &str = "http://pkv.localhost/file";
-#[cfg(not(any(windows, target_os = "android")))]
-const PKV_BASE_URL: &str = "pkv://localhost/file";
-
-/// リファラーチェックが無い (実測) / ミラー済みのため直接アクセス可能なホスト。
-/// HTML 変換も行わない (fanbox / patreon は SPA のため同一オリジン化すると壊れる)。
-fn is_direct_host(hostname: &str) -> bool {
-    let h = hostname.to_ascii_lowercase();
-    ["fanbox.cc", "patreon.com", "patreonusercontent.com", "pximg.net", "pawchive.pw"]
-        .iter()
-        .any(|d| h == *d || h.ends_with(&format!(".{}", d)))
-}
-
 /// SSRF 対策: 内部アドレス・IP 直指定・ローカル名を拒否する
 fn forbidden_host(hostname: &str) -> bool {
     let h = hostname.to_ascii_lowercase();
@@ -728,6 +758,8 @@ fn is_public_ip(ip: IpAddr) -> bool {
 
 /// ホストが内部アドレスへ解決しないことを確認する。
 /// 名前解決自体に失敗した場合は reqwest の接続失敗に任せる。
+/// グローバル到達可能なホストか。名前解決に失敗した場合は拒否する (fail-closed)。
+/// 注意: 名前解決はこの時点の結果で、接続時の解決先とは別になり得る (DNS rebinding)。
 fn host_is_public(u: &reqwest::Url) -> bool {
     let host = match u.host_str() {
         Some(h) if !h.is_empty() => h,
@@ -736,7 +768,7 @@ fn host_is_public(u: &reqwest::Url) -> bool {
     let port = u.port_or_known_default().unwrap_or(443);
     match (host, port).to_socket_addrs() {
         Ok(addrs) => addrs.into_iter().all(|addr| is_public_ip(addr.ip())),
-        Err(_) => true,
+        Err(_) => false,
     }
 }
 
@@ -837,123 +869,6 @@ fn percent_decode(s: &str) -> String {
         }
     }
     String::from_utf8_lossy(&out).into_owned()
-}
-
-/// pkv プロトコルの URL を生成する
-fn pkv_url(abs: &reqwest::Url, referer: &str) -> String {
-    let mut u = reqwest::Url::parse(PKV_BASE_URL).unwrap();
-    u.query_pairs_mut()
-        .append_pair("u", abs.as_str())
-        .append_pair("r", referer);
-    u.to_string()
-}
-
-/// タグ内の属性値を書き換える (変換先が None の場合は元のまま)
-fn rewrite_attr(tag: &str, attr: &str, transform: &dyn Fn(&str) -> Option<String>) -> String {
-    let re = Regex::new(&format!(
-        r#"(?is)\b{}\s*=\s*(?:"([^"]*)"|'([^']*)')"#,
-        attr
-    ))
-    .unwrap();
-    if let Some(c) = re.captures(tag) {
-        let val = c
-            .get(2)
-            .or_else(|| c.get(3))
-            .map(|m| m.as_str())
-            .unwrap_or("");
-        if let Some(new) = transform(val) {
-            let m0 = c.get(0).unwrap();
-            let rebuilt = format!("{}=\"{}\"", attr, new.replace('"', "%22"));
-            return format!(
-                "{}{}{}",
-                &tag[..m0.start()],
-                rebuilt,
-                &tag[m0.end()..]
-            );
-        }
-    }
-    tag.to_string()
-}
-
-/// 外部ページの HTML 変換:
-/// - <base> 注入 (相対 URL を元サイト基準に)
-/// - img / form / a の URL を pkv:// 経由に書き換え (リファラーを揃える)
-fn transform_html(html: &str, target: &reqwest::Url, self_referer: &str) -> String {
-    let base_href = target
-        .join(".")
-        .map(|u| u.to_string())
-        .unwrap_or_else(|_| target.to_string());
-
-    // <head ...> 直後に <base> を注入
-    let lower = html.to_ascii_lowercase();
-    let inject_at = match lower.find("<head") {
-        Some(p) => match lower[p..].find('>') {
-            Some(o) => p + o + 1,
-            None => 0,
-        },
-        None => 0,
-    };
-    let base_tag = format!(r#"<base href="{}">"#, base_href);
-    let html = if inject_at > 0 {
-        format!("{}{}{}", &html[..inject_at], base_tag, &html[inject_at..])
-    } else {
-        format!("{}{}", base_tag, html)
-    };
-
-    // img
-    let img_re = Regex::new(r#"(?is)<img\b[^>]*>"#).unwrap();
-    let html = img_re
-        .replace_all(&html, |c: &regex::Captures| {
-            let tag = c.get(0).unwrap().as_str();
-            rewrite_attr(tag, "src", &|v: &str| {
-                if v.starts_with("data:") {
-                    return None;
-                }
-                target
-                    .join(v)
-                    .ok()
-                    .filter(|u| is_proxyable(u))
-                    .map(|u| pkv_url(&u, self_referer))
-            })
-        })
-        .into_owned();
-
-    // form (action が無い場合は自身の URL への POST)
-    let form_re = Regex::new(r#"(?is)<form\b[^>]*>"#).unwrap();
-    let html = form_re
-        .replace_all(&html, |c: &regex::Captures| {
-            let tag = c.get(0).unwrap().as_str();
-            rewrite_attr(tag, "action", &|v: &str| {
-                let abs = if v.is_empty() {
-                    Some(target.clone())
-                } else {
-                    target.join(v).ok()
-                };
-                abs.filter(|u| is_proxyable(u))
-                    .map(|u| pkv_url(&u, self_referer))
-            })
-        })
-        .into_owned();
-
-    // a
-    let a_re = Regex::new(r#"(?is)<a\b[^>]*>"#).unwrap();
-    let html = a_re
-        .replace_all(&html, |c: &regex::Captures| {
-            let tag = c.get(0).unwrap().as_str();
-            rewrite_attr(tag, "href", &|v: &str| {
-                if v.starts_with('#') || v.starts_with("mailto:") || v.starts_with("javascript:") {
-                    return None;
-                }
-                target
-                    .join(v)
-                    .ok()
-                    .filter(|u| is_proxyable(u))
-                    .map(|u| pkv_url(&u, self_referer))
-            })
-        })
-        .into_owned();
-
-    html
 }
 
 /// pkv:// ハンドラ本体 (GET / POST を中継)
@@ -1099,39 +1014,20 @@ fn pkv_proxy_fetch(
         .unwrap_or("")
         .to_string();
 
-    // 外部 (direct 以外) ホストの HTML ページ: base 注入 + リンク/リソースのプロキシ化
-    if ct.contains("text/html") && !is_direct_host(&host) {
-        let bytes = match read_body_limited(resp, PROXY_MAX_HTML_BYTES) {
-            Ok(bytes) => bytes,
-            Err(BodyReadError::TooLarge) => {
-                let message = format!("PROXY_ERROR destination={} body=too_large", safe_log_url(&target));
-                log::error!(target: "Pawchive::Proxy", "{}", message);
-                append_app_log(app, &message);
-                return bad(413, "response too large");
-            }
-            Err(BodyReadError::Read(error)) => {
-                let message = format!("PROXY_ERROR destination={} body_read_error={}", safe_log_url(&target), error);
-                log::error!(target: "Pawchive::Proxy", "{}", message);
-                append_app_log(app, &message);
-                return bad(502, "upstream body");
-            }
-        };
-        let html = String::from_utf8_lossy(&bytes).into_owned();
-        #[cfg(feature = "debug-diag")]
-        log_http_response_body(app, "Pawchive::Proxy", &html);
-        let self_referer = format!("{}://{}/", target.scheme(), host);
-        let out = transform_html(&html, &target, &self_referer);
-        return Response::builder()
-            .status(status)
-            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
-            .body(out.into_bytes())
-            .unwrap();
+    // HTML は中継しない。pkv オリジンはローカル扱いになり、中継した HTML の JS が
+    // アプリの Tauri コマンドへ到達し得るため (外部ページは実オリジンの専用ウィンドウで開く)。
+    if ct.contains("text/html") {
+        let message = format!("PROXY_BLOCKED destination={} reason=html", safe_log_url(&target));
+        log::error!(target: "Pawchive::Proxy", "{}", message);
+        append_app_log(app, &message);
+        return bad(415, "html responses are not proxied");
     }
 
     // そのまま中継 (バイナリ / direct ホストの HTML)。
     // ヘッダーは本文を読む前に控え、Content-Length は実バイト数で付け直す。
     let forwarded: Vec<(tauri::http::HeaderName, String)> = [
         header::CONTENT_TYPE,
+        header::CONTENT_ENCODING,
         header::CONTENT_RANGE,
         header::ACCEPT_RANGES,
         header::CACHE_CONTROL,
@@ -1196,9 +1092,10 @@ type ProxyJob = (
 
 /// pkv の要求を固定数のワーカーで処理する。
 /// 1 要求 1 スレッドだと画像が多い画面でスレッドが増えすぎるため。
-fn proxy_queue() -> &'static mpsc::Sender<ProxyJob> {
-    static QUEUE: LazyLock<mpsc::Sender<ProxyJob>> = LazyLock::new(|| {
-        let (sender, receiver) = mpsc::channel::<ProxyJob>();
+fn proxy_queue() -> &'static mpsc::SyncSender<ProxyJob> {
+    static QUEUE: LazyLock<mpsc::SyncSender<ProxyJob>> = LazyLock::new(|| {
+        // キュー長を固定し、溢れたら 503 を返す (無制限に積むとメモリと遅延が増える)
+        let (sender, receiver) = mpsc::sync_channel::<ProxyJob>(128);
         let receiver = Arc::new(Mutex::new(receiver));
         for index in 0..PROXY_WORKERS {
             let receiver = Arc::clone(&receiver);
@@ -1214,7 +1111,16 @@ fn proxy_queue() -> &'static mpsc::Sender<ProxyJob> {
                     };
                     match job {
                         Ok((app, method, uri, body, range, responder)) => {
-                            let response = pkv_proxy_fetch(&app, &method, &uri, body, range);
+                            // 1 件の panic でワーカーを恒久停止させない
+                            let response = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                pkv_proxy_fetch(&app, &method, &uri, body, range)
+                            })) {
+                                Ok(response) => response,
+                                Err(_) => tauri::http::Response::builder()
+                                    .status(500)
+                                    .body(b"proxy failed".to_vec())
+                                    .unwrap_or_else(|_| tauri::http::Response::new(Vec::new())),
+                            };
                             responder.respond(response);
                         }
                         Err(_) => return,
@@ -1224,112 +1130,6 @@ fn proxy_queue() -> &'static mpsc::Sender<ProxyJob> {
         sender
     });
     &QUEUE
-}
-
-#[tauri::command]
-fn export_log(
-    app: tauri::AppHandle,
-    text: String,
-) -> Result<String, String> {
-    use std::io::Write;
-
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("logs");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-
-    // 起動ごとに 1 ファイル (JHenTai の logs/YYYY-MM-DD_HH-MM-SS.log 型)。
-    // 同一セッション内の追記は JS 側のリングバッファ (formatLog) が担当する
-    let name = format!("{}_viewer.log", chrono_free_name());
-    let path = dir.join(&name);
-    let mut f = std::fs::File::create(&path).map_err(|e| e.to_string())?;
-    f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
-    Ok(path.to_string_lossy().to_string())
-}
-
-/// 汎用テキストファイル書き出し (バックアップ等)。
-/// %APPDATA%/backup/ に保存する。ファイル名は安全な文字のみ許可
-#[tauri::command]
-fn export_file(
-    app: tauri::AppHandle,
-    file_name: String,
-    text: String,
-) -> Result<String, String> {
-    use std::io::Write;
-
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("backup");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-
-    // ファイル名のサニタイズ (パス区切り・予約文字を除去)
-    let safe: String = file_name
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-
-    let safe = if safe.trim_matches(['_', '.']).is_empty() { "export.txt".to_string() } else { safe };
-    // create_new prevents silently overwriting an earlier export with the same
-    // timestamp/name (including concurrent export calls).
-    for attempt in 0..100u32 {
-        let suffix = if attempt == 0 { String::new() } else { format!("_{}", attempt) };
-        let name = format!("{}_{}{}", chrono_free_name(), suffix, safe);
-        let path = dir.join(&name);
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
-            Ok(mut f) => {
-                f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
-                return Ok(path.to_string_lossy().to_string());
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e.to_string()),
-        }
-    }
-    Err("could not allocate a unique export filename".into())
-}
-
-/// ファイル名用タイムスタンプ (追加依存を入れずに生成)
-fn chrono_free_name() -> String {
-    // エポック秒 → UTC 表記 (デバッグ用途のため秒精度で十分)
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let days = secs / 86400;
-    let (y, m, d) = civil_from_days(days as i64);
-    let rem = secs % 86400;
-    format!(
-        "{:04}-{:02}-{:02}_{:02}-{:02}-{:02}",
-        y,
-        m,
-        d,
-        rem / 3600,
-        (rem % 3600) / 60,
-        rem % 60
-    )
-}
-
-/// Howard Hinnant の civil_from_days (日数 → 年月日)
-fn civil_from_days(z: i64) -> (i64, u32, u32) {
-    let z = z + 719468;
-    let era = if z >= 0 { z } else { z - 146096 } / 146097;
-    let doe = (z - era * 146097) as u64;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = yoe as i64 + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
 // ---------------------------------------------------------------------------
@@ -1440,7 +1240,6 @@ async fn set_android_launcher_icon(app: tauri::AppHandle, light: bool) -> Result
 }
 
 /// Referer にできるのは FANBOX / Patreon のページだけ (外部ページ用)
-#[cfg(any(target_os = "android", target_os = "ios"))]
 fn is_service_page(u: &reqwest::Url) -> bool {
     if !matches!(u.scheme(), "http" | "https") {
         return false;
@@ -1454,7 +1253,7 @@ fn is_service_page(u: &reqwest::Url) -> bool {
 
 /// 外部ページを実オリジンのまま Referer 付きで開く。
 /// pkv プロキシでは reCAPTCHA 付きページを表示できないため、ネイティブビューへ委譲する。
-#[cfg(any(target_os = "android", target_os = "ios"))]
+/// デスクトップは新しいウィンドウの WebView へ Referer 付きで遷移する。
 #[tauri::command]
 async fn open_external_page(
     app: tauri::AppHandle,
@@ -1469,12 +1268,51 @@ async fn open_external_page(
     if !matches!(target.scheme(), "http" | "https") {
         return Err("unsupported scheme".to_string());
     }
+    // 内部アドレス・ローカル名への遷移を拒否する (全プラットフォーム共通)
+    if !host_is_public(&target) {
+        return Err("destination is not allowed".to_string());
+    }
     let referer_url = reqwest::Url::parse(&referer).map_err(|_| "invalid referer".to_string())?;
     if !is_service_page(&referer_url) {
         return Err("referer must be a FANBOX or Patreon page".to_string());
     }
-    tauri_plugin_external_view::open(&app, url, referer, creator_name, service, creator_id, post_id)
-        .await
+    // 保存先の文脈として使う値だけを受け付ける
+    if service != "fanbox" && service != "patreon" {
+        return Err("invalid service".to_string());
+    }
+    let valid_id = |value: &str| {
+        !value.is_empty()
+            && value.len() <= 128
+            && value.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+    };
+    if !creator_id.is_empty() && !valid_id(&creator_id) {
+        return Err("invalid creator id".to_string());
+    }
+    if !post_id.is_empty() && !valid_id(&post_id) {
+        return Err("invalid post id".to_string());
+    }
+    if creator_name.chars().count() > 200 {
+        return Err("invalid creator name".to_string());
+    }
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        tauri_plugin_external_view::open(&app, url, referer, creator_name, service, creator_id, post_id)
+            .await
+    }
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        external_page_desktop::open(
+            &app,
+            &url,
+            &referer,
+            external_page_desktop::PageContext {
+                creator_name,
+                service,
+                creator_id,
+                post_id,
+            },
+        )
+    }
 }
 
 /// 外部ページの「画像を保存」で書き出された一覧を取り出す (取り出したら消す)。
@@ -1491,6 +1329,12 @@ async fn take_external_page_images(
     if !path.exists() {
         return Ok(None);
     }
+    // 第三者アプリが置いた巨大なファイルを読み込まない
+    const MAX_PAYLOAD_BYTES: u64 = 1024 * 1024;
+    if std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0) > MAX_PAYLOAD_BYTES {
+        let _ = std::fs::remove_file(&path);
+        return Ok(None);
+    }
     let text = match std::fs::read_to_string(&path) {
         Ok(text) => text,
         Err(_) => {
@@ -1498,11 +1342,15 @@ async fn take_external_page_images(
             return Ok(None);
         }
     };
-    let _ = std::fs::remove_file(&path);
+    // 検証できるまで消さない (壊れた JSON はその場で捨てる)
     let value: serde_json::Value = match serde_json::from_str(&text) {
         Ok(value) => value,
-        Err(_) => return Ok(None),
+        Err(_) => {
+            let _ = std::fs::remove_file(&path);
+            return Ok(None);
+        }
     };
+    let _ = std::fs::remove_file(&path);
     Ok(Some(value))
 }
 
@@ -1539,17 +1387,6 @@ async fn open_in_browser(_app: tauri::AppHandle, url: String) -> Result<(), Stri
 
 /// 一括画像ダウンロードの保存先 (クリエイター名ディレクトリ) を返す。
 /// ディレクトリが無ければ作成する。
-#[tauri::command]
-fn resolve_download_directory(
-    app: tauri::AppHandle,
-    creator_name: String,
-    service: String,
-    creator_id: String,
-) -> Result<String, String> {
-    downloads::creator_directory(&app, &creator_name, &service, &creator_id)
-        .map(|path| path.to_string_lossy().to_string())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -1559,6 +1396,8 @@ pub fn run() {
     let builder = builder
         .plugin(tauri_plugin_locale_picker::init())
         .plugin(tauri_plugin_external_view::init());
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(tauri_plugin_downloads_store::init());
     #[cfg(target_os = "ios")]
     let builder = builder.setup(|app| {
         if let Err(error) = locale_storage::prepare_ios_files_directory(app.handle()) {
@@ -1587,12 +1426,12 @@ pub fn run() {
             } else {
                 None
             };
-            // UI を止めないよう固定ワーカーへ投入する
+            // UI を止めないよう固定ワーカーへ投入する。満杯なら即 503。
             let job = (app, method, uri, body, range, responder);
-            if let Err(mpsc::SendError((_, _, _, _, _, responder))) = proxy_queue().send(job) {
+            if let Err(mpsc::TrySendError::Full((_, _, _, _, _, responder))) = proxy_queue().try_send(job) {
                 let unavailable = tauri::http::Response::builder()
                     .status(503)
-                    .body(b"proxy unavailable".to_vec())
+                    .body(b"proxy busy".to_vec())
                     .unwrap();
                 responder.respond(unavailable);
             }
@@ -1602,8 +1441,6 @@ pub fn run() {
                 api_request,
                 fetch_post_thumbnail,
                 login_request,
-                export_log,
-                export_file,
                 fetch_creator_icon,
                 creator_icon_cache_info,
                 clear_creator_icon_cache,
@@ -1619,7 +1456,6 @@ pub fn run() {
                 locale_storage::resolve_storage_location,
                 json_files::pick_json_file,
                 json_files::save_user_file,
-                resolve_download_directory,
                 downloads::download_post_images,
                 downloads::cancel_download,
                 open_in_browser,
@@ -1627,7 +1463,6 @@ pub fn run() {
                 locale_storage::save_locale_file_to_app_directory,
                 #[cfg(target_os = "android")]
                 set_android_launcher_icon,
-                #[cfg(any(target_os = "android", target_os = "ios"))]
                 open_external_page,
                 take_external_page_images,
                 set_http_user_agent,
@@ -1660,18 +1495,6 @@ mod tests {
         let parsed = reqwest::Url::parse("pkv://localhost/file").unwrap();
         assert_eq!(parsed.scheme(), "pkv");
         assert_eq!(parsed.host_str(), Some("localhost"));
-    }
-
-    #[test]
-    fn pkv_url_keeps_target_and_referer() {
-        let target = reqwest::Url::parse("https://example.com/a%20b.png?x=1&y=2").unwrap();
-        let referer = "https://www.fanbox.cc/@tateha/posts/1";
-        let url = pkv_url(&target, referer);
-        assert!(url.starts_with(PKV_BASE_URL), "{url}");
-        let parsed = reqwest::Url::parse(&url).unwrap();
-        let pairs: std::collections::HashMap<_, _> = parsed.query_pairs().into_owned().collect();
-        assert_eq!(pairs.get("u").map(String::as_str), Some(target.as_str()));
-        assert_eq!(pairs.get("r").map(String::as_str), Some(referer));
     }
 
     #[test]

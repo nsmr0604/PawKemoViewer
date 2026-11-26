@@ -1,5 +1,6 @@
 import { InvalidPostContextError, isValidPostContext } from "./domain/post-identity"
 import { originalPostReferer } from "./domain/post-referer"
+import { accountIdFromSession } from "./domain/session-account"
 import type { CreatorIndexDto } from "./infrastructure/creator-index-dto"
 import type { Locale } from "./i18n"
 
@@ -55,6 +56,8 @@ export interface Settings {
   developerToolsEnabled: boolean
   /** 表示言語 (既定 ja)。変更すると SETTINGS_CHANGED_EVENT で各画面が再描画される */
   locale: Locale
+  /** 18 歳以上の確認 (端末内のみ。バックアップからは復元しない) */
+  ageVerified: boolean
 }
 
 /** 設定変更を上位コンポーネント (App) に通知するイベント名。
@@ -91,6 +94,7 @@ function defaultSettings(): Settings {
     excludeAiPosts: false,
     developerToolsEnabled: false,
     locale: "ja",
+    ageVerified: false,
   }
 }
 
@@ -103,6 +107,15 @@ let settings: Settings = loadSettings()
 /** Reload settings after runtime adapter initialization so the service boundary is used. */
 export function initializeSettingsStorage() {
   settings = loadSettings()
+  // 以前の版や診断画面から session だけが保存された場合、accountId が空のままになる。
+  // session に埋め込まれた account_id から復元し、次回起動でも不明表示にならないようにする。
+  if (!settings.accountId && settings.sessionKey) {
+    const accountId = accountIdFromSession(settings.sessionKey)
+    if (accountId) {
+      settings = { ...settings, accountId }
+      saveSettings(settings)
+    }
+  }
 }
 
 export function getSettings(): Settings {
@@ -112,8 +125,17 @@ export function getSettings(): Settings {
 export function updateSettings(patch: Partial<Settings>) {
   const sessionChanged =
     patch.sessionKey !== undefined && patch.sessionKey !== settings.sessionKey
-  settings = { ...settings, ...(sessionChanged ? { accountId: "" } : {}), ...patch }
-  if (sessionChanged) clearApiCache()
+  let next = settings
+  if (sessionChanged) {
+    // session が変わったら前のアカウント表示を引き継がない。
+    // accountId の指定が無い場合は session の account_id から導出する。
+    next = {
+      ...settings,
+      accountId: patch.accountId ?? accountIdFromSession(patch.sessionKey ?? "") ?? "",
+    }
+    clearApiCache()
+  }
+  settings = { ...next, ...patch }
   saveSettings(settings)
   // App 等の上位コンポーネントに変更を通知 (即時反映)
   if (typeof window !== "undefined") {
@@ -564,12 +586,12 @@ function isHotlinkHost(hostname: string): boolean {
 }
 
 /** pawchive 本体・API・画像サーバーは常に直接通信する */
-function isPawchiveHost(hostname: string): boolean {
+export function isPawchiveHost(hostname: string): boolean {
   return hostname === "pawchive.pw" || hostname.endsWith(".pawchive.pw")
 }
 
 /** WebView 自身・ローカルの URL は中継しない */
-function isLocalHost(hostname: string): boolean {
+export function isLocalHost(hostname: string): boolean {
   return hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "127.0.0.1"
 }
 
@@ -622,24 +644,6 @@ export function proxyFileUrl(url: string, service?: string, postId?: string, ref
   if (isPawchiveHost(h.hostname) || isLocalHost(h.hostname)) return url
   if (!getSettings().proxyImages) return url
   if (!refererUrl && !isHotlinkHost(h.hostname)) return url
-  return pkvProxyUrl(h.toString(), proxyReferer(service, postId, refererUrl, h.hostname))
-}
-
-/** 投稿本文から張られた外部リンクを paw 経由に変換する。
- *  リンク先がリファラー (元サイト = fanbox / patreon) を検証してブロックする
- *  ケースに対応。fanbox / patreon / pawchive 自体へのリンクはそのまま開く。 */
-export function proxyLinkUrl(url: string, service?: string, postId?: string, refererUrl?: string): string {
-  if (!url) return url
-  let h: URL
-  try {
-    h = new URL(url)
-  } catch {
-    return url
-  }
-  if (h.protocol !== "https:" && h.protocol !== "http:") return url
-  if (h.origin === location.origin) return url
-  // fanbox / patreon 自体は SPA のためそのまま (リファラーチェックが無い・実測)
-  if (isPawchiveHost(h.hostname) || isLocalHost(h.hostname) || isHotlinkHost(h.hostname)) return url
   return pkvProxyUrl(h.toString(), proxyReferer(service, postId, refererUrl, h.hostname))
 }
 

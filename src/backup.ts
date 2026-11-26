@@ -121,6 +121,8 @@ export async function applyBackup(text: string): Promise<{
   const patch: Partial<Settings> = {}
   const validators: Partial<Record<keyof Settings, (value: unknown) => boolean>> = {
     sessionKey: (v) => typeof v === "string" && v.length <= 8192,
+    accountId: (v) => typeof v === "string" && v.length <= 256,
+    userAgentMode: (v) => v === "device" || v === "app" || v === "desktop",
     theme: (v) => v === "dark" || v === "light",
     layoutMode: (v) => v === "auto" || v === "desktop" || v === "mobile",
     noImageMode: (v) => typeof v === "boolean",

@@ -123,9 +123,16 @@ test("native iPad with a desktop user agent enables the mobile external page", a
   assert.equal(initializePlatformRuntime().descriptor.family, "mobile")
   assert.equal(canOpenExternalPage(), true)
 
+  // macOS デスクトップも専用ウィンドウで実オリジンを開ける
   resetPlatformRuntimeForTests()
   globalThis.navigator = { userAgent, maxTouchPoints: 0 }
   assert.equal(initializePlatformRuntime().descriptor.os, "macos")
+  assert.equal(canOpenExternalPage(), true)
+
+  // Tauri 以外 (ブラウザー) ではネイティブ外部ページを開かない
+  resetPlatformRuntimeForTests()
+  globalThis.window = {}
+  initializePlatformRuntime()
   assert.equal(canOpenExternalPage(), false)
 })
 

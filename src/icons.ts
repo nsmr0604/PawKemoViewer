@@ -57,6 +57,18 @@ function idbPut(db: IDBDatabase, key: string, rec: IconRecord): Promise<void> {
   })
 }
 
+/** 上限を超えているときだけ古い順に削除する (保存のたびに全件を読まない) */
+async function pruneIfNeeded(db: IDBDatabase): Promise<void> {
+  const count = await new Promise<number>((resolve) => {
+    const tx = db.transaction(STORE, "readonly")
+    const request = tx.objectStore(STORE).count()
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => resolve(MAX_ENTRIES + 1)
+    tx.onabort = () => resolve(MAX_ENTRIES + 1)
+  })
+  if (count > MAX_ENTRIES) await prune(db)
+}
+
 /** 上限超過時に古い順に削除 (軽量: 全件走査は put 時のみ) */
 async function prune(db: IDBDatabase): Promise<void> {
   await new Promise<void>((resolve) => {
@@ -129,7 +141,7 @@ export function getCreatorIcon(service: string, id: string): Promise<string | nu
       try {
         const d = await db()
         await idbPut(d, key, { d: dataUrl, t: Date.now() })
-        await prune(d)
+        await pruneIfNeeded(d)
       } catch {
         /* 保存失敗は無視 */
       }

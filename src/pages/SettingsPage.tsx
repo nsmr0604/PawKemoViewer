@@ -1,7 +1,7 @@
 import { getApplication } from "../application/composition"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
-import { getSettings, updateSettings, api, apiStatus } from "../api"
+import { getSettings, updateSettings, api, apiStatus, SETTINGS_CHANGED_EVENT } from "../api"
 import { getThumbnailCacheLimit, THUMBNAIL_CACHE_LIMITS, trimThumbnailCache } from "../post-thumbnail-cache"
 import { clearCreatorCache, creatorCacheInfo, CreatorCacheInfo } from "../db"
 import {
@@ -15,8 +15,11 @@ import { navigate, goBack } from "../router"
 import { activateAccount } from "../account-action"
 import type { ResolvedLayout } from "../platform/environment"
 import { Toggle } from "../components/Toggle"
+import { BrowserLink } from "../components/BrowserLink"
+import { contactUrl, privacyUrl, rightsContactUrl, termsUrl } from "../legal"
 import { getPlatformName, type LayoutMode } from "../platform/environment"
 import { applyBackup, buildBackup, MAX_BACKUP_BYTES } from "../backup"
+import { stripSessionFromBackup } from "../domain/backup-secrets"
 import { clearIconCache, creatorIconInfo } from "../icons"
 import {
   t,
@@ -115,10 +118,10 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
     }
     verifySession(true)
     const onSettingsChanged = () => verifySession()
-    window.addEventListener("pawkemo-settings-changed", onSettingsChanged)
+    window.addEventListener(SETTINGS_CHANGED_EVENT, onSettingsChanged)
     return () => {
       active = false
-      window.removeEventListener("pawkemo-settings-changed", onSettingsChanged)
+      window.removeEventListener(SETTINGS_CHANGED_EVENT, onSettingsChanged)
     }
   }, [])
 
@@ -243,7 +246,8 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
 
       let clip = ""
       try {
-        if (await services.clipboard?.writeText(json)) clip = t("settings.clipCopied")
+        // sessionKey は資格情報なのでクリップボードへは渡さない
+        if (await services.clipboard?.writeText(stripSessionFromBackup(json))) clip = t("settings.clipCopied")
       } catch {
         /* ファイル保存の結果を優先する */
       }
@@ -851,6 +855,41 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
         <p className="small">
           {t("settings.aboutNote")}
         </p>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("legal.section")}</span>
+            <small>{t("legal.unofficial")}</small>
+          </div>
+          <div className="settings-actions">
+            <BrowserLink className="btn" href={termsUrl()}>
+              {t("legal.terms")}
+            </BrowserLink>
+            <BrowserLink className="btn" href={privacyUrl()}>
+              {t("legal.privacy")}
+            </BrowserLink>
+            <BrowserLink className="btn" href={contactUrl()}>
+              {t("legal.contact")}
+            </BrowserLink>
+            <BrowserLink className="btn" href={rightsContactUrl()}>
+              {t("legal.report")}
+            </BrowserLink>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("legal.age")}</span>
+            <small>{t("legal.ageVerified")}</small>
+          </div>
+          <button
+            className="btn"
+            type="button"
+            onClick={() => updateSettings({ ageVerified: false })}
+          >
+            {t("legal.resetAge")}
+          </button>
+        </div>
       </div>
       {showDiagnostics && (
         <div id="settings-diagnostics" className="settings-section" tabIndex={-1} hidden={activeSection !== "diagnostics"}>

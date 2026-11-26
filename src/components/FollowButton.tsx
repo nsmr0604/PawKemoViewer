@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react"
-import { isFollowed, addFollow, removeFollow, loadFollows } from "../follows"
+import { isFollowed, addFollow, removeFollow, loadFollows, updateFollowName } from "../follows"
 import { getCreatorRow } from "../db"
 import { t } from "../i18n"
-import { getPlatformRuntime } from "../platform/runtime"
 
 export function FollowButton({ service, id }: { service: string; id: string }) {
   const [followed, setFollowed] = useState(() => isFollowed(service, id))
@@ -19,14 +18,9 @@ export function FollowButton({ service, id }: { service: string; id: string }) {
   useEffect(() => {
     let alive = true
     getCreatorRow(`${service}:${id}`).then((row) => {
-      if (!alive || !row) return
-      const list = loadFollows()
-      const f = list.find((x) => x.service === service && x.id === id)
-      if (f && f.name !== row.name && row.name) {
-        f.name = row.name
-        const storage = getPlatformRuntime().services.storage
-        storage?.set("pawkemo-follows", JSON.stringify(list))
-      }
+      if (!alive || !row?.name) return
+      // 保存経路を一本化し、メモリ上の一覧と localStorage をずらさない
+      updateFollowName(service, id, row.name)
     })
     return () => { alive = false }
   }, [service, id])
