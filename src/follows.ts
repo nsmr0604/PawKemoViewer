@@ -23,7 +23,16 @@ function notifyChanged() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(CHANGED_EVENT))
 }
 
+let cached: FollowEntry[] | null = null
+
 export function loadFollows(): FollowEntry[] {
+  // 一覧カードが 1 枚ごとに呼ぶため、JSON のパースは変更時だけにする
+  if (cached) return cached
+  cached = readFollows()
+  return cached
+}
+
+function readFollows(): FollowEntry[] {
   try {
     const raw = storage().get(KEY)
     if (!raw) return []
@@ -47,6 +56,7 @@ export function loadFollows(): FollowEntry[] {
 
 function save(list: FollowEntry[]) {
   storage().set(KEY, JSON.stringify(list))
+  cached = list.slice()
   notifyChanged()
 }
 
@@ -57,8 +67,7 @@ export function isFollowed(service: string, id: string): boolean {
 export function follow(f: FollowEntry) {
   const list = loadFollows()
   if (!list.some((x) => x.service === f.service && x.id === f.id)) {
-    list.unshift(f)
-    save(list)
+    save([f, ...list])
   }
 }
 
@@ -110,6 +119,15 @@ export function syncFollowsWithAccount(): Promise<number> {
   })()
 
   return syncInFlight.finally(() => { syncInFlight = null })
+}
+
+/** フォロー一覧に保存済みの表示名を更新する (一覧に無ければ何もしない) */
+export function updateFollowName(service: string, id: string, name: string): void {
+  if (!name) return
+  const list = loadFollows()
+  const entry = list.find((f) => f.service === service && f.id === id)
+  if (!entry || entry.name === name) return
+  save(list.map((f) => (f === entry ? { ...f, name } : f)))
 }
 
 /** ログイン中はサーバー更新成功後にローカルへ反映し、片側だけの更新を防ぐ。 */
