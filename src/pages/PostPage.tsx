@@ -17,7 +17,7 @@ import { FollowButton } from "../components/FollowButton"
 import { logError, logInfo, logWarn } from "../log"
 import { t as tr } from "../i18n"
 import { getPlatformRuntime } from "../platform/runtime"
-import { canOpenExternalPage, openExternalPage, takeExternalPageImages } from "../external-page"
+import { canOpenExternalPage, isAllowedExternalPageUrl, openExternalPage, takeExternalPageImages } from "../external-page"
 import { failDownload, finishDownload, reportDownloadProgress, startDownload } from "../download-status"
 import { listen } from "@tauri-apps/api/event"
 import { cancelImageDownload, collectArticleImages, collectAttachmentImages, collectExternalPages, downloadArticleImages, isImageFileName, type DownloadImage } from "../post-download"
@@ -135,8 +135,10 @@ export function PostPage({
       return
     }
     const url = anchor.getAttribute("data-external-url")
-    if (!url) {
-      if (DEBUG_DIAG) traceExternalPage("post_link_no_original_url")
+    if (!url || !isAllowedExternalPageUrl(url)) {
+      if (DEBUG_DIAG) traceExternalPage(url ? "post_link_rejected_url" : "post_link_no_original_url")
+      // 内部アドレスなどは既定の遷移にも渡さない
+      event.preventDefault()
       return
     }
     if (DEBUG_DIAG) traceExternalPage("post_link_native")

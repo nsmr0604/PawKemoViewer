@@ -6,8 +6,9 @@ import type { FileSaveResult } from "./platform/contracts"
 
 type Event =
   | "post_link_internal" | "post_link_no_referer" | "post_link_no_original_url"
-  | "post_link_unsupported_runtime" | "post_link_native" | "post_link_fallback"
+  | "post_link_rejected_url" | "post_link_unsupported_runtime" | "post_link_native" | "post_link_fallback"
   | "invoke_started" | "invoke_resolved" | "invoke_pending" | "invoke_rejected"
+  | "external_page_url_rejected"
   | "invalid_url" | "unsupported_scheme" | "invalid_referer" | "unsupported_referer"
   | "probe_started"
 
