@@ -25,7 +25,7 @@ OS 別のファイル操作は[プラットフォームとストレージ](../ar
 | Windows | `%APPDATA%\com.nsmr0604.pawkemoviewer`(実測) | `%USERPROFILE%\Documents` | `%USERPROFILE%\Downloads` |
 | macOS | Tauri の解決値(未実測) | `~/Documents` | `~/Downloads` |
 | Linux | Tauri の解決値(未実測) | XDG の Documents | XDG の Downloads |
-| Android | アプリ専用領域(未実測) | `Android/data/com.nsmr0604.pawkemoviewer/files/Documents` | — |
+| Android | アプリ専用領域(未実測) | `Android/data/com.nsmr0604.pawkemoviewer/files/Documents` | 共有 `Download/`(MediaStore 経由、Android 10 以降) |
 | iOS / iPadOS | アプリ専用領域(未実測) | アプリの `Documents`(Files で表示) | — |
 
 Windows の実測値では `icons` / `locales` / `logs` の 3 フォルダーが存在します。
@@ -69,9 +69,19 @@ OneDrive 等でリダイレクトされ得ます(解決は OS 依存)。
 └─ <creator>/001_<name>.jpg
 ```
 
+```text
+/storage/emulated/0/Download/PawKemoViewer/   # Android 10 以降の一括保存
+└─ <creator>/001_<name>.jpg
+```
+
+- Android 10 以降の一括保存は、Rust がアプリのキャッシュ(`cache/downloads/<creator>/`)へ
+  書いてから `downloads-store` プラグインで MediaStore に登録し、共有 `Download/` へ移します。
+  キャッシュ上のファイルは移行後に削除されます。
+- Android 9 以下は `Documents/Downloads/<creator>/` へ直接保存します。
 - デスクトップの追加言語は `Documents/Pawchive/languages/<code>.json` です。
-- 一括保存は `Downloads/PawKemoView` → `Documents/Pawchive/Downloads` →
-  `app_data/Downloads` の順にフォールバックします。
+- デスクトップの一括保存は `Downloads/PawKemoView` → `Documents/Pawchive/Downloads` →
+  `app_data/Downloads` の順にフォールバックします。Android で共有 `Download/` を使えない
+  場合も同じフォールバックになります。
 
 ## ストレージ解決 API
 

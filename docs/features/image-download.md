@@ -57,10 +57,13 @@ JavaScript で画像を描画するページは、HTTP で取得した HTML だ�
 | 環境 | 保存先 |
 |---|---|
 | Windows / macOS / Linux | `Downloads/PawKemoView/<クリエイター名>/` |
-| Android | `Android/data/<アプリ ID>/files/Documents/Downloads/<クリエイター名>/` |
+| Android 10 以降 | 端末の共有 `Download/PawKemoViewer/<クリエイター名>/`（MediaStore 経由） |
+| Android 9 以下 | `Android/data/<アプリ ID>/files/Documents/Downloads/<クリエイター名>/` |
 | iOS / iPadOS | Files の `PawKemoViewer/Documents/Downloads/<クリエイター名>/` |
 
 デスクトップで `Downloads/PawKemoView` を作成できない場合は、`Documents/Pawchive/Downloads/<クリエイター名>/`、それも使えない場合はアプリデータの `Downloads/<クリエイター名>/` へフォールバックします。
+
+Android 10 以降はスコープドストレージのため、Rust がいったんアプリのキャッシュへ書き、`downloads-store` プラグインが MediaStore に登録して共有 `Download/` へ移します。結果表示の保存先は `Download/PawKemoViewer/<クリエイター名>` です。
 
 - クリエイター名は禁止文字を `_` に置換し、前後の空白とドットを除去、最大 80 文字。
 - 空になる場合は `service_creatorId`。
@@ -137,6 +140,7 @@ Tauri イベント:
 ## 既知の制約
 
 - pawchive にサムネイルだけしかない投稿は、原画 URL が 404 になり保存に失敗します。サムネイルを本体として保存しません。
+- Android 9 以下は共有 `Download/` へ書き込めないため、アプリ専用の `Documents/Downloads` へ保存します。
 - 保存先の解決に失敗すると、ネイティブの同時実行 lock が解除されず、次の保存をブロックし得る既存不具合があります。
 - 投稿画面を離れると途中進捗イベントの購読が外れ、右下ボタンの数値が完了まで止まる場合があります。最終結果は共有ストアへ反映されます。
 - 外部ページの受け渡し JSON は検証前に削除されるため、壊れたデータを再取得できません。
