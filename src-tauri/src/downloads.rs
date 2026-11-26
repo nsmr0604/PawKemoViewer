@@ -685,9 +685,11 @@ pub(crate) async fn download_post_images(
     }
     DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
 
-    let target = creator_target(&app, &creator_name, &service, &creator_id)?;
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
+        // 保存先の決定は Android でプラグイン呼び出し (block_on) を伴うため、
+        // async ランタイムのスレッドではなくブロッキングスレッドで行う。
+        let target = creator_target(&app_for_worker, &creator_name, &service, &creator_id)?;
         run_download(
             &app_for_worker,
             &target,
