@@ -33,12 +33,33 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder}
 
 static NEXT_LABEL: AtomicU64 = AtomicU64::new(1);
 
-/// 画像保存の受け渡しファイル (モバイルの外部ビューと同じ)
+/// 外部ページの受け渡しファイル (モバイルの外部ビューと同じ)
 const QUEUE_FILE: &str = ".external-download.json";
 
-/// ページ側ツールバーの操作を受け取る `document.title` の接頭辞
-const SAVE_PREFIX: &str = "pawkemo-save#";
-const CLOSE_TITLE: &str = "pawkemo-close#";
+/// ページ側ツールバーからの操作。
+#[derive(Debug, PartialEq)]
+enum PageControl {
+    Save(String),
+    Close,
+}
+
+/// `document.title` から操作を取り出す。トークンが一致しないものは無視する。
+fn parse_control(title: &str, token: &str) -> Option<PageControl> {
+    if token.is_empty() {
+        return None;
+    }
+    if title == format!("pawkemo-close#{token}") {
+        return Some(PageControl::Close);
+    }
+    let prefix = format!("pawkemo-save#{token}#");
+    title
+        .strip_prefix(&prefix)
+        .map(|payload| PageControl::Save(payload.to_string()))
+}
+
+/// Linux の初回取得で受け入れる HTML の上限
+#[cfg(not(any(windows, target_os = "macos")))]
+const MAX_PAGE_BYTES: u64 = 16 * 1024 * 1024;
 
 /// 外部ページから画像を保存するときに引き回す投稿の文脈
 #[derive(Clone)]
@@ -80,6 +101,7 @@ pub fn open(
         Some(host) => format!("外部ページ — {host}"),
         None => "外部ページ".to_string(),
     };
+    let token = new_token();
     let state = Arc::new(Mutex::new(PageState {
         url: url.to_string(),
         referer: referer.to_string(),
@@ -92,6 +114,8 @@ pub fn open(
 
     let page_state = state.clone();
     let page_label = label.clone();
+    let script = include_str!("../assets/external-page-overlay.js")
+        .replace("__PAWKEMO_TOKEN__", &token);
 
     WebviewWindowBuilder::new(
         app,
@@ -111,14 +135,17 @@ pub fn open(
         )
     })
     .on_document_title_changed(move |window, title| {
-        if title.starts_with(SAVE_PREFIX) {
-            save_selection(&window, &page_label, title.trim_start_matches(SAVE_PREFIX));
-            return;
-        }
-        if title.starts_with(CLOSE_TITLE) {
-            forget(&page_label);
-            let _ = window.close();
-            return;
+        match parse_control(&title, &token) {
+            Some(PageControl::Save(payload)) => {
+                save_selection(&window, &page_label, &payload);
+                return;
+            }
+            Some(PageControl::Close) => {
+                forget(&page_label);
+                let _ = window.close();
+                return;
+            }
+            None => {}
         }
         if !title.trim().is_empty() {
             let _ = window.set_title(&title);
@@ -141,7 +168,7 @@ pub fn open(
         };
         start_navigation(&window, request.0, request.1);
     })
-    .initialization_script(include_str!("../assets/external-page-overlay.js"))
+    .initialization_script(script)
     .build()
     .map_err(|error| error.to_string())?;
 
@@ -296,25 +323,66 @@ fn start_navigation(window: &WebviewWindow, url: String, referer: String) {
 }
 
 /// Linux 用: Referer 付きで最初の HTML を取得する。
+/// 初回 URL と各リダイレクト先を公開ホストに限定し、本文サイズにも上限を設ける。
 #[cfg(not(any(windows, target_os = "macos")))]
 fn fetch_page(url: &str, referer: &str) -> Result<(String, String), String> {
+    use std::io::Read;
+
+    let target = reqwest::Url::parse(url).map_err(|_| "invalid url".to_string())?;
+    if !matches!(target.scheme(), "http" | "https") || !crate::host_is_public(&target) {
+        return Err("destination is not allowed".to_string());
+    }
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
-        .redirect(reqwest::redirect::Policy::limited(5))
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if attempt.previous().len() >= 5 {
+                return attempt.stop();
+            }
+            if crate::host_is_public(attempt.url()) {
+                attempt.follow()
+            } else {
+                attempt.error("blocked redirect")
+            }
+        }))
         .build()
         .map_err(|error| error.to_string())?;
-    let response = client
-        .get(url)
+    let mut response = client
+        .get(target)
         .header(reqwest::header::REFERER, referer)
         .header(reqwest::header::USER_AGENT, crate::current_user_agent())
         .send()
         .map_err(|error| error.to_string())?;
+    if !crate::host_is_public(response.url()) {
+        return Err("destination is not allowed".to_string());
+    }
     if !response.status().is_success() {
         return Err(format!("status {}", response.status()));
     }
     let final_url = response.url().to_string();
-    let html = response.text().map_err(|error| error.to_string())?;
+    let mut bytes = Vec::new();
+    response
+        .by_ref()
+        .take(MAX_PAGE_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| error.to_string())?;
+    if bytes.len() as u64 > MAX_PAGE_BYTES {
+        return Err("response too large".to_string());
+    }
+    let html = String::from_utf8_lossy(&bytes).into_owned();
     Ok((html, final_url))
+}
+
+/// `document.title` 経由の操作を受け付けるトークン (128 bit)。
+fn new_token() -> String {
+    let mut bytes = [0u8; 16];
+    if getrandom::fill(&mut bytes).is_err() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        bytes.copy_from_slice(&now.to_le_bytes());
+    }
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 /// WebView2 で、Referer 付きのナビゲーションを発行する。
@@ -396,4 +464,24 @@ fn navigate(
         view.loadRequest(&request);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn control_titles_require_the_window_token() {
+        assert_eq!(
+            parse_control("pawkemo-save#abc#[]", "abc"),
+            Some(PageControl::Save("[]".to_string()))
+        );
+        assert_eq!(parse_control("pawkemo-close#abc", "abc"), Some(PageControl::Close));
+        // トークンが違う・空・別のタイトルは操作として扱わない
+        assert_eq!(parse_control("pawkemo-save#abc#[]", "zzz"), None);
+        assert_eq!(parse_control("pawkemo-save#[](no token)", "abc"), None);
+        assert_eq!(parse_control("pawkemo-close#zzz", "abc"), None);
+        assert_eq!(parse_control("pawkemo-save##[]", ""), None);
+        assert_eq!(parse_control("Example Domain", "abc"), None);
+    }
 }
