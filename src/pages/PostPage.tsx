@@ -1,7 +1,7 @@
 import { getApplication } from "../application/composition"
 import { isValidPostContext } from "../domain/post-identity"
 import { normalizeFanboxSlug, originalPostReferer } from "../domain/post-referer"
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react"
 import { api, apiStatus, getSettings, updateSettings, clearApiCache, normalizeTags, fileUrl, directFileUrl, postUrl, thumbUrl, isVideoFile } from "../api"
 import { setFavoritePost } from "../post-favorites"
 import { CreatorAvatar } from "../components/CreatorAvatar"
@@ -477,14 +477,6 @@ export function PostPage({
       ? (revisions.find((r) => r.revision_id === selectedRevisionId) || null)
       : null
   const displayPost: PawPost = activeRevision || post
-  // 長い本文でも進捗イベントの再レンダリングごとに DOMParser を回さない
-  const displayContentHtml = useMemo(
-    () =>
-      displayPost
-        ? sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer)
-        : "",
-    [displayPost, postContext.service, postContext.postId, proxyReferer],
-  )
 
   /** 添付 (file / attachments) のうち画像だけを保存候補にする */
   const attachmentImages = (() => {
@@ -738,7 +730,7 @@ export function PostPage({
 
       {displayPost.content && (
         <>
-          <div className="post-content" onClick={openExternalLink} dangerouslySetInnerHTML={{ __html: displayContentHtml }} />
+          <div className="post-content" onClick={openExternalLink} dangerouslySetInnerHTML={{ __html: sanitizePostContent(displayPost.content, postContext.service, postContext.postId, proxyReferer) }} />
           {linkState && (
             <div className="hint-row" role="status">
               {tr(linkState.kind === "loading" ? "common.loading" : "post.mirrorLinkMissing")}
