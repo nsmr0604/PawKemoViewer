@@ -21,6 +21,15 @@
       "category": "entertainment",
       "versions": [
         {
+          "version": "0.6.0",
+          "buildVersion": "0.6.0",
+          "date": "2026-11-26",
+          "localizedDescription": "Release pawkemoviewer-v0.6.0",
+          "downloadURL": "https://github.com/nsmr0604/PawKemoViewer/releases/download/pawkemoviewer-v0.6.0/PawKemoViewer.ipa",
+          "size": 11116259,
+          "minOSVersion": "15.0"
+        },
+        {
           "version": "0.5.8",
           "buildVersion": "0.5.8",
           "date": "2026-11-26",
@@ -30,16 +39,24 @@
           "minOSVersion": "15.0"
         }
       ],
-      "version": "0.5.8",
+      "version": "0.6.0",
       "versionDate": "2026-11-26",
-      "versionDescription": "Initial AltStore / LiveContainer release.",
-      "downloadURL": "https://github.com/nsmr0604/PawKemoViewer/releases/download/pawkemoviewer-v0.5.8/PawKemoViewer.ipa",
-      "size": 11127852,
+      "versionDescription": "Release pawkemoviewer-v0.6.0",
+      "downloadURL": "https://github.com/nsmr0604/PawKemoViewer/releases/download/pawkemoviewer-v0.6.0/PawKemoViewer.ipa",
+      "size": 11116259,
       "minOSVersion": "15.0",
       "appPermissions": {}
     }
   ],
   "news": [
+    {
+      "title": "0.6.0",
+      "identifier": "release-0.6.0-0.6.0",
+      "caption": "Release pawkemoviewer-v0.6.0",
+      "date": "2026-11-26",
+      "tintColor": "#1E88E5",
+      "appID": "com.nsmr0604.pawkemoviewer"
+    },
     {
       "title": "0.5.8",
       "identifier": "release-0.5.8-0.5.8",
