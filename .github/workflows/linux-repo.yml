@@ -92,10 +92,15 @@ jobs:
           git worktree add -B gh-pages site origin/gh-pages
           cd site
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          rm -rf apt rpm
-          cp -r ../linux-repo/apt apt
-          cp -r ../linux-repo/rpm rpm
-          git add apt rpm
+          rm -rf repo/dists repo/pool repo/repodata repo/Packages
+          mkdir -p repo
+          cp -r ../linux-repo/apt/dists repo/
+          cp -r ../linux-repo/apt/pool repo/
+          cp ../linux-repo/apt/public.key repo/public.key
+          cp -r ../linux-repo/rpm/repodata repo/
+          cp -r ../linux-repo/rpm/Packages repo/
+          cp ../linux-repo/rpm/RPM-GPG-KEY-pawkemoviewer repo/RPM-GPG-KEY-pawkemoviewer
+          git add repo
           if git diff --cached --quiet; then
             echo "No repository changes"
             exit 0

@@ -5,12 +5,11 @@ GitHub Pages で公開する手順です。
 
 ## 公開 URL
 
-- apt: `https://nsmr0604.github.io/PawKemoViewer/apt`
-- rpm: `https://nsmr0604.github.io/PawKemoViewer/rpm`
+- apt: `https://nsmr0604.github.io/PawKemoViewer/repo`
+- rpm: `https://nsmr0604.github.io/PawKemoViewer/repo`
 
 GitHub Pages は `https://www.nsmr0604.geek.jp/PawKemoViewer/` へリダイレクトされます。
-リダイレクトを扱えないクライアントでは、`https://www.nsmr0604.geek.jp/PawKemoViewer/apt` と
-`https://www.nsmr0604.geek.jp/PawKemoViewer/rpm` を使用してください。
+リダイレクトを扱えないクライアントでは、`https://www.nsmr0604.geek.jp/PawKemoViewer/repo` を使用してください。
 
 パッケージ名はどちらも `paw-kemo-viewer` です。
 
@@ -33,13 +32,13 @@ GitHub の **Settings → Secrets and variables → Actions** に登録します
 
 公開鍵はリポジトリ生成時に以下へ出力されます。
 
-- `apt/public.key`
-- `rpm/RPM-GPG-KEY-pawkemoviewer`
+- `repo/public.key`
+- `repo/RPM-GPG-KEY-pawkemoviewer`
 
 ## 自動生成
 
 `.github/workflows/linux-repo.yml` が、リリース公開時に `.deb` / `.rpm` を取得し、
-リポジトリを生成して `gh-pages` の `apt/` と `rpm/` へ push します。
+リポジトリを生成して `gh-pages` の `repo/` へ push します。
 
 - トリガー: Release published / 手動実行
 - リリースには `PawKemoViewer.deb` と `PawKemoViewer.rpm` が必要
@@ -59,15 +58,15 @@ LINUX_REPO_GPG_KEY_ID=<KEY_ID> \
   scripts/linux-repo/build-repos.sh dist-deb dist-rpm linux-repo
 ```
 
-`linux-repo/apt` と `linux-repo/rpm` を公開先の `apt/` と `rpm/` にコピーします。
+`linux-repo/apt` の `dists/`・`pool/`・`public.key` と、`linux-repo/rpm` の `repodata/`・`Packages/`・GPG キーを、公開先の `repo/` にコピーします。F-Droid の `index-v1.jar` や AltStore の `apps.json` と同じ `repo/` に共存できます。
 
 ## apt でのインストール
 
 ```bash
-curl -fsSL https://nsmr0604.github.io/PawKemoViewer/apt/public.key \
+curl -fsSL https://nsmr0604.github.io/PawKemoViewer/repo/public.key \
   | sudo gpg --dearmor -o /usr/share/keyrings/pawkemoviewer.gpg
 
-echo "deb [signed-by=/usr/share/keyrings/pawkemoviewer.gpg] https://nsmr0604.github.io/PawKemoViewer/apt stable main" \
+echo "deb [signed-by=/usr/share/keyrings/pawkemoviewer.gpg] https://nsmr0604.github.io/PawKemoViewer/repo stable main" \
   | sudo tee /etc/apt/sources.list.d/pawkemoviewer.list
 
 sudo apt update
@@ -77,16 +76,16 @@ sudo apt install paw-kemo-viewer
 ## rpm でのインストール
 
 ```bash
-sudo rpm --import https://nsmr0604.github.io/PawKemoViewer/rpm/RPM-GPG-KEY-pawkemoviewer
+sudo rpm --import https://nsmr0604.github.io/PawKemoViewer/repo/RPM-GPG-KEY-pawkemoviewer
 
 sudo tee /etc/yum.repos.d/pawkemoviewer.repo >/dev/null <<'EOF'
 [pawkemoviewer]
 name=PawKemoViewer
-baseurl=https://nsmr0604.github.io/PawKemoViewer/rpm
+baseurl=https://nsmr0604.github.io/PawKemoViewer/repo
 enabled=1
 gpgcheck=0
 repo_gpgcheck=1
-gpgkey=https://nsmr0604.github.io/PawKemoViewer/rpm/RPM-GPG-KEY-pawkemoviewer
+gpgkey=https://nsmr0604.github.io/PawKemoViewer/repo/RPM-GPG-KEY-pawkemoviewer
 EOF
 
 sudo dnf install paw-kemo-viewer

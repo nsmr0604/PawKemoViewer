@@ -86,9 +86,9 @@ jobs:
           git worktree add -B gh-pages site origin/gh-pages
           cd site
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          mkdir -p altstore
-          cp ../altstore/apps.json altstore/apps.json
-          git add altstore/apps.json
+          mkdir -p repo
+          cp ../altstore/apps.json repo/apps.json
+          git add repo/apps.json
           if git diff --cached --quiet; then
             echo "No source changes"
             exit 0
