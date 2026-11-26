@@ -6,6 +6,11 @@
 
 <p align="center">pawchive の公開 API を使う、非公式のデスクトップ / モバイルビューア</p>
 
+> **非公式クライアント**: 本アプリは pawchive.pw の API を利用する非公式のビューアです。
+> pixiv / FANBOX / Patreon / pawchive の各サービスおよび運営者とは関係ありません。
+> 18 歳以上の方のみご利用ください(成人向けの内容が含まれる場合があります)。
+> [利用規約](docs/legal/terms.ja.md) / [プライバシーポリシー](docs/legal/privacy.ja.md)
+
 [![最新リリース](https://img.shields.io/badge/Release-Latest-087f73?style=flat-square)](../../releases/latest)
 [![ビルド状況](https://img.shields.io/badge/GitHub_Actions-Builds-2563eb?style=flat-square&logo=githubactions&logoColor=white)](../../actions)
 [![利用ガイド](https://img.shields.io/badge/Guide-Wiki-5b4bb7?style=flat-square&logo=github&logoColor=white)](../../wiki)
