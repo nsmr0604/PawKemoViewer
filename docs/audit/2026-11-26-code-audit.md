@@ -222,3 +222,57 @@ Android 10 以降は `Download/PawKemoViewer/<creator>` だが、README と `wik
 - Android の targetSdk(predictive back)、`gen/android` の生成物
 - CI の npm 版と `allowScripts` の解釈、`compileSdk 36` の自動取得
 - Actions 既定権限・ブランチ保護・Secrets の実値(リポジトリからは確認できない)
+
+## 9. 追加対応の記録 (P1 / P2 / P3)
+
+### フロントエンド
+
+- フォローのメモリキャッシュと、一覧カードの購読を `src/post-marks.ts` に集約。
+  カードごとの `window` リスナー登録と localStorage の再パースを廃止。
+- `FavoritesPage` の自動新着チェックを直列化し、同期後の再実行は追加分だけに限定。
+- サムネイルの「近いサイズ」検索を IndexedDB の `path` 索引に変更 (全キー走査を廃止)。
+- CreatorsPage の検索を 150ms デバウンス + `useMemo` 化し、検索失敗を `ErrorBox` に表示。
+  クリップボードは常時読み取りをやめ、「クリップボードから」ボタンでのみ読む。
+- `ErrorBoundary` を追加し、描画例外で白画面にしない。
+- 本文・コメントのサニタイズ結果を `useMemo` で保持。
+- バックアップ復元に `accountId` / `userAgentMode` の validator を追加。
+- フォロー同期は開始時の `sessionKey` を保持し、切替後は書き戻さない。
+- `SettingsPage` の設定イベント名を `SETTINGS_CHANGED_EVENT` に統一。
+- 外部ページは入口でも URL を検査 (`src/external-page-url.ts`)。ループバック・
+  プライベート・リンクローカルを拒否。`tests/domain.test.mjs` に単体テストを追加。
+- `src/post-content.ts` の文字化けコメントを修正。
+
+### Rust / ネイティブ
+
+- `api_request` の method を GET / POST / DELETE に限定し、path を検証。
+- pkv の固定長キュー (128) と満杯時 503、ワーカーの panic を 500 で返す。
+- `DOWNLOAD_RUNNING` を RAII (`DownloadGuard`) で解放。
+- 不具合の原因になり得た API エラー本文の永続ログを製品版では長さのみに変更。
+- `fetch_creator_icon` を共有 Client + 2 MiB 上限に変更。
+- `take_external_page_images` を 1 MiB 上限にし、JSON 検証後に削除。
+- `list_locale_directory` の件数上限を追加。
+- pkv は `Content-Encoding` を中継し、自動解凍による本文破損を避ける。
+- 未使用の Tauri コマンド `export_log` / `export_file` / `resolve_download_directory` を削除。
+- Android / iOS の外部 WebView で、内部アドレスへの遷移を拒否。
+- iOS の `present` 失敗時に invoke を未解決にしない。`_blank` を同一 WebView で開く。
+- Android の `allowFileAccess` / `allowContentAccess` を無効化、predictive back を無効化。
+- Android の `saveToDownloads` で path をキャッシュ配下に限定し、MediaStore の衝突を回避。
+- Android の `openBrowser` を `ACTION_VIEW` + `CATEGORY_BROWSABLE` に修正。
+
+### CI / ドキュメント
+
+- CSP を `tauri.conf.json` に明示。
+- Actions を SHA 固定し、Rust toolchain を `1.100.0` に固定。
+- 正式リリースは main からのみ、タグのコミットと成果物が一致する場合のみ公開。
+- CI に Node / Rust の単体テストと `npm audit` を追加。
+- テスト実行を `dev-version` の前へ移し、`--locked` の失敗を解消。
+- `docs/STATUS.md` / `docs/API.md` / `docs/reference/rust.md` / `docs/data/files.md` を
+  現行実装に合わせて更新。
+
+### 残っている項目
+
+- 正式配布 APK のリリース鍵署名 (現在は debug.keystore)。
+- `cargo audit` の定期実行、`gradle` / cargo のキャッシュ、リリースノートの自動生成。
+- 外部ページの保存キュー (Documents 直下の固定名) の多重ウィンドウ対応。
+- iOS 13 の JSON 入出力、`UniformTypeIdentifiers` の利用可否。
+- ランチャーアイコン切替の失敗時復旧。
