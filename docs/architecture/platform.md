@@ -52,7 +52,7 @@ Android の製品版 `Documents` は通常、`Android/data/com.nsmr0604.pawkemov
 | backup JSON | 5 MiB |
 | log text | 5 MiB |
 | 投稿 thumbnail | 4 MiB |
-| pkv HTML / 通常本文 | 8 / 64 MiB |
+| pkv 通常本文 | 64 MiB (HTML は中継しない) |
 | 一括保存の 1 画像 | 64 MiB |
 | 一括保存の外部 HTML | 16 MiB |
 

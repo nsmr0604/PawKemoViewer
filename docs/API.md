@@ -129,7 +129,6 @@ Rust の非 2xx は `Err("STATUS=<code> BODY=<本文>")`。JS は `ApiError(500,
 | `postUrl(...)` / `creatorUrl(...)` | pawchive のページ URL |
 | `creatorIconUrl(...)` / `creatorBannerUrl(...)` | pawchive のアイコン / バナー |
 | `proxyFileUrl(...)` | 外部メディアを pkv へ変換する候補を判定 |
-| `proxyLinkUrl(...)` | 本文の外部リンクを pkv へ変換する候補を判定 |
 | `originalPostUrl(...)` / `originalCreatorUrl(...)` | FANBOX / Patreon の元 URL |
 | `normalizeTags(value)` | 配列、JSON 文字列、PG 配列リテラルを配列へ正規化 |
 
@@ -242,16 +241,19 @@ pkv の変換対象は FANBOX / Patreon / patreonusercontent / pximg と、投�
 ## pkv プロトコル
 
 外部ページの表示には使いません。アプリ自身の WebView に表示する外部画像
-（設定 `proxyImages`）の Referer 偽装だけに使います。
+（設定 `proxyImages`）の Referer 偽装だけに使います。本文の外部リンクは pkv を経由せず、
+実オリジンの外部ページビューで開きます。
 
 - Windows / Android: `http://pkv.localhost/file?u=<URL>&r=<Referer>`
 - macOS / iOS / Linux: `pkv://localhost/file?u=<URL>&r=<Referer>`
 - pawchive 系は常に対象外。
 - Referer は FANBOX / Patreon または取得先と同一 hostname。
-- 内部 IP・DNS 解決先を検査し、リダイレクト先も再検査。
-- connect 10 秒、total 180 秒、本文 64 MiB、HTML 8 MiB、worker 4、redirect 5。
+- 内部 IP・DNS 解決先を検査し、リダイレクト先も再検査。名前解決に失敗した場合は拒否する。
+- **`text/html` は中継しない**（415 を返す）。pkv のオリジンはアプリのローカル扱いになり、
+  中継した HTML のスクリプトが Tauri コマンドへ到達し得るため。
+- connect 10 秒、total 180 秒、本文 64 MiB、worker 4、redirect 5。
 
-HTML 変換、SSRF の残る制約、POST / Cookie の扱いは[HTTP User-Agent とヘッダー](architecture/http-user-agent.md)を参照してください。
+SSRF の残る制約、POST / Cookie の扱いは[HTTP User-Agent とヘッダー](architecture/http-user-agent.md)を参照してください。
 
 ## データ型
 

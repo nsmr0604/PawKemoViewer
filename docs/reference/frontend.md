@@ -1,8 +1,8 @@
 # フロントエンド モジュールリファレンス
 
-`src/` 配下の TypeScript モジュール全 80 ファイルの関数・定数・型・フックの一覧です。対象は `.ts` / `.tsx` のみで、`src-tauri/`(Rust)は扱いません。Tauri コマンドの引数仕様は [API.md](../API.md)、ビルドと検証手順は [DEVELOPMENT.md](../DEVELOPMENT.md)、層の設計意図は [design/application.md](../architecture/application.md) を参照してください。
+`src/` 配下の TypeScript モジュール全 82 ファイルの関数・定数・型・フックの一覧です。対象は `.ts` / `.tsx` のみで、`src-tauri/`(Rust)は扱いません。Tauri コマンドの引数仕様は [API.md](../API.md)、ビルドと検証手順は [DEVELOPMENT.md](../DEVELOPMENT.md)、層の設計意図は [design/application.md](../architecture/application.md) を参照してください。
 
-- 数え方: `^\s*export ` の grep では 286 行(複数行宣言・再エクスポートを含む)。本文の「275 シンボル」は TypeScript Compiler API(`ts.createSourceFile` → 文単位で `export` 修飾子を判定)で宣言名を列挙した実数。内訳は `export *` の再エクスポート 6 行、`export { MIN_QUERY }` 1 件、`export { isImageFileName, isThumbnailUrl, resolveImageUrl }` 3 件、`export type { CreatorRow }` 1 件、`export default` 1 件を含む
+- 数え方: `^\s*export ` の grep では 289 行(複数行宣言・再エクスポートを含む)。本文の「278 シンボル」は TypeScript Compiler API(`ts.createSourceFile` → 文単位で `export` 修飾子を判定)で宣言名を列挙した実数。内訳は `export *` の再エクスポート 6 行、`export { MIN_QUERY }` 1 件、`export { isImageFileName, isThumbnailUrl, resolveImageUrl }` 3 件、`export type { CreatorRow }` 1 件、`export default` 1 件を含む
 - 行番号は記載しません(変動が早いため)。パスとシンボル名で参照してください
 - 「未確認」はコードを読んだだけでは断定できなかった箇所です
 
@@ -43,6 +43,7 @@ main.tsx / App.tsx / pages / components
 | `src/domain/post-identity.ts` | 投稿識別子の妥当性判定と例外型 | なし |
 | `src/domain/post-referer.ts` | 元サービス記事 URL(Referer)の導出 | なし |
 | `src/domain/session-account.ts` | session Cookie から `account_id` を復元 | なし |
+| `src/domain/backup-secrets.ts` | バックアップ JSON から sessionKey を除く | なし |
 | `src/application/composition.ts` | Composition Root。API・リポジトリ・ユースケースの組み立て | infrastructure, api, i18n, platform, build-flags |
 | `src/application/creator-index-repository.ts` | クリエイター索引リポジトリの契約と行型 | なし |
 | `src/application/creators.ts` | 索引の構築・検索・更新ユースケース | creator-index-repository |
@@ -94,6 +95,7 @@ main.tsx / App.tsx / pages / components
 | `src/post-image-urls.ts` | 画像 URL の選別・重複除去(純粋関数) | なし |
 | `src/post-thumbnail-cache.ts` | 投稿サムネイルの生成と IndexedDB キャッシュ | api, platform/runtime, Tauri core |
 | `src/router.ts` | ハッシュルートの解析と遷移 | react |
+| `src/safe-url.ts` | 外部由来 URL の http/https 判定 | なし |
 | `src/types.ts` | API / 画面の共有型 | なし |
 | `src/version.ts` | アプリ版表示文字列 | なし |
 | `src/pages/CreatorPage.tsx` | クリエイター画面(投稿一覧・タグ) | application, components, hooks |
@@ -163,6 +165,13 @@ pawchive の session Cookie から `account_id` を取り出します。ログ�
 | `accountIdFromSession` | `(sessionKey: string)` | `string \| null` | `<base64url(JSON)>.<timestamp>.<signature>` の先頭要素を復号し、JSON の `account_id` を返す。数値は文字列化、文字列は trim。形式不正・`account_id` なしは `null` | なし |
 
 - 内部: `decodeBase64Url(value)` は base64url を ASCII 文字列へ復号し、不正文字・長さ不正は `null`
+
+### src/domain/backup-secrets.ts
+バックアップ JSON をクリップボードへ渡すときの整形です。sessionKey は資格情報のため、クリップボードには含めません。
+
+| 名前 | シグネチャ | 戻り値 | 説明 | 副作用 |
+|---|---|---|---|---|
+| `stripSessionFromBackup` | `(json: string)` | `string` | JSON を解析して `settings.sessionKey` を削除し、再シリアライズする。解析できない・settings が無い場合は元の文字列 | なし |
 
 ## Application
 
@@ -455,7 +464,6 @@ pawchive API クライアント。同時実行 3・開始間隔 250ms のスケ�
 | `isVideoFile` | `(f: PawFile \| undefined)` | `boolean` | 拡張子判定。`deferred` は `name`/`temp_url` を見る | なし |
 | `postUrl` | `(service: string, userId: string, postId: string)` | `string` | `https://pawchive.pw/{service}/user/{userId}/post/{postId}` | なし |
 | `proxyFileUrl` | `(url: string, service?: string, postId?: string, refererUrl?: string)` | `string` | ホットリンク対策ホストを `pkv` 経由へ。pawchive / localhost / `proxyImages=false` は素通し | 設定読み取り |
-| `proxyLinkUrl` | `(url: string, service?: string, postId?: string, refererUrl?: string)` | `string` | 本文リンクを `pkv` 経由へ。fanbox / patreon / pawchive / 同一 origin は素通し | 設定読み取り |
 | `creatorUrl` | `(service: string, userId: string)` | `string` | pawchive のクリエイターページ URL | なし |
 | `creatorIconUrl` | `(service: string, userId: string)` | `string` | `https://pawchive.pw/icons/...`(無ければ 204) | なし |
 | `creatorBannerUrl` | `(service: string, userId: string)` | `string` | `https://pawchive.pw/banners/...`(無ければ 204) | なし |
@@ -745,7 +753,7 @@ Full 診断専用の pkv 疎通テスト。
 
 | 名前 | シグネチャ | 戻り値 | 説明 | 副作用 |
 |---|---|---|---|---|
-| `sanitizePostContent` | `(html: string, service?: string, postId?: string, refererUrl?: string)` | `string` | `script`/`style`/`iframe`/`object`/`embed`/`link`/`meta` を除去し、`on*` と `javascript:` href を削除。画像は `proxyFileUrl`、リンクは `proxyLinkUrl` へ書き換え、元 URL を `data-external-url` に残す | 設定読み取り(`proxyImages`) |
+| `sanitizePostContent` | `(html: string, service?: string, postId?: string, refererUrl?: string)` | `string` | script / style / 埋め込み / フォームを除去し、`on*` と `srcdoc` を削除。URL 属性は `isSafeHttpUrl` で http/https のみ許可(`javascript:` の難読化も拒否)。画像は `proxyFileUrl` で pkv 化し、外部リンクには元 URL を `data-external-url` に残す | 設定読み取り(`proxyImages`) |
 
 - 失敗時: 空入力は空文字。`DOMParser` はブラウザー前提で、失敗時の try/catch はありません
 
@@ -830,6 +838,13 @@ Full 診断専用の pkv 疎通テスト。
 | `useNavigate` | `()` | `(to: string, replace?: boolean) => void` | `navigate` の安定参照 | なし |
 
 - 失敗時: 不正な投稿 URL は `path: "invalid-post"` を返し、throw しません。`navigate` は同一ハッシュなら何もしません
+
+### src/safe-url.ts
+投稿本文など外部由来 HTML の URL 判定。`new URL()` で解決して http / https 以外を拒否します。
+
+| 名前 | シグネチャ | 戻り値 | 説明 | 副作用 |
+|---|---|---|---|---|
+| `isSafeHttpUrl` | `(value: string, base?: string)` | `boolean` | 前後の空白を除いて URL として解決し、`http:` / `https:` のときだけ true。`java\tscript:` のような制御文字入りも URL パーサが正規化するため拒否できる | なし |
 
 ### src/types.ts
 pawchive API と画面の共有型。実行時コードはありません。
