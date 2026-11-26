@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 import ts from "typescript"
 import { isValidPostContext } from "../src/domain/post-identity.ts"
 import { normalizeFanboxSlug, originalPostReferer } from "../src/domain/post-referer.ts"
+import { accountIdFromSession } from "../src/domain/session-account.ts"
 
 const context = { service: "fanbox", creatorId: "creator", postId: "post" }
 
@@ -42,6 +43,28 @@ test("fanbox slug normalization rejects values that cannot be a subdomain", () =
   assert.equal(normalizeFanboxSlug("tateha.fanbox.cc"), "")
   assert.equal(normalizeFanboxSlug("a/b"), "")
   assert.equal(normalizeFanboxSlug(undefined), "")
+})
+
+test("session account decodes the account_id embedded in the session cookie", () => {
+  // {"_permanent":true,"account_id":558155}
+  const token = "eyJfcGVybWFuZW50Ijp0cnVlLCJhY2NvdW50X2lkIjo1NTgxNTV9.av23Tw.1-signature"
+  assert.equal(accountIdFromSession(token), "558155")
+  assert.equal(accountIdFromSession("eyJhY2NvdW50X2lkIjoiIDQyICJ9.x.y"), "42")
+  assert.equal(accountIdFromSession("eyJhY2NvdW50X2lkIjo3fQ"), "7")
+})
+
+test("session account returns null when the payload has no usable account_id", () => {
+  for (const value of [
+    "",
+    "not-a-session",
+    "e30.x.y", // {}
+    "eyJhY2NvdW50X2lkIjoiIn0.x.y", // 空文字
+    "eyJhY2NvdW50X2lkIjpudWxsfQ.x.y", // null
+    "!!!.x.y",
+    "eyJfcGVybWFuZW50Ijp0cnVlfQ.x.y", // account_id なし
+  ]) {
+    assert.equal(accountIdFromSession(value), null)
+  }
 })
 
 test("domain compiles with ES2022 alone and resolves only domain and standard library files", () => {

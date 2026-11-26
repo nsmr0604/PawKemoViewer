@@ -62,7 +62,7 @@ pawchive.pw のアカウントでセッション Cookie を取得し、`sessionK
 
 5. `finally` で `busy = false`、`password = ""`（state から消す。設定には保存しない）。
 
-`updateSettings` は `sessionKey` が変わると `accountId` を一旦空にしてからパッチを当て、`clearApiCache()` を実行します。そのため `accountId: username.trim()` を同じパッチで渡しています。
+`updateSettings` は `sessionKey` が変わると `accountId` を「パッチ値 → session の `account_id` → 空」の順で決め、`clearApiCache()` を実行します。ログイン画面は表示用の username を同じパッチで渡しています。session だけが保存されている状態（診断画面や旧版）では、起動時に session から `account_id` を復元します。
 
 成功時の `navigate` は `replace` なので、ログイン画面は履歴に残りません。
 

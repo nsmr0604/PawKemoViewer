@@ -33,7 +33,7 @@ PawKemoViewer の画面一覧、共通シェル、レイアウト切替、共通
 | `currentPath` | `string` | `route.path`。ナビの選択状態と見出しに使用 |
 | `followCount` | `number` | お気に入りタブのバッジ件数 |
 | `hasSession` | `boolean` | アカウント表示の切替 |
-| `accountId` | `string` | アカウント名（空なら `nav.accountIdUnknown`） |
+| `accountId` | `string` | アカウント表示。ログイン時は username、session から復元した場合は数値の `account_id`（空なら `nav.accountIdUnknown`） |
 | `children` | `ReactNode` | 画面本体 |
 
 シェルの分岐は 3 つの真偽値で決まります。

@@ -42,6 +42,7 @@ main.tsx / App.tsx / pages / components
 | `src/domain/locale-validation.ts` | 言語 JSON のサイズ・キー・差し込み変数の検証 | なし |
 | `src/domain/post-identity.ts` | 投稿識別子の妥当性判定と例外型 | なし |
 | `src/domain/post-referer.ts` | 元サービス記事 URL(Referer)の導出 | なし |
+| `src/domain/session-account.ts` | session Cookie から `account_id` を復元 | なし |
 | `src/application/composition.ts` | Composition Root。API・リポジトリ・ユースケースの組み立て | infrastructure, api, i18n, platform, build-flags |
 | `src/application/creator-index-repository.ts` | クリエイター索引リポジトリの契約と行型 | なし |
 | `src/application/creators.ts` | 索引の構築・検索・更新ユースケース | creator-index-repository |
@@ -153,6 +154,15 @@ main.tsx / App.tsx / pages / components
 |---|---|---|---|---|
 | `normalizeFanboxSlug` | `(value?: string \| null)` | `string` | 前後空白除去・小文字化・先頭 `@` 除去。空・`www`・`[a-z0-9_-]` 以外は空文字 | なし |
 | `originalPostReferer` | `(service: string, postId: string, fanboxSlug?: string \| null)` | `string \| undefined` | patreon は `https://www.patreon.com/posts/{id}`、fanbox は slug があれば `https://www.fanbox.cc/@{slug}/posts/{id}`、無ければ `/posts/{id}`、未対応 service は `undefined` | なし |
+
+### src/domain/session-account.ts
+pawchive の session Cookie から `account_id` を取り出します。ログイン画面を経由せずに session だけが復元された場合のアカウント表示に使います。ドメイン層の制約に合わせ、`atob` を使わず base64url を自前で復号します。
+
+| 名前 | シグネチャ | 戻り値 | 説明 | 副作用 |
+|---|---|---|---|---|
+| `accountIdFromSession` | `(sessionKey: string)` | `string \| null` | `<base64url(JSON)>.<timestamp>.<signature>` の先頭要素を復号し、JSON の `account_id` を返す。数値は文字列化、文字列は trim。形式不正・`account_id` なしは `null` | なし |
+
+- 内部: `decodeBase64Url(value)` は base64url を ASCII 文字列へ復号し、不正文字・長さ不正は `null`
 
 ## Application
 
@@ -414,9 +424,9 @@ pawchive API クライアント。同時実行 3・開始間隔 250ms のスケ�
 | `SETTINGS_CHANGED_EVENT` | `const = "pawkemo-settings-changed"` | `string` | 設定変更通知のイベント名 | なし |
 | `loadSettings` | `()` | `Settings` | `pawkemo-settings` を読み、既定値にマージ | localStorage 読み取り |
 | `saveSettings` | `(s: Settings)` | `void` | 設定を JSON で保存 | localStorage 書き込み |
-| `initializeSettingsStorage` | `()` | `void` | runtime 初期化後に設定を読み直す | localStorage 読み取り |
+| `initializeSettingsStorage` | `()` | `void` | runtime 初期化後に設定を読み直す。`sessionKey` があり `accountId` が空なら `accountIdFromSession` で復元して保存する | localStorage 読み取り / 書き込み |
 | `getSettings` | `()` | `Settings` | モジュール変数の設定を返す | なし |
-| `updateSettings` | `(patch: Partial<Settings>)` | `void` | マージして保存。`sessionKey` 変更時は `accountId` を消し `clearApiCache()` | localStorage 書き込み, GET キャッシュ消去, イベント発火 |
+| `updateSettings` | `(patch: Partial<Settings>)` | `void` | マージして保存。`sessionKey` 変更時は `accountId` を patch 値 → session の `account_id` → `""` の順で決め、`clearApiCache()` | localStorage 書き込み, GET キャッシュ消去, イベント発火 |
 | `clearApiCache` | `()` | `void` | 世代番号を進めて GET キャッシュを全消去 | キャッシュ消去 |
 | `ApiError` | `class extends Error`、`constructor(status: number, message: string)`、`status: number` | — | IPC 失敗を包む例外。Rust は常に `STATUS=...` 文字列を返すため `status` は 500 | なし |
 | `apiStatus` | `(err: unknown)` | `number \| null` | メッセージの `STATUS=(\d+)` から実ステータスを復元 | なし |
