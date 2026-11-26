@@ -51,12 +51,11 @@ pub fn open(app: &AppHandle, url: &str, referer: &str) -> Result<(), String> {
         Some(host) => format!("外部ページ — {host}"),
         None => "外部ページ".to_string(),
     };
-    let pending = Arc::new(Mutex::new(Pending {
+    let state = Arc::new(Mutex::new(Pending {
         url: url.to_string(),
         referer: referer.to_string(),
         navigated: false,
     }));
-    let state = pending.clone();
 
     WebviewWindowBuilder::new(
         app,
@@ -78,7 +77,7 @@ pub fn open(app: &AppHandle, url: &str, referer: &str) -> Result<(), String> {
         if payload.event() != PageLoadEvent::Finished {
             return;
         }
-        let request = {
+        let (url, referer) = {
             let mut state = match state.lock() {
                 Ok(state) => state,
                 Err(_) => return,
@@ -91,11 +90,8 @@ pub fn open(app: &AppHandle, url: &str, referer: &str) -> Result<(), String> {
             state.navigated = true;
             (state.url.clone(), state.referer.clone())
         };
-        let (url, referer) = request;
-        let navigate_url = url.clone();
-        let navigate_referer = referer.clone();
         if let Err(error) = window.with_webview(move |webview| {
-            if let Err(error) = navigate(&webview, &navigate_url, &navigate_referer) {
+            if let Err(error) = navigate(&webview, &url, &referer) {
                 log::warn!("external page navigation failed: {error}");
             }
         }) {
