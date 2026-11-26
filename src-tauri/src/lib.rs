@@ -2,6 +2,9 @@ mod json_files;
 mod locale_storage;
 mod downloads;
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod external_page_desktop;
+
 use regex::Regex;
 use tauri::Manager;
 use reqwest::header::{
@@ -1440,7 +1443,6 @@ async fn set_android_launcher_icon(app: tauri::AppHandle, light: bool) -> Result
 }
 
 /// Referer にできるのは FANBOX / Patreon のページだけ (外部ページ用)
-#[cfg(any(target_os = "android", target_os = "ios"))]
 fn is_service_page(u: &reqwest::Url) -> bool {
     if !matches!(u.scheme(), "http" | "https") {
         return false;
@@ -1454,7 +1456,7 @@ fn is_service_page(u: &reqwest::Url) -> bool {
 
 /// 外部ページを実オリジンのまま Referer 付きで開く。
 /// pkv プロキシでは reCAPTCHA 付きページを表示できないため、ネイティブビューへ委譲する。
-#[cfg(any(target_os = "android", target_os = "ios"))]
+/// デスクトップは新しいウィンドウの WebView へ Referer 付きで遷移する。
 #[tauri::command]
 async fn open_external_page(
     app: tauri::AppHandle,
@@ -1473,8 +1475,17 @@ async fn open_external_page(
     if !is_service_page(&referer_url) {
         return Err("referer must be a FANBOX or Patreon page".to_string());
     }
-    tauri_plugin_external_view::open(&app, url, referer, creator_name, service, creator_id, post_id)
-        .await
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        tauri_plugin_external_view::open(&app, url, referer, creator_name, service, creator_id, post_id)
+            .await
+    }
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        // 保存先の文脈はモバイルの外部ビューだけが使う
+        let _ = (creator_name, service, creator_id, post_id);
+        external_page_desktop::open(&app, &url, &referer)
+    }
 }
 
 /// 外部ページの「画像を保存」で書き出された一覧を取り出す (取り出したら消す)。
@@ -1627,7 +1638,6 @@ pub fn run() {
                 locale_storage::save_locale_file_to_app_directory,
                 #[cfg(target_os = "android")]
                 set_android_launcher_icon,
-                #[cfg(any(target_os = "android", target_os = "ios"))]
                 open_external_page,
                 take_external_page_images,
                 set_http_user_agent,
