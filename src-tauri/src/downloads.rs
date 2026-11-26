@@ -297,6 +297,19 @@ fn is_allowed_referer(referer: &str) -> bool {
         || host.ends_with(".patreon.com")
 }
 
+/// 取得先と同一ホスト、または FANBOX / Patreon のページだけ Referer に使う。
+fn referer_allowed(target: &reqwest::Url, referer: &str) -> bool {
+    let Ok(url) = reqwest::Url::parse(referer) else {
+        return false;
+    };
+    if !matches!(url.scheme(), "http" | "https") {
+        return false;
+    }
+    let referer_host = url.host_str().unwrap_or("").to_ascii_lowercase();
+    let target_host = target.host_str().unwrap_or("").to_ascii_lowercase();
+    !referer_host.is_empty() && (referer_host == target_host || crate::is_service_page(&url))
+}
+
 fn referer_origin(referer: &str) -> Option<String> {
     let url = reqwest::Url::parse(referer).ok()?;
     let host = url.host_str()?;
@@ -405,11 +418,15 @@ fn fetch(
     let mut request = DOWNLOAD_CLIENT
         .get(target.clone())
         .header(reqwest::header::USER_AGENT, crate::current_user_agent())
-        .header(reqwest::header::REFERER, referer)
         .header(
             reqwest::header::ACCEPT_LANGUAGE,
             "ja,en-US;q=0.9,en;q=0.8",
         );
+    // Referer / Origin は、取得先と同一ホストか FANBOX / Patreon のページだけに付ける
+    let allow_referer = referer_allowed(&target, referer);
+    if allow_referer {
+        request = request.header(reqwest::header::REFERER, referer);
+    }
     match kind {
         FetchKind::Image => {
             request = request
@@ -433,8 +450,10 @@ fn fetch(
                 .header("upgrade-insecure-requests", "1");
         }
     }
-    if let Some(origin) = referer_origin(referer) {
-        request = request.header(reqwest::header::ORIGIN, origin);
+    if allow_referer {
+        if let Some(origin) = referer_origin(referer) {
+            request = request.header(reqwest::header::ORIGIN, origin);
+        }
     }
     if let Some(cookie) = session_cookie(&target, session) {
         request = request.header(reqwest::header::COOKIE, cookie);
@@ -498,7 +517,7 @@ pub(crate) fn extract_page_images(html: &str, base: &reqwest::Url) -> Vec<String
 
     let mut seen = HashSet::new();
     let mut images = Vec::new();
-    let mut push = |raw: &str, images: &mut Vec<String>, seen: &mut HashSet<String>| {
+    let push = |raw: &str, images: &mut Vec<String>, seen: &mut HashSet<String>| {
         if images.len() >= MAX_PAGE_IMAGES {
             return;
         }
@@ -670,6 +689,9 @@ pub(crate) async fn download_post_images(
     if !is_allowed_referer(&referer) {
         return Err("referer must be a FANBOX or Patreon page".to_string());
     }
+    // 実行ロックは Drop で必ず解除する (Future の drop でも残らない)
+    let _running = DownloadGuard::acquire()?;
+    DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
     // 外部ページから集めた画像は、そのページ自身を Referer にしないと 403 になることがある
     let image_referer = match image_referer.as_deref().map(str::trim) {
         Some(value) if !value.is_empty() => match reqwest::Url::parse(value) {
@@ -680,10 +702,6 @@ pub(crate) async fn download_post_images(
         },
         _ => None,
     };
-    if DOWNLOAD_RUNNING.swap(true, Ordering::SeqCst) {
-        return Err("download already running".to_string());
-    }
-    DOWNLOAD_CANCELLED.store(false, Ordering::SeqCst);
 
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
@@ -702,10 +720,27 @@ pub(crate) async fn download_post_images(
     })
     .await;
 
-    DOWNLOAD_RUNNING.store(false, Ordering::SeqCst);
     match result {
         Ok(summary) => summary,
         Err(error) => Err(error.to_string()),
+    }
+}
+
+/// 一括保存の実行ロック。Drop で必ず解除する。
+struct DownloadGuard;
+
+impl DownloadGuard {
+    fn acquire() -> Result<Self, String> {
+        if DOWNLOAD_RUNNING.swap(true, Ordering::SeqCst) {
+            return Err("download already running".to_string());
+        }
+        Ok(Self)
+    }
+}
+
+impl Drop for DownloadGuard {
+    fn drop(&mut self) {
+        DOWNLOAD_RUNNING.store(false, Ordering::SeqCst);
     }
 }
 
@@ -973,6 +1008,15 @@ mod tests {
         assert!(is_allowed_referer("https://a.fanbox.cc/posts/1"));
         assert!(is_allowed_referer("https://www.patreon.com/posts/1"));
         assert!(!is_allowed_referer("https://example.com/"));
+    }
+
+    #[test]
+    fn referer_is_only_sent_to_same_host_or_services() {
+        let image = reqwest::Url::parse("https://yufukirima.sakura.ne.jp/img/1.png").unwrap();
+        assert!(referer_allowed(&image, "https://yufukirima.sakura.ne.jp/events/show.php"));
+        assert!(!referer_allowed(&image, "https://evil.example/"));
+        assert!(referer_allowed(&image, "https://www.fanbox.cc/@a/posts/1"));
+        assert!(!referer_allowed(&image, "not a url"));
     }
 
     #[test]
