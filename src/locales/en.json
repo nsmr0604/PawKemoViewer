@@ -439,5 +439,17 @@
   "settings.fullDiagnosticsTitle": "Detailed diagnostics",
   "settings.fullDiagnosticsDesc": "Detailed logs, log-folder access, and backup dump (debug builds only)",
   "settings.fullApiLogcatDesc": "Android debug builds log request/response headers, HTTP status, and text response bodies for Pawchive API and pkv:// external proxy traffic. Cookie/Authorization and similar credential values are redacted; binary bodies are size-only. Response bodies may contain personal data, so review logs before sharing.",
-  "favorites.syncFailed": "Follow sync failed: {{msg}}"
+  "favorites.syncFailed": "Follow sync failed: {{msg}}",
+  "age.title": "This app is for adults 18 and over",
+  "age.body": "PawKemoViewer is an unofficial client for viewing FANBOX / Patreon posts. It may contain adult content. You must be at least 18 years old to use it.",
+  "age.accept": "I am 18 or older",
+  "age.decline": "I am under 18",
+  "age.declined": "You must be 18 or older to use this app. Please close the app.",
+  "legal.section": "Legal",
+  "legal.unofficial": "This is an unofficial client. It is not affiliated with pixiv, FANBOX, Patreon, pawchive, or their operators.",
+  "legal.terms": "Terms of Use",
+  "legal.privacy": "Privacy Policy",
+  "legal.age": "Age confirmation",
+  "legal.ageVerified": "Confirmed as 18 or older",
+  "legal.resetAge": "Review confirmation"
 }

@@ -2543,3 +2543,47 @@ textarea:focus {
   .app-desktop .settings-layout { grid-template-columns: minmax(0, 1fr); }
   .app-desktop .settings-nav { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ------------------------------------------------------------------ */
+/* 年齢確認 (初回起動)                                                 */
+/* ------------------------------------------------------------------ */
+
+.age-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  background: var(--bg);
+}
+.age-gate-card {
+  width: min(560px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  border: 1px solid var(--bg3);
+  border-radius: 16px;
+  background: var(--bg2);
+}
+.age-gate-card h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+}
+.age-gate-card p {
+  margin: 0;
+  line-height: 1.7;
+}
+.age-gate-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.age-gate-declined {
+  color: var(--danger);
+  font-weight: 600;
+}
