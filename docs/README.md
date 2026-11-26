@@ -25,6 +25,7 @@ PawKemoViewer の利用者向け情報、開発者向け仕様、設計、検証
 | 作業の引き継ぎ | [引き継ぎ手順](handoff/README.md) |
 | アプリと依存ソフトウェアのライセンス | [ライセンス](LICENSES.md) |
 | バージョンごとの変更 | [変更履歴](HISTORY.md) |
+| コード監査の結果と対応順 | [2026-11-26 監査](audit/2026-11-26-code-audit.md) |
 
 ## 開発者向けの最短経路
 
@@ -44,6 +45,7 @@ npm run tauri:dev
 - `docs/screens/`: 画面ごとの構成、状態、操作、遷移を記載します。
 - `docs/data/`: IndexedDB スキーマ、Web Storage のキー、ファイル配置を記載します。
 - `docs/reference/`: フロントエンドと Rust の関数・コマンドを網羅するリファレンスです。
+- `docs/audit/`: コード監査の結果と対応順です。詳細は `findings/` に分けています。
 - `docs/handoff/`: 申し送りの形式と手順を記載します。状態の正本は `STATUS.md` です。
 - `docs/fixtures/`: 実機検証用の小さなテストデータです。
 
