@@ -161,20 +161,6 @@ pub(crate) fn creator_target(
     })
 }
 
-/// クリエイター名のディレクトリ。存在しなければ作成する。
-pub(crate) fn creator_directory(
-    app: &tauri::AppHandle,
-    creator_name: &str,
-    service: &str,
-    creator_id: &str,
-) -> Result<PathBuf, String> {
-    let target = creator_target(app, creator_name, service, creator_id)?;
-    if target.shared.is_none() {
-        std::fs::create_dir_all(&target.staging).map_err(|error| error.to_string())?;
-    }
-    Ok(target.display)
-}
-
 /// Android 10 以降で MediaStore 経由の共有 Downloads 保存が使えるか。
 #[cfg(target_os = "android")]
 fn android_shared_downloads(app: &tauri::AppHandle) -> bool {
