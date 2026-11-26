@@ -1,4 +1,4 @@
-import assert from "node:assert/strict"
+﻿import assert from "node:assert/strict"
 import { isAbsolute, relative } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
@@ -6,6 +6,8 @@ import ts from "typescript"
 import { isValidPostContext } from "../src/domain/post-identity.ts"
 import { normalizeFanboxSlug, originalPostReferer } from "../src/domain/post-referer.ts"
 import { accountIdFromSession } from "../src/domain/session-account.ts"
+import { stripSessionFromBackup } from "../src/domain/backup-secrets.ts"
+import { isSafeHttpUrl } from "../src/safe-url.ts"
 
 const context = { service: "fanbox", creatorId: "creator", postId: "post" }
 
@@ -58,13 +60,41 @@ test("session account returns null when the payload has no usable account_id", (
     "",
     "not-a-session",
     "e30.x.y", // {}
-    "eyJhY2NvdW50X2lkIjoiIn0.x.y", // 空文字
+    "eyJhY2NvdW50X2lkIjoiIn0.x.y", // 遨ｺ譁・ｭ・
     "eyJhY2NvdW50X2lkIjpudWxsfQ.x.y", // null
     "!!!.x.y",
-    "eyJfcGVybWFuZW50Ijp0cnVlfQ.x.y", // account_id なし
+    "eyJfcGVybWFuZW50Ijp0cnVlfQ.x.y", // account_id 縺ｪ縺・
   ]) {
     assert.equal(accountIdFromSession(value), null)
   }
+})
+
+test("safe url accepts http and https and rejects other schemes", () => {
+  assert.equal(isSafeHttpUrl("https://example.com/a.png"), true)
+  assert.equal(isSafeHttpUrl("http://example.com/a.png"), true)
+  assert.equal(isSafeHttpUrl("//example.com/a.png"), true)
+  for (const value of [
+    "javascript:alert(1)",
+    " javascript:alert(1)",
+    "java\tscript:alert(1)",
+    "java\nscript:alert(1)",
+    "JaVaScRiPt:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "file:///etc/passwd",
+    "vbscript:msgbox(1)",
+    "",
+  ]) {
+    assert.equal(isSafeHttpUrl(value), false, value)
+  }
+})
+
+test("backup clipboard copy removes the session key only", () => {
+  const json = JSON.stringify({ settings: { sessionKey: "secret", theme: "dark" }, follows: [] })
+  const stripped = JSON.parse(stripSessionFromBackup(json))
+  assert.equal(stripped.settings.sessionKey, undefined)
+  assert.equal(stripped.settings.theme, "dark")
+  assert.equal(stripSessionFromBackup("not json"), "not json")
+  assert.equal(stripSessionFromBackup(JSON.stringify({ follows: [] })), JSON.stringify({ follows: [] }))
 })
 
 test("domain compiles with ES2022 alone and resolves only domain and standard library files", () => {
@@ -92,3 +122,4 @@ test("domain compiles with ES2022 alone and resolves only domain and standard li
     assert.ok(!isAbsolute(path) && path.split(/[\\/]/)[0] !== "..", file.fileName)
   }
 })
+

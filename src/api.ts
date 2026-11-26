@@ -583,12 +583,12 @@ function isHotlinkHost(hostname: string): boolean {
 }
 
 /** pawchive 本体・API・画像サーバーは常に直接通信する */
-function isPawchiveHost(hostname: string): boolean {
+export function isPawchiveHost(hostname: string): boolean {
   return hostname === "pawchive.pw" || hostname.endsWith(".pawchive.pw")
 }
 
 /** WebView 自身・ローカルの URL は中継しない */
-function isLocalHost(hostname: string): boolean {
+export function isLocalHost(hostname: string): boolean {
   return hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "127.0.0.1"
 }
 
@@ -641,24 +641,6 @@ export function proxyFileUrl(url: string, service?: string, postId?: string, ref
   if (isPawchiveHost(h.hostname) || isLocalHost(h.hostname)) return url
   if (!getSettings().proxyImages) return url
   if (!refererUrl && !isHotlinkHost(h.hostname)) return url
-  return pkvProxyUrl(h.toString(), proxyReferer(service, postId, refererUrl, h.hostname))
-}
-
-/** 投稿本文から張られた外部リンクを paw 経由に変換する。
- *  リンク先がリファラー (元サイト = fanbox / patreon) を検証してブロックする
- *  ケースに対応。fanbox / patreon / pawchive 自体へのリンクはそのまま開く。 */
-export function proxyLinkUrl(url: string, service?: string, postId?: string, refererUrl?: string): string {
-  if (!url) return url
-  let h: URL
-  try {
-    h = new URL(url)
-  } catch {
-    return url
-  }
-  if (h.protocol !== "https:" && h.protocol !== "http:") return url
-  if (h.origin === location.origin) return url
-  // fanbox / patreon 自体は SPA のためそのまま (リファラーチェックが無い・実測)
-  if (isPawchiveHost(h.hostname) || isLocalHost(h.hostname) || isHotlinkHost(h.hostname)) return url
   return pkvProxyUrl(h.toString(), proxyReferer(service, postId, refererUrl, h.hostname))
 }
 
