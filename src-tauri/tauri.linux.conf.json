@@ -1,0 +1,13 @@
+{
+  "productName": "PawkemoViewer",
+  "bundle": {
+    "linux": {
+      "deb": {
+        "desktopTemplate": "./linux/desktop-template.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "./linux/desktop-template.desktop"
+      }
+    }
+  }
+}

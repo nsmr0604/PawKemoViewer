@@ -79,7 +79,7 @@ DNS フィルタ（AdGuard など）で `pawchive.pw` が遮断される環境�
 - 設定、フォロー、お気に入り、既読、セッションキー、キャッシュは**端末内にのみ**保存されます。
 - 認証情報や検索語は、機能提供のため pawchive.pw への通信にのみ使用され、開発者のサーバーへ送信・保存されることはありません。
 - 詳細は[プライバシーポリシー](docs/legal/privacy.ja.md)を参照してください。
-- 不具合・要望は [GitHub Issues](https://github.com/nsmr0604/PawKemoViewer/issues)、権利侵害・削除依頼・プライバシーは [X の DM (@nsmr0604)](https://x.com/nsmr0604) へお願いします。
+- 不具合・要望は [GitHub Issues](https://github.com/nsmr0604/PawKemoViewer/issues)、権利侵害・削除依頼・プライバシーは GitHub Issues(メール: nsmr0604@users.noreply.github.com) へお願いします。
 
 ## ダウンロード
 

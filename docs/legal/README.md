@@ -11,7 +11,7 @@ PawKemoViewer の配布に必要な最低限の法務文書です。**法的助�
 
 ## 公開状況
 
-プレースホルダーは記入済みです(管轄: 東京地方裁判所、連絡先: GitHub Issues / X DM)。
+プレースホルダーは記入済みです(管轄: 東京地方裁判所、連絡先: GitHub Issues / nsmr0604@users.noreply.github.com)。
 
 `src/legal.ts` は **0.6.0 ブランチ**の次の URL を参照します(0.6.0 は公開済みのため、現在のリンクは有効です)。
 
@@ -54,7 +54,7 @@ https://github.com/nsmr0604/PawKemoViewer/blob/0.6.0/docs/legal/privacy.ja.md
 - ストア用スクリーンショットは SFW のみに差し替える。
 - アプリ名のストア検索: Google Play / F-Droid / App Store / IzzyOnDroid で同名アプリは確認できず。
 - アイコン: 第三者サービスのロゴは含まれていない。キャラクター画像の権利(AI 生成・委託・自作)は要確認。
-- 連絡先: GitHub Issues と X DM を記載済み。
+- 連絡先: GitHub Issues(メール: nsmr0604@users.noreply.github.com) を記載済み。
 - pawchive は第三者コンテンツのアーカイブとして紹介されている例があり、
   権利上のリスクは残る。権利者からの削除依頼に備える。
 
