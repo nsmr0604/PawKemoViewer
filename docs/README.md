@@ -15,6 +15,10 @@ PawKemoViewer の利用者向け情報、開発者向け仕様、設計、検証
 | ローカル実行、CI、パッケージ、リリース | [ビルドガイド](BUILD.md) |
 | コード構成、実装規約、テスト | [開発ガイド](DEVELOPMENT.md) |
 | pawchive API、Tauri コマンド、pkv | [API 仕様](API.md) |
+| 画面一覧、画面遷移、各画面の仕様 | [画面設計](screens/README.md) |
+| データベース（IndexedDB）、Web Storage、ファイル配置 | [データ設計](data/schema.md) |
+| フロントエンドの全モジュールと関数 | [フロントエンドリファレンス](reference/frontend.md) |
+| Rust のコマンド・関数・資源制約 | [Rust リファレンス](reference/rust.md) |
 | 一括画像保存の現行仕様 | [一括画像保存](features/image-download.md) |
 | 層分割、プラットフォーム、データ、HTTP、UI | [設計資料](architecture/README.md) |
 | 自動テストと実機確認の進め方 | [検証ガイド](verification.md) |
@@ -37,6 +41,9 @@ npm run tauri:dev
 - `docs/wiki/`: 利用者向け。ページ単体で読めるようにし、開発者向け資料へのリンクは置きません。
 - `docs/STATUS.md`: 現時点の事実だけを記載します。過去の経緯は `HISTORY.md` にまとめます。
 - `docs/architecture/`: 現行の設計と理由を記載します。完了したマイルストーンや日記は残しません。
+- `docs/screens/`: 画面ごとの構成、状態、操作、遷移を記載します。
+- `docs/data/`: IndexedDB スキーマ、Web Storage のキー、ファイル配置を記載します。
+- `docs/reference/`: フロントエンドと Rust の関数・コマンドを網羅するリファレンスです。
 - `docs/handoff/`: 申し送りの形式と手順を記載します。状態の正本は `STATUS.md` です。
 - `docs/fixtures/`: 実機検証用の小さなテストデータです。
 

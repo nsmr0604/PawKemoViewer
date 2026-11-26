@@ -11,6 +11,9 @@ PawKemoViewer 0.6.0 の現行設計です。実装の詳細はコードを正と
 | [画面構成](adaptive-ui.md) | ルート、ナビゲーション、レイアウト、キーボード、モバイル表示 |
 | [アイコン](icons.md) | マスター画像、生成、テーマ連動、プラットフォーム別の扱い |
 
+画面ごとの詳細は[画面設計](../screens/README.md)、保存データの詳細は[データ設計](../data/schema.md)、
+関数の一覧は[フロントエンド](../reference/frontend.md)と [Rust](../reference/rust.md) のリファレンスに分けています。
+
 ## 構成の原則
 
 1. **pawchive とは直接通信する**。Cloudflare Pages / Workers / Functions / Wrangler / リバースプロキシは使いません。
@@ -24,5 +27,9 @@ PawKemoViewer 0.6.0 の現行設計です。実装の詳細はコードを正と
 
 - [開発ガイド](../DEVELOPMENT.md): ディレクトリ構成、命名、実装規約
 - [API 仕様](../API.md): エンドポイント、コマンド、イベント、pkv プロトコル
+- [画面設計](../screens/README.md): 画面、遷移、コンポーネント
+- [データ設計](../data/schema.md): IndexedDB、Web Storage、ファイル
+- [フロントエンドリファレンス](../reference/frontend.md): モジュールと関数
+- [Rust リファレンス](../reference/rust.md): コマンド、関数、資源制約
 - [一括画像保存](../features/image-download.md): 抽出、保存、進捗、外部ページ連携
 - [検証ガイド](../verification.md): 自動テストと実機確認

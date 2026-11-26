@@ -90,6 +90,10 @@ DNS フィルタ（AdGuard など）で `pawchive.pw` が遮断される環境�
 - [開発ガイド](docs/DEVELOPMENT.md): コード構成、実装規約、テスト
 - [ビルドガイド](docs/BUILD.md): ローカルビルド、CI、リリース
 - [API 仕様](docs/API.md): pawchive API、Tauri コマンド、pkv
+- [画面設計](docs/screens/README.md): 画面一覧、遷移、各画面と共通コンポーネントの仕様
+- [データ設計](docs/data/schema.md): IndexedDB、Web Storage、ファイル配置
+- [フロントエンドリファレンス](docs/reference/frontend.md): 全モジュールと関数
+- [Rust リファレンス](docs/reference/rust.md): コマンド、関数、資源制約
 - [一括画像保存](docs/features/image-download.md): 対象、保存先、進捗、外部ページ連携
 - [変更履歴](docs/HISTORY.md): 版ごとの変更
 - [引き継ぎ手順](docs/handoff/README.md): 作業・検証・申し送りのルール
