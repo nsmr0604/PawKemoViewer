@@ -168,7 +168,7 @@ export function HomePage({ query }: { query: URLSearchParams }) {
                   className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
                   aria-pressed={serviceFilter === service}
                   onClick={() => setServiceFilter(service)}>
-                  {service === "all" ? t("home.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+                  {service === "all" ? t("home.allServices") : service === "fanbox" ? "fanbox" : "patreon"}
                 </button>
               ))}
             </div>

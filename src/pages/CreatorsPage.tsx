@@ -201,7 +201,7 @@ export function CreatorsPage() {
                 className={`chip ${serviceFilter === service ? "chip-active" : ""}`}
                 aria-pressed={serviceFilter === service}
                 onClick={() => { setServiceFilter(service); setVisibleCount(60) }}>
-                {service === "all" ? t("creators.allServices") : service === "fanbox" ? "FANBOX" : "Patreon"}
+                {service === "all" ? t("creators.allServices") : service === "fanbox" ? "fanbox" : "patreon"}
               </button>
             ))}
           </div>

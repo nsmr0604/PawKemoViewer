@@ -31,7 +31,7 @@ Stored information is used to:
 The App communicates with:
 
 - **pawchive.pw**: to fetch API data and images. Your credentials are used only for this communication.
-- **FANBOX / Patreon and other external pages**: when you open an external page, it is displayed in a WebView at its real origin.
+- **External pages**: when you open an external page, it is displayed in a WebView at its real origin.
 - **GitHub**: for links to the Terms and this Policy, and update checks.
 
 Communications use encrypted channels such as HTTPS. The developer does not operate a server that collects or stores your information.
