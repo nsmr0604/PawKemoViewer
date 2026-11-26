@@ -81,11 +81,6 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: 開発版のバージョン
-        if: inputs.release != true
-        shell: bash
-        run: node scripts/dev-version.mjs
-
       - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
 
       - name: Linux のビルド依存をインストール
@@ -107,6 +102,12 @@ jobs:
           npm run test:platform
           node --test tests/post-download.test.mjs
           cargo test --locked --manifest-path src-tauri/Cargo.toml
+
+      # 開発版のバージョンは Cargo.toml を書き換えるため、--locked のテストより後に行う
+      - name: 開発版のバージョン
+        if: inputs.release != true
+        shell: bash
+        run: node scripts/dev-version.mjs
 
       - name: Tauri をビルド
         shell: bash
