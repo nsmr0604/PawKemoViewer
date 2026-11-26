@@ -8,6 +8,10 @@ GitHub Pages で公開する手順です。
 - apt: `https://nsmr0604.github.io/PawKemoViewer/apt`
 - rpm: `https://nsmr0604.github.io/PawKemoViewer/rpm`
 
+GitHub Pages は `https://www.nsmr0604.geek.jp/PawKemoViewer/` へリダイレクトされます。
+リダイレクトを扱えないクライアントでは、`https://www.nsmr0604.geek.jp/PawKemoViewer/apt` と
+`https://www.nsmr0604.geek.jp/PawKemoViewer/rpm` を使用してください。
+
 パッケージ名はどちらも `paw-kemo-viewer` です。
 
 ## 署名鍵
