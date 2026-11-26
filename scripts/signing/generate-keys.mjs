@@ -22,6 +22,36 @@ for (let i = 2; i < process.argv.length; i += 1) {
   if (value !== undefined && !value.startsWith("--")) i += 1
 }
 
+if (args.has("help")) {
+  console.log(`Usage: node scripts/signing/generate-keys.mjs [options]
+
+Options:
+  --out-dir <dir>        output directory (default: .agent-work/signing)
+  --alias <name>         APK key alias (default: pawkemoviewer)
+  --key-size <bits>      APK RSA key size (default: 4096)
+  --validity-days <n>    APK certificate validity (default: 10950)
+  --cn/--ou/--o/--l/--st/--c <value>
+                         certificate subject fields
+  --gpg-name <name>      GPG key name (default: PawKemoViewer Repository)
+  --gpg-email <email>    GPG key email (default: nsmr0604@users.noreply.github.com)
+  --gpg-expire <period>  GPG expiry (default: 10y)
+  --skip-apk             do not generate the APK keystore
+  --skip-gpg             do not generate the GPG key
+  --force                overwrite existing output files
+  --help                 show this help
+
+Password:
+  Set SIGNING_PASSWORD, or enter it at the prompt.
+  The same password is used for the APK keystore and the GPG key.
+
+Examples:
+  node scripts/signing/generate-keys.mjs
+  SIGNING_PASSWORD='...' node scripts/signing/generate-keys.mjs --out-dir .agent-work/signing2
+  SIGNING_PASSWORD='...' node scripts/signing/generate-keys.mjs --cn 'PawKemoViewer' --c JP
+`)
+  process.exit(0)
+}
+
 const rl = createInterface({ input: stdin, output: stdout })
 const tty = stdin.isTTY
 async function ask(label, fallback) {
@@ -52,7 +82,7 @@ const gpgEmail = await ask("GPG email", args.get("gpg-email") ?? "nsmr0604@users
 const gpgExpire = await ask("GPG expiry", args.get("gpg-expire") ?? "10y")
 rl.close()
 
-const force = args.get("force") === "true" || args.get("force") === undefined && false
+const force = args.get("force") === "true"
 const skipApk = args.get("skip-apk") === "true"
 const skipGpg = args.get("skip-gpg") === "true"
 mkdirSync(outDir, { recursive: true })

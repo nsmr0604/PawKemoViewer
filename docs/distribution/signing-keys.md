@@ -17,6 +17,29 @@ node scripts/signing/generate-keys.mjs
 - 証明書の CN / OU / O / L / ST / C
 - GPG の名前 / メール / 有効期限
 
+### オプションで指定する場合
+
+```bash
+SIGNING_PASSWORD='...' node scripts/signing/generate-keys.mjs \
+  --out-dir .agent-work/signing2 \
+  --alias pawkemoviewer \
+  --key-size 4096 \
+  --validity-days 10950 \
+  --cn PawKemoViewer \
+  --ou Development \
+  --o nsmr0604 \
+  --l Tokyo \
+  --st Tokyo \
+  --c JP \
+  --gpg-name 'PawKemoViewer Repository' \
+  --gpg-email nsmr0604@users.noreply.github.com \
+  --gpg-expire 10y
+```
+
+`--skip-apk` / `--skip-gpg` で片方だけ生成できます。
+既存ファイルを上書きする場合だけ `--force` を付けてください。
+`--help` で全オプションを表示します。
+
 パスワードを対話で入力したくない場合:
 
 ```bash
