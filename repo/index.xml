@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<fdroid>
+	<repo icon="icon.png" name="PawKemoViewer" pubkey="3082051f30820307a00302010202082e0a4e559039f6e4300d06092a864886f70d01010c0500303d310b3009060355040613024a503111300f060355040a13086e736d7230363034311b3019060355040313125061774b656d6f566965776572205265706f3020170d3236313132363232313230385a180f32303536313131383232313230385a303d310b3009060355040613024a503111300f060355040a13086e736d7230363034311b3019060355040313125061774b656d6f566965776572205265706f30820222300d06092a864886f70d01010105000382020f003082020a028202010096a5e36201ff9da537b1666eaad3f9dab60ae689dd6cfbb80630f5a491d5a6816f472246ae40fd7cad493c85c4df9a15fc9c9fd434ceca4d533dc03ee824d787e06d3cd23c18c8f30c8bd68310a9f54da7029f808867db2a6b454a0089619b6c16c726f280323ca19a64307b61ac3acabf4729c652017fd8bc6352dea88851609323e12c515d7a070ffb2ba0430024d98a6af9cba0800d6640b5b0e21422c7dba9eb31f711b3bf0cd9c2df05e5a123ed4392db4d6010283cd37a86d18dc45d6fc05a08b1811dcefd6b056ef736c57afb3d422f8e815c540f74847fbe7e394bbb9095179f35463c77cef931502a21818ad5891ce3e2e3ee873e7a81ea2a665fc0aa9d0d3e02781af4ae91eefc38d47fdec1f4b66237ddbf11c4d6dd73cc079215f37af33514e5d69d623d8a66d3a218a8581fd2a5a21badd37fb0ab3d4c71888b33f7cd2c52a81a1bcec8c01a6542a16309206147eacb65ba5fd7f6815e96adc6593b5ef0e93e3ff0a876d8f3c138dd3e3423c4c30d2f0b1bb375eb1851bad6f3fa9947f4d2b2ee627b3a70090846e68dfdb5bd18c3312694435d8cdc2683397a7675b9d8d029d07db5fe3bbbc60bdd54a6feb6cbb20dd7a809477c032d115439657cd5b85ebe4beea080aaf820efd329cac97b295f955a2701c76004411fc8ab02d1146407f492c528dc6f836326e0059e7fe00e13ff2da8890d78f9af4674490203010001a321301f301d0603551d0e041604144cec456d5f2ead2bb654ffb0afbf02c78fd681d6300d06092a864886f70d01010c0500038202010068edf53897fce168267418617205567d4d3510adf9d31fd3060231d17b9b09f5247a65efa174d1944dc5239b206b9a73dff4d5449eb6d6da8180a637ebb24868415b5bd8a131257e6a069e1d34e5e5dedfe046d2631d29c670c85bbb910b713df3c7fecffac72812615c30dc6252cb99214d1dc22e70e2c80407195ba1c33ea7c80fe276fb65f931cae602679b05dbea22b853b1a68594d56c1f5b3fe72a71533e34749dce6a30b94c68ee02c7f1287d253dfae82d1b4ea043047d064867f6771448878c018ff1ef3f63576048d7e0dcb6679f08955e7dd575946dbbf69afaefbe5db740c17082f31f479442eac5c01b485d9ca60f52bde288cbb2dd9a48570d0b4c0df8638548b24e3c9c49b68180ff6aa90d135e9968475d84485b08010053f2b63fd2512efffa87754f8255b521fb1e4c0b58ff71ca8bcc04f9b764547fb4662015040067ad2939b05d856f745625662b07d3a602eb7aafa4dec96b7d1a4a9a2d360d788ce74f6c5026c6003e64c77e66315afff5de52e199d9c564ae19952e7d257cadb8d771a8400402600036ce840ecc1fb957e226a275ac3cad32bcab2c29399a1c96dd11f2fc14f77093bcc9231fdcfe2790ccf9524383314d3dee4fa723f26d66d1e0803954283e171fc3c9953a1d55c729a3234c2f2ba46d6ca2018ee7188dce29cfb4d561b5c4796b2d8ab3d24071949e6931ea34d33972e5a2d7" timestamp="1795731142" url="https://nsmr0604.github.io/PawKemoViewer/repo" version="20002">
+		<description>Self-hosted F-Droid repository for PawKemoViewer.</description>
+	</repo>
+	<application id="com.nsmr0604.pawkemoviewer">
+		<id>com.nsmr0604.pawkemoviewer</id>
+		<added>2026-11-26</added>
+		<lastupdated>2026-11-26</lastupdated>
+		<name>PawKemoViewer</name>
+		<summary>Unofficial viewer for the pawchive.pw API</summary>
+		<desc>PawKemoViewer is an unofficial viewer for the pawchive.pw API. It lets you
+browse posts, creators, favorites, and follows from pawchive.pw on Android.
+
+Features:
+* Post lists with grid/list views and source filtering
+* Creator search, profiles, post lists, and follows
+* Post detail with content, images/videos, comments, and revisions
+* Thumbnail-first loading and low-data mode
+* Save selected images from posts, attachments, and external pages
+  (personal use only)
+* Backup, logs, Japanese/English UI, dark/light themes
+
+The app does not collect personal information. It contains no analytics,
+advertising, crash-reporting, or tracking SDKs. Settings, follows, favorites,
+read state, session keys, and caches are stored only on the device.
+
+This app is unofficial and is not affiliated with pawchive.pw or the content
+providers. It is intended for users aged 18 or older and may display adult
+content. Content rights belong to their respective owners; saving is limited
+to personal use, and redistribution or commercial use is prohibited.
+
+Using an unofficial client may result in restrictions on third-party
+accounts. The app depends on the pawchive.pw service, which is not free
+software and may change or stop without notice.</desc>
+		<license>MIT</license>
+		<categories>Multimedia</categories>
+		<category>Multimedia</category>
+		<web></web>
+		<source>https://github.com/nsmr0604/PawKemoViewer</source>
+		<tracker>https://github.com/nsmr0604/PawKemoViewer/issues</tracker>
+		<changelog>https://github.com/nsmr0604/PawKemoViewer/releases</changelog>
+		<author>nsmr0604</author>
+		<marketversion></marketversion>
+		<marketvercode>6000</marketvercode>
+		<antifeatures>NonFreeNet</antifeatures>
+		<package>
+			<version>0.6.0</version>
+			<versioncode>6000</versioncode>
+			<apkname>PawKemoViewer.apk</apkname>
+			<hash type="sha256">1ba8ab5f6e8501336dd747a3d5f3d23190d43938f16c4386a94f2ff8179a0a1d</hash>
+			<size>80719562</size>
+			<sdkver>24</sdkver>
+			<targetSdkVersion>37</targetSdkVersion>
+			<added>2026-11-26</added>
+			<sig>67279f933f40161da0cc45217e390924</sig>
+			<permissions>INTERNET,com.nsmr0604.pawkemoviewer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION</permissions>
+			<nativecode>arm64-v8a,armeabi-v7a,x86,x86_64</nativecode>
+		</package>
+	</application>
+</fdroid>

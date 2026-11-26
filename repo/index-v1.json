@@ -1,0 +1,74 @@
+{
+  "repo": {
+    "timestamp": 1795731142000,
+    "version": 20002,
+    "name": "PawKemoViewer",
+    "icon": "icon.png",
+    "address": "https://nsmr0604.github.io/PawKemoViewer/repo",
+    "description": "Self-hosted F-Droid repository for PawKemoViewer."
+  },
+  "requests": {
+    "install": [],
+    "uninstall": []
+  },
+  "apps": [
+    {
+      "antiFeatures": [
+        "NonFreeNet"
+      ],
+      "authorName": "nsmr0604",
+      "categories": [
+        "Multimedia"
+      ],
+      "changelog": "https://github.com/nsmr0604/PawKemoViewer/releases",
+      "suggestedVersionCode": "6000",
+      "description": "PawKemoViewer is an unofficial viewer for the pawchive.pw API. It lets you\nbrowse posts, creators, favorites, and follows from pawchive.pw on Android.\n\nFeatures:\n* Post lists with grid/list views and source filtering\n* Creator search, profiles, post lists, and follows\n* Post detail with content, images/videos, comments, and revisions\n* Thumbnail-first loading and low-data mode\n* Save selected images from posts, attachments, and external pages\n  (personal use only)\n* Backup, logs, Japanese/English UI, dark/light themes\n\nThe app does not collect personal information. It contains no analytics,\nadvertising, crash-reporting, or tracking SDKs. Settings, follows, favorites,\nread state, session keys, and caches are stored only on the device.\n\nThis app is unofficial and is not affiliated with pawchive.pw or the content\nproviders. It is intended for users aged 18 or older and may display adult\ncontent. Content rights belong to their respective owners; saving is limited\nto personal use, and redistribution or commercial use is prohibited.\n\nUsing an unofficial client may result in restrictions on third-party\naccounts. The app depends on the pawchive.pw service, which is not free\nsoftware and may change or stop without notice.",
+      "issueTracker": "https://github.com/nsmr0604/PawKemoViewer/issues",
+      "license": "MIT",
+      "sourceCode": "https://github.com/nsmr0604/PawKemoViewer",
+      "summary": "Unofficial viewer for the pawchive.pw API",
+      "added": 1795731142000,
+      "packageName": "com.nsmr0604.pawkemoviewer",
+      "lastUpdated": 1795731142000,
+      "localized": {
+        "en-US": {
+          "name": "PawKemoViewer"
+        }
+      }
+    }
+  ],
+  "packages": {
+    "com.nsmr0604.pawkemoviewer": [
+      {
+        "added": 1795731142000,
+        "apkName": "PawKemoViewer.apk",
+        "hash": "1ba8ab5f6e8501336dd747a3d5f3d23190d43938f16c4386a94f2ff8179a0a1d",
+        "hashType": "sha256",
+        "minSdkVersion": 24,
+        "nativecode": [
+          "arm64-v8a",
+          "armeabi-v7a",
+          "x86",
+          "x86_64"
+        ],
+        "packageName": "com.nsmr0604.pawkemoviewer",
+        "sig": "67279f933f40161da0cc45217e390924",
+        "signer": "69c90f77aa28ea7cfc6232be27ce1fefcd064deac454e573dc999afce8af6a79",
+        "size": 80719562,
+        "targetSdkVersion": 37,
+        "uses-permission": [
+          [
+            "android.permission.INTERNET",
+            null
+          ],
+          [
+            "com.nsmr0604.pawkemoviewer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION",
+            null
+          ]
+        ],
+        "versionCode": 6000,
+        "versionName": "0.6.0"
+      }
+    ]
+  }
+}

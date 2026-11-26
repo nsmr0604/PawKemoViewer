@@ -1,0 +1,41 @@
+{
+  "/etc/issue.net": "Ubuntu 24.04.3 LTS",
+  "antiFeatures": {
+    "NonFreeNet": {
+      "apps": [
+        "com.nsmr0604.pawkemoviewer"
+      ]
+    }
+  },
+  "apksigner": "/usr/bin/apksigner",
+  "archivePolicy0": [],
+  "commandLine": [
+    "/tmp/fdroidvenv/bin/fdroid update",
+    "--pretty"
+  ],
+  "disabled": [],
+  "endTimestamp": 1795731153448,
+  "failedBuilds": {},
+  "jarsigner": "/usr/lib/jvm/java-21-openjdk-amd64/bin/jarsigner",
+  "keytool": "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
+  "needsUpdate": [
+    "com.nsmr0604.pawkemoviewer"
+  ],
+  "noPackages": [
+    "com.nsmr0604.pawkemoviewer"
+  ],
+  "noUpdateCheck": [
+    "com.nsmr0604.pawkemoviewer"
+  ],
+  "stages": {
+    "delete_disabled_builds": 1795731133084,
+    "index.make repo": 1795731142455,
+    "prepare_apps repo": 1795731142394,
+    "process_apks": 1795731133090,
+    "read_added_date_from_all_apks": 1795731142387,
+    "remove_apks": 1795731142376,
+    "scan_repo_files": 1795731142350
+  },
+  "startTimestamp": 1795698732000,
+  "subcommand": "update"
+}
