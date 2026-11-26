@@ -11,7 +11,7 @@
 #     -keyalg RSA -keysize 4096 -validity 10950 \
 #     -dname "CN=PawKemoViewer Repo, O=nsmr0604, C=JP"
 
-repo_url: https://nsmr0604.github.io/PawKemoViewer/fdroid/repo
+repo_url: https://nsmr0604.github.io/PawKemoViewer/repo
 repo_name: PawKemoViewer
 repo_description: >-
   Self-hosted F-Droid repository for PawKemoViewer, an unofficial viewer for

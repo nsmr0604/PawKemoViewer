@@ -87,13 +87,13 @@ scripts/fdroid/build-repo.sh dist-apk
 `fdroid/repo/` の中身を HTTPS で公開します。GitHub Pages を使う場合:
 
 1. `gh-pages` ブランチをチェックアウト
-2. `fdroid/repo/` を `fdroid/repo/` としてコピー
+2. `fdroid/repo/` の中身を、`gh-pages` の `repo/` としてコピー
 3. コミットして push
 
-公開 URL の例:
+公開 URL:
 
 ```
-https://nsmr0604.github.io/PawKemoViewer/fdroid/repo
+https://nsmr0604.github.io/PawKemoViewer/repo
 ```
 
 F-Droid クライアントでは「リポジトリを追加」からこの URL を登録します。
@@ -118,7 +118,7 @@ APK の署名鍵が変わると更新できないため、リリース鍵を固�
 1. バージョンを上げる
 2. `release=true` で Android Build を実行し、APK を GitHub Releases に添付
 3. 必要に応じて `scripts/fdroid/build-repo.sh` でリポジトリを更新
-4. `fdroid/repo/` を公開先へコピー
+4. `fdroid/repo/` の中身を公開先の `repo/` へコピー
 
 ## 注意
 
