@@ -55,6 +55,10 @@ base64 = "0.22"
 tauri-plugin-locale-picker = { path = "plugins/locale-picker" }
 tauri-plugin-external-view = { path = "plugins/external-view" }
 
+# Android の共有 Downloads (MediaStore) への保存
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-downloads-store = { path = "plugins/downloads-store" }
+
 # デスクトップの外部ページビュー (Referer 付きナビゲーション)
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
