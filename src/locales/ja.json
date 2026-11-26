@@ -339,7 +339,7 @@
   "settings.pastePlaceholder": "{\"type\":\"pawkemoviewer-backup\",...} を貼り付け",
   "settings.importThis": "この内容を読み込む",
   "settings.exported": "書き出しました: {{path}}{{clip}}",
-  "settings.clipCopied": " (クリップボードにもコピー済み)",
+  "settings.clipCopied": " (クリップボードにもコピー済み。セッションキーは除く)",
   "settings.exportFailed": "書き出し失敗: {{msg}}",
   "settings.clipEmpty": "クリップボードが空か読み取れません",
   "settings.importConfirm": "バックアップを読み込むと、現在のフォロー・既読・設定を上書きします。よろしいですか?",

@@ -17,6 +17,7 @@ import type { ResolvedLayout } from "../platform/environment"
 import { Toggle } from "../components/Toggle"
 import { getPlatformName, type LayoutMode } from "../platform/environment"
 import { applyBackup, buildBackup, MAX_BACKUP_BYTES } from "../backup"
+import { stripSessionFromBackup } from "../domain/backup-secrets"
 import { clearIconCache, creatorIconInfo } from "../icons"
 import {
   t,
@@ -243,7 +244,8 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
 
       let clip = ""
       try {
-        if (await services.clipboard?.writeText(json)) clip = t("settings.clipCopied")
+        // sessionKey は資格情報なのでクリップボードへは渡さない
+        if (await services.clipboard?.writeText(stripSessionFromBackup(json))) clip = t("settings.clipCopied")
       } catch {
         /* ファイル保存の結果を優先する */
       }

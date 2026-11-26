@@ -339,7 +339,7 @@
   "settings.pastePlaceholder": "Paste {\"type\":\"pawkemoviewer-backup\",...}",
   "settings.importThis": "Import this",
   "settings.exported": "Exported: {{path}}{{clip}}",
-  "settings.clipCopied": " (also copied to clipboard)",
+  "settings.clipCopied": " (also copied to clipboard, without the session key)",
   "settings.exportFailed": "Export failed: {{msg}}",
   "settings.clipEmpty": "Clipboard is empty or unreadable",
   "settings.importConfirm": "Importing a backup overwrites your current follows, read state and settings. Continue?",
