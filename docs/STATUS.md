@@ -103,6 +103,8 @@
 - API スケジューラ（同時 3 / 最小間隔 250ms / GET キャッシュ）と Favorites のクールダウンを維持。
 - pawchive の session Cookie は pawchive ホストにだけ送る。
 - Full 診断はフロントの `VITE_DEBUG_DIAG` と Cargo の `debug-diag` でビルド時に分離。
+- アプリの CSP は `script-src 'self'` などを明示し、`object-src`/`frame-src`/`base-uri` を禁止。
+- 正式リリースの公開は main からのみ行い、タグのコミットと成果物が一致しない場合は失敗する。
 - 秘密情報をコード、文書、ログ、コミットへ含めない。
 - CI の成功、ソースレビュー、実機確認を区別して報告する。
 

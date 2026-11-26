@@ -176,7 +176,7 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `is_proxyable` | `fn is_proxyable(u: &reqwest::Url) -> bool` | `bool` | `http`/`https` かつ `forbidden_host` でなく `is_pawchive_host` でもない |
 | `percent_decode` | `fn percent_decode(s: &str) -> String` | 文字列 | `%XX` と `+` を戻す。不正な `%` はそのまま残す |
 | `pkv_proxy_fetch` | `fn pkv_proxy_fetch(app, method, uri, body, range) -> tauri::http::Response<Vec<u8>>` | HTTP 応答 | pkv の実処理。`text/html` は 415 で拒否する。詳細は「4. pkv プロキシ」 |
-| `proxy_queue` | `fn proxy_queue() -> &'static mpsc::Sender<ProxyJob>` | Sender | 4 スレッドのワーカーを一度だけ起動し、ジョブを配送 |
+| `proxy_queue` | `fn proxy_queue() -> &'static mpsc::SyncSender<ProxyJob>` | SyncSender | 4 スレッドのワーカーを一度だけ起動し、固定長キュー (128) に配送。満杯は 503 |
 | `export_log` | `fn export_log(app, text) -> Result<String, String>` | パス | `app_data/logs/<UTC 秒>_viewer.log` を新規作成して書き込む |
 | `export_file` | `fn export_file(app, file_name, text) -> Result<String, String>` | パス | `app_data/backup/<UTC 秒>_<安全名>`。英数と `._-` 以外を `_` に置換。`create_new` で衝突時は `_1`〜`_99` を試す |
 | `chrono_free_name` | `fn chrono_free_name() -> String` | `YYYY-MM-DD_HH-MM-SS` | 追加依存なしの UTC 表記 |
@@ -526,7 +526,7 @@ Rust 側の取得と書き込みの実装詳細です。画面と候補抽出は
 ### Referer / 保存先解決
 
 - 通常の画像と添付は投稿の `referer`。外部ページ由来の画像は `imageReferer` (無ければ `referer`)。
-- `referer` は fanbox / patreon のみ許可。`imageReferer` は `http`/`https` かつホストがあれば任意の URL を許可します。
+- `referer` は fanbox / patreon のみ許可。`imageReferer` は取得先と同一ホストか fanbox / patreon のページだけ送信します (それ以外は Referer / Origin を付けません)。
 - 保存先は `download_root` → `sanitize_segment(creatorName)`。作成は最初の保存成功時のみです。
 - ファイル名は `{:0width$}_{sanitize(name)}`。`width` は総件数の桁数 (最低 3)。衝突時は `-2` 以降を付けます。
 - 書き込みは `.<name>.part` → rename。失敗時は `.part` を削除します。

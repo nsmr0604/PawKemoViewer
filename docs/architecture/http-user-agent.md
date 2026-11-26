@@ -90,13 +90,11 @@ Referer として許可されるのは次のいずれかです。
 
 ただし、現在は次の制約が残ります。
 
-- DNS 解決失敗は reqwest の接続失敗に任せ、検査としては fail-open。
 - 検査した IP と実際の接続先 IP を固定しておらず、DNS rebinding の TOCTOU がある。
 - TEST-NET など、拒否対象に含まれない予約アドレスがある。
-- pkv の worker 前キューと POST body に上限がない。
-- HTML は script を残し、CSP も付与しない。Tauri の CSP は `null`。
-- 取得先に関係なく pkv の同一オリジンで実行し、localStorage を共有し得る。
-- HTML の入力上限は 8 MiB だが、URL 書き換え後の出力膨張は上限化していない。
+- pkv は `text/html` を中継しない (415)。HTML の入力上限 8 MiB の経路は削除した。
+- アプリの CSP は `tauri.conf.json` で明示している (`script-src 'self'`、`object-src 'none'` など)。
+  外部ページは別ウィンドウ (実オリジン) で開くため、アプリの CSP の対象外。
 
 ## 外部ページと一括保存
 

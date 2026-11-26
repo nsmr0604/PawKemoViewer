@@ -203,12 +203,13 @@ Android 10 以降は `Download/PawKemoViewer/<creator>` だが、README と `wik
 | 優先 | 内容 | 対象 |
 |---|---|---|
 | P0 | ~~本文サニタイザーの XSS / バックアップのクリップボード / pkv のローカルオリジン実行 / 外部ページの保存トリガー / iOS の delegate~~ **対応済み** | F1, F2, R1, R4, N1 |
-| P0 | ~~DNS fail-open と Linux 外部ページの SSRF / `imageReferer` の制限~~ **SSRF は対応済み。`imageReferer` は未対応** | R2, R3 |
-| P1 | CSP の明示 / リリース公開のゲートと上書き禁止 / Actions の SHA 固定 | B2, B3, B4, B5 |
-| P1 | アカウント切替・フォロー移行・同期失敗の表示 / Home の 0 件ループ | F3, F4 ほか |
-| P2 | CI の unit test・監査・Cargo/Gradle キャッシュ / SDK 36 / リリースノート | 中・低 |
-| P2 | 性能(カード毎リスナー、アイコン全件読み出し、CreatorsPage) | 中 |
-| P3 | 未使用 export・コマンド、警告、ドキュメントの細かなずれ | 低 |
+| P0 | ~~DNS fail-open と Linux 外部ページの SSRF / `imageReferer` の制限~~ **対応済み** | R2, R3 |
+| P1 | ~~CSP の明示 / リリース公開のゲートと上書き禁止 / Actions の SHA 固定~~ **対応済み** | B2, B3, B4, B5 |
+| P1 | ~~アカウント切替・フォロー移行・同期失敗の表示 / Home の 0 件ループ / Esc のライトボックス / コメント HTML / ErrorBoundary~~ **対応済み** | F3, F4 ほか |
+| P1 | ~~`api_request` の 302 追従 / pkv キュー上限 / 保存ロックの解放 / ネイティブの URL・パス検証~~ **対応済み** | 中 |
+| P2 | ~~CI の unit test / SDK 36~~ **対応済み**。監査・キャッシュ・リリースノートは未対応 | 中・低 |
+| P2 | 性能(カード毎 listener、CreatorsPage、本文サニタイズの memo 化) | 中 |
+| P3 | 未使用 export・コマンド、ドキュメントの細かなずれ | 低 |
 
 ## 8. 未確認事項
 
