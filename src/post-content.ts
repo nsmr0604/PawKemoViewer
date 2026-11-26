@@ -1,10 +1,10 @@
 ﻿import { isLocalHost, isPawchiveHost, proxyFileUrl } from "./api"
 import { isSafeHttpUrl } from "./safe-url"
 
-/** 險ｱ蜿ｯ縺励↑縺・ｦ∫ｴ縲ゅヵ繧ｩ繝ｼ繝繧・沂繧∬ｾｼ縺ｿ縺ｯ譛ｬ譁・・陦ｨ遉ｺ縺ｫ荳崎ｦ√〒縲・・遘ｻ繝ｻ蜈･蜉帙・隱伜ｰ弱↓菴ｿ縺医ｋ縲・*/
+/** 許可しない要素。フォームや埋め込みは本文の表示に不要で、誤操作・入力の隠れ蓑に使える。 */
 const DROPPED_TAGS = "script,style,iframe,object,embed,link,meta,base,form,input,button,textarea,select"
 
-/** URL 繧呈戟縺､螻樊ｧ縲Ｉttp / https 莉･螟・(javascript:, data:, file: 縺ｪ縺ｩ) 縺ｯ蜑企勁縺吶ｋ縲・*/
+/** URL を持つ属性。http / https 以外 (javascript:, data:, file: など) は削除する。 */
 const URL_ATTRIBUTES = new Set([
   "href",
   "src",
@@ -16,15 +16,18 @@ const URL_ATTRIBUTES = new Set([
   "cite",
 ])
 
-/** URL 縺ｮ荳隕ｧ繧呈戟縺､螻樊ｧ縲・*/
+/** URL の一覧を持つ属性。 */
 const URL_LIST_ATTRIBUTES = new Set(["srcset"])
 
 /**
- * 謚慕ｨｿ譛ｬ譁・HTML 繧呈怙蟆城剞繧ｵ繝九ち繧､繧ｺ縺励※霑斐☆縲・ *
- * - script / style / 蝓九ａ霎ｼ縺ｿ / 繝輔か繝ｼ繝繧貞炎髯､
- * - `on*` 螻樊ｧ縺ｨ `srcdoc` 繧貞炎髯､
- * - URL 螻樊ｧ縺ｯ http / https 縺ｮ縺ｿ險ｱ蜿ｯ (`javascript:` 縺ｮ髮｣隱ｭ蛹悶ｒ蜷ｫ繧√※ `new URL` 縺ｧ蛻､螳・
- * - 繝帙ャ繝医Μ繝ｳ繧ｯ蟇ｾ遲悶・繧ｹ繝医・逕ｻ蜒上・ pkv 邨檎罰縺ｫ譖ｸ縺肴鋤縺・ * - 螟夜Κ繝ｪ繝ｳ繧ｯ縺ｫ縺ｯ蜈・URL 繧呈ｮ九＠縲√け繝ｪ繝・け譎ゅ↓螳溘が繝ｪ繧ｸ繝ｳ縺ｮ繝薙Η繝ｼ縺ｸ貂｡縺・ */
+ * 投稿本文 HTML を最小限にサニタイズして返す。
+ *
+ * - script / style / 読み込み / フォームを削除
+ * - `on*` 属性と `srcdoc` を削除
+ * - URL 属性は http / https のみ許可 (`javascript:` の誤読化を含めて `new URL` で判定)
+ * - ホットリンク対策のストック画像は pkv 経由に書き換え
+ * - 外部リンクには元 URL を残し、クリック時に実オリジンのビューへ渡す
+ */
 export function sanitizePostContent(html: string, service?: string, postId?: string, refererUrl?: string): string {
   if (!html) return ""
   const doc = new DOMParser().parseFromString(html, "text/html")
@@ -40,7 +43,7 @@ export function sanitizePostContent(html: string, service?: string, postId?: str
       }
       if (URL_ATTRIBUTES.has(name)) {
         const value = attr.value.trim()
-        // 蜷御ｸ繝壹・繧ｸ蜀・い繝ｳ繧ｫ繝ｼ縺ｨ繝｡繝ｼ繝ｫ / 髮ｻ隧ｱ縺ｯ險ｱ蜿ｯ縺吶ｋ
+        // 同一ページ内アンカーとメール / 電話は許可する
         if (name === "href" && (value.startsWith("#") || /^(mailto:|tel:)/i.test(value))) continue
         if (!isSafeHttpUrl(value)) el.removeAttribute(attr.name)
         continue
@@ -55,7 +58,7 @@ export function sanitizePostContent(html: string, service?: string, postId?: str
       }
     }
   }
-  // 譛ｬ譁・ｸｭ縺ｮ逕ｻ蜒・ fanbox / patreon 縺ｮ繝帙ャ繝医Μ繝ｳ繧ｯ蟇ｾ遲悶ｒ蝗樣∩
+  // 本文中の画像は fanbox / patreon のホットリンク対策を回避
   for (const img of Array.from(doc.querySelectorAll("img[src]"))) {
     const src = img.getAttribute("src") || ""
     const proxied = proxyFileUrl(src, service, postId, refererUrl)
@@ -65,7 +68,8 @@ export function sanitizePostContent(html: string, service?: string, postId?: str
       img.setAttribute("decoding", "async")
     }
   }
-  // 螟夜Κ繝ｪ繝ｳ繧ｯ: 蜈・URL 繧呈ｮ九＠縲√け繝ｪ繝・け譎ゅ↓螳溘が繝ｪ繧ｸ繝ｳ縺ｮ繝薙Η繝ｼ縺ｧ髢九￥縲・  // (pkv 縺ｯ HTML 繧剃ｸｭ邯吶＠縺ｪ縺・◆繧√”ref 繧・pkv 縺ｸ譖ｸ縺肴鋤縺医↑縺・
+  // 外部リンク: 元 URL を残し、クリック時に実オリジンのビューで開く。
+  // (pkv は HTML を中継しないため、href を pkv へ書き換えない)
   for (const a of Array.from(doc.querySelectorAll("a[href]"))) {
     const href = a.getAttribute("href") || ""
     if (!/^https?:\/\//i.test(href)) continue
