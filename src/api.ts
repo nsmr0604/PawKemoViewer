@@ -56,6 +56,8 @@ export interface Settings {
   developerToolsEnabled: boolean
   /** 表示言語 (既定 ja)。変更すると SETTINGS_CHANGED_EVENT で各画面が再描画される */
   locale: Locale
+  /** 18 歳以上の確認 (端末内のみ。バックアップからは復元しない) */
+  ageVerified: boolean
 }
 
 /** 設定変更を上位コンポーネント (App) に通知するイベント名。
@@ -92,6 +94,7 @@ function defaultSettings(): Settings {
     excludeAiPosts: false,
     developerToolsEnabled: false,
     locale: "ja",
+    ageVerified: false,
   }
 }
 

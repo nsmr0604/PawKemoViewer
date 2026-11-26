@@ -439,5 +439,17 @@
   "settings.fullDiagnosticsTitle": "詳細診断",
   "settings.fullDiagnosticsDesc": "詳細ログ・ログフォルダ操作・バックアップダンプ (デバッグビルド専用)",
   "settings.fullApiLogcatDesc": "Androidデバッグビルドでは Pawchive API と pkv:// 外部プロキシの送受信ヘッダー・HTTPステータス・テキスト応答本文を logcat に記録します。Cookie / Authorization 等の認証値はマスキングし、バイナリ本文はサイズのみ記録します。本文に個人情報が含まれる場合があるためログ共有前に確認してください。",
-  "favorites.syncFailed": "フォロー同期に失敗しました: {{msg}}"
+  "favorites.syncFailed": "フォロー同期に失敗しました: {{msg}}",
+  "age.title": "18歳以上の方のみご利用いただけます",
+  "age.body": "本アプリは FANBOX / Patreon の投稿を表示する非公式クライアントです。成人向けの内容が含まれる場合があります。18歳未満の方はご利用いただけません。",
+  "age.accept": "18歳以上です",
+  "age.decline": "18歳未満です",
+  "age.declined": "18歳未満の方はご利用いただけません。アプリを終了してください。",
+  "legal.section": "法務情報",
+  "legal.unofficial": "本アプリは非公式クライアントです。pixiv / FANBOX / Patreon / pawchive の各サービスおよび運営者とは関係ありません。",
+  "legal.terms": "利用規約",
+  "legal.privacy": "プライバシーポリシー",
+  "legal.age": "年齢確認",
+  "legal.ageVerified": "18歳以上として確認済み",
+  "legal.resetAge": "確認をやり直す"
 }

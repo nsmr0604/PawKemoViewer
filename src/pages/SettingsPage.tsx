@@ -15,6 +15,8 @@ import { navigate, goBack } from "../router"
 import { activateAccount } from "../account-action"
 import type { ResolvedLayout } from "../platform/environment"
 import { Toggle } from "../components/Toggle"
+import { BrowserLink } from "../components/BrowserLink"
+import { privacyUrl, termsUrl } from "../legal"
 import { getPlatformName, type LayoutMode } from "../platform/environment"
 import { applyBackup, buildBackup, MAX_BACKUP_BYTES } from "../backup"
 import { stripSessionFromBackup } from "../domain/backup-secrets"
@@ -853,6 +855,35 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
         <p className="small">
           {t("settings.aboutNote")}
         </p>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("legal.section")}</span>
+            <small>{t("legal.unofficial")}</small>
+          </div>
+          <div className="settings-actions">
+            <BrowserLink className="btn" href={termsUrl()}>
+              {t("legal.terms")}
+            </BrowserLink>
+            <BrowserLink className="btn" href={privacyUrl()}>
+              {t("legal.privacy")}
+            </BrowserLink>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-text">
+            <span>{t("legal.age")}</span>
+            <small>{t("legal.ageVerified")}</small>
+          </div>
+          <button
+            className="btn"
+            type="button"
+            onClick={() => updateSettings({ ageVerified: false })}
+          >
+            {t("legal.resetAge")}
+          </button>
+        </div>
       </div>
       {showDiagnostics && (
         <div id="settings-diagnostics" className="settings-section" tabIndex={-1} hidden={activeSection !== "diagnostics"}>
