@@ -90,7 +90,7 @@ localStorage と sessionStorage に保存する全キーの一覧です。Indexe
 | フィールド | 型 | 既定値 | 意味 | バックアップ復元 |
 |---|---|---|---|---|
 | `sessionKey` | string | `""` | pawchive の session Cookie 値。**機密** | 空文字以外を復元(最大 8,192 文字) |
-| `accountId` | string | `""` | ログイン中のユーザー名(表示用) | **復元しない** |
+| `accountId` | string | `""` | ログイン中のアカウント。ログイン時は username、session から復元した場合は数値の `account_id`(表示用) | **復元しない** |
 | `theme` | `"dark"` \| `"light"` | `"dark"` | 配色 | 列挙値のみ |
 | `layoutMode` | `"auto"` \| `"desktop"` \| `"mobile"` | `"auto"` | レイアウト | 列挙値のみ |
 | `noImageMode` | boolean | `false` | 低通信モード(画像を読まない) | boolean のみ |
@@ -119,12 +119,20 @@ localStorage と sessionStorage に保存する全キーの一覧です。Indexe
 
 `updateSettings(patch)` の手順:
 
-1. `sessionKey` が実際に変わる場合は `accountId` を `""` にリセットし、
+1. `sessionKey` が実際に変わる場合は、`accountId` を次の順で決めてから
    `clearApiCache()` を呼ぶ(GET キャッシュの世代を進める)。
+   1. patch に `accountId` があればそれを使う(ログイン画面は username を渡す)
+   2. 無ければ session Cookie の payload から `account_id` を導出する
+      (`src/domain/session-account.ts` の `accountIdFromSession`)
+   3. どちらも無ければ `""`
 2. 現在値へ patch を浅くマージする。
 3. `saveSettings()` で `JSON.stringify` して `setItem`。失敗は握りつぶす。
 4. `window` があれば `pawkemo-settings-changed` を dispatch する
    (値が変わらなくても発火)。
+
+起動時は `initializeSettingsStorage()` が保存値を読み直し、`sessionKey` があるのに
+`accountId` が空なら session から復元して保存する。以前の版や診断画面から
+session だけを保存した場合でも、再起動後に「アカウント不明」にならない。
 
 購読側: `App`(テーマ・レイアウト・言語などの反映)、`SettingsPage`(ログイン状態の再検証)。
 

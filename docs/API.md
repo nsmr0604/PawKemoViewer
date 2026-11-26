@@ -41,7 +41,7 @@ interface Settings {
 | フィールド | 既定 | 選択肢 / 影響 |
 |---|---|---|
 | `sessionKey` | `""` | pawchive の session cookie |
-| `accountId` | `""` | 表示用。通常ログイン時の username |
+| `accountId` | `""` | 表示用。ログイン時は username、session から復元した場合は数値の `account_id` |
 | `theme` | `"dark"` | `dark` / `light`。モバイルアイコンにも反映 |
 | `layoutMode` | `"auto"` | `auto` / `desktop` / `mobile` |
 | `noImageMode` | `false` | 一覧はキャッシュ済みサムネイルのみ。投稿詳細もリスト表示 |
@@ -58,7 +58,7 @@ interface Settings {
 
 設定 API: `loadSettings()` / `saveSettings()` / `initializeSettingsStorage()` / `getSettings()` / `updateSettings(patch)` / `clearApiCache()` / `apiStatus(error)`。
 
-sessionKey を変更すると `accountId` を空にし、API キャッシュ世代を進めます。保存済り設定は型・列挙値を検証せず、既定値と shallow merge します。
+sessionKey を変更すると `accountId` を更新し(指定が無ければ session の `account_id` から導出)、API キャッシュ世代を進めます。保存済み設定は型・列挙値を検証せず、既定値と shallow merge します。
 
 ## pawchive API
 

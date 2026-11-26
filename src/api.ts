@@ -1,5 +1,6 @@
 import { InvalidPostContextError, isValidPostContext } from "./domain/post-identity"
 import { originalPostReferer } from "./domain/post-referer"
+import { accountIdFromSession } from "./domain/session-account"
 import type { CreatorIndexDto } from "./infrastructure/creator-index-dto"
 import type { Locale } from "./i18n"
 
@@ -103,6 +104,15 @@ let settings: Settings = loadSettings()
 /** Reload settings after runtime adapter initialization so the service boundary is used. */
 export function initializeSettingsStorage() {
   settings = loadSettings()
+  // 以前の版や診断画面から session だけが保存された場合、accountId が空のままになる。
+  // session に埋め込まれた account_id から復元し、次回起動でも不明表示にならないようにする。
+  if (!settings.accountId && settings.sessionKey) {
+    const accountId = accountIdFromSession(settings.sessionKey)
+    if (accountId) {
+      settings = { ...settings, accountId }
+      saveSettings(settings)
+    }
+  }
 }
 
 export function getSettings(): Settings {
@@ -112,8 +122,17 @@ export function getSettings(): Settings {
 export function updateSettings(patch: Partial<Settings>) {
   const sessionChanged =
     patch.sessionKey !== undefined && patch.sessionKey !== settings.sessionKey
-  settings = { ...settings, ...(sessionChanged ? { accountId: "" } : {}), ...patch }
-  if (sessionChanged) clearApiCache()
+  let next = settings
+  if (sessionChanged) {
+    // session が変わったら前のアカウント表示を引き継がない。
+    // accountId の指定が無い場合は session の account_id から導出する。
+    next = {
+      ...settings,
+      accountId: patch.accountId ?? accountIdFromSession(patch.sessionKey ?? "") ?? "",
+    }
+    clearApiCache()
+  }
+  settings = { ...next, ...patch }
   saveSettings(settings)
   // App 等の上位コンポーネントに変更を通知 (即時反映)
   if (typeof window !== "undefined") {
