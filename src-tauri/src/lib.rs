@@ -1132,128 +1132,6 @@ fn proxy_queue() -> &'static mpsc::SyncSender<ProxyJob> {
     &QUEUE
 }
 
-#[tauri::command]
-fn export_log(
-    app: tauri::AppHandle,
-    text: String,
-) -> Result<String, String> {
-    use std::io::Write;
-
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("logs");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-
-    // 起動ごとに 1 ファイル (JHenTai の logs/YYYY-MM-DD_HH-MM-SS.log 型)。
-    // 同一秒に 2 回呼ばれても上書きしないよう、ミリ秒と連番を付ける。
-    let stamp = chrono_free_name();
-    let millis = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.subsec_millis())
-        .unwrap_or(0);
-    let mut index = 0u32;
-    let (path, mut file) = loop {
-        let name = if index == 0 {
-            format!("{}_{:03}_viewer.log", stamp, millis)
-        } else {
-            format!("{}_{:03}-{index}_viewer.log", stamp, millis)
-        };
-        let candidate = dir.join(name);
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(&candidate) {
-            Ok(file) => break (candidate, file),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists && index < 100 => index += 1,
-            Err(error) => return Err(error.to_string()),
-        }
-    };
-    file.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
-    Ok(path.to_string_lossy().to_string())
-}
-
-/// 汎用テキストファイル書き出し (バックアップ等)。
-/// %APPDATA%/backup/ に保存する。ファイル名は安全な文字のみ許可
-#[tauri::command]
-fn export_file(
-    app: tauri::AppHandle,
-    file_name: String,
-    text: String,
-) -> Result<String, String> {
-    use std::io::Write;
-
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?
-        .join("backup");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-
-    // ファイル名のサニタイズ (パス区切り・予約文字を除去)
-    let safe: String = file_name
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-') {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-
-    let safe = if safe.trim_matches(['_', '.']).is_empty() { "export.txt".to_string() } else { safe };
-    // create_new prevents silently overwriting an earlier export with the same
-    // timestamp/name (including concurrent export calls).
-    for attempt in 0..100u32 {
-        let suffix = if attempt == 0 { String::new() } else { format!("_{}", attempt) };
-        let name = format!("{}_{}{}", chrono_free_name(), suffix, safe);
-        let path = dir.join(&name);
-        match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
-            Ok(mut f) => {
-                f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
-                return Ok(path.to_string_lossy().to_string());
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e.to_string()),
-        }
-    }
-    Err("could not allocate a unique export filename".into())
-}
-
-/// ファイル名用タイムスタンプ (追加依存を入れずに生成)
-fn chrono_free_name() -> String {
-    // エポック秒 → UTC 表記 (デバッグ用途のため秒精度で十分)
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let days = secs / 86400;
-    let (y, m, d) = civil_from_days(days as i64);
-    let rem = secs % 86400;
-    format!(
-        "{:04}-{:02}-{:02}_{:02}-{:02}-{:02}",
-        y,
-        m,
-        d,
-        rem / 3600,
-        (rem % 3600) / 60,
-        rem % 60
-    )
-}
-
-/// Howard Hinnant の civil_from_days (日数 → 年月日)
-fn civil_from_days(z: i64) -> (i64, u32, u32) {
-    let z = z + 719468;
-    let era = if z >= 0 { z } else { z - 146096 } / 146097;
-    let doe = (z - era * 146097) as u64;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = yoe as i64 + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    (if m <= 2 { y + 1 } else { y }, m, d)
-}
-
 // ---------------------------------------------------------------------------
 // デバッグ診断 (PC 向け・debug-diag feature のみ有効)
 //
@@ -1509,17 +1387,6 @@ async fn open_in_browser(_app: tauri::AppHandle, url: String) -> Result<(), Stri
 
 /// 一括画像ダウンロードの保存先 (クリエイター名ディレクトリ) を返す。
 /// ディレクトリが無ければ作成する。
-#[tauri::command]
-fn resolve_download_directory(
-    app: tauri::AppHandle,
-    creator_name: String,
-    service: String,
-    creator_id: String,
-) -> Result<String, String> {
-    downloads::creator_directory(&app, &creator_name, &service, &creator_id)
-        .map(|path| path.to_string_lossy().to_string())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -1574,8 +1441,6 @@ pub fn run() {
                 api_request,
                 fetch_post_thumbnail,
                 login_request,
-                export_log,
-                export_file,
                 fetch_creator_icon,
                 creator_icon_cache_info,
                 clear_creator_icon_cache,
@@ -1591,7 +1456,6 @@ pub fn run() {
                 locale_storage::resolve_storage_location,
                 json_files::pick_json_file,
                 json_files::save_user_file,
-                resolve_download_directory,
                 downloads::download_post_images,
                 downloads::cancel_download,
                 open_in_browser,
