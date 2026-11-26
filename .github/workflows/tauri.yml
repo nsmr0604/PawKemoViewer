@@ -20,8 +20,9 @@ on:
       - "scripts/app-icon/**"
       - "scripts/generate-icons.mjs"
       - "scripts/check-locales.mjs"
-      - "scripts/ci/publish-build.sh"
-      - "scripts/ci/stage-desktop-assets.mjs"
+      - "scripts/dev-version.mjs"
+      - "scripts/sync-version.mjs"
+      - "scripts/ci/**"
       - ".github/workflows/tauri.yml"
   workflow_dispatch:
     inputs:

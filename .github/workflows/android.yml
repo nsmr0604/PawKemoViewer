@@ -20,6 +20,9 @@ on:
       - "scripts/app-icon/**"
       - "scripts/generate-icons.mjs"
       - "scripts/check-locales.mjs"
+      - "scripts/dev-version.mjs"
+      - "scripts/sync-version.mjs"
+      - "scripts/ci/**"
       - "src-tauri/app-icons.json"
       - "src-tauri/app-icons/**"
       - ".github/workflows/android.yml"
@@ -113,6 +116,7 @@ jobs:
           sdkmanager \
             "platform-tools" \
             "platforms;android-35" \
+            "platforms;android-36" \
             "build-tools;35.0.0"
 
       - name: Install Dependencies
