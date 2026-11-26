@@ -71,7 +71,8 @@
 - 成功件数、失敗件数、最初の 5 件までの失敗理由を表示します。
 - 1 件失敗しても後続を継続します。
 - デスクトップ: `Downloads/PawKemoView/<クリエイター名>`
-- Android / iOS: `Documents/Downloads/<クリエイター名>`
+- Android 10 以降: 端末の `Download/PawKemoViewer/<クリエイター名>`（Android 9 以下は `Documents/Downloads/<クリエイター名>`）
+- iOS: `Documents/Downloads/<クリエイター名>`（ファイル App の PawKemoViewer 内）
 - ファイル名は `001_<元の名前>`。衝突時は `-2`、`-3` を付けます。
 - サムネイルだけの投稿で元画像が 404 の場合は保存に失敗します。失敗理由で確認できます。
 

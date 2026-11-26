@@ -45,6 +45,7 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `cfg(target_os = "macos")` | `objc2 = "0.6"`, `objc2-foundation = "0.3"` (`NSURL` / `NSURLRequest` / `NSString`), `objc2-web-kit = "0.3"` (`WKWebView`) | `NSMutableURLRequest` に Referer を載せて `loadRequest` |
 | `cfg(target_os = "linux")` | `webkit2gtk = "=2.0.2"` (`v2_38`) | Referer 付きで取得した HTML を `load_html` で読み込む |
 | `cfg(any(android, ios))` | `tauri-plugin-locale-picker`, `tauri-plugin-external-view` (path 依存) | ネイティブのファイルピッカー / 外部ページビュー |
+| `cfg(target_os = "android")` | `tauri-plugin-downloads-store` (path 依存) | 共有 `Download/` への MediaStore 保存 |
 | `cfg(not(any(android, ios)))` | `tauri-plugin-dialog = "2"` | デスクトップのファイル選択・保存ダイアログ |
 
 共通依存は `tauri 2`、`tauri-plugin-log 2`、`tauri-plugin-app-icon 0.1.0`、`log`、`serde` / `serde_json`、`regex`、`base64 0.22`、および `reqwest 0.12` (`default-features = false` + `json` / `cookies` / `gzip` / `brotli` / `deflate` / `rustls-tls` / `blocking`) です。OpenSSL は使いません (Android 対応と `rustls` 統一のため)。
@@ -57,11 +58,12 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 
 1. デスクトップ: `tauri_plugin_dialog::init()`
 2. モバイル: `tauri_plugin_locale_picker::init()` → `tauri_plugin_external_view::init()`
-3. iOS のみ `setup` で `locale_storage::prepare_ios_files_directory`
-4. `tauri_plugin_log` (level `Info`)
-5. `tauri_plugin_app_icon::init()`
-6. `register_asynchronous_uri_scheme_protocol("pkv", ...)`
-7. `invoke_handler(generate_handler![...])`
+3. Android のみ `tauri_plugin_downloads_store::init()`（共有 `Download/` への MediaStore 保存）
+4. iOS のみ `setup` で `locale_storage::prepare_ios_files_directory`
+5. `tauri_plugin_log` (level `Info`)
+6. `tauri_plugin_app_icon::init()`
+7. `register_asynchronous_uri_scheme_protocol("pkv", ...)`
+8. `invoke_handler(generate_handler![...])`
 
 ## 2. Tauri コマンド一覧
 
@@ -257,9 +259,11 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | 名前 | シグネチャ | 戻り値 | 説明・性質 |
 |---|---|---|---|
 | `sanitize_segment` | `pub(crate) fn sanitize_segment(value: &str, fallback: &str) -> String` | 安全な名前 | 制御文字とパス区切り・ワイルドカード・引用符などの禁止文字を `_` に置換、前後の空白とドットを除去、80 文字に切り詰め、空なら fallback |
-| `download_root` | `pub(crate) fn download_root(app) -> Result<PathBuf, String>` | 基準ディレクトリ | モバイルは `Documents/Downloads`、デスクトップは `Downloads/PawKemoView` → `Documents/Pawchive/Downloads` → `app_data/Downloads` の順。作成しながら確定 |
-| `creator_directory_path` | `pub(crate) fn creator_directory_path(app, creator_name, service, creator_id) -> Result<PathBuf, String>` | パス | ディレクトリは**作らない**。名前が空なら `{service}_{creator_id}` |
-| `creator_directory` | `pub(crate) fn creator_directory(app, creator_name, service, creator_id) -> Result<PathBuf, String>` | パス | 上記 + `create_dir_all` |
+| `download_root` | `pub(crate) fn download_root(app) -> Result<PathBuf, String>` | 基準ディレクトリ | モバイルは `Documents/Downloads`、デスクトップは `Downloads/PawKemoView` → `Documents/Pawchive/Downloads` → `app_data/Downloads` の順。作成しながら確定。Android では共有 `Download/` を使えない場合のフォールバック |
+| `creator_target` | `pub(crate) fn creator_target(app, creator_name, service, creator_id) -> Result<DownloadTarget, String>` | `DownloadTarget` | 表示用パス・実際の書き込み先・MediaStore 相対パスを決める。Android 10 以降は共有 `Download/PawKemoViewer/<name>` を表示し、キャッシュへ書いて移す |
+| `creator_directory` | `pub(crate) fn creator_directory(app, creator_name, service, creator_id) -> Result<PathBuf, String>` | パス | `creator_target` の表示用パス。共有保存のときはディレクトリを作らない |
+| `store_shared` | `fn store_shared(app, path, file_name, relative) -> Result<(), String>` (Android) | `()` | `downloads-store` プラグインで MediaStore に登録し、キャッシュ上のファイルを削除する |
+| `mime_for` | `fn mime_for(file_name) -> &'static str` (Android) | MIME | 拡張子から jpeg / png / webp / gif / avif / mp4 / webm を決める。不明は octet-stream |
 | `collision_name` | `pub(crate) fn collision_name(stem, extension, index) -> String` | ファイル名 | `index <= 1` は接尾辞なし、2 以上は `-<index>`、拡張子があれば付与 |
 | `unique_file_path` | `pub(crate) fn unique_file_path(directory, filename) -> PathBuf` | パス | 既存なら `-2`〜`-9999` を試す。全滅時は 9999 を返す |
 | `atomic_write` | `pub(crate) fn atomic_write(path, bytes) -> Result<(), String>` | `()` | `.<name>.part` に書いて rename。rename 失敗時は一時ファイルを削除 |
@@ -278,14 +282,14 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `decode_entities` | `fn decode_entities(value) -> String` | 文字列 | `&amp;` `&quot;` `&#39;` `&apos;` `&lt;` `&gt;` のみ戻す |
 | `cancel_download` | `pub(crate) fn cancel_download()` | `()` | `DOWNLOAD_CANCELLED` を立てるだけ。即時中断はしない |
 | `download_post_images` | `pub(crate) async fn download_post_images(...) -> Result<DownloadSummary, String>` | `DownloadSummary` | 引数検査 → 実行ロック → `spawn_blocking(run_download)` → lock 解除 |
-| `Downloader::new` | `fn new(app, directory, total, session) -> Self` | `Downloader` | 連番の桁幅を `total` の桁数 (最低 3) で決める |
+| `Downloader::new` | `fn new(app, target, total, session) -> Self` | `Downloader` | 連番の桁幅を `total` の桁数 (最低 3) で決める |
 | `Downloader::stop_requested` | `fn stop_requested(&mut self) -> bool` | `bool` | グローバル中止フラグを読み、立っていれば `cancelled` を立てる |
 | `Downloader::pause` | `fn pause(&self)` | `()` | 2 件目以降、取得前に 200 ms 待つ |
 | `Downloader::emit` | `fn emit(&self)` | `()` | `download-progress` に `{done, total}` を送る。送信失敗は無視 |
 | `Downloader::fetch_and_store` | `fn fetch_and_store(&mut self, url, name, referer)` | `()` | 重複は `skipped`、失敗は `failed` に追加。必ず `processed` を進めて emit |
-| `Downloader::store` | `fn store(&mut self, url, name, bytes)` | `()` | トラッキングピクセル除外、合計上限判定、最初の成功時にディレクトリ作成、連番付与、`atomic_write` |
+| `Downloader::store` | `fn store(&mut self, url, name, bytes)` | `()` | トラッキングピクセル除外、合計上限判定、最初の成功時にディレクトリ作成、連番付与、`atomic_write`。`target.shared` があれば `store_shared` で共有 `Download/` へ移す |
 | `Downloader::into_summary` | `fn into_summary(self) -> DownloadSummary` | `DownloadSummary` | 集計を返す |
-| `run_download` | `fn run_download(app, directory, referer, images, pages, session, image_referer) -> Result<DownloadSummary, String>` | `DownloadSummary` | 画像 → 外部ページの順に処理。ページが画像なら 1 枚、HTML なら抽出して保存 |
+| `run_download` | `fn run_download(app, target, referer, images, pages, session, image_referer) -> Result<DownloadSummary, String>` | `DownloadSummary` | 画像 → 外部ページの順に処理。ページが画像なら 1 枚、HTML なら抽出して保存 |
 
 #### 構造体・列挙体
 
@@ -294,7 +298,8 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `DownloadImage` (`Deserialize`) | `url: String`、`name: Option<String>` (`#[serde(default)]`) |
 | `DownloadFailure` (`Serialize`) | `url: String`、`reason: String` |
 | `DownloadSummary` (`Serialize`) | `directory`、`saved`、`skipped`、`cancelled`、`failed` |
-| `Downloader<'a>` | `app` / `directory` / `session` / `seen: HashSet<String>` / `width` / `saved` / `skipped` / `processed` / `total` / `total_bytes` / `failed` / `cancelled` |
+| `Downloader<'a>` | `app` / `target: &DownloadTarget` / `session` / `seen: HashSet<String>` / `width` / `saved` / `skipped` / `processed` / `total` / `total_bytes` / `failed` / `cancelled` |
+| `DownloadTarget` | `display: PathBuf`（結果表示）/ `staging: PathBuf`（実書き込み）/ `shared: Option<String>`（Android の MediaStore 相対パス） |
 | `Fetched` | `content_type`、`body`、`final_url` (リダイレクト後の URL) |
 | `FetchKind` | `Image` / `Page`。Accept と Sec-Fetch-* の組み合わせを切り替える |
 
@@ -302,7 +307,7 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 
 - 1 件の失敗は `failed` に積んで継続します。全体は `Ok(DownloadSummary)` のままです。
 - 失敗理由の文字列: `invalid url`、`unsupported scheme`、`forbidden address`、`HTTP <code>`、`too large`、`not an image`、`total size limit`、`unsupported content type: <content-type>`、I/O の `e.to_string()`。
-- 実行ロックは `download_post_images` が `DOWNLOAD_RUNNING.swap(true)` した後に `creator_directory_path(...)?` で早期 return すると解除されません。既知の不具合として [一括画像保存](../features/image-download.md) に記載があります。
+- 実行ロックは `download_post_images` が `DOWNLOAD_RUNNING.swap(true)` した後に、`spawn_blocking` の外で早期 return すると解除されません。保存先の決定は `spawn_blocking` の内側へ移したため、`creator_target` の失敗でも解除されます。
 - キャンセルは画像なら次の 1 件、ページなら次のページの直前で効きます。転送中の中断はしません。
 
 ### src/locale_storage.rs
@@ -580,7 +585,7 @@ Rust 側の取得と書き込みの実装詳細です。画面と候補抽出は
 
 ## 8. プラグイン
 
-`src-tauri/plugins/` の 2 プラグインはモバイル専用です。Rust 側の `src/lib.rs` は `#![cfg(any(target_os = "android", target_os = "ios"))]` で、デスクトップでは空になります。`build.rs` は `tauri_plugin::Builder` に `android_path("android")` と `ios_path("ios")` を渡すだけです。
+`src-tauri/plugins/` の 3 プラグインのうち、`external-view` と `locale-picker` はモバイル専用、`downloads-store` は Android 専用です。Rust 側の `src/lib.rs` は `#![cfg(any(target_os = "android", target_os = "ios"))]` などで、対象外の OS では空になります。`build.rs` は `tauri_plugin::Builder` に `android_path("android")`（と iOS 向けの `ios_path`）を渡すだけです。
 
 ### 登録方法
 
@@ -588,6 +593,7 @@ Rust 側の取得と書き込みの実装詳細です。画面と候補抽出は
 |---|---|---|---|
 | `external-view` | `tauri_plugin_external_view::init()` | `api.register_android_plugin("org.pawkemoviewer.externalview", "ExternalViewPlugin")` | `api.register_ios_plugin(init_plugin_external_view)` (`@_cdecl`) |
 | `locale-picker` | `tauri_plugin_locale_picker::init()` | `api.register_android_plugin("org.pawkemoviewer.localepicker", "LocalePickerPlugin")` | `api.register_ios_plugin(init_plugin_locale_picker)` |
+| `downloads-store` | `tauri_plugin_downloads_store::init()`（Android のみ） | `api.register_android_plugin("org.pawkemoviewer.downloadsstore", "DownloadsStorePlugin")` | なし |
 
 `external-view` は `debug-diag` feature を持ち、iOS の `Package.swift` が環境変数 `PKV_IOS_EXTERNAL_DIAG` を見て Swift の `PKV_EXTERNAL_DIAG` を定義します。`build.rs` がこの環境変数を設定します。
 
@@ -602,6 +608,8 @@ Rust 側の取得と書き込みの実装詳細です。画面と候補抽出は
 | `locale-picker` の `saveDocument` | `LocalePickerPlugin.saveDocument` + `exportResult` | `LocalePickerPlugin.saveDocument` | JSON / テキスト書き出し |
 | `locale-picker` の `exportToAppDirectory` | `LocalePickerPlugin.exportToAppDirectory` (`AtomicFile`) | 実装なし (Rust が直接書く) | アプリ専用フォルダーへの言語保存 |
 | `locale-picker` の `setLauncherIcon` | `LocalePickerPlugin.setLauncherIcon` → `LauncherIcons.kt` | 実装なし (app-icon プラグイン) | Android のランチャーアイコン切替 |
+| `downloads-store` の `isSupported` | `DownloadsStorePlugin.isSupported` | 実装なし | Android 10 以降かの判定 |
+| `downloads-store` の `saveToDownloads` | `DownloadsStorePlugin.saveToDownloads`（MediaStore 挿入） | 実装なし | キャッシュ上の画像を共有 `Download/` へ移す |
 
 Android の `ExternalPageActivity` は `AndroidManifest.xml` で `exported="false"` の Activity として宣言され、`configChanges` で回転などを自前処理します。`LocalePickerPlugin` は起動時に `Documents/Languages` を用意します。
 

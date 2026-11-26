@@ -32,7 +32,7 @@ iPadOS のデスクトップ相当 UA は `maxTouchPoints > 1` でモバイル�
 | 標準 backup | ユーザーが保存先を選択 | `Documents/Backups` | Files の `Documents/Backups` |
 | 標準 log | ユーザーが保存先を選択 | `Documents/Logs` | Files の `Documents/Logs` |
 | 追加言語 | `Documents/Pawchive/languages` | `Documents/Languages` | Files の `Documents/Languages` |
-| 一括保存 | `Downloads/PawKemoView` | `Documents/Downloads` | Files の `Documents/Downloads` |
+| 一括保存 | `Downloads/PawKemoView` | 共有 `Download/PawKemoViewer`（Android 10 以降。9 以下は `Documents/Downloads`） | Files の `Documents/Downloads` |
 
 Android の製品版 `Documents` は通常、`Android/data/com.nsmr0604.pawkemoviewer/files/Documents` です。debug / locale_test ではアプリ ID 部分が変わります。
 
@@ -88,6 +88,13 @@ URL は http(s) と Referer を検証しますが、pkv のような内部 IP・
 - 画像選択の結果は `document.title` の `pawkemo-save#<JSON>` で受け取り、
   `Documents/.external-download.json` に書いてウィンドウを閉じる（モバイルと同じ取り込み経路）
 - Linux は初回応答の Set-Cookie が WebView の Cookie ジャーに入らない
+
+### downloads-store（Android）
+
+- アプリのキャッシュに書いた画像を、端末の共有 `Download/PawKemoViewer/<creator>` へ移す
+- Android 10 以降は MediaStore に登録する（`MediaStore.Downloads`、`IS_PENDING` を使用）
+- Android 9 以下は登録できないため、呼び出し側が `Documents/Downloads` へ直接保存する
+- 権限は追加しない（MediaStore への挿入は Android 10 以降で権限不要）
 
 ### app-icon
 

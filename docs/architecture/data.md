@@ -113,6 +113,6 @@ NEW の判定は公開日時または取得日時が直近 7 日以内の投稿�
 | 追加言語 | `Documents/Pawchive/languages` | `Documents/Languages` | Files の `Documents/Languages` |
 | 標準 backup | 保存先を選択 | `Documents/Backups` | Files の `Documents/Backups` |
 | 標準 log | 保存先を選択 | `Documents/Logs` | Files の `Documents/Logs` |
-| 一括画像保存 | `Downloads/PawKemoView` | `Documents/Downloads` | Files の `Documents/Downloads` |
+| 一括画像保存 | `Downloads/PawKemoView` | 共有 `Download/PawKemoViewer`（Android 10 以降。9 以下は `Documents/Downloads`） | Files の `Documents/Downloads` |
 
 詳細は[プラットフォームとストレージ](platform.md)を参照してください。
