@@ -97,6 +97,7 @@
   "home.empty": "No posts",
   "creators.clipboard": "Clipboard",
   "creators.useClipboard": "Use this",
+  "creators.readClipboard": "From clipboard",
   "creators.searchPlaceholder": "Search creators by name / ID / URL",
   "creators.historyClear": "Clear search history",
   "creators.historyClearShort": "Clear history ×",

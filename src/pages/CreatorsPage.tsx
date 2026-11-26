@@ -27,30 +27,27 @@ export function CreatorsPage() {
   const searchSeq = useRef(0)
   const indexLoad = useRef<AbortController | null>(null)
 
-  // クリップボードの URL 検出 (JHenTai の Check Gallery URL in Clipboard 参考)
-  useEffect(() => {
-    let active = true
-    const checkClip = async () => {
-      const text = await readClipboardTextSafe()
-      if (!active || !text) return
-      const found = extractCreatorFromText(text)
-      if (found) setClipCreator(found)
-    }
-    checkClip()
-    window.addEventListener("focus", checkClip)
-    return () => {
-      active = false
-      window.removeEventListener("focus", checkClip)
-    }
+  // クリップボードの URL 検出 (JHenTai の Check Gallery URL in Clipboard 参考)。
+  // 常時の読み取りは OS の許可ダイアログやプライバシー問題になるため、明示操作でのみ読む。
+  const checkClip = useCallback(async () => {
+    const text = await readClipboardTextSafe()
+    if (!text) return
+    const found = extractCreatorFromText(text)
+    setClipCreator(found ?? null)
   }, [])
 
   // メモリ索引から即時検索 (構築途中でも部分結果を表示)
   const runSearch = useCallback(async (value: string) => {
     const seq = ++searchSeq.current
-    const result = await getApplication().creators.searchCreatorIndex(value)
-    if (seq !== searchSeq.current) return
-    setRows(result.rows)
-    setPostLink(result.postLink)
+    try {
+      const result = await getApplication().creators.searchCreatorIndex(value)
+      if (seq !== searchSeq.current) return
+      setRows(result.rows)
+      setPostLink(result.postLink)
+      setError(null)
+    } catch (error) {
+      if (seq === searchSeq.current) setError(error)
+    }
   }, [])
 
   // Show the cached results before checking whether the index needs a rebuild.
@@ -173,6 +170,9 @@ export function CreatorsPage() {
             ×
           </button>
         )}
+        <button type="button" className="btn btn-sm" onClick={() => void checkClip()}>
+          {t("creators.readClipboard")}
+        </button>
       </form>
       {!q && history.length > 0 && (
         <div className="history-chips">

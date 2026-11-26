@@ -96,7 +96,9 @@ export function syncFollowsWithAccount(): Promise<number> {
   if (!sessionKey) return Promise.resolve(0)
 
   syncInFlight = (async () => {
+    const startKey = sessionKey
     const remote = await api.accountFavorites("artist")
+    if (getSettings().sessionKey !== startKey) return 0
     // 既存ローカルデータの移行は初回だけ。以降はアカウント側を正として反映し、
     // 別端末で解除されたフォローを古いローカルデータから復活させない。
     if (storage().get(MIGRATED_KEY) !== "1") {
@@ -110,6 +112,8 @@ export function syncFollowsWithAccount(): Promise<number> {
 
     // 移行で追加した分を反映するため、GET キャッシュを使わずに取り直す
     const latest = await api.accountFavorites("artist", undefined, false)
+    // 実行中にログアウト・アカウント切替が起きたら、古い一覧を書き戻さない
+    if (getSettings().sessionKey !== startKey) return 0
     const synced = latest
       .filter((f) => !!f.service && !!f.id)
       .map((f) => ({ service: f.service!, id: f.id, name: f.name || f.id }))

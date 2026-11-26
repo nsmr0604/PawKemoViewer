@@ -1,7 +1,7 @@
 import { getApplication } from "../application/composition"
 import { lazy, Suspense, useEffect, useState } from "react"
 import { getVersion } from "@tauri-apps/api/app"
-import { getSettings, updateSettings, api, apiStatus } from "../api"
+import { getSettings, updateSettings, api, apiStatus, SETTINGS_CHANGED_EVENT } from "../api"
 import { getThumbnailCacheLimit, THUMBNAIL_CACHE_LIMITS, trimThumbnailCache } from "../post-thumbnail-cache"
 import { clearCreatorCache, creatorCacheInfo, CreatorCacheInfo } from "../db"
 import {
@@ -116,10 +116,10 @@ export function SettingsPage({ layout, section }: { layout: ResolvedLayout; sect
     }
     verifySession(true)
     const onSettingsChanged = () => verifySession()
-    window.addEventListener("pawkemo-settings-changed", onSettingsChanged)
+    window.addEventListener(SETTINGS_CHANGED_EVENT, onSettingsChanged)
     return () => {
       active = false
-      window.removeEventListener("pawkemo-settings-changed", onSettingsChanged)
+      window.removeEventListener(SETTINGS_CHANGED_EVENT, onSettingsChanged)
     }
   }, [])
 
