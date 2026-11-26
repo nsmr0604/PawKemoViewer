@@ -166,20 +166,16 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `api_request` | `async fn api_request(app, path, method, session_key, timeout_secs) -> Result<String, String>` | 本文 | `https://pawchive.pw/api/v1/<path>` へ `POST` / `DELETE` / それ以外は GET。body は送らない。timeout は既定 30 秒、1〜300 秒へ clamp |
 | `login_request` | `async fn login_request(app, username, password, timeout_secs) -> Result<LoginResult, String>` | `LoginResult` | リダイレクト追従なしの client で `POST /account/login`。`Set-Cookie` から `session` を取り出し、`GET /api/v1/account/favorites?type=artist` が成功するかで有効性を判定 |
 | `fetch_creator_icon` | `async fn fetch_creator_icon(app, service, id) -> Result<Option<String>, String>` | data URL | `app_data/icons/{service}_{id}.webp` を先に読む。無ければ `https://pawchive.pw/icons/{service}/{id}` を 15 秒で取得。204・非成功・`image/` 以外・空は `Ok(None)` |
-| `is_direct_host` | `fn is_direct_host(hostname: &str) -> bool` | `bool` | `fanbox.cc` / `patreon.com` / `patreonusercontent.com` / `pximg.net` / `pawchive.pw` とそのサブドメイン |
 | `forbidden_host` | `fn forbidden_host(hostname: &str) -> bool` | `bool` | `localhost`、`.localhost`、`.local`、`.internal`、IPv6 リテラル、単一ラベル、IPv4 リテラルを拒否 |
 | `is_public_ip` | `fn is_public_ip(ip: IpAddr) -> bool` | `bool` | private / loopback / link-local / unspecified / broadcast / multicast、`0.0.0.0/8`、`100.64.0.0/10`、`192.0.0.0/24`、`198.18.0.0/15`、IPv6 の ULA・link-local・IPv4-mapped を拒否 |
-| `host_is_public` | `fn host_is_public(u: &reqwest::Url) -> bool` | `bool` | 名前解決した全アドレスが public か。**解決失敗は `true` (fail-open)** |
+| `host_is_public` | `fn host_is_public(u: &reqwest::Url) -> bool` | `bool` | 名前解決した全アドレスが public か。**解決失敗は `false` (fail-closed)** |
 | `read_body_limited` | `fn read_body_limited(resp, limit) -> Result<Vec<u8>, BodyReadError>` | バイト列 | `Content-Length` を先に見てから `take(limit + 1)` で実バイト数を判定 |
 | `derive_referer` | `fn derive_referer(hostname: &str) -> &'static str` | Referer | pawchive → `https://pawchive.pw/`、fanbox / pximg → `https://www.fanbox.cc/`、patreon → `https://www.patreon.com/`、その他 → fanbox |
 | `is_allowed_referer` | `fn is_allowed_referer(u: &reqwest::Url, target_host: &str) -> bool` | `bool` | `http`/`https` かつ、中継先と同一ホスト、または fanbox / patreon とそのサブドメインのみ許可 |
 | `is_pawchive_host` | `fn is_pawchive_host(hostname: &str) -> bool` | `bool` | `pawchive.pw` とサブドメイン |
 | `is_proxyable` | `fn is_proxyable(u: &reqwest::Url) -> bool` | `bool` | `http`/`https` かつ `forbidden_host` でなく `is_pawchive_host` でもない |
 | `percent_decode` | `fn percent_decode(s: &str) -> String` | 文字列 | `%XX` と `+` を戻す。不正な `%` はそのまま残す |
-| `pkv_url` | `fn pkv_url(abs: &reqwest::Url, referer: &str) -> String` | URL | `PKV_BASE_URL` に `u` と `r` を付ける |
-| `rewrite_attr` | `fn rewrite_attr(tag, attr, transform) -> String` | タグ文字列 | 属性値を書き換える。変換先が `None` なら元のタグをそのまま返す |
-| `transform_html` | `fn transform_html(html, target, self_referer) -> String` | HTML | `<base>` 注入と `img@src` / `form@action` / `a@href` の pkv 化 |
-| `pkv_proxy_fetch` | `fn pkv_proxy_fetch(app, method, uri, body, range) -> tauri::http::Response<Vec<u8>>` | HTTP 応答 | pkv の実処理。詳細は「4. pkv プロキシ」 |
+| `pkv_proxy_fetch` | `fn pkv_proxy_fetch(app, method, uri, body, range) -> tauri::http::Response<Vec<u8>>` | HTTP 応答 | pkv の実処理。`text/html` は 415 で拒否する。詳細は「4. pkv プロキシ」 |
 | `proxy_queue` | `fn proxy_queue() -> &'static mpsc::Sender<ProxyJob>` | Sender | 4 スレッドのワーカーを一度だけ起動し、ジョブを配送 |
 | `export_log` | `fn export_log(app, text) -> Result<String, String>` | パス | `app_data/logs/<UTC 秒>_viewer.log` を新規作成して書き込む |
 | `export_file` | `fn export_file(app, file_name, text) -> Result<String, String>` | パス | `app_data/backup/<UTC 秒>_<安全名>`。英数と `._-` 以外を `_` に置換。`create_new` で衝突時は `_1`〜`_99` を試す |
@@ -218,7 +214,6 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `LOGIN_HTTP_CLIENT` | `LazyLock<reqwest::Client>` | リダイレクト追従なし (302 の `Set-Cookie` を取り逃さないため) |
 | `PROXY_HTTP_CLIENT` | `LazyLock<reqwest::blocking::Client>` | pkv 用。UA は固定値だが、リクエストごとに `current_user_agent()` で上書きされる |
 | `PROXY_MAX_BODY_BYTES` | 64 MiB | pkv のバイナリ上限 |
-| `PROXY_MAX_HTML_BYTES` | 8 MiB | pkv の HTML 上限 |
 | `PROXY_CONNECT_TIMEOUT_SECS` | 10 | 接続タイムアウト |
 | `PROXY_TIMEOUT_SECS` | 180 | 全体タイムアウト |
 | `PROXY_MAX_REDIRECTS` | 5 | リダイレクト上限 |
@@ -371,11 +366,11 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 |---|---|---|---|
 | `open` | `pub fn open(app, url, referer, context: PageContext) -> Result<(), String>` | `()` | URL 検査、`external-page-<n>` ラベルのウィンドウ生成、状態登録、ビルダー設定 |
 | `forget` | `fn forget(label: &str)` | `()` | `PAGES` から状態を削除 |
-| `save_selection` | `fn save_selection(window, label, payload)` | `()` | `document.title` の JSON を検証し、`.external-download.json` を書いて閉じる |
+| `save_selection` | `fn save_selection(window, label, payload)` | `()` | `document.title` の JSON を検証し、`.external-download.json` を書いて閉じる。接頭辞にはウィンドウ固有のトークンを含む |
 | `queue_file` | `fn queue_file(window) -> Option<PathBuf>` | パス | `Documents/.external-download.json` |
 | `empty_context` | `fn empty_context() -> PageContext` | 空の文脈 | 状態が失われた場合のフォールバック |
 | `start_navigation` | `fn start_navigation(window, url, referer)` | `()` | Windows / macOS は `with_webview` + `navigate`、それ以外は別スレッドで取得して `load_html` |
-| `fetch_page` | `fn fetch_page(url, referer) -> Result<(String, String), String>` (非 Windows / macOS) | (HTML, 最終 URL) | reqwest blocking、30 秒、リダイレクト最大 5 |
+| `fetch_page` | `fn fetch_page(url, referer) -> Result<(String, String), String>` (非 Windows / macOS) | (HTML, 最終 URL) | 初回 URL と各リダイレクト先を `host_is_public` で検査し、30 秒・リダイレクト 5 回・本文 16 MiB 上限 |
 | `navigate` (Windows) | `fn navigate(webview, url, referer) -> Result<(), String>` | `()` | `AddWebResourceRequestedFilter` + `WebResourceRequested` で `Referer` を `SetHeader` してから `Navigate` |
 | `navigate` (macOS) | `fn navigate(webview, url, referer) -> Result<(), String>` | `()` | `NSMutableURLRequest` に `Referer` を追加して `loadRequest` |
 
@@ -386,7 +381,8 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `PAGES` | `LazyLock<Mutex<HashMap<String, Arc<Mutex<PageState>>>>>`。ウィンドウラベルごとの状態 |
 | `NEXT_LABEL` | `AtomicU64`。ウィンドウラベルの連番 |
 | `QUEUE_FILE` | `.external-download.json` |
-| `SAVE_PREFIX` / `CLOSE_TITLE` | `pawkemo-save#` / `pawkemo-close#`。`document.title` の接頭辞 |
+| `new_token` | `fn new_token() -> String`。`document.title` 経由の操作を受け付ける 128 bit トークン (getrandom) |
+| `MAX_PAGE_BYTES` | 16 MiB。Linux の初回取得の上限 |
 
 ウィンドウはタイトル `外部ページ — <host>`、初期サイズ 900×820、最小 360×480、リサイズ可です。`on_navigation` は `http` / `https` / `tauri` / `about` / `asset` / `ipc` のみ許可し、`file:` を弾きます。
 
@@ -426,31 +422,24 @@ WebView から Referer を設定できないため、`pkv` カスタムプロト
 | 接続タイムアウト | 10 秒 |
 | 全体タイムアウト | 180 秒 |
 | バイナリ上限 | 64 MiB (`read_body_limited`) |
-| HTML 上限 | 8 MiB |
+| HTML | 中継しない (`text/html` は 415) |
 | ワーカー | 4 スレッド + `mpsc` キュー。受信ロックは `Mutex<Receiver>` |
 | 送信ヘッダー | `User-Agent` (現在の UA)、`Referer`、`Origin`、`Range` (要求にあれば)。POST は `Content-Type: application/x-www-form-urlencoded` |
 | 転送ヘッダー | `Content-Type`、`Content-Range`、`Accept-Ranges`、`Cache-Control`、`Content-Disposition`、`ETag`、`Last-Modified` |
 
 キュー投入に失敗した場合は 503 `proxy unavailable` を返します。
 
-### HTML 変換
+### HTML を中継しない理由
 
-`text/html` かつ direct でないホストのときだけ変換します。
-
-1. `<head ...>` の直後 (無ければ先頭) に `<base href="<解決済みディレクトリ URL>">` を注入
-2. `<img src>` を pkv URL に置換 (`data:` は除外、`is_proxyable` のみ)
-3. `<form action>` を pkv URL に置換 (action 無しは自身の URL)
-4. `<a href>` を pkv URL に置換 (`#`、`mailto:`、`javascript:` は除外)
-
-変換後は `Content-Type: text/html; charset=utf-8` で返します。direct ホスト (`fanbox.cc`、`patreon.com`、`patreonusercontent.com`、`pximg.net`、`pawchive.pw` とそのサブドメイン) は SPA が壊れるため無変換で中継します。
+`text/html` の応答は 415 (`html responses are not proxied`) で拒否します。pkv のオリジンは
+Tauri から見てローカルオリジン扱いになり、中継した HTML のスクリプトがアプリ独自の
+Tauri コマンド (`download_post_images` など) を invoke できてしまうためです。
+外部ページはデスクトップの専用ウィンドウ、モバイルのネイティブビューで開きます。
 
 ### 残る制約
 
 - Rust 側に投稿文脈の検証はありません。`r` はクライアント指定で、許可規則は「同一ホスト」か「fanbox / patreon」だけです。実質的に任意の外部 URL を中継できます。
 - `host_is_public` の解決と reqwest の接続時解決は別なので、DNS リバインディングの TOCTOU が残ります。
-- 名前解決に失敗したホストは許可されるため、解決不能時に検査を迂回できます (fail-open)。
-- HTML は CSP `null` の同一 pkv origin で動きます。`Origin` は Referer から組み立てた値です。
-- HTML は `String::from_utf8_lossy` で扱うため、UTF-8 以外のページは文字化けし得ます。
 - 応答は全量メモリに載ります。ストリーミング配信はしません。
 
 ## 5. 外部ページ

@@ -78,9 +78,11 @@ Referer として許可されるのは次のいずれかです。
 - POST は `application/x-www-form-urlencoded` 固定で、multipart と Android custom protocol の POST body は利用できません。
 - Range は透過しますが、実装は全量をメモリへ読みます。
 - リダイレクトは最大 5 回。各ホップで宛先と DNS 解決 IP を検査します。
-- 本文 64 MiB、HTML 8 MiB、connect 10 秒、total 180 秒、worker 4。
+- 本文 64 MiB、connect 10 秒、total 180 秒、worker 4。
 
-HTML は `<base>`、`<img src>`、`<form action>`、`<a href>` を pkv URL へ書き換えます。`srcset`、CSS URL、iframe、script は書き換えません。
+`text/html` は中継しません(415)。pkv のオリジンはアプリのローカル扱いになるため、
+中継した HTML のスクリプトが Tauri コマンドへ到達し得るのを防ぎます。外部ページは
+実オリジンの専用ウィンドウ(デスクトップ)またはネイティブビュー(モバイル)で開きます。
 
 ## SSRF 検査と残る制約
 

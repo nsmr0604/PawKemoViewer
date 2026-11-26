@@ -43,7 +43,7 @@
 
 | 確認 | 結果 |
 |---|---|
-| `npm run test:domain` | 7 件成功 |
+| `npm run test:domain` | 9 件成功 |
 | `npm run test:application` | 17 件成功 |
 | `npm run test:platform` | 18 件成功 |
 | `node --test tests/post-download.test.mjs` | 7 件成功（通常の npm test スクリプトには未含む） |
@@ -76,9 +76,9 @@
 ### 優先度: 中
 
 - **デスクトップの外部ページ**: 全 OS で実オリジンのビューを使う。macOS / Linux は実機で未確認。Linux は Referer 付き取得後に `load_html` するため、初回応答の Set-Cookie が WebView の Cookie ジャーに入らない。
-- **pkv の HTML オリジン分離**: CSP / ホスト別サブドメインによる隔離は未対応。script を残し、取得先に関係なく pkv の同一オリジンで実行する。
-- **pkv の宛先制約**: Rust 側は外部ホストを広く許可し、投稿文脈を検証しない。内部 IP と DNS 解決先は検査するが、DNS rebinding の TOCTOU と解決失敗時の fail-open が残る。
-- **ネイティブ外部ページの宛先制約**: `open_external_page` は http(s) と Referer を検証するが、内部 IP の検査を通さない（Linux の Rust 取得も同じ）。
+- **pkv の HTML 中継**: `text/html` は 415 で拒否する（pkv がローカルオリジン扱いになるため）。画像・バイト列のみ中継する。
+- **pkv の宛先制約**: Rust 側は外部ホストを広く許可し、投稿文脈を検証しない。内部 IP と DNS 解決先は検査し、名前解決失敗は拒否するが、DNS rebinding の TOCTOU が残る。
+- **ネイティブ外部ページの宛先制約**: `open_external_page` は http(s) と Referer を検証する。デスクトップ (Linux) の Rust 取得は `host_is_public` と各リダイレクトを検査するが、モバイルのネイティブビューは内部 IP の検査を通さない。
 - **HTTP による外部ページの画像抽出**: JavaScript 描画のギャラリーは HTML だけでは取得できない。ネイティブ外部ページの「画像を保存」は表示中 DOM を使う。
 - **pawchive のサムネイルのみ投稿**: 原画 URL が 404 の場合、一括保存は失敗理由を表示する。サムネイルを本体として保存しない。
 - **ホームのサービス絞り込み**: 絞り込み後 0 件が続くと、無限スクロールが次ページを自動取得し続ける場合がある。

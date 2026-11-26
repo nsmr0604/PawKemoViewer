@@ -176,14 +176,34 @@ Android 10 以降は `Download/PawKemoViewer/<creator>` だが、README と `wik
 | Cargo.lock | `.gitignore` から外して追跡(依存の再現性) | `83427c96` |
 | 監査レポート | `docs/audit/` に要約と根拠一覧を追加 | `1ea81577` |
 | CI | Android SDK 36 の導入、`pages.yml` の OS 固定、`paths` にスクリプト追加、AGENTS の `debug_diag` 記述 | `b49a222a` |
-| ドキュメント | 監査で見つかった 15 件の不一致を訂正 | 本コミット |
+| ドキュメント | 監査で見つかった 15 件の不一致を訂正 | `e11d3715` |
+| P0 フロント | F1 本文サニタイズを許可制に / F2 クリップボードから sessionKey を除外 | `e147147b` |
+| P0 Rust | R1 pkv の HTML 中継を停止 / R2 DNS 解決失敗を拒否 / R3 Linux 取得の SSRF 検査 / R4 保存にワンタイムトークン | `14ef195e` |
+| P0 iOS | N1 製品ビルドでも navigationDelegate を設定 | `6f869350` |
+
+### P0 の修正内容
+
+- **F1**: `src/safe-url.ts` の `isSafeHttpUrl` を追加し、サニタイザーを許可制にした。
+  `script`/`style`/埋め込み/フォームを除去し、`on*` と `srcdoc` を落とし、URL 属性は
+  `new URL` で http/https 以外を削除する(`java&#9;script:` も拒否)。外部リンクは pkv を
+  経由せず、元 URL を `data-external-url` に残して実オリジンのビューで開く。
+- **F2**: `src/domain/backup-secrets.ts` を追加し、クリップボードへは sessionKey を除いた
+  JSON を渡す。成功メッセージにも「セッションキーは除く」と表示する。
+- **R1**: `pkv_proxy_fetch` は `text/html` を 415 で拒否する。HTML 変換(`transform_html` /
+  `pkv_url`)は削除した。
+- **R2**: `host_is_public` の名前解決失敗を拒否に変えた(rebinding の TOCTOU は残る)。
+- **R3**: Linux の `fetch_page` は初回 URL と各リダイレクト先を `host_is_public` で検査し、
+  本文を 16 MiB に制限する。
+- **R4**: 外部ページの保存・閉じる操作にウィンドウ固有の 128 bit トークンを要求する
+  (`getrandom`)。ページ側の任意スクリプトはタイトルを偽装できない。
+- **N1**: `navigationDelegate` の代入を `#if PKV_EXTERNAL_DIAG` の外へ出した。
 
 ## 7. 推奨対応順
 
 | 優先 | 内容 | 対象 |
 |---|---|---|
-| P0 | 本文サニタイザーの XSS / バックアップのクリップボード / pkv のローカルオリジン実行 / 外部ページの保存トリガー / iOS の delegate | F1, F2, R1, R4, N1 |
-| P0 | DNS fail-open と Linux 外部ページの SSRF / `imageReferer` の制限 | R2, R3 |
+| P0 | ~~本文サニタイザーの XSS / バックアップのクリップボード / pkv のローカルオリジン実行 / 外部ページの保存トリガー / iOS の delegate~~ **対応済み** | F1, F2, R1, R4, N1 |
+| P0 | ~~DNS fail-open と Linux 外部ページの SSRF / `imageReferer` の制限~~ **SSRF は対応済み。`imageReferer` は未対応** | R2, R3 |
 | P1 | CSP の明示 / リリース公開のゲートと上書き禁止 / Actions の SHA 固定 | B2, B3, B4, B5 |
 | P1 | アカウント切替・フォロー移行・同期失敗の表示 / Home の 0 件ループ | F3, F4 ほか |
 | P2 | CI の unit test・監査・Cargo/Gradle キャッシュ / SDK 36 / リリースノート | 中・低 |
