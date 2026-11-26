@@ -55,8 +55,8 @@ private final class ExternalPageController: UIViewController {
                 self?.title = url.absoluteString
             }
         }
-#if PKV_EXTERNAL_DIAG
         webView.navigationDelegate = self
+#if PKV_EXTERNAL_DIAG
         ExternalViewTrace.add("load_requested")
 #endif
         webView.translatesAutoresizingMaskIntoConstraints = false
