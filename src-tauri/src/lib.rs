@@ -1482,9 +1482,17 @@ async fn open_external_page(
     }
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
-        // 保存先の文脈はモバイルの外部ビューだけが使う
-        let _ = (creator_name, service, creator_id, post_id);
-        external_page_desktop::open(&app, &url, &referer)
+        external_page_desktop::open(
+            &app,
+            &url,
+            &referer,
+            external_page_desktop::PageContext {
+                creator_name,
+                service,
+                creator_id,
+                post_id,
+            },
+        )
     }
 }
 
