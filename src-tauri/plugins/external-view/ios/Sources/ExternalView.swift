@@ -56,6 +56,7 @@ private final class ExternalPageController: UIViewController {
             }
         }
         webView.navigationDelegate = self
+        webView.uiDelegate = self
 #if PKV_EXTERNAL_DIAG
         ExternalViewTrace.add("load_requested")
 #endif
@@ -455,8 +456,16 @@ private final class ExternalViewPlugin: Plugin {
             )
             let navigation = UINavigationController(rootViewController: controller)
             navigation.modalPresentationStyle = .fullScreen
+            // 既に別のモーダルがあると present が完了せず invoke が宙に浮くため、先に失敗させる
+            guard host.presentedViewController == nil else {
 #if PKV_EXTERNAL_DIAG
-            ExternalViewTrace.add("present_requested attached=\(host.viewIfLoaded?.window != nil) busy=\(host.presentedViewController != nil)")
+                ExternalViewTrace.add("presenter_busy")
+#endif
+                invoke.reject("Another screen is already presented")
+                return
+            }
+#if PKV_EXTERNAL_DIAG
+            ExternalViewTrace.add("present_requested attached=\(host.viewIfLoaded?.window != nil) busy=false")
 #endif
             host.present(navigation, animated: true) {
 #if PKV_EXTERNAL_DIAG
@@ -471,6 +480,19 @@ private final class ExternalViewPlugin: Plugin {
 @_cdecl("init_plugin_external_view")
 public func initPlugin() -> Plugin {
     ExternalViewPlugin()
+}
+
+/// 新しいウィンドウを要求するリンク (`target="_blank"` / `window.open`) を同じ WebView で開く。
+extension ExternalPageController: WKUIDelegate {
+    func webView(_ webView: WKWebView,
+                 createWebViewWith configuration: WKWebViewConfiguration,
+                 for navigationAction: WKNavigationAction,
+                 windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
+            webView.load(URLRequest(url: url))
+        }
+        return nil
+    }
 }
 
 

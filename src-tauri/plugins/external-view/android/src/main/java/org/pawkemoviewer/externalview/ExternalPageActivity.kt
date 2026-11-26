@@ -48,6 +48,11 @@ class ExternalPageActivity : Activity() {
             finish()
             return
         }
+        val scheme = android.net.Uri.parse(url).scheme?.lowercase()
+        if (scheme != "http" && scheme != "https") {
+            finish()
+            return
+        }
         referer = intent.getStringExtra(EXTRA_REFERER).orEmpty()
         creatorName = intent.getStringExtra(EXTRA_CREATOR_NAME).orEmpty()
         service = intent.getStringExtra(EXTRA_SERVICE).orEmpty()
@@ -90,6 +95,11 @@ class ExternalPageActivity : Activity() {
             domStorageEnabled = true
             loadsImagesAutomatically = true
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            // 外部ページから端末内のファイル・コンテンツへ触れないようにする
+            allowFileAccess = false
+            allowContentAccess = false
+            allowFileAccessFromFileURLs = false
+            allowUniversalAccessFromFileURLs = false
         }
         view.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
