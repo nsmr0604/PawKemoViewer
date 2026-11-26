@@ -47,8 +47,14 @@ export function LoginPage() {
         if (j.session) {
           updateSettings({ sessionKey: j.session, accountId: username.trim() })
           // ログイン直後にローカルフォローをアカウントと同期する。
-          await syncFollowsWithAccount()
-          setResult({ ok: true, msg: t("login.success") })
+          // 同期の失敗はログイン自体の失敗ではないため、表示を分ける。
+          let synced = true
+          try {
+            await syncFollowsWithAccount()
+          } catch {
+            synced = false
+          }
+          setResult({ ok: true, msg: synced ? t("login.success") : t("login.successSyncFailed") })
           setTimeout(() => navigate(next.startsWith("/") ? next : "/", true), 800)
         } else {
           // 認証は成功したが cookie が取得できなかった

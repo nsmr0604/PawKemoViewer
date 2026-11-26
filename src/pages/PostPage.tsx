@@ -11,7 +11,7 @@ import { isFanboxCoverFile } from "../post-files"
 import type { PawComment, PawPost, PawRevision, PawFile } from "../types"
 import { Spinner, ErrorBox, Empty } from "../components/Feedback"
 import { formatDate } from "../format-date"
-import { sanitizePostContent } from "../post-content"
+import { sanitizePostContent, looksLikeHtml } from "../post-content"
 import { navigate } from "../router"
 import { FollowButton } from "../components/FollowButton"
 import { logError, logInfo, logWarn } from "../log"
@@ -168,6 +168,10 @@ export function PostPage({
     setRevisions(null)
     setRevisionsError(null)
     setSelectedRevisionId(null)
+    // 前の投稿の保存候補・結果を持ち越さない
+    setDownloadPicker(null)
+    setDownloadMessage(null)
+    setDownloadState("idle")
     try {
       const useCases = getApplication().postDetail
       const detail = await useCases.loadPostDetail(context, signal)
@@ -304,6 +308,8 @@ export function PostPage({
 
       if (lightboxIndex !== null) {
         if (e.key === "Escape") {
+          // App 側のショートカット (戻る) が同時に走らないよう、既定動作も止める
+          e.preventDefault()
           e.stopPropagation()
           setLightboxIndex(null)
         } else if (e.key === "ArrowRight") {
@@ -917,7 +923,13 @@ export function PostPage({
                 <div className="comment-head">
                   <b>{c.commenter_name || c.commenter}</b> · {formatDate(c.published)}
                 </div>
-                <div className="comment-body" onClick={openExternalLink}>{sanitizePostContent(c.content, postContext.service, postContext.postId, proxyReferer)}</div>
+                <div
+                  className="comment-body"
+                  onClick={openExternalLink}
+                  {...(looksLikeHtml(c.content)
+                    ? { dangerouslySetInnerHTML: { __html: sanitizePostContent(c.content, postContext.service, postContext.postId, proxyReferer) } }
+                    : { children: c.content })}
+                />
               </li>
             ))}
           </ul>
