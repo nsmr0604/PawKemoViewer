@@ -51,7 +51,7 @@ interface Settings {
 | `proxyImages` | `false` | 投稿の外部メディアを pkv 経由へ。変更後 300 ms で reload |
 | `postFileListMode` | `false` | 投稿ファイルを名前一覧にして個別読込 |
 | `userAgentMode` | `"device"` | `device` / `app` / `desktop` |
-| `excludeFanboxCover` | `false` | 一覧・詳細・一括保存の添付候補から `cover.jpeg` を除外 |
+| `excludeFanboxCover` | `false` | 投稿詳細のファイル一覧と一括保存の添付候補から `cover.jpeg` を除外 |
 | `excludeAiPosts` | `false` | Home の API リクエストに `hide=(ai)` を付与 |
 | `developerToolsEnabled` | `false` | 製品版の開発・診断カテゴリを表示 |
 | `locale` | `"ja"` | 同梱または外部の言語コード。失敗時は日本語 |

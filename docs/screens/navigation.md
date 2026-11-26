@@ -184,5 +184,5 @@ else navigate(fallback, true)
 
 - `popstate` は購読していません。履歴移動はブラウザ / WebView が発火する `hashchange` に依存します。
 - `navigate` は同一ハッシュを無視するため、「同じ URL へ遷移し直して再読み込み」はできません。再試行は各画面の `ErrorBox` の `onRetry` を使います。
-- `route.query` の変更ではコンポーネントが再マウントされません（`App` の `key` は `creator` の `service` / `id` のみ）。クエリを初期値に使う画面は、その初期値が再適用されない点に注意が必要です。
+- `route.query` の変更ではコンポーネントが再マウントされません（`App` が `key` を渡すのは `creator`（service / id）と `favorites`（ログイン状態の 2 値）だけです）。クエリを初期値に使う画面は、その初期値が再適用されない点に注意が必要です。
 - 未知パスは `HomePage` にフォールバックするため、404 画面はありません。

@@ -44,7 +44,7 @@ OneDrive 等でリダイレクトされ得ます(解決は OS 依存)。
 │   ├─ pawchive.log                     # Rust の診断行を追記(ローテーションなし)
 │   └─ debug-app.log                    # debug-diag ビルドのみ
 ├─ backup/                              # 汎用書き出し(現行フロントから未使用)
-│   └─ <timestamp>[_n]_<name>
+│   └─ <timestamp>__<n><name>           # 衝突時は区切りが二重になる (現行コードの実形式)
 └─ Downloads/                           # 一括保存の最終フォールバック
     └─ <creator>/001_<name>.jpg
 ```
@@ -199,7 +199,7 @@ OneDrive 等でリダイレクトされ得ます(解決は OS 依存)。
 | 言語コード | 上記の正規表現。パス区切りを含めない |
 | アイコン | `service` / `id` は ASCII 英数字のみ |
 | 一括画像 | 禁止文字 `\/:*?"<>\|` と制御文字を `_` に置換。前後の空白・ドットを除去 |
-| 汎用書き出し(`export_file`) | ASCII 英数字と `.` `_` `-` 以外を `_` に置換し、`<timestamp>_<name>` |
+| 汎用書き出し(`export_file`) | ASCII 英数字と `.` `_` `-` 以外を `_` に置換し、`<timestamp>_<name>`。衝突時は `<timestamp>__<n><name>` になる(区切りが二重) |
 
 ## 書き込み方式
 
@@ -208,7 +208,7 @@ OneDrive 等でリダイレクトされ得ます(解決は OS 依存)。
 | 言語・モバイル標準バックアップ・ログ | `atomic_document_write`: 同階層に `.document-<pid>-<n>.tmp` を作り、書き込み + `sync_all` 後に rename。Windows は rename 失敗時に既存を削除して再 rename |
 | 一括画像 | `atomic_write`: `.<name>.part` に書いて rename。失敗時は一時ファイルを削除 |
 | 追加言語の書き出し | `create_new` で新規作成のみ。既存時は `false` |
-| 汎用書き出し | `create_new` を最大 100 回試し、`_1`〜`_99` を付けて衝突回避 |
+| 汎用書き出し | `create_new` を最大 100 回試し、`_1`〜`_99` を付けて衝突回避(実際の名前は `<timestamp>__<n><name>`) |
 | デスクトップの保存ダイアログ | `std::fs::write`(原子的ではない) |
 | アイコン | `std::fs::write`(上書き) |
 

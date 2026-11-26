@@ -307,7 +307,7 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 
 - 1 件の失敗は `failed` に積んで継続します。全体は `Ok(DownloadSummary)` のままです。
 - 失敗理由の文字列: `invalid url`、`unsupported scheme`、`forbidden address`、`HTTP <code>`、`too large`、`not an image`、`total size limit`、`unsupported content type: <content-type>`、I/O の `e.to_string()`。
-- 実行ロックは `download_post_images` が `DOWNLOAD_RUNNING.swap(true)` した後に、`spawn_blocking` の外で早期 return すると解除されません。保存先の決定は `spawn_blocking` の内側へ移したため、`creator_target` の失敗でも解除されます。
+- 実行ロックは `download_post_images` が `DOWNLOAD_RUNNING.swap(true)` した後、`spawn_blocking` の完了後に必ず解除します。保存先の決定も `spawn_blocking` の内側にあるため、`creator_target` の失敗でも解除されます。IPC の Future が破棄された場合の挙動は未確認です。
 - キャンセルは画像なら次の 1 件、ページなら次のページの直前で効きます。転送中の中断はしません。
 
 ### src/locale_storage.rs
@@ -478,7 +478,7 @@ Referer は **FANBOX / Patreon のページのみ**許可します (`is_service_
 
 1. ページのツールバーで「画像を保存」を押す
 2. 表示中 DOM から候補を最大 300 件収集 (アプリ側と同じ除外規則)
-3. 3 列グリッドのチェック式ピッカーを重ねる
+3. チェック式ピッカーを重ねる(モバイルは 3 列、デスクトップのオーバーレイは幅に応じた auto-fill)
 4. 選択結果をアプリへ渡す
    - Android: `location.href = "pawkemo-save://start"` を `shouldOverrideUrlLoading` で捕捉
    - iOS: `pawkemo-save:` を `WKNavigationDelegate` で捕捉して `.cancel`
@@ -574,7 +574,7 @@ Rust 側の取得と書き込みの実装詳細です。画面と候補抽出は
 | ログイン | `LOGIN_HTTP_CLIENT` (リダイレクト追従なし) | API 用 client とは別プール |
 | pkv | 4 ワーカースレッド + `mpsc` キュー | 1 要求 1 スレッドにしないため。キュー投入失敗は 503 |
 | pkv の受信 | `Arc<Mutex<Receiver>>` | 受信ロック保持中は他ワーカーが待つ。処理自体はロック外 |
-| 一括保存 | `spawn_blocking` + `AtomicBool` 2 個 | 同時実行は 1 件。実行ロックは早期 return で残ることがある |
+| 一括保存 | `spawn_blocking` + `AtomicBool` 2 個 | 同時実行は 1 件。実行ロックは完了後に解除する(IPC の Future 破棄時は未確認) |
 | 保存の逐次性 | 単一ワーカー内のループ + 200 ms 間隔 | 並列取得なし |
 | 言語ファイル書き込み | 静的 `Mutex<()>` (`PRIVATE_LOCALE_WRITES`) | プロセス内のみ。他プロセスとは排他しない |
 | モバイルのファイルピッカー | 静的 `AtomicBool BUSY` + `Drop` ガード | 二重に開くと `A file operation is already open` |
@@ -624,7 +624,7 @@ Rust の `Err` として JS に届く文言です。
 | external-view (Android) | `Could not open the browser`, `Could not open the external page` |
 | external-view (iOS) | `Invalid browser URL`, `Could not open the browser`, `Invalid URL`, `Could not find a view controller to present the page` |
 | locale-picker (Android) | `Could not switch launcher icon`, `Could not save to the app language folder`, `Invalid JSON export arguments`, `Could not open the system file picker`, `No provider document was selected`, `Could not read or write the selected JSON file` |
-| locale-picker (iOS) | `The JSON picker requires iOS 14 or later`, `A JSON picker is already open`, `File exceeds the size limit`, `Could not stage the export` |
+| locale-picker (iOS) | `The JSON picker requires iOS 14 or later`, `A JSON picker is already open`, `File exceeds the size limit`, `Could not stage the export`, `Could not open the system file picker`, `No document was selected` |
 
 Android の `handle` は `RESULT_CANCELED` を `{kind:"cancelled"}` として解決し、それ以外の失敗を reject します。iOS の `pickJson` は `iOS 14` 未満を reject します。
 

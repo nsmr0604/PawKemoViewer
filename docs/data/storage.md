@@ -146,7 +146,7 @@ session だけを保存した場合でも、再起動後に「アカウント不
 
 | イベント名 | 型 | 発火元 | 主な購読側 |
 |---|---|---|---|
-| `pawkemo-settings-changed` | `CustomEvent`(detail なし) | `updateSettings` | `App`、`SettingsPage` |
+| `pawkemo-settings-changed` | `CustomEvent`(detail なし) | `updateSettings` | `App`、`SettingsPage`、`HomePage` |
 | `pawkemo-follows-changed` | `Event` | `follows.save`(follow / unfollow / replaceFollows) | `App`、`FollowButton`、`PostGrid` |
 | `pawkemo-favposts-changed` | `Event` | `post-favorites.setFavoritePost` / 取得成功時 | `PostGrid` |
 | `download-progress` | Tauri イベント | Rust の一括保存 | `DownloadFab` |

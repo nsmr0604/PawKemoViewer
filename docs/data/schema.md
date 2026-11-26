@@ -17,8 +17,9 @@
 (`src/platform/families/browser.ts` の `indexedDatabase`)。ブラウザー実行でも
 IndexedDB 自体は利用できますが、Tauri 以外では API が動かないため実用しません。
 
-- バージョンは 3 DB とも `1`。`onupgradeneeded` ではストアの存在確認後に作成するため、
-  再実行しても破壊しません。
+- バージョンは 3 DB とも `1`。`pawkemoviewer` と `pawkemo-icons` は `onupgradeneeded` で
+  ストアの存在を確認してから作成します。`pawkemo-post-thumbnails` は存在確認なしで
+  `createObjectStore` を呼ぶため、DB バージョンを上げる際は存在確認を追加する必要があります。
 - `indexedDB.deleteDatabase` は呼びません。DB の作り直しはストアの `clear` で行います。
 - `navigator.storage.persist()` / `estimate()` は呼びません。容量逼迫時の追い出しは
   ブラウザー / WebView の既定動作に任せています。

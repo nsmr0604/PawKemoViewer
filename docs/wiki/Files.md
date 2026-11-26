@@ -35,7 +35,7 @@
 | 標準バックアップ | `Backups` |
 | ログの書き出し | `Logs` |
 | 追加言語 | `Languages` |
-| 一括画像 | デスクトップは `Downloads/PawKemoView/<クリエイター名>`、モバイルは `Documents/Downloads/<クリエイター名>` |
+| 一括画像 | デスクトップは `Downloads/PawKemoView/<クリエイター名>`、Android 10 以降は端末の `Download/PawKemoViewer/<クリエイター名>`、Android 9 以下と iOS は `Documents/Downloads/<クリエイター名>` |
 
 Android では debug / locale_test パッケージによりアプリ ID 部分が変わります。
 
