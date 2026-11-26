@@ -29,6 +29,7 @@ PawKemoViewer の利用者向け情報、開発者向け仕様、設計、検証
 | 自己ホスト F-Droid / Obtainium | [配布手順](distribution/self-hosted-fdroid.md) |
 | apt / rpm リポジトリ | [Linux リポジトリ](distribution/linux-repositories.md) |
 | AltStore / LiveContainer | [iOS ソース](distribution/altstore-livecontainer.md) |
+| 署名鍵の生成 | [署名鍵](distribution/signing-keys.md) |
 | バージョンごとの変更 | [変更履歴](HISTORY.md) |
 | コード監査の結果と対応順 | [2026-11-26 監査](audit/2026-11-26-code-audit.md) |
 
