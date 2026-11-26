@@ -449,6 +449,8 @@
   "legal.unofficial": "This is an unofficial viewer. It is not affiliated with pawchive.pw or the content providers and their operators.",
   "legal.terms": "Terms of Use",
   "legal.privacy": "Privacy Policy",
+  "legal.contact": "Contact",
+  "legal.report": "Report / Takedown",
   "legal.age": "Age confirmation",
   "legal.ageVerified": "Confirmed as 18 or older",
   "legal.resetAge": "Review confirmation"

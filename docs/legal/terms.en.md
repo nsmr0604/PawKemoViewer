@@ -68,12 +68,12 @@ You must not:
 ## 10. Governing law and jurisdiction
 
 1. These Terms are governed by the laws of Japan.
-2. Any dispute relating to the App shall be subject to the exclusive jurisdiction of {{JURISDICTION}} as the court of first instance.
+2. Any dispute relating to the App shall be subject to the exclusive jurisdiction of the Tokyo District Court as the court of first instance.
 
 ## 11. Contact
 
 - General: https://github.com/nsmr0604/PawKemoViewer/issues
-- Rights infringement, takedown, privacy: {{CONTACT_EMAIL}}
+- Rights infringement, takedown, privacy: X DM (@nsmr0604) / https://x.com/nsmr0604
 
 ---
 

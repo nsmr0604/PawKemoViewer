@@ -449,6 +449,8 @@
   "legal.unofficial": "本アプリは非公式ビューアです。pawchive.pw およびコンテンツ提供元の各サービス・運営者とは関係ありません。",
   "legal.terms": "利用規約",
   "legal.privacy": "プライバシーポリシー",
+  "legal.contact": "連絡先",
+  "legal.report": "通報・削除依頼",
   "legal.age": "年齢確認",
   "legal.ageVerified": "18歳以上として確認済み",
   "legal.resetAge": "確認をやり直す"
