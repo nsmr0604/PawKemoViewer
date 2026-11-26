@@ -89,6 +89,8 @@ DNS フィルタ（AdGuard など）で `pawchive.pw` が遮断される環境�
 
 - **Obtainium**: `https://github.com/nsmr0604/PawKemoViewer` を追加すると、GitHub Releases の APK を追跡できます。
 - **自己ホスト F-Droid**: リポジトリの追加手順と公開 URL は [自己ホスト F-Droid](docs/distribution/self-hosted-fdroid.md) を参照してください。
+- **apt / rpm**: Linux 向けリポジトリの追加方法は [apt / rpm リポジトリ](docs/distribution/linux-repositories.md) を参照してください。
+- **AltStore / LiveContainer**: iOS 向けソース URL は [AltStore / LiveContainer](docs/distribution/altstore-livecontainer.md) を参照してください。
 
 | プラットフォーム | ファイル名 |
 |---|---|

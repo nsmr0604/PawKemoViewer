@@ -1,0 +1,104 @@
+name: Linux repositories
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (empty = latest)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pawkemoviewer-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: 0.6.0
+          persist-credentials: false
+
+      - name: Download release packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="$TAG"
+          if [[ -z "$tag" ]]; then
+            tag="$(gh release view --json tagName --jq .tagName)"
+          fi
+          echo "tag=$tag" >> "$GITHUB_ENV"
+          mkdir -p dist-deb dist-rpm
+          # 別プラットフォームが先にリリースを作る場合があるため、成果物が揃うまで待つ
+          for attempt in $(seq 1 20); do
+            gh release download "$tag" -p '*.deb' -D dist-deb 2>/dev/null || true
+            gh release download "$tag" -p '*.rpm' -D dist-rpm 2>/dev/null || true
+            if compgen -G 'dist-deb/*.deb' >/dev/null && compgen -G 'dist-rpm/*.rpm' >/dev/null; then
+              break
+            fi
+            echo "waiting for .deb/.rpm assets (attempt $attempt/20)"
+            sleep 30
+          done
+          if ! compgen -G 'dist-deb/*.deb' >/dev/null || ! compgen -G 'dist-rpm/*.rpm' >/dev/null; then
+            echo "Release $tag does not contain both .deb and .rpm assets" >&2
+            exit 1
+          fi
+
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev apt-utils gnupg createrepo-c
+
+      - name: Import signing key
+        env:
+          LINUX_REPO_GPG_PRIVATE_KEY: ${{ secrets.LINUX_REPO_GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$LINUX_REPO_GPG_PRIVATE_KEY" ]]; then
+            echo "LINUX_REPO_GPG_PRIVATE_KEY is not configured" >&2
+            exit 1
+          fi
+          printf '%s' "$LINUX_REPO_GPG_PRIVATE_KEY" | base64 -d | gpg --batch --import
+          key_id="$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/{print $5; exit}')"
+          if [[ -z "$key_id" ]]; then
+            echo "No signing key was imported" >&2
+            exit 1
+          fi
+          echo "LINUX_REPO_GPG_KEY_ID=$key_id" >> "$GITHUB_ENV"
+
+      - name: Build apt and rpm repositories
+        env:
+          LINUX_REPO_GPG_PASSPHRASE: ${{ secrets.LINUX_REPO_GPG_PASSPHRASE }}
+        run: scripts/linux-repo/build-repos.sh dist-deb dist-rpm linux-repo
+
+      - name: Publish to gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages
+          git worktree add site gh-pages
+          cd site
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          rm -rf apt rpm
+          cp -r ../linux-repo/apt apt
+          cp -r ../linux-repo/rpm rpm
+          git add apt rpm
+          if git diff --cached --quiet; then
+            echo "No repository changes"
+            exit 0
+          fi
+          git commit -m "Update Linux repositories for $tag"
+          git push origin gh-pages
