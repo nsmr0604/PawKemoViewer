@@ -217,7 +217,7 @@ cargo test --lib --manifest-path src-tauri/Cargo.toml
 ## ドキュメントと Wiki
 
 - 利用者向け Wiki の正本は `docs/wiki/`。編集後、`scripts/sync-wiki.mjs` で GitHub Wiki 側を生成します。
-- 仕様変更は [API](API.md)、[設計資料](architecture/README.md)、[検証ガイド](verification.md) の関連箇所を同じ作業で更新します。
+- 仕様変更は [API](API.md)、[画面設計](screens/README.md)、[データ設計](data/schema.md)、[実装リファレンス](reference/frontend.md)、[設計資料](architecture/README.md)、[検証ガイド](verification.md) の関連箇所を同じ作業で更新します。
 - 状態と残課題は [STATUS](STATUS.md)、リリースごとの変更は [HISTORY](HISTORY.md) に分けます。
 - `notes/` はローカル用で Git 管理外です。
 
