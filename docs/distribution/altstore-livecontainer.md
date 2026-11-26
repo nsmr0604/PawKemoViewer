@@ -9,6 +9,13 @@ AltStore Classic と LiveContainer の両方で使える、AltStore 形式のソ
 https://nsmr0604.github.io/PawKemoViewer/altstore/apps.json
 ```
 
+GitHub Pages は `https://www.nsmr0604.geek.jp/PawKemoViewer/` へリダイレクトされます。
+クライアントがリダイレクトを扱えない場合は、次の正規 URL を使用してください。
+
+```
+https://www.nsmr0604.geek.jp/PawKemoViewer/altstore/apps.json
+```
+
 ## 公開
 
 `altstore/apps.json` を `gh-pages` の `altstore/` にコピーします。
