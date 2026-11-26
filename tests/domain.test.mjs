@@ -8,8 +8,36 @@ import { normalizeFanboxSlug, originalPostReferer } from "../src/domain/post-ref
 import { accountIdFromSession } from "../src/domain/session-account.ts"
 import { stripSessionFromBackup } from "../src/domain/backup-secrets.ts"
 import { isSafeHttpUrl } from "../src/safe-url.ts"
+import { isAllowedExternalPageUrl } from "../src/external-page-url.ts"
 
 const context = { service: "fanbox", creatorId: "creator", postId: "post" }
+
+test("external page URLs reject local and private destinations", () => {
+  for (const allowed of [
+    "https://www.fanbox.cc/@creator/posts/1",
+    "http://192.0.2.10/page",
+    "https://example.com/",
+  ]) {
+    assert.equal(isAllowedExternalPageUrl(allowed), true, allowed)
+  }
+  for (const blocked of [
+    "http://localhost/",
+    "http://app.localhost/",
+    "http://printer.local/",
+    "http://127.0.0.1/",
+    "http://10.0.0.1/",
+    "http://172.16.5.4/",
+    "http://192.168.0.10/",
+    "http://169.254.169.254/latest/meta-data",
+    "http://0.0.0.0/",
+    "http://[::1]/",
+    "javascript:alert(1)",
+    "file:///etc/passwd",
+    "not a url",
+  ]) {
+    assert.equal(isAllowedExternalPageUrl(blocked), false, blocked)
+  }
+})
 
 test("post identity accepts supported services without changing persisted or encoded IDs", () => {
   assert.equal(isValidPostContext(context), true)
