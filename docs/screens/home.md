@@ -26,7 +26,7 @@
 │  （q が空 かつ 履歴あり）div.history-chips                 │
 │      [履歴1] [履歴2] … [履歴クリア]                        │
 │  section.home-filters                                     │
-│      [すべて][FANBOX][Patreon]                            │
+│      [すべて][fanbox][patreon]                            │
 │      （絞り込み中）件数 + [絞り込み解除]                    │
 ├───────────────────────────────────────────────────────────┤
 │ div.view-mode-bar                                         │
