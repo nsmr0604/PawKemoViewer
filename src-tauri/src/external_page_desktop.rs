@@ -485,3 +485,16 @@ mod tests {
         assert_eq!(parse_control("Example Domain", "abc"), None);
     }
 }
+
+#[cfg(test)]
+mod overlay_tests {
+    #[test]
+    fn overlay_script_uses_the_window_token() {
+        let script = include_str!("../assets/external-page-overlay.js")
+            .replace("__PAWKEMO_TOKEN__", "tok123");
+        assert!(!script.contains("__PAWKEMO_TOKEN__"));
+        assert!(script.contains("var TOKEN = \"tok123\";"));
+        assert!(script.contains("var SAVE_PREFIX = \"pawkemo-save#\" + TOKEN + \"#\";"));
+        assert!(script.contains("var CLOSE_TITLE = \"pawkemo-close#\" + TOKEN;"));
+    }
+}
