@@ -28,6 +28,8 @@ static API_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
         .brotli(true)
         .gzip(true)
+        // 3xx を成功として扱わない (未認証の POST が login へ 302 した場合に検出する)
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .expect("failed to initialize API HTTP client")
 });
@@ -251,6 +253,16 @@ async fn api_request(
     timeout_secs: Option<u64>,
 ) -> Result<String, String> {
     let path = path.trim_start_matches('/');
+    // API v1 配下のパスだけを許可する (絶対 URL・遡り・フラグメントを拒否)
+    if path.is_empty()
+        || path.len() > 512
+        || path.contains("://")
+        || path.contains("..")
+        || path.contains('#')
+        || path.chars().any(|ch| ch.is_control())
+    {
+        return Err("invalid api path".to_string());
+    }
 
     let url = format!(
         "https://pawchive.pw/api/v1/{}",
@@ -418,6 +430,7 @@ pub struct LoginResult {
 }
 
 #[tauri::command]
+#[allow(unused_variables)] // 診断ビルドでのみ使う値
 async fn login_request(app: tauri::AppHandle, username: String, password: String, timeout_secs: Option<u64>) -> Result<LoginResult, String> {
     if username.is_empty() || password.is_empty() {
         return Ok(LoginResult {
@@ -1046,9 +1059,10 @@ type ProxyJob = (
 
 /// pkv の要求を固定数のワーカーで処理する。
 /// 1 要求 1 スレッドだと画像が多い画面でスレッドが増えすぎるため。
-fn proxy_queue() -> &'static mpsc::Sender<ProxyJob> {
-    static QUEUE: LazyLock<mpsc::Sender<ProxyJob>> = LazyLock::new(|| {
-        let (sender, receiver) = mpsc::channel::<ProxyJob>();
+fn proxy_queue() -> &'static mpsc::SyncSender<ProxyJob> {
+    static QUEUE: LazyLock<mpsc::SyncSender<ProxyJob>> = LazyLock::new(|| {
+        // キュー長を固定し、溢れたら 503 を返す (無制限に積むとメモリと遅延が増える)
+        let (sender, receiver) = mpsc::sync_channel::<ProxyJob>(128);
         let receiver = Arc::new(Mutex::new(receiver));
         for index in 0..PROXY_WORKERS {
             let receiver = Arc::clone(&receiver);
@@ -1318,9 +1332,31 @@ async fn open_external_page(
     if !matches!(target.scheme(), "http" | "https") {
         return Err("unsupported scheme".to_string());
     }
+    // 内部アドレス・ローカル名への遷移を拒否する (全プラットフォーム共通)
+    if !host_is_public(&target) {
+        return Err("destination is not allowed".to_string());
+    }
     let referer_url = reqwest::Url::parse(&referer).map_err(|_| "invalid referer".to_string())?;
     if !is_service_page(&referer_url) {
         return Err("referer must be a FANBOX or Patreon page".to_string());
+    }
+    // 保存先の文脈として使う値だけを受け付ける
+    if service != "fanbox" && service != "patreon" {
+        return Err("invalid service".to_string());
+    }
+    let valid_id = |value: &str| {
+        !value.is_empty()
+            && value.len() <= 128
+            && value.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-')
+    };
+    if !creator_id.is_empty() && !valid_id(&creator_id) {
+        return Err("invalid creator id".to_string());
+    }
+    if !post_id.is_empty() && !valid_id(&post_id) {
+        return Err("invalid post id".to_string());
+    }
+    if creator_name.chars().count() > 200 {
+        return Err("invalid creator name".to_string());
     }
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
@@ -1455,12 +1491,12 @@ pub fn run() {
             } else {
                 None
             };
-            // UI を止めないよう固定ワーカーへ投入する
+            // UI を止めないよう固定ワーカーへ投入する。満杯なら即 503。
             let job = (app, method, uri, body, range, responder);
-            if let Err(mpsc::SendError((_, _, _, _, _, responder))) = proxy_queue().send(job) {
+            if let Err(mpsc::TrySendError::Full((_, _, _, _, _, responder))) = proxy_queue().try_send(job) {
                 let unavailable = tauri::http::Response::builder()
                     .status(503)
-                    .body(b"proxy unavailable".to_vec())
+                    .body(b"proxy busy".to_vec())
                     .unwrap();
                 responder.respond(unavailable);
             }
