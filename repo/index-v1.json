@@ -1,6 +1,6 @@
 {
   "repo": {
-    "timestamp": 1795731142000,
+    "timestamp": 1795736041000,
     "version": 20002,
     "name": "PawKemoViewer",
     "icon": "icon.png",
@@ -21,7 +21,7 @@
         "Multimedia"
       ],
       "changelog": "https://github.com/nsmr0604/PawKemoViewer/releases",
-      "suggestedVersionCode": "6000",
+      "suggestedVersionCode": "6001",
       "description": "PawKemoViewer is an unofficial viewer for the pawchive.pw API. It lets you\nbrowse posts, creators, favorites, and follows from pawchive.pw on Android.\n\nFeatures:\n* Post lists with grid/list views and source filtering\n* Creator search, profiles, post lists, and follows\n* Post detail with content, images/videos, comments, and revisions\n* Thumbnail-first loading and low-data mode\n* Save selected images from posts, attachments, and external pages\n  (personal use only)\n* Backup, logs, Japanese/English UI, dark/light themes\n\nThe app does not collect personal information. It contains no analytics,\nadvertising, crash-reporting, or tracking SDKs. Settings, follows, favorites,\nread state, session keys, and caches are stored only on the device.\n\nThis app is unofficial and is not affiliated with pawchive.pw or the content\nproviders. It is intended for users aged 18 or older and may display adult\ncontent. Content rights belong to their respective owners; saving is limited\nto personal use, and redistribution or commercial use is prohibited.\n\nUsing an unofficial client may result in restrictions on third-party\naccounts. The app depends on the pawchive.pw service, which is not free\nsoftware and may change or stop without notice.",
       "issueTracker": "https://github.com/nsmr0604/PawKemoViewer/issues",
       "license": "MIT",
@@ -42,7 +42,7 @@
       {
         "added": 1795731142000,
         "apkName": "PawKemoViewer.apk",
-        "hash": "1ba8ab5f6e8501336dd747a3d5f3d23190d43938f16c4386a94f2ff8179a0a1d",
+        "hash": "a2c719749a8573224066495343c17405123e4dc9d220f08c86cb6646eae1dcfe",
         "hashType": "sha256",
         "minSdkVersion": 24,
         "nativecode": [
@@ -66,8 +66,8 @@
             null
           ]
         ],
-        "versionCode": 6000,
-        "versionName": "0.6.0"
+        "versionCode": 6001,
+        "versionName": "0.6.1"
       }
     ]
   }
