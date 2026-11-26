@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { getApplication } from "../application/composition"
 import type { CreatorRow } from "../application/creator-index-repository"
 import { Spinner, ErrorBox, Empty } from "../components/Feedback"
@@ -88,14 +88,25 @@ export function CreatorsPage() {
     }
   }, [runSearch])
 
+  const searchTimer = useRef<number | null>(null)
+
   const onSearch = useCallback(
-    async (value: string) => {
+    (value: string) => {
       setQ(value)
       setVisibleCount(60)
-      await runSearch(value)
+      // 1 文字ごとの全件検索を避ける
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current)
+      searchTimer.current = window.setTimeout(() => {
+        searchTimer.current = null
+        void runSearch(value)
+      }, 150)
     },
     [runSearch],
   )
+
+  useEffect(() => () => {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current)
+  }, [])
 
   /** Enter で確定した場合のみ履歴に追加 (キー入力ごとの追加を避ける) */
   const onSearchSubmit = (e: React.FormEvent) => {
@@ -107,14 +118,18 @@ export function CreatorsPage() {
     }
   }
 
-  const visibleRows = rows
-    .filter((row) => serviceFilter === "all" || row.service === serviceFilter)
-    .sort((a, b) => {
-      if (sortBy === "updated") return (b.updated || 0) - (a.updated || 0) || (b.favorited || 0) - (a.favorited || 0)
-      if (sortBy === "popular") return (b.favorited || 0) - (a.favorited || 0) || (b.updated || 0) - (a.updated || 0)
-      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
-    })
-  const displayedRows = visibleRows.slice(0, visibleCount)
+  const visibleRows = useMemo(
+    () =>
+      rows
+        .filter((row) => serviceFilter === "all" || row.service === serviceFilter)
+        .sort((a, b) => {
+          if (sortBy === "updated") return (b.updated || 0) - (a.updated || 0) || (b.favorited || 0) - (a.favorited || 0)
+          if (sortBy === "popular") return (b.favorited || 0) - (a.favorited || 0) || (b.updated || 0) - (a.updated || 0)
+          return a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+        }),
+    [rows, serviceFilter, sortBy],
+  )
+  const displayedRows = useMemo(() => visibleRows.slice(0, visibleCount), [visibleRows, visibleCount])
 
   return (
     <div className="page creators-page">
