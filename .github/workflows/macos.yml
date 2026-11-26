@@ -34,7 +34,7 @@ jobs:
       VITE_BUILD_COMMIT: ${{ github.sha }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -45,7 +45,7 @@ jobs:
           echo "installed_smoke requires a debug build" >&2
           exit 1
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: npm
@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: node scripts/dev-version.mjs
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
 
       - run: npm ci
       - run: npm run icons:generate
@@ -91,13 +91,13 @@ jobs:
           tar -czf "artifacts/$archive" \
             -C src-tauri/target/release/bundle/macos PawKemoViewer.app
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: PawKemoViewer-macos
           path: artifacts/*
           if-no-files-found: error
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         if: inputs.installed_smoke
         with:
           python-version: "3.12"
@@ -121,17 +121,17 @@ jobs:
 
   publish:
     needs: build
-    if: inputs.artifact_only != true && inputs.installed_smoke != true
+    if: inputs.artifact_only != true && inputs.installed_smoke != true && (inputs.release != true || github.ref == 'refs/heads/main')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: PawKemoViewer-macos
           path: artifacts
