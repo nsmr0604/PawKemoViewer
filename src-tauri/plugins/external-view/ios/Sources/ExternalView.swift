@@ -308,6 +308,25 @@ private final class ExternalPageController: UIViewController {
 }
 
 extension ExternalPageController: WKNavigationDelegate {
+    /// 内部ネットワーク宛ての http(s) 遷移を止める (ページ内リンク経由の SSRF 対策)。
+    private func isBlockedNavigation(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return false }
+        guard let host = url.host?.lowercased(), !host.isEmpty else { return true }
+        if host == "localhost" || host.hasSuffix(".localhost") || host.hasSuffix(".local") { return true }
+        if host == "::1" || host == "0.0.0.0" { return true }
+        let octets = host.split(separator: ".").compactMap { Int($0) }
+        if octets.count == 4 {
+            if octets.contains(where: { $0 > 255 }) { return true }
+            let a = octets[0]
+            let b = octets[1]
+            if a == 0 || a == 10 || a == 127 { return true }
+            if a == 169 && b == 254 { return true }
+            if a == 172 && (16...31).contains(b) { return true }
+            if a == 192 && b == 168 { return true }
+        }
+        return false
+    }
+
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         // 選択画面の「保存」はカスタムスキームで受け取る
@@ -320,6 +339,10 @@ extension ExternalPageController: WKNavigationDelegate {
                     self.saveSelected(urls)
                 }
             }
+            decisionHandler(.cancel)
+            return
+        }
+        if let target = navigationAction.request.url, isBlockedNavigation(target) {
             decisionHandler(.cancel)
             return
         }
