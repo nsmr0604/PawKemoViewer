@@ -31,10 +31,14 @@ class ExternalViewPlugin(private val activity: Activity) : Plugin(activity) {
     fun openBrowser(invoke: Invoke) {
         try {
             val args = invoke.parseArgs(BrowserArgs::class.java)
-            val intent = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_BROWSER).apply {
-                action = Intent.ACTION_VIEW
-                data = Uri.parse(args.url)
+            val uri = Uri.parse(args.url)
+            val scheme = uri.scheme?.lowercase()
+            if (scheme != "http" && scheme != "https") {
+                invoke.reject("Unsupported URL scheme")
+                return
             }
+            // 既定のブラウザーで開く (makeMainSelectorActivity はブラウザー以外を選び得る)
+            val intent = Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE)
             activity.startActivity(intent)
             invoke.resolve()
         } catch (_: Exception) {
