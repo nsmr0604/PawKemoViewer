@@ -37,12 +37,12 @@ An unofficial viewer for the pawchive.pw API
 - 実在のアカウント名・URL・セッションキーを写さない。
 - 18 歳以上の確認画面を含める場合は、ボタンと注意書きが読める構図にする。
 
-## F-Droid / IzzyOnDroid
+## 配布チャネル
 
-- **IzzyOnDroid**: 開発者がビルド・署名した APK をそのまま配布。署名鍵の指紋を申請時に伝える。
-- **F-Droid(再現ビルド)**: `AllowedAPKSigningKeys` に APK 署名証明書の SHA-256 を登録する。
-- **F-Droid(通常)**: F-Droid が再署名するため、GitHub 配布版とは別署名になる。
-- アンチフィーチャー: 非公式サービスへの依存があるため、必要に応じて `NonFreeNet` を申告する。
+- **自己ホスト F-Droid**: `fdroidserver` で生成したリポジトリを公開。手順は [自己ホスト F-Droid](../distribution/self-hosted-fdroid.md)。
+- **Obtainium**: GitHub リポジトリ URL を追加して Releases を追跡。
+- **IzzyOnDroid / F-Droid 本体**: 成人向け・権利・AI ポリシーにより受理が難しいため、現状は申請しない。
+- アンチフィーチャー(自己ホスト metadata): `NonFreeNet` と `TetheredNet`。
 
 ## 署名指紋(公開用)
 

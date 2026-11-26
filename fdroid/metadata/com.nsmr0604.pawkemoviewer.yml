@@ -1,0 +1,37 @@
+Categories:
+  - Multimedia
+License: MIT
+AuthorName: nsmr0604
+SourceCode: https://github.com/nsmr0604/PawKemoViewer
+IssueTracker: https://github.com/nsmr0604/PawKemoViewer/issues
+Changelog: https://github.com/nsmr0604/PawKemoViewer/releases
+AutoName: PawKemoViewer
+Summary: Unofficial viewer for the pawchive.pw API
+Description: |-
+  PawKemoViewer is an unofficial viewer for the pawchive.pw API. It lets you
+  browse posts, creators, favorites, and follows from pawchive.pw on Android.
+
+  Features:
+  * Post lists with grid/list views and source filtering
+  * Creator search, profiles, post lists, and follows
+  * Post detail with content, images/videos, comments, and revisions
+  * Thumbnail-first loading and low-data mode
+  * Save selected images from posts, attachments, and external pages
+    (personal use only)
+  * Backup, logs, Japanese/English UI, dark/light themes
+
+  The app does not collect personal information. It contains no analytics,
+  advertising, crash-reporting, or tracking SDKs. Settings, follows, favorites,
+  read state, session keys, and caches are stored only on the device.
+
+  This app is unofficial and is not affiliated with pawchive.pw or the content
+  providers. It is intended for users aged 18 or older and may display adult
+  content. Content rights belong to their respective owners; saving is limited
+  to personal use, and redistribution or commercial use is prohibited.
+
+  Using an unofficial client may result in restrictions on third-party
+  accounts. The app depends on the pawchive.pw service, which is not free
+  software and may change or stop without notice.
+AntiFeatures:
+  - NonFreeNet
+  - TetheredNet
