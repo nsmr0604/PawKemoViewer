@@ -85,6 +85,11 @@ DNS フィルタ（AdGuard など）で `pawchive.pw` が遮断される環境�
 
 [GitHub Releases](../../releases/latest) から、お使いの環境のファイルを取得します。0.5.8 以降の正式版は固定名で公開しています。
 
+### Obtainium / 自己ホスト F-Droid
+
+- **Obtainium**: `https://github.com/nsmr0604/PawKemoViewer` を追加すると、GitHub Releases の APK を追跡できます。
+- **自己ホスト F-Droid**: リポジトリの追加手順と公開 URL は [自己ホスト F-Droid](docs/distribution/self-hosted-fdroid.md) を参照してください。
+
 | プラットフォーム | ファイル名 |
 |---|---|
 | Windows | `PawKemoViewer.exe` / `PawKemoViewer.msi` |
