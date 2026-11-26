@@ -6,23 +6,23 @@ AltStore Classic と LiveContainer の両方で使える、AltStore 形式のソ
 ## ソース URL
 
 ```
-https://nsmr0604.github.io/PawKemoViewer/altstore/apps.json
+https://nsmr0604.github.io/PawKemoViewer/repo/apps.json
 ```
 
 GitHub Pages は `https://www.nsmr0604.geek.jp/PawKemoViewer/` へリダイレクトされます。
 クライアントがリダイレクトを扱えない場合は、次の正規 URL を使用してください。
 
 ```
-https://www.nsmr0604.geek.jp/PawKemoViewer/altstore/apps.json
+https://www.nsmr0604.geek.jp/PawKemoViewer/repo/apps.json
 ```
 
 ## 公開
 
-`altstore/apps.json` を `gh-pages` の `altstore/` にコピーします。
+`altstore/apps.json` を `gh-pages` の `repo/apps.json` にコピーします。
 
 ```
 gh-pages/
-└─ altstore/
+└─ repo/
    └─ apps.json
 ```
 
@@ -48,7 +48,7 @@ JIT / entitlements の設定が必要な場合があります。
 ディープリンク:
 
 ```
-livecontainer://source?url=https%3A%2F%2Fnsmr0604.github.io%2FPawKemoViewer%2Faltstore%2Fapps.json
+livecontainer://source?url=https%3A%2F%2Fnsmr0604.github.io%2FPawKemoViewer%2Frepo%2Fapps.json
 ```
 
 ## バージョン更新
@@ -63,7 +63,7 @@ livecontainer://source?url=https%3A%2F%2Fnsmr0604.github.io%2FPawKemoViewer%2Fal
    - `minOSVersion`: 例 `15.0`
 2. 互換性のため、アプリ直下の `version` / `downloadURL` / `size` も最新に更新
 3. `news` にリリース告知を追加(任意)
-4. `gh-pages` の `altstore/apps.json` を更新
+4. `gh-pages` の `repo/apps.json` を更新
 
 ## 注意
 
