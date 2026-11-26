@@ -1,7 +1,7 @@
 {
   "name": "pawkemoviewer",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Unofficial viewer for the pawchive.pw API",
   "license": "MIT",
   "type": "module",

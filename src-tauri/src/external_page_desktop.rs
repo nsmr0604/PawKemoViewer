@@ -268,13 +268,20 @@ fn empty_context() -> PageContext {
 fn start_navigation(window: &WebviewWindow, url: String, referer: String) {
     #[cfg(any(windows, target_os = "macos"))]
     {
-        if let Err(error) = window.with_webview(move |webview| {
-            if let Err(error) = navigate(&webview, &url, &referer) {
-                log::warn!("external page navigation failed: {error}");
+        // WebView2 / WKWebView の操作は UI スレッドで行う。
+        // on_page_load のコールバックスレッドはプラットフォーム依存のため、
+        // 明示的にメインスレッドへ渡す。
+        let window = window.clone();
+        let handle = window.app_handle().clone();
+        let _ = handle.run_on_main_thread(move || {
+            if let Err(error) = window.with_webview(move |webview| {
+                if let Err(error) = navigate(&webview, &url, &referer) {
+                    log::warn!("external page navigation failed: {error}");
+                }
+            }) {
+                log::warn!("external page webview unavailable: {error}");
             }
-        }) {
-            log::warn!("external page webview unavailable: {error}");
-        }
+        });
     }
 
     // WebKitGTK はナビゲーションへヘッダーを差し込む公開 API が無い。
@@ -397,7 +404,7 @@ fn navigate(
     referer: &str,
 ) -> Result<(), String> {
     use webview2_com::Microsoft::Web::WebView2::Win32::{
-        COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL, ICoreWebView2,
+        COREWEBVIEW2_WEB_RESOURCE_CONTEXT_DOCUMENT, ICoreWebView2,
         ICoreWebView2WebResourceRequestedEventArgs,
     };
     use webview2_com::WebResourceRequestedEventHandler;
@@ -408,8 +415,13 @@ fn navigate(
     let target = HSTRING::from(url);
 
     unsafe {
-        core.AddWebResourceRequestedFilter(&target, COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL)
-            .map_err(|error| error.to_string())?;
+        // 完全一致の URL フィルターは正規化やリダイレクトで外れることがあるため、
+        // このウィンドウのドキュメント要求だけを対象にする。
+        core.AddWebResourceRequestedFilter(
+            &HSTRING::from("*"),
+            COREWEBVIEW2_WEB_RESOURCE_CONTEXT_DOCUMENT,
+        )
+        .map_err(|error| error.to_string())?;
     }
 
     let referer = referer.to_string();
