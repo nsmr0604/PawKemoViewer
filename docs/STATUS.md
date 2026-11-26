@@ -43,7 +43,7 @@
 
 | 確認 | 結果 |
 |---|---|
-| `npm run test:domain` | 9 件成功 |
+| `npm run test:domain` | 10 件成功 |
 | `npm run test:application` | 17 件成功 |
 | `npm run test:platform` | 18 件成功 |
 | `node --test tests/post-download.test.mjs` | 7 件成功（通常の npm test スクリプトには未含む） |

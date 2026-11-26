@@ -136,9 +136,9 @@ pkv の変換対象は FANBOX / Patreon / patreonusercontent / pximg と、投�
 
 ## Tauri コマンド
 
-アプリ独自定義は 29 コマンドです。JS 引数は **camelCase**。`AppHandle` は Tauri が注入するため JS から渡しません。特に記載がない戻り値は `Result<T, String>` の `T` です。
+アプリ独自定義は 25 コマンドです。JS 引数は **camelCase**。`AppHandle` は Tauri が注入するため JS から渡しません。特に記載がない戻り値は `Result<T, String>` の `T` です。
 
-`api_request` は固定の pawchive 基底 URL へ path を連結する汎用 relay です。path の allowlist はなく、POST / DELETE 以外は GET として扱い、リクエスト body は送りません。アプリ側は既知のエンドポイントだけを呼び出します。
+`api_request` は固定の pawchive 基底 URL へ path を連結する汎用 relay です。path は `/api/v1/` 配下に限定して検証し、GET / POST / DELETE 以外は拒否します。リクエスト body は送りません。アプリ側は既知のエンドポイントだけを呼び出します。
 
 ### 通信用
 
@@ -155,8 +155,6 @@ pkv の変換対象は FANBOX / Patreon / patreonusercontent / pximg と、投�
 
 | コマンド | JS 引数 | 戻り値 / 対象 |
 |---|---|---|
-| `export_log` | `text` | 絶対パス / 全 OS。現行フロントからは未使用 |
-| `export_file` | `fileName, text` | 絶対パス / 全 OS。現行フロントからは未使用 |
 | `debug_append_log` | `text` | `()` / `debug-diag` |
 | `debug_open_log_folder` | なし | ログフォルダーのパス / `debug-diag`。実用は desktop |
 | `creator_icon_cache_info` | なし | `{count, bytes}` / 全 OS |
@@ -208,7 +206,6 @@ pkv の変換対象は FANBOX / Patreon / patreonusercontent / pximg と、投�
 
 | コマンド | JS 引数 | 戻り値 / 対象 |
 |---|---|---|
-| `resolve_download_directory` | `creatorName, service, creatorId` | 作成済みディレクトリーパス / 全 OS。現行フロントからは未使用 |
 | `download_post_images` | `creatorName, service, creatorId, referer, images, pages, sessionKey?, imageReferer?` | `{directory, saved, skipped, cancelled, failed}` / 全 OS |
 | `cancel_download` | なし | `()` / 全 OS |
 

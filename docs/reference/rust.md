@@ -67,7 +67,7 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 
 ## 2. Tauri コマンド一覧
 
-アプリ独自定義は **29 コマンド**です。JS 引数は camelCase、`AppHandle` は Tauri が注入するため JS から渡しません。戻り値は特に断りがなければ `Result<T, String>` の `T` で、`Err(String)` が JS の reject 文言になります。
+アプリ独自定義は **25 コマンド**です。JS 引数は camelCase、`AppHandle` は Tauri が注入するため JS から渡しません。戻り値は特に断りがなければ `Result<T, String>` の `T` で、`Err(String)` が JS の reject 文言になります。
 
 ### 通信・ログイン
 
@@ -89,14 +89,12 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 
 | コマンド | JS 引数 | 戻り値 | 主な Err 文字列 | 登録条件 | 実装 |
 |---|---|---|---|---|---|
-| `export_log` | `text` | 書き出した絶対パス | パス・I/O エラー (`e.to_string()`) | 全 OS | `lib.rs` |
-| `export_file` | `fileName`, `text` | 書き出した絶対パス | `could not allocate a unique export filename`, I/O エラー | 全 OS | `lib.rs` |
 | `debug_append_log` | `text` | `()` | パス・I/O エラー | `debug-diag` | `lib.rs` |
 | `debug_open_log_folder` | なし | ログフォルダーの絶対パス | パス・起動エラー | `debug-diag` | `lib.rs` |
 | `creator_icon_cache_info` | なし | `IconCacheInfo { count, bytes }` | `app_data_dir` 取得エラー | 全 OS | `lib.rs` |
 | `clear_creator_icon_cache` | なし | 削除件数 `u64` | `app_data_dir` 取得エラー | 全 OS | `lib.rs` |
 
-`export_log` と `export_file` は現行フロントから呼ばれていません (保存は `save_user_file` 系へ移行済み)。
+旧 `export_log` / `export_file` は未使用のため削除済み (保存は `save_user_file` 系へ移行済み)。
 
 ### 言語ファイル・JSON ファイル
 
@@ -128,7 +126,6 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 
 | コマンド | JS 引数 | 戻り値 | 主な Err 文字列 | 登録条件 | 実装 |
 |---|---|---|---|---|---|
-| `resolve_download_directory` | `creatorName`, `service`, `creatorId` | 作成済みディレクトリーパス | `download_root` / `create_dir_all` のエラー | 全 OS | `lib.rs` |
 | `download_post_images` | `creatorName`, `service`, `creatorId`, `referer`, `images`, `pages`, `sessionKey?`, `imageReferer?` | `DownloadSummary` | `referer must be a FANBOX or Patreon page`, `invalid image referer`, `download already running` | 全 OS | `downloads.rs` |
 | `cancel_download` | なし | `()` | なし | 全 OS | `downloads.rs` |
 
@@ -177,10 +174,6 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `percent_decode` | `fn percent_decode(s: &str) -> String` | 文字列 | `%XX` と `+` を戻す。不正な `%` はそのまま残す |
 | `pkv_proxy_fetch` | `fn pkv_proxy_fetch(app, method, uri, body, range) -> tauri::http::Response<Vec<u8>>` | HTTP 応答 | pkv の実処理。`text/html` は 415 で拒否する。詳細は「4. pkv プロキシ」 |
 | `proxy_queue` | `fn proxy_queue() -> &'static mpsc::SyncSender<ProxyJob>` | SyncSender | 4 スレッドのワーカーを一度だけ起動し、固定長キュー (128) に配送。満杯は 503 |
-| `export_log` | `fn export_log(app, text) -> Result<String, String>` | パス | `app_data/logs/<UTC 秒>_viewer.log` を新規作成して書き込む |
-| `export_file` | `fn export_file(app, file_name, text) -> Result<String, String>` | パス | `app_data/backup/<UTC 秒>_<安全名>`。英数と `._-` 以外を `_` に置換。`create_new` で衝突時は `_1`〜`_99` を試す |
-| `chrono_free_name` | `fn chrono_free_name() -> String` | `YYYY-MM-DD_HH-MM-SS` | 追加依存なしの UTC 表記 |
-| `civil_from_days` | `fn civil_from_days(z: i64) -> (i64, u32, u32)` | 年月日 | Howard Hinnant の日付変換 |
 | `debug_append_log` | `fn debug_append_log(app, text) -> Result<(), String>` (`debug-diag`) | `()` | `app_data/logs/debug-app.log` へ追記 |
 | `debug_open_log_folder` | `fn debug_open_log_folder(app) -> Result<String, String>` (`debug-diag`) | パス | `explorer` / `open` / `xdg-open` でログフォルダーを開く |
 | `icon_cache_dir` | `fn icon_cache_dir(app) -> Result<PathBuf, String>` | パス | `app_data/icons` |
@@ -189,11 +182,10 @@ PawKemoViewer のネイティブ側 (`src-tauri/`) の全モジュール、Tauri
 | `set_android_launcher_icon` | `async fn set_android_launcher_icon(app, light) -> Result<(), String>` (Android) | `()` | `locale-picker` の `setLauncherIcon` を呼ぶ |
 | `is_service_page` | `fn is_service_page(u: &reqwest::Url) -> bool` | `bool` | 外部ページの Referer 用。fanbox / patreon とそのサブドメインのみ |
 | `open_external_page` | `async fn open_external_page(app, url, referer, creator_name, service, creator_id, post_id) -> Result<(), String>` | `()` | モバイルはプラグイン、デスクトップは専用ウィンドウ |
-| `take_external_page_images` | `async fn take_external_page_images(app) -> Result<Option<serde_json::Value>, String>` | JSON または `None` | `Documents/.external-download.json` を読み、**読み取り直後に削除**してから JSON を解釈して返す |
+| `take_external_page_images` | `async fn take_external_page_images(app) -> Result<Option<serde_json::Value>, String>` | JSON または `None` | `Documents/.external-download.json` を上限 1 MiB で読み、JSON を検証できた後に削除して返す |
 | `external_page_diagnostic_events` | `async fn external_page_diagnostic_events(app) -> Result<serde_json::Value, String>` (iOS + `debug-diag`) | 診断 JSON | プラグインの `diagnosticEvents` を中継 |
 | `open_in_browser` | `async fn open_in_browser(_app, url) -> Result<(), String>` | `()` | モバイルはプラグイン、デスクトップは `explorer.exe` / `open` / `xdg-open` |
-| `resolve_download_directory` | `fn resolve_download_directory(app, creator_name, service, creator_id) -> Result<String, String>` | パス | `downloads::creator_directory` を呼ぶだけ。現行フロントからは未使用 |
-| `run` | `pub fn run()` | — | プラグイン登録、pkv プロトコル登録、29 コマンド登録、`run(generate_context!())` |
+| `run` | `pub fn run()` | — | プラグイン登録、pkv プロトコル登録、25 コマンド登録、`run(generate_context!())` |
 
 #### 構造体
 
