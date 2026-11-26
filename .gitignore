@@ -59,3 +59,8 @@ Desktop.ini
 /fdroid/config.yml
 /fdroid/keystore.p12
 /fdroid/repo/
+
+# Linux リポジトリ生成物
+/linux-repo/
+/dist-deb/
+/dist-rpm/

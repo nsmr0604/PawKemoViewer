@@ -27,6 +27,8 @@ PawKemoViewer の利用者向け情報、開発者向け仕様、設計、検証
 | 利用規約・プライバシーポリシー | [法務文書](legal/README.md) |
 | ストア掲載文・スクリーンショット方針 | [ストア掲載情報](store/README.md) |
 | 自己ホスト F-Droid / Obtainium | [配布手順](distribution/self-hosted-fdroid.md) |
+| apt / rpm リポジトリ | [Linux リポジトリ](distribution/linux-repositories.md) |
+| AltStore / LiveContainer | [iOS ソース](distribution/altstore-livecontainer.md) |
 | バージョンごとの変更 | [変更履歴](HISTORY.md) |
 | コード監査の結果と対応順 | [2026-11-26 監査](audit/2026-11-26-code-audit.md) |
 
