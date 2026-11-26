@@ -48,7 +48,7 @@ NEW の判定は公開日時または取得日時が直近 7 日以内の投稿�
 
 - Rust: `app_data/icons/{service}_{id}.webp`
 - IndexedDB: 最大 2,000 件、古いものから削除
-- 取得失敗の `null` も IndexedDB に保存される
+- アイコン無し(204・非画像・空ボディ)の `null` は IndexedDB に保存され、消去するまで再取得しない。通信失敗は保存しない(再試行可能)
 - Rust は応答 `Content-Type` が `image/` で始まることを検査するが、バイト列の MIME 検証、サイズ上限、TTL はない
 
 ### 投稿サムネイル

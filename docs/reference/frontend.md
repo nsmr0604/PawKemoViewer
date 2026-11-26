@@ -1,8 +1,8 @@
 # フロントエンド モジュールリファレンス
 
-`src/` 配下の TypeScript モジュール全 79 ファイルの関数・定数・型・フックの一覧です。対象は `.ts` / `.tsx` のみで、`src-tauri/`(Rust)は扱いません。Tauri コマンドの引数仕様は [API.md](../API.md)、ビルドと検証手順は [DEVELOPMENT.md](../DEVELOPMENT.md)、層の設計意図は [design/application.md](../architecture/application.md) を参照してください。
+`src/` 配下の TypeScript モジュール全 80 ファイルの関数・定数・型・フックの一覧です。対象は `.ts` / `.tsx` のみで、`src-tauri/`(Rust)は扱いません。Tauri コマンドの引数仕様は [API.md](../API.md)、ビルドと検証手順は [DEVELOPMENT.md](../DEVELOPMENT.md)、層の設計意図は [design/application.md](../architecture/application.md) を参照してください。
 
-- 数え方: `^\s*export ` の grep では 285 行(複数行宣言・再エクスポートを含む)。本文の「275 シンボル」は TypeScript Compiler API(`ts.createSourceFile` → 文単位で `export` 修飾子を判定)で宣言名を列挙した実数。内訳は `export *` の再エクスポート 6 行、`export { MIN_QUERY }` 1 件、`export { isImageFileName, isThumbnailUrl, resolveImageUrl }` 3 件、`export type { CreatorRow }` 1 件、`export default` 1 件を含む
+- 数え方: `^\s*export ` の grep では 286 行(複数行宣言・再エクスポートを含む)。本文の「275 シンボル」は TypeScript Compiler API(`ts.createSourceFile` → 文単位で `export` 修飾子を判定)で宣言名を列挙した実数。内訳は `export *` の再エクスポート 6 行、`export { MIN_QUERY }` 1 件、`export { isImageFileName, isThumbnailUrl, resolveImageUrl }` 3 件、`export type { CreatorRow }` 1 件、`export default` 1 件を含む
 - 行番号は記載しません(変動が早いため)。パスとシンボル名で参照してください
 - 「未確認」はコードを読んだだけでは断定できなかった箇所です
 
@@ -675,7 +675,7 @@ i18next の初期化、同梱辞書(ja 静的 / en 遅延)、外部辞書の走�
 | `iconCacheCount` | `()` | `Promise<number>` | IndexedDB のレコード数 | IndexedDB 読み取り |
 
 - 内部: `DB_NAME="pawkemo-icons"`、`STORE="icons"`、`MAX_ENTRIES=2000`、`memory` / `inflight` マップ、`openDb` / `idbGet` / `idbPut` / `prune` / `db()`、型 `IconRecord { d: string \| null; t: number }`
-- 失敗時: IDB 失敗は無視して Rust へ進み、取得失敗は `logError` のうえ null(失敗はキャッシュしない)。`clearIconCache` / `creatorIconInfo` / `iconCacheCount` の IPC・IDB 失敗は 0 や空で返します。204(アイコン無し)は null としてセッション中キャッシュ
+- 失敗時: IDB 失敗は無視して Rust へ進み、取得失敗は `logError` のうえ null(失敗はキャッシュしない)。`clearIconCache` / `creatorIconInfo` / `iconCacheCount` の IPC・IDB 失敗は 0 や空で返します。204(アイコン無し)は null として `pawkemo-icons` に永続保存し、消去するまで再取得しません(メモリにも保持)。
 
 ### src/log.ts
 アプリ内リングバッファログ(400 件)と、グローバルエラーの自動記録。Lite は error のみ保持します。

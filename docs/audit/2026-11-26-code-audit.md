@@ -13,10 +13,10 @@
 | Rust | 4 | 14 | 20 | 38 | [findings/rust.md](findings/rust.md) |
 | ネイティブ(Android / iOS) | 1 | 12 | 17 | 30 | [findings/native.md](findings/native.md) |
 | ビルド・CI・依存 | 5 | 13 | 9 | 27 | [findings/build-ci.md](findings/build-ci.md) |
-| ドキュメント整合 | 監査中 | — | — | — | — |
-| **合計** | **14** | **57** | **61** | **132** | |
+| ドキュメント整合 | 3 | 4 | 8 | 15 | [findings/docs.md](findings/docs.md) |
+| **合計** | **17** | **61** | **69** | **147** | |
 
-## 2. 重大(14 件)
+## 2. 重大(17 件)
 
 ### 2.1 フロントエンド
 
@@ -102,7 +102,21 @@ pkv が同一オリジンで HTML を返す構成のため、スクリプト実�
 `publish` は `contents: write` でリポジトリのスクリプトを実行するため、参照差し替えが
 リリース改ざんに直結する。→ 完全な SHA 固定にし、更新は Dependabot / Renovate に任せる。
 
-## 3. 中(57 件)の要約
+### 2.5 ドキュメント整合
+
+**D1. STATUS のリリース状態が実タグ・他文書と矛盾**
+「最新 = 0.5.7、0.5.8 はタグ・リリースなし」と書かれていたが、`pawkemoviewer-v0.5.8` は
+実在し、HISTORY / README / Wiki は 0.5.8 を最新としていた。→ 訂正済み。
+
+**D2. モバイルの一括保存先が README / Wiki で古い**
+Android 10 以降は `Download/PawKemoViewer/<creator>` だが、README と `wiki/Files.md` は
+`Documents/Downloads` のままだった。→ 分割して訂正済み。
+
+**D3. cover.jpeg 除外を「一覧にも適用」と 4 文書が記載**
+実装が除外するのは投稿詳細のファイル一覧と一括保存の添付候補だけ。一覧カードの
+サムネイルと枚数には残る。→ 4 文書を訂正済み。
+
+## 3. 中(61 件)の要約
 
 詳細は [findings/](findings/) を参照。対応判断に必要なものだけ抜粋する。
 
@@ -112,6 +126,7 @@ pkv が同一オリジンで HTML を返す構成のため、スクリプト実�
 | Rust | API エラー本文の永続ログ / `api_request` の 302 追従で書き込みが成功扱い / pkv キュー・POST 本文が無制限 / ワーカー panic で恒久 503 / `DOWNLOAD_RUNNING` の解放漏れ(要確認) / `imageReferer` のホスト検査なし / `login_request` の誤った原因表示 / pkv が実質オープンプロキシ / `Content-Encoding` 非同梱 / 読取エラーに URL が残る / 投稿文脈 4 引数の未検証 / 受け渡しファイルが固定名 |
 | ネイティブ | URL・内部アドレスの検証なし / `saveToDownloads` の path 未検証 / モバイルでも遠隔 HTML が同一 WebView / MediaStore 同名衝突 / `allowContentAccess` 未指定 / iOS の提示失敗で未解決 / `target="_blank"` 無効 / predictive back / 保存キューの非アトミック / キューの第三者改ざん / `openBrowser` の intent / `invoke.resolve` を素のスレッドから |
 | ビルドCI | CI で unit test を実行しない / `npm audit` / `cargo audit` なし / APK が debug keystore / NSIS の firewall ルール / 診断コード混入検査が iOS のみ / toolchain が `@stable` / compileSdk 36 と SDK 35 の不一致 / Cargo・Gradle キャッシュなし / updater なし / リリースノート固定文言 / Wiki push の検査が denylist のみ |
+| ドキュメント | 保存先解決失敗時のロック残留の記述が古い(修正済み) / `data/schema.md` のストア作成の記述 / アイコン null の保存期間 / rust.md の早期 return 記述 / 件数・文言のずれ |
 
 ## 4. 低(61 件)の要約
 
@@ -152,7 +167,18 @@ pkv が同一オリジンで HTML を返す構成のため、スクリプト実�
 `Wiki Sync`)はいずれも現役で、削除対象は無かった。GitHub 上にファイルの無い登録が 2 本
 残っていたため無効化した(`Desktop installed smoke` / `iOS Files Probe`)。
 
-## 6. 推奨対応順
+## 6. 実施済みの対応
+
+監査と整理の中で、安全に直せるものを先に反映した。
+
+| 対象 | 内容 | コミット |
+|---|---|---|
+| Cargo.lock | `.gitignore` から外して追跡(依存の再現性) | `83427c96` |
+| 監査レポート | `docs/audit/` に要約と根拠一覧を追加 | `1ea81577` |
+| CI | Android SDK 36 の導入、`pages.yml` の OS 固定、`paths` にスクリプト追加、AGENTS の `debug_diag` 記述 | `b49a222a` |
+| ドキュメント | 監査で見つかった 15 件の不一致を訂正 | 本コミット |
+
+## 7. 推奨対応順
 
 | 優先 | 内容 | 対象 |
 |---|---|---|
@@ -164,7 +190,7 @@ pkv が同一オリジンで HTML を返す構成のため、スクリプト実�
 | P2 | 性能(カード毎リスナー、アイコン全件読み出し、CreatorsPage) | 中 |
 | P3 | 未使用 export・コマンド、警告、ドキュメントの細かなずれ | 低 |
 
-## 7. 未確認事項
+## 8. 未確認事項
 
 監査では断定できず、実測が必要な項目がある。
 

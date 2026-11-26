@@ -8,8 +8,8 @@
 
 | 項目 | 状態 |
 |---|---|
-| 最新の公開版 | **`pawkemoviewer-v0.5.7`**（Latest、2026-11-24、9 アセット） |
-| 0.5.8 | タグ・リリースなし。版番号のコミットのみで、機能は 0.6.0 に継承 |
+| 最新の公開版 | **`pawkemoviewer-v0.5.8`**（Latest、2026-11-25、9 アセット） |
+| 0.5.8 | `1e522668` のビルド。publish の権限エラーで自動作成に失敗したため、同じ実行の成果物から手動でリリースを作成した |
 | 開発版 | **0.6.0**。`package.json` と `src-tauri/Cargo.toml` に設定 |
 | 開発ビルド | `debug-latest` プレリリース。プラットフォームごとに最新の更新時刻が異なる |
 | 開発ブランチ | `0.6.0`。番号ブランチへの push で Windows / Linux / Android の開発ビルドを実行 |
@@ -43,7 +43,7 @@
 
 | 確認 | 結果 |
 |---|---|
-| `npm run test:domain` | 5 件成功 |
+| `npm run test:domain` | 7 件成功 |
 | `npm run test:application` | 17 件成功 |
 | `npm run test:platform` | 18 件成功 |
 | `node --test tests/post-download.test.mjs` | 7 件成功（通常の npm test スクリプトには未含む） |
