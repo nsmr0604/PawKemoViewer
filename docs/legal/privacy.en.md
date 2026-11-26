@@ -5,6 +5,8 @@ Last updated: 2026-11-26
 
 This Privacy Policy explains how PawKemoViewer ("the App") handles user information.
 
+**The developer and distributors do not collect any personal information through the App.** The App contains no analytics, advertising, crash-reporting, or tracking SDKs.
+
 ## 1. Information stored
 
 The App stores the following **only on your device**:
