@@ -52,7 +52,7 @@ jobs:
           patterns = {
               "windows": ("exe", r"x64-setup\.exe"),
               "macos": ("dmg", r"aarch64\.dmg"),
-              "linux": ("deb", r"amd64\.deb"),
+              "linux": ("AppImage", r"amd64\.AppImage"),
               "android": ("apk", r"universal\.apk"),
               "ios": ("ipa", r"ios-unsigned\.ipa"),
           }
