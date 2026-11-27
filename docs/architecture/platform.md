@@ -84,6 +84,8 @@ URL は http(s) と Referer を検証しますが、pkv のような内部 IP・
 - ローカルの `public/external-blank.html` を読み、読み込み完了後に目的の URL へ遷移する
 - Referer の付け方: Windows は WebView2 の `WebResourceRequested`、macOS は WKWebView の
   `loadRequest`、Linux は Rust で Referer 付き取得した HTML を実 URL を base に `load_html`
+- Windows は Referer が空のドキュメント要求（初回遷移とそのリダイレクト）にだけ元記事 URL を付ける。
+  ページ内のフォーム POST まで上書きすると、同一オリジン検証を行うサイトが `Invalid request` を返すため
 - ページには `assets/external-page-overlay.js` を差し込み、URL 表示・戻る・画像を保存・閉じるを提供する
 - 画像選択の結果は `document.title` の `pawkemo-save#<JSON>` で受け取り、
   `Documents/.external-download.json` に書いてウィンドウを閉じる（モバイルと同じ取り込み経路）
