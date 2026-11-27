@@ -158,7 +158,8 @@ jobs:
           if [ "${{ inputs.release }}" = "true" ]; then
             npx tauri android build
           else
-            npx tauri android build --features debug-diag
+            # デバッグ版は applicationId に .debug を付け、製品版と共存させる
+            npx tauri android build --debug --features debug-diag
           fi
 
       - name: Sign APKs
@@ -199,10 +200,17 @@ jobs:
           fi
           for apk in "${packages[@]}"; do
             base=$(basename "$apk")
-            # app-{abi}-release.apk / app-{abi}-unsigned-release.apk から abi を抽出
-            abi=$(echo "$base" | sed -n 's/^app-\([a-z0-9_]*\)-\(unsigned-\)\{0,1\}release\.apk$/\1/p')
+            # app-{abi}-{release,debug}.apk から ABI とビルド種別を抽出
+            build="release"
+            case "$base" in
+              *-debug.apk) build="debug" ;;
+            esac
+            abi=$(echo "$base" | sed -nE 's/^app-(.+)-(debug|release)\.apk$/\1/p')
             if [ -z "$abi" ]; then abi="universal"; fi
             out="dist-apk/PawKemoViewer_${VER}_${abi}.apk"
+            if [[ "$build" == "debug" ]]; then
+              out="dist-apk/PawKemoViewer_${VER}_${abi}_debug.apk"
+            fi
             if [[ "${{ inputs.release }}" == true ]]; then
               out="dist-apk/PawKemoViewer_${abi}.apk"
               if [[ "$abi" == universal ]]; then out="dist-apk/PawKemoViewer.apk"; fi
