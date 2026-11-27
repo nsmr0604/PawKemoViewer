@@ -4,35 +4,35 @@ Hash: SHA512
 Architectures: amd64
 Codename: stable
 Components: main
-Date: Thu, 26 Nov 2026 23:34:54 +0000
+Date: Fri, 27 Nov 2026 14:05:49 +0000
 Label: PawKemoViewer
 Origin: PawKemoViewer
 Suite: stable
 MD5Sum:
- 97b90ca5402e5e0f1401f39a274b4a65              566 main/binary-amd64/Packages
- 356ad9dd906546489dde7d79facbd559              422 main/binary-amd64/Packages.gz
+ bf9d1b65e93ca96b8fd9005394540286              566 main/binary-amd64/Packages
+ c3a6e7de7978082fcc897c4118617e58              421 main/binary-amd64/Packages.gz
 SHA1:
- 57683eb90280b6376add5f76020b0ce0ff68f14e              566 main/binary-amd64/Packages
- bd6400aad56fd2de09132361ed25874abfc29362              422 main/binary-amd64/Packages.gz
+ afa76f2210ceca0e2177a1d9d5f231766acc4bfc              566 main/binary-amd64/Packages
+ ff2fedf997a47af9d49ec1becd50221810bd4a36              421 main/binary-amd64/Packages.gz
 SHA256:
- aeebe6fbe523fa70a0ea43f4f90aeb591d8b240a0ce14b4d92423467bb598b5d              566 main/binary-amd64/Packages
- 69987bcc5bf44b550f25510dd4905dad7de553dcc958c08cb9963e759e67a3c1              422 main/binary-amd64/Packages.gz
+ f13ef296f9b433e4bcb343b882f1dd54cd8f47ea42a2a8b67f7078c00324f6b5              566 main/binary-amd64/Packages
+ 19eb672f9faf7b299a599d18fc6d2544d22218f3403ac1c688ef792b1cf4e590              421 main/binary-amd64/Packages.gz
 SHA512:
- 56d9a94d6dd17c09c089b57e5338f274ad28a4414ce3bb92c436f3005fef5643326efc3bdb86f88e7e57de1842c5b15cffed14d90d742a559a288806004dc998              566 main/binary-amd64/Packages
- a263e2e74a7cb15a0dcf6a6eff83bd586e93b39df9bbc0ef38768d77cf776bbf088d5fc5cff5cfdf0b3faf6354c9d98c0c8fd9f94d51eae084f7f78c8d16db09              422 main/binary-amd64/Packages.gz
+ cc59b8f923172e010445e3bc18138a21e9f7d5030b771a5abddc3beb0503f50df9783e42589c6f7bbbd1c95cc2542a0e9d34beb1ed836b109a2e39a896cb9179              566 main/binary-amd64/Packages
+ b2238a3ea013993884dcd4b99128795961f3e831b225ac18236317a20d6c8361c8a1eb4484daf5dd5c401bacb1121cf0af60b3446a4d3ef844ab32883caa35c5              421 main/binary-amd64/Packages.gz
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCgAdFiEEvMH7LY+H4+zLcNqM3TXArmIH7x0FAmsIwh4ACgkQ3TXArmIH
-7x0PLw//XCeN+l8XUBAo0P8IxKDw82JFbY7Un6ayZKpsmrpVlzg19rnirzoxvpEw
-jd/CyDkzO2xW6MZbFnjlzxUChvd01yMzK8h1UTjBG0B2uxA2TsnpfFsBH29o6/9N
-3bW0YDXutXRBVerPRrreTOsA07LcEjModkOjzInGY9S7tkS2QCsYYCaijBa3ZJ1O
-5hjeMXioKVLnI5MOVsPTWvfeUJ6u2xu0TPqJjsx3JWpq14sN7DbyvJVD2Y+Hqa3x
-k8zp8hALiS7s/W4eLPhbEYuVU52jhUundBUPbrus4p7Iq00PG9poXgH61zsiCPBW
-+hpqcQ/yX/twRk0PFst5fivfVYoYuOfGVkBelW0xWLu398tsNulyJemgx/Qbqd4J
-7nKoC0WMQR8ylIFDtFBStos07LgihcvaCSmznAy1GlyPI+Y8f2deaRJewmeoLesp
-SwMQ53GkQb8+rmjNHBQvJ5uvMDiKGB/tivDq7Ra52CoyJ9AtgCjbu709wJUipcPc
-KX10ZEUyGNdyJzNRWiQp3gLHy9dTrJtUxvuYWTGDmoCcJo0LO7Z9lTOZDyGF87fi
-Kfv/zz5yRvXiGKf5y3kBj2j/k545YDaqm2AGmyFU0ke+oJnpheyK85SnVCf8FKmR
-d2rJ/ZdB+sKpg7+aMo8nSNiiixixjau5R/jWuA5Vta/D5Je/bJ8=
-=quTc
+iQIzBAEBCgAdFiEEvMH7LY+H4+zLcNqM3TXArmIH7x0FAmsJjj0ACgkQ3TXArmIH
+7x1IwQ//aP0kd4wFqjBWLbrW+t08WSOsE6wBtKkTyMWOV9iE8Wpknh5SiVEv2AIZ
+jRfQCpoZ/U70ZQGvM/t5pXvBjYk/CRYzOujW3rj5JFzEqqIMqabzZ4socMtThPg1
+UJMRtd23Ymh/ZCeYlRE+g/atIR2yV54IRiC1z9axhOYkbVgeluDk8YVke/2oTo5X
+E1NAAuyWpjPGttXyWP7dz1gF9tZXXyghrVXAmEQDRml5C9cfeI3eaxjnHtsCNQcd
+Z6MofOVw+xCkq+dYQAjcVDoz0MVW7R9qWrvqTk6R5BbvXVHHyh2FUe1KiwR+HHrz
+u+ZSbV0rVGJuNJJpYT2/LmEOQg/doSu0c4KbKwTOlpRjKMjSnVWZ2ljaq/Uuy64s
+3BZw1MPKUwZ6W2AiQPcCF8hnQHPG+1Ju48cOPJ7LFBQorEUDSusMz4taTFEMwuyn
+r9B15fJE2cA62N5IQAi5vNALohfGu2GA5weEnXPfnTqzN8o2mwr2Str4oEV3corc
+XGfrtqTz4s3A2PciHdU+kldq1qulKlKWy6/GNf5rV615W5DpMOaKV0HV5PdLm3dy
+4gGrTQ9rC0E7sZFx7SRSS+ua9zvleunPyIVFlo61NvS2CMhrpD0hrycn+8qHwEEZ
+C5euk7JvK0WAGiAKUYFJAoABW2cpRWaDNjwrTh5a2Y0+G4HjIFk=
+=mHwC
 -----END PGP SIGNATURE-----

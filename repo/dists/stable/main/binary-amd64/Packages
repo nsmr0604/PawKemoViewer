@@ -1,16 +1,16 @@
 Package: pawkemo-viewer
 Architecture: amd64
-Version: 0.6.1
+Version: 0.6.2
 Priority: optional
 Maintainer: nsmr0604
-Installed-Size: 22911
+Installed-Size: 22913
 Depends: libwebkit2gtk-4.1-0, libgtk-3-0
 Filename: pool/main/p/paw-kemo-viewer/PawKemoViewer.deb
-Size: 9562462
-MD5sum: 61030a335bc2912fe3405ad21effb257
-SHA1: 4837e02eea7503e8bd09a9b68aee6f08b985139d
-SHA256: e621644634fdf532b682822ed2e44b27d79a9b1f8b65ab4569649d747526498a
-SHA512: 69a51b81ed48607019442d255893aaaee267b599d091c9ce0e0d57440b156fec1ba15b2cf851913022d0d68bae20dd60ec8efb750c48a84c3ed251b76c49c824
+Size: 9558306
+MD5sum: 4071282c196c0983e4709667e2766668
+SHA1: 8b00c139ebb4e7553130dccbdb180989d6e41449
+SHA256: 69a7ec96491fae3a5d1b5eb343ab2626a726f3c512b49d4edfa6f44c47c631fa
+SHA512: 3e1b51faf6c224b459a5c4ba84a64413836013498b85f013e9725e44dfbadb50c114f919ecdc51c9c529da77f26ebe333ce6444acb0e07d9563f84610fac8cdc
 Description: PawKemoViewer
  (none)
 
