@@ -1,5 +1,5 @@
 {
-  "/etc/issue.net": "Ubuntu 24.04.3 LTS",
+  "/etc/issue.net": "Ubuntu 24.04.5 LTS",
   "antiFeatures": {
     "NonFreeNet": {
       "apps": [
@@ -7,17 +7,17 @@
       ]
     }
   },
-  "apksigner": "/usr/bin/apksigner",
+  "apksigner": "/usr/local/lib/android/sdk/build-tools/37.0.0/apksigner",
   "archivePolicy0": [],
   "commandLine": [
-    "/tmp/fdroidvenv/bin/fdroid update",
+    "/home/runner/fdroidvenv/bin/fdroid update",
     "--pretty"
   ],
   "disabled": [],
-  "endTimestamp": 1795736048494,
+  "endTimestamp": 1795789791822,
   "failedBuilds": {},
-  "jarsigner": "/usr/lib/jvm/java-21-openjdk-amd64/bin/jarsigner",
-  "keytool": "/usr/lib/jvm/java-21-openjdk-amd64/bin/keytool",
+  "jarsigner": "/usr/bin/jarsigner",
+  "keytool": "/usr/bin/keytool",
   "needsUpdate": [
     "com.nsmr0604.pawkemoviewer"
   ],
@@ -28,14 +28,14 @@
     "com.nsmr0604.pawkemoviewer"
   ],
   "stages": {
-    "delete_disabled_builds": 1795736036484,
-    "index.make repo": 1795736041392,
-    "prepare_apps repo": 1795736041365,
-    "process_apks": 1795736036488,
-    "read_added_date_from_all_apks": 1795736041362,
-    "remove_apks": 1795736041355,
-    "scan_repo_files": 1795736041335
+    "delete_disabled_builds": 1795789787098,
+    "index.make repo": 1795789788474,
+    "prepare_apps repo": 1795789788473,
+    "process_apks": 1795789787098,
+    "read_added_date_from_all_apks": 1795789788473,
+    "remove_apks": 1795789788472,
+    "scan_repo_files": 1795789788472
   },
-  "startTimestamp": 1795703636000,
+  "startTimestamp": 1795789787000,
   "subcommand": "update"
 }

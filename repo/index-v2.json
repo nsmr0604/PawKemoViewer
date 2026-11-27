@@ -14,7 +14,7 @@
       }
     },
     "address": "https://nsmr0604.github.io/PawKemoViewer/repo",
-    "timestamp": 1795736041000,
+    "timestamp": 1795789788000,
     "categories": {
       "Multimedia": {
         "name": {
@@ -48,12 +48,12 @@
         "preferredSigner": "69c90f77aa28ea7cfc6232be27ce1fefcd064deac454e573dc999afce8af6a79"
       },
       "versions": {
-        "a2c719749a8573224066495343c17405123e4dc9d220f08c86cb6646eae1dcfe": {
+        "474c1486196945a106a8454dd370fabf80b0bae2a2ee6690338f72c8638c81e3": {
           "added": 1795731142000,
           "file": {
             "name": "/PawKemoViewer.apk",
-            "sha256": "a2c719749a8573224066495343c17405123e4dc9d220f08c86cb6646eae1dcfe",
-            "size": 80719562
+            "sha256": "474c1486196945a106a8454dd370fabf80b0bae2a2ee6690338f72c8638c81e3",
+            "size": 80703178
           },
           "manifest": {
             "nativecode": [
@@ -62,8 +62,8 @@
               "x86",
               "x86_64"
             ],
-            "versionName": "0.6.1",
-            "versionCode": 6001,
+            "versionName": "0.6.2",
+            "versionCode": 6002,
             "usesSdk": {
               "minSdkVersion": 24,
               "targetSdkVersion": 37
