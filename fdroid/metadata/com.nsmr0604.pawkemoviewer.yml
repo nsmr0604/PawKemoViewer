@@ -34,4 +34,3 @@ Description: |-
   software and may change or stop without notice.
 AntiFeatures:
   - NonFreeNet
-  - TetheredNet
