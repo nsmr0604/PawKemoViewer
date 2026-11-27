@@ -38,11 +38,14 @@ jobs:
       - name: Install fdroidserver
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends fdroidserver
-          # APK の解析に使う場合があるが、無くても androguard で動く
-          sudo apt-get install -y --no-install-recommends aapt || true
-          fdroid --version
+          # Ubuntu 24.04 の fdroidserver 2.2 + androguard は、新しい AAPT2 が作る
+          # resources.arsc を解析できず "res1 must be zero!" で落ちる。
+          # pip の最新版 (WSL で使っているのと同じ系統) を venv に入れる。
+          python3 -m venv "$HOME/fdroidvenv"
+          "$HOME/fdroidvenv/bin/pip" install --upgrade pip
+          "$HOME/fdroidvenv/bin/pip" install fdroidserver
+          echo "$HOME/fdroidvenv/bin" >> "$GITHUB_PATH"
+          "$HOME/fdroidvenv/bin/fdroid" --version
 
       - name: Download APK
         env:
