@@ -11,7 +11,7 @@
 | Windows | `PawKemoViewer.exe` / `PawKemoViewer.msi` |
 | Linux | `PawKemoViewer.AppImage` / `PawKemoViewer.deb` / `PawKemoViewer.rpm` |
 | macOS | `PawKemoViewer.dmg` / `PawKemoViewer.app.tar.gz` |
-| Android | `PawKemoViewer.apk` |
+| Android | `PawKemoViewer.apk`（universal） / `PawKemoViewer_arm64.apk` |
 | iOS / iPadOS | `PawKemoViewer.ipa` |
 
 0.5.7 以前は `PawKemoViewer_0.5.7_x64-setup.exe` のような版入り名です。各リリースの実際のファイル名を確認してください。

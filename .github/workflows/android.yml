@@ -153,13 +153,25 @@ jobs:
           node scripts/app-icon/generate-android.mjs --config src-tauri/app-icons.json
           grep -c 'tauri-plugin-app-icon-id' src-tauri/gen/android/app/src/main/AndroidManifest.xml
 
-      - name: Build APK
+      - name: Build APK (universal)
+        # 全 ABI を含む universal APK。互換性優先の既定配布物。
         run: |
           if [ "${{ inputs.release }}" = "true" ]; then
-            npx tauri android build
+            npx tauri android build --apk
           else
             # デバッグ版は applicationId に .debug を付け、製品版と共存させる
-            npx tauri android build --debug --features debug-diag
+            npx tauri android build --debug --features debug-diag --apk
+          fi
+
+      - name: Build APK (arm64)
+        # arm64-v8a のみの APK。universal より大幅に小さい。
+        # --split-per-abi で出力先が apk/arm64/ に分かれるため、
+        # 上の universal (apk/universal/) を上書きしない。
+        run: |
+          if [ "${{ inputs.release }}" = "true" ]; then
+            npx tauri android build --apk --split-per-abi --target aarch64
+          else
+            npx tauri android build --debug --features debug-diag --apk --split-per-abi --target aarch64
           fi
 
       - name: Sign APKs
@@ -193,20 +205,24 @@ jobs:
             ALIAS="androiddebugkey"
           fi
 
-          mapfile -d '' -t packages < <(find src-tauri/gen/android/app/build/outputs -type f -name '*.apk' -print0)
+          # 出力は apk/{universal,arm64}/{release,debug}/app-*.apk。
+          # ディレクトリ名から ABI とビルド種別を取り、universal と arm64 だけを署名する。
+          mapfile -d '' -t packages < <(find src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' -print0)
           if [[ "${#packages[@]}" -eq 0 ]]; then
             echo "No APK found" >&2
             exit 1
           fi
           for apk in "${packages[@]}"; do
-            base=$(basename "$apk")
-            # app-{abi}-{release,debug}.apk から ABI とビルド種別を抽出
-            build="release"
-            case "$base" in
-              *-debug.apk) build="debug" ;;
+            abi=$(basename "$(dirname "$(dirname "$apk")")")
+            build=$(basename "$(dirname "$apk")")
+            case "$abi" in
+              universal|arm64) ;;
+              *) echo "skip: $apk (abi=$abi)" ; continue ;;
             esac
-            abi=$(echo "$base" | sed -nE 's/^app-(.+)-(debug|release)\.apk$/\1/p')
-            if [ -z "$abi" ]; then abi="universal"; fi
+            case "$build" in
+              debug|release) ;;
+              *) build="release" ;;
+            esac
             out="dist-apk/PawKemoViewer_${VER}_${abi}.apk"
             if [[ "$build" == "debug" ]]; then
               out="dist-apk/PawKemoViewer_${VER}_${abi}_debug.apk"
@@ -227,6 +243,15 @@ jobs:
             rm -f "$out.aligned"
             echo "signed: $out"
           done
+
+          # universal と arm64 の 2 種類が揃っていることを確認する
+          if [[ "${{ inputs.release }}" == true ]]; then
+            test -f dist-apk/PawKemoViewer.apk
+            test -f dist-apk/PawKemoViewer_arm64.apk
+          else
+            test -f "dist-apk/PawKemoViewer_${VER}_universal_debug.apk"
+            test -f "dist-apk/PawKemoViewer_${VER}_arm64_debug.apk"
+          fi
 
           ls -la dist-apk
 

@@ -106,7 +106,7 @@ publish スクリプトは固定名で公開します。
 | Windows | `PawKemoViewer.exe` / `PawKemoViewer.msi` |
 | Linux | `PawKemoViewer.AppImage` / `PawKemoViewer.deb` / `PawKemoViewer.rpm` |
 | macOS | `PawKemoViewer.dmg` / `PawKemoViewer.app.tar.gz` |
-| Android | `PawKemoViewer.apk`（universal） |
+| Android | `PawKemoViewer.apk`（universal） / `PawKemoViewer_arm64.apk` |
 | iOS / iPadOS | `PawKemoViewer.ipa`（未署名） |
 
 ### 開発版
@@ -117,6 +117,8 @@ publish スクリプトは固定名で公開します。
 - `PawKemoViewer_0.6.0+<commit-count>_amd64.deb`
 - `PawKemoViewer_0.6.0+<commit-count>_universal.apk`
 - `PawKemoViewer_0.6.0+<commit-count>_ios-unsigned.ipa`
+
+Android の開発版 APK は `_universal_debug.apk` と `_arm64_debug.apk` の 2 種類です。
 
 macOS の debug app.tar.gz は `PawKemoViewer_aarch64.app.tar.gz`、DMG は Tauri が生成した版入り名です。
 
@@ -161,8 +163,10 @@ macOS の debug app.tar.gz は `PawKemoViewer_aarch64.app.tar.gz`、DMG は Taur
 ### Android
 
 - Node 24 / Java 17 / Android SDK 35 / Build Tools 35.0.0。
-- APK を zipalign し、`src-tauri/android-debug.keystore` で署名、`apksigner verify`。
-- 開発版・製品版とも debug.keystore。Play ストア配布ではありません。
+- `--apk` で universal を、`--apk --split-per-abi --target aarch64` で arm64 をビルドする。
+- APK を zipalign し、`apksigner` で署名、`apksigner verify`。
+- 製品版は release key (GitHub Secrets)、開発版は `src-tauri/android-debug.keystore`。
+- Play ストア配布ではありません。
 
 ### iOS / iPadOS
 
