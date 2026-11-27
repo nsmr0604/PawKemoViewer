@@ -1,0 +1,140 @@
+name: F-Droid repository
+
+# 自己ホスト F-Droid リポジトリ (gh-pages の repo/) を、リリースの APK から更新する。
+# index は F-Droid リポジトリ鍵 (GitHub Secrets) で署名する。
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (empty = latest)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+# gh-pages へ書き込むため pages / AltStore / Linux リポジトリと直列化する
+concurrency:
+  group: pawkemoviewer-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      FDROID_KEYSTORE_BASE64: ${{ secrets.FDROID_KEYSTORE_BASE64 }}
+      FDROID_KEYSTORE_PASSWORD: ${{ secrets.FDROID_KEYSTORE_PASSWORD }}
+      FDROID_KEY_PASSWORD: ${{ secrets.FDROID_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Install fdroidserver
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fdroidserver
+          # APK の解析に使う場合があるが、無くても androguard で動く
+          sudo apt-get install -y --no-install-recommends aapt || true
+          fdroid --version
+
+      - name: Download APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="$TAG"
+          if [[ -z "$tag" ]]; then
+            tag="$(gh release view --json tagName --jq .tagName)"
+          fi
+          echo "tag=$tag" >> "$GITHUB_ENV"
+          mkdir -p dist-apk
+          # 他プラットフォームが先にリリースを作る場合に備えて APK を待つ
+          for attempt in $(seq 1 40); do
+            gh release download "$tag" -p 'PawKemoViewer.apk' -D dist-apk 2>/dev/null || true
+            if compgen -G 'dist-apk/PawKemoViewer.apk' >/dev/null; then
+              break
+            fi
+            echo "waiting for PawKemoViewer.apk (attempt $attempt/40)"
+            sleep 30
+          done
+          test -f dist-apk/PawKemoViewer.apk
+
+      - name: Update repository
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/fdroid"
+          mkdir -p "$work"
+
+          # gh-pages の既存リポジトリ (過去の index / APK) を引き継ぐ
+          git fetch origin +refs/heads/gh-pages:refs/remotes/origin/gh-pages
+          git worktree add -B gh-pages site origin/gh-pages
+          cp -R site/repo "$work/repo"
+          cp -R fdroid/metadata "$work/metadata"
+
+          printf '%s' "$FDROID_KEYSTORE_BASE64" | base64 -d > "$work/keystore.p12"
+          cat > "$work/config.yml" <<EOF
+          repo_url: https://nsmr0604.github.io/PawKemoViewer/repo
+          repo_name: PawKemoViewer
+          repo_description: Self-hosted F-Droid repository for PawKemoViewer.
+          archive_older: 0
+          repo_keyalias: pawkemoviewer-repo
+          keystore: keystore.p12
+          keystorepass: ${FDROID_KEYSTORE_PASSWORD}
+          keypass: ${FDROID_KEY_PASSWORD}
+          keydname: CN=PawKemoViewer Repo, O=nsmr0604, C=JP
+          EOF
+          # fdroid は設定ファイルの権限が緩いと警告する
+          chmod 600 "$work/config.yml" "$work/keystore.p12"
+
+          cp dist-apk/PawKemoViewer.apk "$work/repo/PawKemoViewer.apk"
+          cd "$work"
+          fdroid update --pretty 2>&1 | tee "$RUNNER_TEMP/fdroid.log"
+
+          # 既存リポジトリと同じ鍵で署名できているか (取り違え防止)
+          if ! grep -q "FF 6A 68 9D BE 66 EA BF" "$RUNNER_TEMP/fdroid.log"; then
+            echo "Index was not signed with the expected F-Droid repository key" >&2
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import json
+          with open("repo/index-v1.json", encoding="utf-8") as handle:
+              index = json.load(handle)
+          versions = [pkg["versionCode"] for pkg in index["packages"]["com.nsmr0604.pawkemoviewer"]]
+          print("indexed versionCode:", versions)
+          PY
+
+      - name: Publish to gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ env.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cd site
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          rm -rf repo
+          cp -R "$RUNNER_TEMP/fdroid/repo" repo
+          git add repo
+          if git diff --cached --quiet; then
+            echo "No repository changes"
+            exit 0
+          fi
+          git commit -m "Update F-Droid repository for $TAG"
+          for attempt in $(seq 1 5); do
+            if git push origin gh-pages; then
+              exit 0
+            fi
+            echo "push rejected, rebasing (attempt $attempt/5)"
+            git pull --rebase origin gh-pages
+          done
+          exit 1
