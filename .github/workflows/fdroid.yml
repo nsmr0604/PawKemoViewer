@@ -76,10 +76,19 @@ jobs:
           work="$RUNNER_TEMP/fdroid"
           mkdir -p "$work"
 
-          # gh-pages の既存リポジトリ (過去の index / APK) を引き継ぐ
+          # gh-pages の既存リポジトリ (過去の index / APK) を引き継ぐ。
+          # gh-pages の repo/ には apt (dists, pool)・rpm (repodata, GPG 鍵)・
+          # AltStore (apps.json) も同居しているため、F-Droid 管理分だけを複製する。
           git fetch origin +refs/heads/gh-pages:refs/remotes/origin/gh-pages
           git worktree add -B gh-pages site origin/gh-pages
-          cp -R site/repo "$work/repo"
+          mkdir -p "$work/repo"
+          for entry in PawKemoViewer.apk icons diff status \
+            entry.jar entry.json index.jar index.css index.html index.png \
+            index.xml index-v1.jar index-v1.json index-v2.json; do
+            if [[ -e "site/repo/$entry" ]]; then
+              cp -R "site/repo/$entry" "$work/repo/"
+            fi
+          done
           cp -R fdroid/metadata "$work/metadata"
 
           printf '%s' "$FDROID_KEYSTORE_BASE64" | base64 -d > "$work/keystore.p12"
@@ -125,8 +134,12 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cd site
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          rm -rf repo
-          cp -R "$RUNNER_TEMP/fdroid/repo" repo
+          # F-Droid 管理分だけを差し替える (apt / rpm / AltStore には触れない)
+          rm -rf repo/PawKemoViewer.apk repo/icons repo/diff repo/status \
+            repo/entry.jar repo/entry.json repo/index.jar repo/index.css \
+            repo/index.html repo/index.png repo/index.xml repo/index-v1.jar \
+            repo/index-v1.json repo/index-v2.json
+          cp -R "$RUNNER_TEMP/fdroid/repo/." repo/
           git add repo
           if git diff --cached --quiet; then
             echo "No repository changes"
