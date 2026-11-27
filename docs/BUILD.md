@@ -51,6 +51,11 @@ npm run icons:generate
 
 Full 診断には API / login / icon / pkv の HTTP 詳細、`debug-app.log`、pkv 疎通テスト、iOS 外部ページ診断が含まれます。製品版には含めません。
 
+Android の開発版は `bundle.android.debugApplicationIdSuffix` により、applicationId が
+`com.nsmr0604.pawkemoviewer.debug` になります。製品版とは別アプリとして共存でき、
+署名が異なっても上書きインストールの競合は起きません。開発版は debug keystore、
+製品版は release key で署名します。
+
 製品版の Lite 機能として、手動 session の入力・検証と開発項目トグルは残ります。
 
 ## バージョニング
