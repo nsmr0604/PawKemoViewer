@@ -69,7 +69,29 @@ apksigner verify --print-certs PawKemoViewer.apk
 
 ## 4. リポジトリの生成
 
-`fdroidserver` を用意します。
+GitHub Actions の **F-Droid repository** (`fdroid.yml`) を使うのが標準です。
+
+1. リリース (`pawkemoviewer-vX.Y.Z`) を公開する
+2. Actions の `F-Droid repository` を、tag を指定して実行する
+   (リリース公開時にも自動で実行されます)
+
+ワークフローは release から universal APK を取得し、`gh-pages` の `repo/index*` を
+F-Droid リポジトリ鍵で署名し直してから push します。必要な Secrets:
+
+| Secret | 内容 |
+|---|---|
+| `FDROID_KEYSTORE_BASE64` | `keystore.p12` を base64 にしたもの |
+| `FDROID_KEYSTORE_PASSWORD` | keystore のパスワード |
+| `FDROID_KEY_PASSWORD` | 鍵のパスワード |
+
+`gh-pages` の `repo/` には apt (`dists`, `pool`)・rpm (`repodata`)・AltStore (`apps.json`)
+も同居しているため、ワークフローは F-Droid 管理分 (`index*`, `entry*`, `icons`, `diff`,
+`status`, `PawKemoViewer.apk`) だけを差し替えます。
+
+### ローカルで生成する場合
+
+`fdroidserver` を用意します。Ubuntu 24.04 の apt 版 (2.2) は新しい AAPT2 の
+`resources.arsc` を解析できず `res1 must be zero!` で落ちるため、pip 版を使います。
 
 ```bash
 python3 -m pip install fdroidserver
@@ -87,11 +109,8 @@ scripts/fdroid/build-repo.sh dist-apk
 
 ## 5. 公開
 
-`fdroid/repo/` の中身を HTTPS で公開します。GitHub Pages を使う場合:
-
-1. `gh-pages` ブランチをチェックアウト
-2. `fdroid/repo/` の中身を、`gh-pages` の `repo/` としてコピー
-3. コミットして push
+ワークフローが `gh-pages` の `repo/` を更新します。ローカルで生成した場合は、
+`fdroid/repo/` の中身を `gh-pages` の `repo/` へコピーしてコミット・push します。
 
 公開 URL:
 
