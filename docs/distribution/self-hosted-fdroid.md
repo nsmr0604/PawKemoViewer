@@ -54,8 +54,8 @@ cp config.example.yml config.yml
 GitHub Actions の Android Build を `release=true` で実行するか、ローカルでビルドします。
 
 ```bash
-npm run tauri android build -- --apk
-npm run tauri android build -- --apk --split-per-abi --target aarch64
+npm run tauri -- android build --apk
+npm run tauri -- android build --apk --split-per-abi --target aarch64
 # 生成された universal / arm64 APK を release.jks で署名
 ```
 
