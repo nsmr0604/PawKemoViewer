@@ -431,12 +431,27 @@ fn navigate(
             if let Some(args) = args {
                 if let Ok(request) = unsafe { args.Request() } {
                     if let Ok(headers) = unsafe { request.Headers() } {
-                        let _ = unsafe {
-                            headers.SetHeader(
-                                &HSTRING::from("Referer"),
-                                &HSTRING::from(referer.as_str()),
-                            )
-                        };
+                        // ブラウザが付けた Referer (ページ内の再 POST や同一サイト遷移) は
+                        // そのまま残し、Referer の無い最初の遷移にだけ元記事 URL を付ける。
+                        // 全ドキュメント要求を上書きすると、ページ自身の POST まで元記事の
+                        // Referer になり、サイト側の同一オリジン検証で弾かれる。
+                        let mut value = windows::core::PWSTR::default();
+                        let existing =
+                            if unsafe { headers.GetHeader(&HSTRING::from("Referer"), &mut value) }
+                                .is_ok()
+                            {
+                                unsafe { value.to_string().unwrap_or_default() }
+                            } else {
+                                String::new()
+                            };
+                        if existing.is_empty() {
+                            let _ = unsafe {
+                                headers.SetHeader(
+                                    &HSTRING::from("Referer"),
+                                    &HSTRING::from(referer.as_str()),
+                                )
+                            };
+                        }
                     }
                 }
             }
