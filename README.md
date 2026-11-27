@@ -97,11 +97,11 @@ DNS フィルタ（AdGuard など）で `pawchive.pw` が遮断される環境�
 | Windows | `PawKemoViewer.exe` / `PawKemoViewer.msi` |
 | Linux | `PawKemoViewer.AppImage` / `PawKemoViewer.deb` / `PawKemoViewer.rpm` |
 | macOS | `PawKemoViewer.dmg` / `PawKemoViewer.app.tar.gz` |
-| Android | `PawKemoViewer.apk` |
+| Android | `PawKemoViewer.apk`（universal） / `PawKemoViewer_arm64.apk` |
 | iOS / iPadOS | `PawKemoViewer.ipa` |
 
 - Windows / macOS の実行ファイルは未署名です。Windows では SmartScreen とファイアウォールの許可が必要になる場合があります。macOS では右クリックから開いてください。
-- Android APK は標準 debug.keystore で署名しています。Play ストアでは配布していません。「提供元不明のアプリ」を許可してインストールしてください。
+- Android APK は release key で署名しています。Play ストアでは配布していません。「提供元不明のアプリ」を許可してインストールしてください。`PawKemoViewer_arm64.apk` は arm64 端末向けの軽量版で、ほぼすべての現行端末で利用できます。迷ったら `PawKemoViewer.apk`（universal）を使ってください。
 - iOS IPA は未署名です。そのままでは実機にインストールできず、再署名が必要です。
 - 開発版は [debug-latest](../../releases/tag/debug-latest) にあります。プラットフォームごとに更新時刻が異なるため、ファイル名の版を確認してください。
 

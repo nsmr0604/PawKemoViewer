@@ -54,9 +54,12 @@ cp config.example.yml config.yml
 GitHub Actions の Android Build を `release=true` で実行するか、ローカルでビルドします。
 
 ```bash
-npm run tauri android build
-# 生成された APK を release.jks で署名
+npm run tauri android build -- --apk
+npm run tauri android build -- --apk --split-per-abi --target aarch64
+# 生成された universal / arm64 APK を release.jks で署名
 ```
+
+F-Droid リポジトリには universal（`PawKemoViewer.apk`）を置きます。
 
 署名後は必ず指紋を確認します。
 
