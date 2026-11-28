@@ -89,7 +89,11 @@ jobs:
               cp -R "site/repo/$entry" "$work/repo/"
             fi
           done
-          cp -R fdroid/metadata "$work/metadata"
+          if [[ ! -d "site/fdroid/metadata" ]]; then
+            echo "gh-pages に fdroid/metadata がありません" >&2
+            exit 1
+          fi
+          cp -R site/fdroid/metadata "$work/metadata"
 
           printf '%s' "$FDROID_KEYSTORE_BASE64" | base64 -d > "$work/keystore.p12"
           cat > "$work/config.yml" <<EOF

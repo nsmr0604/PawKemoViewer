@@ -26,8 +26,10 @@ fi
 cd "$FDROID_DIR"
 
 if [[ ! -f config.yml ]]; then
-  cp config.example.yml config.yml
-  echo "Created fdroid/config.yml. Edit repo_url, keystore, and passwords, then rerun." >&2
+  echo "fdroid/config.yml is missing." >&2
+  echo "Create it from the template published on gh-pages (fdroid/config.example.yml)," >&2
+  echo "fill in repo_url, keystore, and passwords, then rerun." >&2
+  echo "See docs/distribution/self-hosted-fdroid.md." >&2
   exit 1
 fi
 
@@ -41,6 +43,13 @@ if [[ ! -f keystore.p12 ]]; then
   echo "  keytool -genkeypair -v -keystore keystore.p12 -alias pawkemoviewer-repo \\" >&2
   echo "    -keyalg RSA -keysize 4096 -validity 10950 \\" >&2
   echo "    -dname \"CN=PawKemoViewer Repo, O=nsmr0604, C=JP\"" >&2
+  exit 1
+fi
+
+if [[ ! -d metadata ]]; then
+  echo "fdroid/metadata is missing." >&2
+  echo "Copy fdroid/metadata from the gh-pages branch before generating." >&2
+  echo "See docs/distribution/self-hosted-fdroid.md." >&2
   exit 1
 fi
 

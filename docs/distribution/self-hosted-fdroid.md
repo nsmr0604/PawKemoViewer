@@ -39,7 +39,10 @@ GitHub の **Settings → Secrets and variables → Actions** に登録します
 F-Droid リポジトリの index を署名する鍵です。アプリの署名鍵とは別にします。
 
 ```bash
-cd fdroid
+mkdir -p fdroid && cd fdroid
+# テンプレートは gh-pages に公開しています
+curl -fsSL -o config.example.yml \
+  "https://nsmr0604.github.io/PawKemoViewer/fdroid/config.example.yml"
 keytool -genkeypair -v -keystore keystore.p12 -alias pawkemoviewer-repo \
   -keyalg RSA -keysize 4096 -validity 10950 \
   -dname "CN=PawKemoViewer Repo, O=nsmr0604, C=JP"
@@ -48,6 +51,9 @@ cp config.example.yml config.yml
 
 `config.yml` の `repo_url`・`keystorepass`・`keypass` を設定します。
 `config.yml` と `keystore.p12` は**コミットしない**でください(`.gitignore` 済み)。
+
+F-Droid のメタデータ (`fdroid/metadata/`) も gh-pages にあります。ローカルで生成する場合は
+`gh-pages` からコピーしてください。
 
 ## 3. APK のビルドと署名
 

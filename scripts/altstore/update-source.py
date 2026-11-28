@@ -29,7 +29,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ipa", required=True)
     parser.add_argument("--url", required=True, help="public IPA download URL")
-    parser.add_argument("--source", default="altstore/apps.json")
+    parser.add_argument("--source", required=True, help="AltStore source JSON (gh-pages の repo/apps.json)")
     parser.add_argument("--date", default=dt.date.today().isoformat())
     parser.add_argument("--notes", default="")
     args = parser.parse_args()

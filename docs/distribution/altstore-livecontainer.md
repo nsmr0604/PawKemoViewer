@@ -18,7 +18,7 @@ https://www.nsmr0604.geek.jp/PawKemoViewer/repo/apps.json
 
 ## 公開
 
-`altstore/apps.json` を `gh-pages` の `repo/apps.json` にコピーします。
+AltStore ソースの正本は `gh-pages` の `repo/apps.json` です（main には置きません）。
 
 ```
 gh-pages/
@@ -53,7 +53,7 @@ livecontainer://source?url=https%3A%2F%2Fnsmr0604.github.io%2FPawKemoViewer%2Fre
 
 ## バージョン更新
 
-リリースごとに `altstore/apps.json` を更新します。
+リリースごとに `gh-pages` の `repo/apps.json` を更新します（CI の AltStore source ワークフローが行います）。
 
 1. `versions` の先頭に新しいエントリを追加
    - `version`: IPA の `CFBundleShortVersionString`

@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          ref: 0.6.0
+          ref: main
           persist-credentials: false
 
       - name: Download IPA
@@ -68,10 +68,14 @@ jobs:
         run: |
           set -euo pipefail
           url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${IPA_NAME}"
+          # AltStore ソースは main ではなく gh-pages の repo/apps.json を正本にする
+          git fetch origin +refs/heads/gh-pages:refs/remotes/origin/gh-pages
+          mkdir -p dist-altstore
+          git show origin/gh-pages:repo/apps.json > dist-altstore/apps.json
           python3 scripts/altstore/update-source.py \
             --ipa "dist-ios/${IPA_NAME}" \
             --url "$url" \
-            --source altstore/apps.json \
+            --source dist-altstore/apps.json \
             --date "$DATE" \
             --notes "Release ${TAG}"
 
@@ -87,7 +91,7 @@ jobs:
           cd site
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           mkdir -p repo
-          cp ../altstore/apps.json repo/apps.json
+          cp ../dist-altstore/apps.json repo/apps.json
           git add repo/apps.json
           if git diff --cached --quiet; then
             echo "No source changes"
