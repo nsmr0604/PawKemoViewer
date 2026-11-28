@@ -23,7 +23,7 @@
         {
           "version": "0.6.2",
           "buildVersion": "0.6.2",
-          "date": "2026-11-27",
+          "date": "2026-11-28",
           "localizedDescription": "Release pawkemoviewer-v0.6.2",
           "downloadURL": "https://github.com/nsmr0604/PawKemoViewer/releases/download/pawkemoviewer-v0.6.2/PawKemoViewer.ipa",
           "size": 11116348,
@@ -40,7 +40,7 @@
         }
       ],
       "version": "0.6.2",
-      "versionDate": "2026-11-27",
+      "versionDate": "2026-11-28",
       "versionDescription": "Release pawkemoviewer-v0.6.2",
       "downloadURL": "https://github.com/nsmr0604/PawKemoViewer/releases/download/pawkemoviewer-v0.6.2/PawKemoViewer.ipa",
       "size": 11116348,
@@ -53,7 +53,7 @@
       "title": "0.6.2",
       "identifier": "release-0.6.2-0.6.2",
       "caption": "Release pawkemoviewer-v0.6.2",
-      "date": "2026-11-27",
+      "date": "2026-11-28",
       "tintColor": "#1E88E5",
       "appID": "com.nsmr0604.pawkemoviewer"
     },
